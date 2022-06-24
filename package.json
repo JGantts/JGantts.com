@@ -1,0 +1,37 @@
+{
+  "name": "jgantts.com",
+  "version": "1.0.0",
+  "description": "jgantts.com",
+  "main": "index.js",
+  "scripts": {
+    "start": "tsc && node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JGantts/jgantts.com.git"
+  },
+  "author": "Jacob Gantt",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JGantts/jgantts.com/issues"
+  },
+  "homepage": "https://github.com/JGantts/jgantts.com#readme",
+  "devDependencies": {
+    "@types/express": "^4.17.13",
+    "@types/jquery": "^3.5.14",
+    "@types/node": "^17.0.5",
+    "node": ">=16.15.1",
+    "nodemon": "^2.0.18",
+    "ts-node": "^10.8.1",
+    "typescript": "^4.7.4"
+  },
+  "dependencies": {
+    "@types/mysql": "^2.15.21",
+    "async": "^3.2.4",
+    "body-parser": "^1.20.0",
+    "express": "^4.18.1",
+    "graceful-fs": "^4.2.10",
+    "mysql": "^2.18.1"
+  }
+}

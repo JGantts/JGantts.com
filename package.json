@@ -4,7 +4,8 @@
   "description": "jgantts.com",
   "main": "index.js",
   "scripts": {
-    "start": "tsc && node dist/index.js",
+    "start": "build && node dist/index.js",
+    "build": "rm -R dist && tsc && rsync -av --exclude '*.ts' src/ dist/",
     "test": "echo \"Error: no test specified\" && exit 0"
   },
   "repository": {

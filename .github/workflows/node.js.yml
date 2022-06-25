@@ -36,7 +36,7 @@ jobs:
         milliseconds: 1000
         namecheap_username: ${{ matrix.NAMECHEAP_USERNAME }}
         namecheap_ssh_key: ${{ matrix.NAMECHEAP_SSH_KEY }}
-        namechaep_ssh_port: ${{ matrix.NAMECHEAP_SSH_PORT }}
+        namecheap_ssh_port: ${{ matrix.NAMECHEAP_SSH_PORT }}
     - run: npm ci
     - run: npm run build --if-present
     - run: npm test

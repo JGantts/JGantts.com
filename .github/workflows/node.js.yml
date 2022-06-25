@@ -33,11 +33,19 @@ jobs:
         repository: 'jgantts.com'
     - uses: jgantts/action-jgantts.com@v1
       with:
-        milliseconds: 1000
-        namecheap_domain: jgantts.com
-        namecheap_username: ${{ matrix.NAMECHEAP_USERNAME }}
-        namecheap_ssh_key: ${{ matrix.NAMECHEAP_SSH_KEY }}
-        namecheap_ssh_port: ${{ matrix.NAMECHEAP_SSH_PORT }}
+          milliseconds: 1000
+          namecheap_domain: jgantts.com
+          namecheap_username: ${{ matrix.NAMECHEAP_USERNAME }}
+          namecheap_ssh_key: ${{ matrix.NAMECHEAP_SSH_KEY }}
+          namecheap_ssh_port: ${{ matrix.NAMECHEAP_SSH_PORT }}
+    - uses: actions/setup-node@v3
+      with:
+        node-version: 16
+        registry-url: https://npm.pkg.github.com/
+    - run: npm ci
+    - run: npm publish
+    env:
+      NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
     - run: npm ci
     - run: npm run build --if-present
     - run: npm test

@@ -26,7 +26,7 @@ jobs:
       uses: jgantts/action-jgantts.com@v1
         with:
           milliseconds: 1000
-        name: Use Node.js ${{ matrix.nod
+        name: Use Node.js ${{ matrix.nod }}
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'

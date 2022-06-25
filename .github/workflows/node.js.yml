@@ -31,7 +31,6 @@ jobs:
       with:
         owner: 'JGantts'
         repository: 'jgantts.com'
-    - run: cd jgantts.com
     - uses: jgantts/action-jgantts.com@v1
       with:
         milliseconds: 1000

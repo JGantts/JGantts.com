@@ -26,6 +26,11 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+    - name: Clone JGantts/poc-github-actions PUBLIC repository
+      uses: GuillaumeFalourd/clone-github-repo-action@v2
+      with:
+        owner: 'JGantts'
+        repository: 'jgantts.com'
     - uses: jgantts/action-jgantts.com@v1
       with:
         milliseconds: 1000

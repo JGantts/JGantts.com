@@ -1,11 +1,13 @@
 {
   "name": "jgantts.com",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "jgantts.com",
   "main": "index.js",
   "scripts": {
     "start": "build && node dist/out/index.js",
-    "build": "if [ -d 'dist/' ]; then rm -Rf dist/ ; fi && tsc && rsync -av --exclude '*.ts' --exclude 'dist/' --exclude 'src/' --exclude './.*' ./ dist/ && rsync -av --exclude '*.ts' --exclude 'dist/' src/ dist/out/",
+    "prebuild": "if [ -d 'dist/' ]; then rm -Rf dist/ ; fi",
+    "build": "tsc",
+    "postbuild": "rsync -av --exclude '*.ts' --exclude 'dist/' --exclude 'src/' --exclude './.*' ./ dist/ && rsync -av --exclude '*.ts' --exclude 'dist/' src/ dist/out/",
     "test": "echo \"Error: no test specified\" && exit 0"
   },
   "repository": {
@@ -33,6 +35,7 @@
     "body-parser": "^1.20.0",
     "express": "^4.18.1",
     "graceful-fs": "^4.2.10",
+    "jgantts.com": "^1.0.7",
     "mysql": "^2.18.1"
   }
 }

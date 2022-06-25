@@ -31,6 +31,5 @@ jobs:
     - run: ls
     - run: npm run-script build
     - run: ls
-    - run: cd dist/
-    - run: ls
-    - run: npm publish
+    - run: cd dist/ && ls
+    - run: cd dist/ && npm publish

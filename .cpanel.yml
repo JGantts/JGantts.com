@@ -3,4 +3,5 @@ deployment:
   tasks:
     - export DEPLOYPATH=/home/jgangany/apps/
     - export REPOPATH=/home/jgangany/repositories/jgantts.com
+    - /bin/rm -rfv $DEPLOYPATH
     - /bin/cp -R $REPOPATH $DEPLOYPATH

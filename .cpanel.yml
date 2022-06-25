@@ -1,6 +1,6 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/jgangany/apps/jgantts.com
+    - export DEPLOYPATH=/home/jgangany/apps/
     - export REPOPATH=/home/jgangany/repositories/jgantts.com
     - /bin/cp -R $REPOPATH $DEPLOYPATH

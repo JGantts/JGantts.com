@@ -29,5 +29,4 @@ jobs:
         cache: 'npm'
     - run: npm ci
     - run: npm build
-    - run: ls out/
     - run: npm publish

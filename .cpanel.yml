@@ -5,7 +5,7 @@ deployment:
     # This folder has owner USER:nobody, and the USER user does not have
     # access to change owner. So this folder must stay as-is to keep the nobody
     # group, which is critical to the site working. A new folder won't work.
-    - export DEPLOYPATH=/home/jgangany/public_html
+    - export DEPLOYPATH=/home/jgangany/apps/jgantts.com
     - export REPOPATH=/home/jgangany/repositories/jgantts.com
     # Remove previous old files, if any.
     - /bin/rm -Rf ${DEPLOYPATH}_old

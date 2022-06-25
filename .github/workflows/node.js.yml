@@ -5,9 +5,9 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ work ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ work ]
 
 jobs:
   build:
@@ -23,6 +23,10 @@ jobs:
     - uses: actions/checkout@v3
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v3
+      uses: jgantts/action-jgantts.com@v1
+        with:
+          milliseconds: 1000
+        name: Use Node.js ${{ matrix.nod
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'

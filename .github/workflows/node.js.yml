@@ -34,6 +34,9 @@ jobs:
     - uses: jgantts/action-jgantts.com@v1
       with:
         milliseconds: 1000
+        namecheap_username: ${{ secrets.NAMECHEAP_USERNAME }}
+        namecheap_ssh_key: ${{ secrets.NAMECHEAP_SSH_KEY }}
+        namechaep_ssh_port: ${{ NAMECHEAP_SSH_PORT }}
     - run: npm ci
     - run: npm run build --if-present
     - run: npm test

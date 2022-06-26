@@ -2,12 +2,15 @@
   "name": "jgantts.com",
   "version": "1.0.9",
   "description": "jgantts.com",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "build && node dist/out/index.js",
+    "start": "npm run build && node dist/out/index.js",
     "prebuild": "if [ -d 'dist/' ]; then rm -Rf dist/ ; fi",
     "build": "tsc",
-    "postbuild": "rsync -av --exclude '*.ts' --exclude 'dist/' --exclude 'src/' --exclude './.*' ./ dist/ && rsync -av --exclude '*.ts' --exclude 'dist/' src/ dist/out/",
+    "postbuild": "npm run copy-node_modules && npm run copy-src && npm run copy-others-excl-hidden",
+    "copy-node_modules": "rsync -av node_modules/ dist/out/node_modules",
+    "copy-src": "rsync -av --exclude '*.ts' src/ dist/out/src",
+    "copy-others-excl-hidden": "rsync -av --exclude 'dist/' --exclude 'src/' --exclude 'node_modules' --exclude './.*' ./ dist/",
     "test": "echo \"Error: no test specified\" && exit 0"
   },
   "repository": {
@@ -24,7 +27,7 @@
     "@types/express": "^4.17.13",
     "@types/jquery": "^3.5.14",
     "@types/node": "^17.0.5",
-    "node": ">=14.18.3 ",
+    "node": "14.18.3",
     "nodemon": "^2.0.18",
     "ts-node": "^10.8.1",
     "typescript": "^4.7.4"

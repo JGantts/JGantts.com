@@ -10,7 +10,7 @@ var fs = require('graceful-fs').promises;
 var app = express();
 
 const APP_NAME = "jgantts-website";
-const PUBLIC_DIR = "out";
+const PUBLIC_DIR = "out/PUBLIC/";
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());

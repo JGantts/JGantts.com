@@ -1,12 +1,16 @@
 import express from 'express';
 import mysql from 'mysql';
-
+import path from 'path';
+var url = require('url');
 var async = require('async');
 var bodyParser = require('body-parser');
 //var config = require('./config').production;
-var fs = require('graceful-fs');
+var fs = require('graceful-fs').promises;
 
 var app = express();
+
+const APP_NAME = "jgantts-website";
+const PUBLIC_DIR = "out";
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -14,6 +18,16 @@ app.use(bodyParser.raw({
   type: 'image/png',
   limit: '1mb'
 }));
+
+const log4js = require("log4js");
+log4js.configure({
+  appenders: { publish: { type: "file", filename: `${APP_NAME}.log` } },
+  categories: { default: { appenders: ["publish"], level: "error" } }
+});
+const logger = log4js.getLogger();
+logger.level = "debug";
+
+logger.debug("Begin Log");
 
 /*
 var con = mysql.createConnection({
@@ -34,13 +48,29 @@ con.connect(function(err: Error){
 
 var server = app.listen(8081, function () {
   let uri: any = server.address();
-  var host = uri.address;
-  var port = uri.port;
+  let host = uri.address;
+  let port = uri.port;
   console.log("Example app listening at http://%s:%s", host, port);
 });
 
-app.get('/', function (req: express.Request, res: express.Response) {
-    res.send('GET request to JGantts.com homepage')
+app.get('/*', async (req: express.Request, res: express.Response) => {
+    let query = url.parse(req.url, true);
+    let fileName = `./${PUBLIC_DIR}${query.pathname}`;
+    if(path.parse(query.pathname).ext === "") {
+        fileName += "index.html"
+    }
+    fileName = path.resolve(fileName);
+    try {
+        let contents = await fs.readFile(fileName);
+        res.writeHead(200, {'Content-Type': 'text/html'});
+        res.write(contents);
+    } catch (err) {
+        res.writeHead(500, {'Content-Type': 'text/html'});
+        res.write("500 - It's not you, it's us.");
+        logger.debug(JSON.stringify(fileName));
+        logger.debug(err);
+    }
+    res.end();
 });
 
 /*

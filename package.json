@@ -4,7 +4,8 @@
   "description": "jgantts.com",
   "main": "dist/index.js",
   "scripts": {
-    "start": "npm run build && cd dist && node out/index.js",
+    "dev": "npm run build && cd dist && node out/index.js",
+    "start": "cd dist && node out/index.js",
     "prebuild": "if [ -d 'dist/' ]; then rm -Rf dist/ ; fi",
     "build": "tsc",
     "postbuild": "npm run copy-node_modules && npm run copy-src && npm run copy-others-excl-hidden",

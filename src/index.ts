@@ -40,7 +40,7 @@ var server = app.listen(8081, function () {
 });
 
 app.get('/', function (req: express.Request, res: express.Response) {
-    res.send('GET request to JGantts.com homepage<br/>Update process works too!.')
+    res.send('GET request to JGantts.com homepage<br/>Update process works too!.<br/>Ok, it really works.')
 });
 
 /*

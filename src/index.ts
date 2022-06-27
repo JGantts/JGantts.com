@@ -56,17 +56,47 @@ var server = app.listen(8081, function () {
 app.get('/*', async (req: express.Request, res: express.Response) => {
     let query = url.parse(req.url, true);
     let fileName = `./${PUBLIC_DIR}${query.pathname}`;
-    if(path.parse(query.pathname).ext === "") {
-        fileName += "index.html"
+    if(path.parse(fileName).ext === "") {
+        fileName += 'index.html'
     }
     fileName = path.resolve(fileName);
     try {
         let contents = await fs.readFile(fileName);
-        res.writeHead(200, {'Content-Type': 'text/html'});
+        let contentType: string
+        switch(path.parse(fileName).ext) {
+            case '.html': contentType = 'text/html';
+            break;
+
+            case '.css': contentType = 'text/css';
+            break;
+
+            case '.js': contentType = 'application/javascript';
+            break;
+
+            case '.gif': contentType = 'image/gif';
+            break;
+
+            case '.jpeg':
+            case '.jpg': contentType = 'image/jpeg';
+            break;
+
+            case '.png': contentType = 'image/png';
+            break;
+
+            case '.svg': contentType = 'image/svg+xml';
+            break;
+
+            case '.pdf': contentType = 'application/pdf';
+            break;
+
+            default: throw Error('Unrecognized file type');
+            break;
+        }
+        res.writeHead(200, {'Content-Type': contentType});
         res.write(contents);
     } catch (err) {
         res.writeHead(500, {'Content-Type': 'text/html'});
-        res.write("500 - It's not you, it's us.");
+        res.write("<p>500 - It's not you, it's us.</p>");
         logger.debug(JSON.stringify(fileName));
         logger.debug(err);
     }

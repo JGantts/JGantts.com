@@ -29,7 +29,6 @@ jobs:
         cache: 'npm'
     - run: npm ci
     - run: ls
-    - run: npm install
     - run: npm run-script build
     - run: ls
     - run: cd dist/ && ls

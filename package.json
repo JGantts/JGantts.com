@@ -1,8 +1,8 @@
 {
   "name": "jgantts.com",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "jgantts.com",
-  "main": "index.js",
+  "main": "out/index.js",
   "scripts": {
     "start": "npm run build && node index.js",
     "prebuild": "if [ -d 'dist/' ]; then rm -Rf dist/ ; fi",

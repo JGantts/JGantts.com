@@ -1,537 +1,80 @@
 import express from 'express';
-import mysql from 'mysql';
 import path from 'path';
 var url = require('url');
 var async = require('async');
-var bodyParser = require('body-parser');
-//var config = require('./config').production;
 var fs = require('graceful-fs').promises;
-
-var app = express();
-
-const APP_NAME = "jgantts-website";
-const PUBLIC_DIR = "out/PUBLIC/";
-
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
-app.use(bodyParser.raw({
-  type: 'image/png',
-  limit: '1mb'
-}));
-
 const log4js = require("log4js");
-log4js.configure({
-  appenders: { publish: { type: "file", filename: `${APP_NAME}.log` } },
-  categories: { default: { appenders: ["publish"], level: "error" } }
-});
-const logger = log4js.getLogger();
-logger.level = "debug";
 
-logger.debug("Begin Log");
+exports.start = async (app: express.Application) => {
+    const APP_NAME = "jgantts-website";
+    const PUBLIC_DIR = path.join(path.dirname(await fs.realpath(__filename)), 'PUBLIC');
 
-/*
-var con = mysql.createConnection({
-    host: config.database.host,
-    user: config.database.user,
-    password: config.database.password,
-    database: config.database.db
-});
+    log4js.configure({
+      appenders: { publish: { type: "file", filename: `${APP_NAME}.log` } },
+      categories: { default: { appenders: ["publish"], level: "error" } }
+    });
+    const logger = log4js.getLogger();
+    logger.level = "debug";
 
-con.connect(function(err: Error){
-   if(err){
-       console.log("Error connection to database: " + err)
-   }else{
-       console.log("Connected to database.")
-   }
-});
-*/
+    logger.debug(`${APP_NAME} starting`);
 
-var server = app.listen(8081, function () {
-  let uri: any = server.address();
-  let host = uri.address;
-  let port = uri.port;
-  console.log("Example app listening at http://%s:%s", host, port);
-});
+    const PORT_HTTP = 80;
+    const PORT_HTTPS = 443;
 
-app.get('/*', async (req: express.Request, res: express.Response) => {
-    let query = url.parse(req.url, true);
-    let fileName = `./${PUBLIC_DIR}${query.pathname}`;
-    if(path.parse(fileName).ext === "") {
-        fileName += 'index.html'
+    let listenResponse = (): void => {
+        logger.debug(`Node Site #${process.pid} started`);
     }
-    fileName = path.resolve(fileName);
-    try {
-        let contents = await fs.readFile(fileName);
-        let contentType: string
-        switch(path.parse(fileName).ext) {
-            case '.html': contentType = 'text/html';
-            break;
 
-            case '.css': contentType = 'text/css';
-            break;
+    app.listen(PORT_HTTP, listenResponse);
+    app.listen(PORT_HTTPS, listenResponse);
 
-            case '.js': contentType = 'application/javascript';
-            break;
-
-            case '.gif': contentType = 'image/gif';
-            break;
-
-            case '.jpeg':
-            case '.jpg': contentType = 'image/jpeg';
-            break;
-
-            case '.png': contentType = 'image/png';
-            break;
-
-            case '.svg': contentType = 'image/svg+xml';
-            break;
-
-            case '.pdf': contentType = 'application/pdf';
-            break;
-
-            default: throw Error('Unrecognized file type');
-            break;
+    app.get('/*', async (req: express.Request, res: express.Response) => {
+        let query = url.parse(req.url, true);
+        let fileName = path.join(PUBLIC_DIR, query.pathname);
+        if(path.parse(fileName).ext === "") {
+            fileName += 'index.html'
         }
-        res.writeHead(200, {'Content-Type': contentType});
-        res.write(contents);
-    } catch (err) {
-        res.writeHead(500, {'Content-Type': 'text/html'});
-        res.write("<p>500 - It's not you, it's us.</p>");
-        logger.debug(JSON.stringify(fileName));
-        logger.debug(err);
-    }
-    res.end();
-});
+        fileName = path.resolve(fileName);
+        try {
+            let contents = await fs.readFile(fileName);
+            let contentType: string
+            switch(path.parse(fileName).ext) {
+                case '.html': contentType = 'text/html';
+                break;
 
-/*
-app.get('/creatures/api/v1/', function (req: express.Request, res: express.Response) {
-    con.query(
-        "SELECT c.moniker, n.name, c.genus, c.gender " +
-        "FROM Creatures AS c " +
-        "LEFT JOIN Names AS n " +
-        "ON n.moniker = c.moniker " +
-        "ORDER BY RAND() " +
-        "LIMIT 12 ",
-        [req.params.moniker],
-        function(
-            err: mysql.MysqlError|null,
-            result: (mysql.Query&Array<CreaturesApi.CreatureHeaderQuery>)|undefined,
-            fields: mysql.FieldInfo[]|undefined
-        ) {
-           if (err) throw err;
-           if (!result) throw new Error(`expected Query but found undefined`);
-           result = result.sort(function(a, b) {return a.birthdate.getTime()-b.birthdate.getTime()});
-           res.setHeader('Access-Control-Allow-Origin', '*');
-           res.write(JSON.stringify(result));
-           res.end();
-        });
-});
+                case '.css': contentType = 'text/css';
+                break;
 
-app.get('creatures/api/v1/:moniker', function (req, res) {
-    con.query(
-        "SELECT c.moniker, n.name, c.genus, c.gender " +
-        "FROM Creatures AS c " +
-        "LEFT JOIN Names AS n " +
-        "ON n.moniker = c.moniker " +
-        "WHERE c.moniker = ?",
-        [req.params.moniker],
-        function(err, results, fields){
-            if (err) throw err;
-            var creature = results[0];
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.end(JSON.stringify(creature));
-        });
-});*/
+                case '.js': contentType = 'application/javascript';
+                break;
 
-/*app.put('creatures/api/v1/:moniker', function (req, res) {
-    var moniker = req.params.moniker;
-    var creature = req.body;
+                case '.gif': contentType = 'image/gif';
+                break;
 
-    var eventsForTable = creature.events
-        .map( (event: CreaturesApi.CreatureEventQuery) => {return [
-                   moniker,
-                   event.eventNumber,
-                   event.histEventType,
-                   event.lifeStage,
-                   event.photo,
-                   event.moniker1,
-                   event.moniker2,
-                   event.timeUtc,
-                   event.tickAge,
-                   event.worldTick,
-                   event.worldName,
-                   event.worldId,
-        ];});
+                case '.jpeg':
+                case '.jpg': contentType = 'image/jpeg';
+                break;
 
-    var utxtsForTable = creature.events
-        .filter((event) => {return event.utxt !== ""})
-        .map((event) => {return [moniker, event.eventNumber, event.worldId, event.utxt, 0]});
+                case '.png': contentType = 'image/png';
+                break;
 
-    var children = creature.events
-        .filter((event) => { return event.histEventType === 8 || event.histEventType === 9; })
-        .map((event) => { return [
-            moniker,
-            event.moniker1
-        ];});
+                case '.svg': contentType = 'image/svg+xml';
+                break;
 
-    async.series([
-        function(callback){
-            con.query(
-                "INSERT IGNORE INTO Creatures " +
-                "(moniker, crossoverPointMutations, pointMutations, gender, genus) " +
-                "VALUES ? ",
-                [[[
-                    moniker,
-                    creature.crossoverPointMutations,
-                    creature.pointMutations,
-                    creature.gender,
-                    creature.genus
-                    ]]],
-                function (err, result) {
-                    if (err) throw err;
-                    callback();
-        })},
-        function(callback){
-            if(creature.name !== ""){
-                con.query(
-                    "INSERT IGNORE INTO Names " +
-                    "(moniker, name, lastUpdate) " +
-                    "VALUES ? ",
-                    [[[creature.moniker, creature.name, 0]]],
-                    function (err, result) {
-                        if (err) throw err;
-                        callback();
-            })}else{
-                callback();
-        }},
-        function(callback){
-            if(eventsForTable.length > 0){
-                con.query(
-                    "INSERT IGNORE INTO Events " +
-                    "(moniker, eventNumber, histEventType, lifeStage, photo, moniker1, moniker2, timeUtc, tickAge, worldTick, worldName, worldId) " +
-                    "VALUES ? ",
-                    [eventsForTable],
-                    function (err, result) {
-                        if (err) throw err;
-                        callback();
-            })}else{
-                callback();
-        }},
-        function(callback){
-            if(utxtsForTable.length > 0){
-                con.query(
-                    "INSERT IGNORE INTO EventUserText " +
-                    "(moniker, eventNumber, worldId, utxt, lastUpdate) " +
-                    "VALUES ? ",
-                    [utxtsForTable],
-                    function (err, result) {
-                        if (err) throw err;
-                        callback();
-            })}else{
-                callback();
-        }},
-        function(callback){
-            if (children.length > 0){
-                con.query(
-                    "INSERT IGNORE INTO ParentToChild " +
-                    "(parent, child) " +
-                    "VALUES ? ",
-                    [children],
-                    function (err, result) {
-                    if (err) throw err;
-                    callback();
-                });
-            }else{
-                callback();
+                case '.pdf': contentType = 'application/pdf';
+                break;
+
+                default: throw Error('Unrecognized file type');
+                break;
             }
-        },
-        function(callback){
-            if(creature.events.length > 0){
-                con.query(
-                    "INSERT IGNORE INTO ChildToParents " +
-                    "(child, parent1, parent2, conceptionEventType) " +
-                    "VALUES ? ",
-                    [[[moniker, creature.events[0].moniker1, creature.events[0].moniker2, creature.events[0].histEventType]]],
-                    function (err, result) {
-                    if (err) throw err;
-                    callback();
-                });
-            }else{
-                callback();
-            }
+            res.writeHead(200, {'Content-Type': contentType});
+            res.write(contents);
+        } catch (err) {
+            res.writeHead(500, {'Content-Type': 'text/html'});
+            res.write("<p>500 - It's not you, it's us.</p>");
+            logger.debug(JSON.stringify(fileName));
+            logger.debug(err);
         }
-        ],
-        function(err, results){
-            res.end();
-        });
-});
-
-app.get('creatures/api/v1/:moniker/gender', function (req, res) {
-    con.query(
-        "SELECT c.gender " +
-        "FROM Creatures AS c " +
-        "WHERE c.moniker = ?",
-        [req.params.moniker],
-        function(err, results, fields){
-            if (err) throw err;
-
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.write(JSON.stringify(results[0]));
-            res.end();
-        });
-});
-app.put('creatures/api/v1/:moniker/gender', function (req, res) {
-    con.query(
-        "UPDATE Creatures " +
-        "SET gender = ? " +
-        "WHERE moniker = ?",
-        [req.body.gender, req.params.moniker],
-        function(err, results, fields){
-            if (err) throw err;
-
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.end();
-        });
-});
-
-app.get('/creatures/api/v1/:moniker/name', function (req, res) {
-    con.query(
-        "SELECT n.name " +
-        "FROM Names AS n " +
-        "WHERE n.moniker = ?",
-        [req.params.moniker],
-        function(err, results, fields){
-            if (err) throw err;
-
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.write(JSON.stringify(results[0]));
-            res.end();
-        });
-});
-app.put('/creatures/api/v1/:moniker/name', function (req, res) {
-    con.query(
-        "UPDATE Names " +
-        "SET name = ? " +
-        "WHERE moniker = ?",
-        [req.body.name, req.params.moniker],
-        function(err, results, fields){
-            if (err) throw err;
-
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.end();
-        });
-});
-
-app.get('/creatures/api/v1/:moniker/image', function (req, res) {
-    con.query(
-        "SELECT event.photo " +
-        "FROM Events AS event " +
-        "WHERE event.moniker = ? AND NOT event.photo = '' " +
-        "ORDER BY event.timeUTC DESC " +
-        "LIMIT 1",
-        [req.params.moniker],
-        function(err, result, fields){
-            if (err) throw err;
-            if (result.length === 0){
-                res.status(404).end();
-            }else{
-                var filePath = __dirname + "/images/" + result[0].photo + ".png";
-                fs.exists(filePath, function(exists){
-                    if(exists){
-                        fs.readFile(filePath, function(err, data){
-                            if(err){
-                                console.log(err);
-                                res.status(500).end();
-                            }else{
-                                res.writeHead(200, {'Content-Type': 'image/png'});
-                                res.write(data);
-                                res.end();
-                            }
-                        });
-                    }else{
-                        console.log("Couldn't find: " + filePath);
-                        res.status(500).end();
-                    }
-                });
-            }
+        res.end();
     });
-});
-
-app.get('/creatures/api/v1/:moniker/kin', function (req, res) {
-    con.query(
-        "SELECT ChildToParents.parent1 AS parent1Moniker, ChildToParents.parent2 AS parent2Moniker, ChildToParents.conceptionEventType " +
-        "FROM ChildToParents " +
-        "WHERE ChildToParents.child = ?",
-        [req.params.moniker],
-        function(err, results, fields){
-            if (err) throw err;
-            var creature = results[0];
-            con.query(
-                "SELECT relation.child AS moniker " +
-                "FROM ParentToChild AS relation " +
-                "WHERE relation.parent = ?",
-                [req.params.moniker],
-                function(err, childrenResult, fields){
-                   if (err) throw err;
-                   creature.children = childrenResult;
-                   res.setHeader('Access-Control-Allow-Origin', '*');
-                   res.end(JSON.stringify(creature));
-                });
-        });
-});
-
-app.get('/creatures/api/v1/:moniker/events', function (req, res) {
-    con.query(
-        "SELECT * " +
-        "FROM Events as event " +
-        "WHERE event.moniker = ?",
-        [req.params.moniker],
-        function(err, result, fields){
-           if (err) throw err;
-           res.setHeader('Access-Control-Allow-Origin', '*');
-           res.end(JSON.stringify(result));
-        });
-});
-
-app.put('/creatures/api/v1/:moniker/events/:eventNumber', function (req, res) {
-    console.log(req.body);
-
-    con.query(
-        "INSERT IGNORE INTO Events " +
-        "(moniker, eventNumber, histEventType, lifeStage, photo, moniker1, moniker2, timeUtc, tickAge, worldTick, worldName, worldId,) " +
-        "VALUES ? ",
-        [[[req.params.moniker, req.params.eventNumber, req.body.histEventType, req.body.lifeStage, req.body.photo, req.body.moniker1, req.body.moniker2, req.body.timeUtc, req.body.tickAge, req.body.worldTick, req.body.worldName, req.body.worldId]]],
-        function(err, results, fields){
-            if (err) throw err;
-
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.end();
-        });
-
-    con.query(
-        "INSERT IGNORE INTO EventUserText " +
-        "(moniker, eventNumber, worldId, userText, lastUpdate) " +
-        "VALUES ? ",
-        [[[req.params.moniker, req.params.eventNumber, req.body.worldId, req.body.userText, 0]]],
-        function(err, results, fields){
-            if (err) throw err;
-
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.end();
-        });
-});
-
-app.put('/creatures/api/v1/:moniker/events/:eventNumber/user-text', function (req, res) {
-    console.log(req.body);
-
-    con.query(
-        "UPDATE EventUserText " +
-        "SET userText = ? " +
-        "WHERE moniker = ? AND eventNumber = ? AND worldId = ?",
-        [[[req.body.userText, req.params.moniker, req.params.eventNumber, req.body.worldId]]],
-        function(err, results, fields){
-            if (err) throw err;
-
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.end();
-        });
-});
-
-
-
-app.get('/creatures/api/v1/:moniker/events/:eventNumber/image', function (req, res) {
-    con.query(
-        "SELECT event.photo " +
-        "FROM Events AS event " +
-        "WHERE event.moniker = ? AND event.eventNumber = ?",
-        [req.params.moniker, req.params.eventNumber],
-        function(err, result, fields){
-            if (err) throw err;
-            if (result.length === 0){
-                res.status(404).end();
-            }else if (result[0].photo == ""){
-                res.status(404).end();
-            }else{
-                var filePath = __dirname + "/images/" + result[0].photo + ".png";
-                fs.exists(filePath, function(exists){
-                    if(exists){
-                        fs.readFile(filePath, function(err, data){
-                            if(err){
-                                console.log(err);
-                                res.status(500).end();
-                            }else{
-                                res.writeHead(200, {'Content-Type': 'image/png'});
-                                res.write(data);
-                                res.end();
-                            }
-                        });
-                    }else{
-                        console.log("Couldn't find: " + filePath);
-                        res.status(500).end();
-                    }
-                });
-            }
-    });
-});
-app.head('/creatures/api/v1/:moniker/events/:eventNumber/image', function (req, res) {
-    con.query(
-        "SELECT event.photo " +
-        "FROM Events AS event " +
-        "WHERE event.moniker = ? AND event.eventNumber = ?",
-        [req.params.moniker, req.params.eventNumber],
-        function(err, result, fields){
-            if (err) throw err;
-            if (result.length === 0){
-                res.status(404).end();
-            }else if (result[0].photo == ""){
-                res.status(404).end();
-            }else{
-                var filePath = __dirname + "/images/" + result[0].photo + ".png";
-                fs.exists(filePath, function(exists){
-                    if(exists){
-                        res.status(200).end();
-                    }else{
-                        res.status(500).end();
-                    }
-                });
-            }
-    });
-});
-app.put('/creatures/api/v1/:moniker/events/:eventNumber/image', function (req, res) {
-    con.query(
-        "SELECT event.photo " +
-        "FROM Events AS event " +
-        "WHERE event.moniker = ? AND event.eventNumber = ?",
-        [req.params.moniker, req.params.eventNumber],
-        function(err, result, fields){
-            if (err) throw err;
-            if (result.length === 0){
-                res.status(400).end();
-            }else if (result[0].photo == ""){
-                res.status(400).end();
-            }else{
-                var filePath = __dirname + "/images/" + result[0].photo + ".png";
-                fs.writeFile(filePath, req.body, function(err: Error) {
-                    if(err){
-                        console.log(err);
-                        res.status(500).end();
-                    }else{
-                        res.status(204).end();
-                    }
-                 });
-            }
-    });
-});
-
-app.put('/creatures/api/v1/images/:imageName', function (req,res) {
-  console.log(req.params.imageName);
-  var filePath = __dirname + "/images/" + req.params.imageName + ".png";
-  fs.writeFile(filePath, req.body, function(err: Error) {
-    if(err){
-        console.log(err);
-        res.status(500).end();
-    }else{
-        res.status(204).end();
-    }
-  });
-});*/
+}

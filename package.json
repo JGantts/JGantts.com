@@ -2,16 +2,14 @@
   "name": "jgantts.com",
   "version": "1.0.23",
   "description": "jgantts.com",
-  "main": "dist/index.js",
+  "main": "index.js",
   "scripts": {
-    "dev": "npm run build && cd dist && node out/index.js",
-    "start": "node out/index.js",
+    "start": "npm run build && node index.js",
     "prebuild": "if [ -d 'dist/' ]; then rm -Rf dist/ ; fi",
     "build": "tsc",
-    "postbuild": "npm run copy-node_modules && npm run copy-src && npm run copy-others-excl-hidden",
-    "copy-node_modules": "rsync -av node_modules/ dist/node_modules",
+    "postbuild": "npm run && npm run copy-src && npm run copy-package",
     "copy-src": "rsync -av --exclude '*.ts' src/ dist/out",
-    "copy-others-excl-hidden": "rsync -av --exclude 'dist/' --exclude 'src/' --exclude 'node_modules' --exclude './.*' ./ dist/",
+    "copy-package": "rsync -av ./package.json dist/package.json && rsync -av ./package-lock.json dist/package-lock.json",
     "test": "echo \"Error: no test specified\" && exit 0"
   },
   "repository": {
@@ -38,9 +36,13 @@
     "async": "^3.2.4",
     "body-parser": "^1.20.0",
     "bootstrap": "^5.2.0-beta1",
+    "compare-versions": "^4.1.3",
     "express": "^4.18.1",
     "graceful-fs": "^4.2.10",
     "log4js": "^6.5.2",
-    "mysql": "^2.18.1"
+    "mysql": "^2.18.1",
+    "node-cron": "^3.0.1",
+    "tar": "^6.1.11",
+    "uuid": "^8.3.2"
   }
 }

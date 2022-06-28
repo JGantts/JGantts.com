@@ -38,6 +38,7 @@ exports.start = async () => {
             logger.debug(path);
 
             if (path = "/admin/error/crash") {
+                logger.debug("Admin effected crash.");
                 throw new Error("Admin effected crash.");
             }
             res.writeHead(500, {'Content-Type': 'text/html'});

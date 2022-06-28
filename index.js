@@ -23,7 +23,10 @@ logger.debug("Begin Log");
 
 const app = express();
 logger.debug(`Node Site #${process.pid} starting`);
+console.log(`Node Site #${process.pid} starting`);
 website.start(app);
+logger.debug(`Node Site #${process.pid} started`);
+console.log(`Node Site #${process.pid} started`);
 
 
 

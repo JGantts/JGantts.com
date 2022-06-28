@@ -5,7 +5,7 @@ var async = require('async');
 var fs = require('graceful-fs').promises;
 const log4js = require("log4js");
 
-exports.start = async (app: express.Application) => {
+exports.start = async () => {
     const APP_NAME = "jgantts-website";
     const PUBLIC_DIR = path.join(path.dirname(await fs.realpath(__filename)), 'PUBLIC');
 
@@ -24,6 +24,8 @@ exports.start = async (app: express.Application) => {
     let listenResponse = (): void => {
         logger.debug(`Node Site #${process.pid} started`);
     }
+    
+    const app = express();
 
     app.listen(PORT_HTTP, listenResponse);
     app.listen(PORT_HTTPS, listenResponse);

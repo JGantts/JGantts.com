@@ -32,6 +32,19 @@ exports.start = async () => {
         app.listen(PORT_HTTP, listenResponse);
         app.listen(PORT_HTTPS, listenResponse);
 
+        app.get('/admin/*', async (req: express.Request, res: express.Response) => {
+            let url = new URL(req.url);
+            let path = url.pathname
+            logger.debug(path);
+
+            if (path = "/admin/error/crash") {
+                throw new Error("Admin effected crash.");
+            }
+            res.writeHead(500, {'Content-Type': 'text/html'});
+            res.write("<p>Hello, Admin</p>");
+            res.end();
+        });
+
         app.get('/*', async (req: express.Request, res: express.Response) => {
             let query = url.parse(req.url, true);
             let fileName = path.join(PUBLIC_DIR, query.pathname);
@@ -81,6 +94,7 @@ exports.start = async () => {
             }
             res.end();
         });
+
     } catch (err) {
         cluster.worker.kill();
     }

@@ -33,9 +33,7 @@ exports.start = async () => {
         app.listen(PORT_HTTPS, listenResponse);
 
         app.get('/admin/*', async (req: express.Request, res: express.Response) => {
-            let url = new URL(req.url);
-            let path = url.pathname
-            logger.debug(path);
+            let path = req.url;
 
             if (path = "/admin/error/crash") {
                 logger.debug("Admin effected crash.");

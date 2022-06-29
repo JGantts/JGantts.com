@@ -7,44 +7,55 @@ var fs = require('graceful-fs').promises;
 const log4js = require("log4js");
 
 exports.start = async () => {
-    try {
-        const APP_NAME = "jgantts-website";
-        const PUBLIC_DIR = path.join(path.dirname(await fs.realpath(__filename)), 'PUBLIC');
+    const APP_NAME = "jgantts-website";
+    const PUBLIC_DIR = path.join(path.dirname(await fs.realpath(__filename)), 'PUBLIC');
 
-        log4js.configure({
-            appenders: { publish: { type: "file", filename: `${APP_NAME}.log` } },
-            categories: { default: { appenders: ["publish"], level: "error" } }
-        });
-        const logger = log4js.getLogger();
-        logger.level = "debug";
+    log4js.configure({
+        appenders: { publish: { type: "file", filename: `${APP_NAME}.log` } },
+        categories: { default: { appenders: ["publish"], level: "error" } }
+    });
+    const logger = log4js.getLogger();
+    logger.level = "debug";
 
-        logger.debug(`${APP_NAME} starting`);
+    logger.debug(`${APP_NAME} starting`);
 
-        const PORT_HTTP = 80;
-        const PORT_HTTPS = 443;
+    const PORT_HTTP = 80;
+    const PORT_HTTPS = 443;
 
-        let listenResponse = (): void => {
-            logger.debug(`Node Site #${process.pid} started`);
+    let listenResponse = (): void => {
+        logger.debug(`Node Site #${process.pid} started`);
+    }
+
+    const app = express();
+
+    app.listen(PORT_HTTP, listenResponse);
+    app.listen(PORT_HTTPS, listenResponse);
+
+    app.use((req, res, next) => {
+        let path = req.url;
+        logger.debug(`Request${path}`);
+        try {
+            next()
+        } catch (err) {
+            logger.debug(`Request${err.message}`);
         }
+        res.end();
+        cluster.worker.kill();
+    })
 
-        const app = express();
+    app.get('/admin/*', async (req: express.Request, res: express.Response) => {
+        let path = req.url;
 
-        app.listen(PORT_HTTP, listenResponse);
-        app.listen(PORT_HTTPS, listenResponse);
+        if (path = "/admin/error/crash") {
+            logger.debug("Admin effected crash.");
+            throw new Error("Admin effected crash.");
+        }
+        res.writeHead(500, {'Content-Type': 'text/html'});
+        res.write("<p>Hello, Admin</p>");
+    });
 
-        app.get('/admin/*', async (req: express.Request, res: express.Response) => {
-            let path = req.url;
-
-            if (path = "/admin/error/crash") {
-                logger.debug("Admin effected crash.");
-                throw new Error("Admin effected crash.");
-            }
-            res.writeHead(500, {'Content-Type': 'text/html'});
-            res.write("<p>Hello, Admin</p>");
-            res.end();
-        });
-
-        app.get('/*', async (req: express.Request, res: express.Response) => {
+    app.get('/*', async (req: express.Request, res: express.Response) => {
+        try {
             let query = url.parse(req.url, true);
             let fileName = path.join(PUBLIC_DIR, query.pathname);
             if(path.parse(fileName).ext === "") {
@@ -91,10 +102,9 @@ exports.start = async () => {
                 logger.debug(JSON.stringify(fileName));
                 logger.debug(err);
             }
-            res.end();
-        });
+        } catch (err) {
 
-    } catch (err) {
-        cluster.worker.kill();
-    }
+        }
+        res.end();
+    });
 }

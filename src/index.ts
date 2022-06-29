@@ -45,14 +45,14 @@ exports.start = async () => {
         });
     }
 
-    app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    /*app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
         let reqUrl = req.url;
         logger.debug(`Request${reqUrl}`);
         if (path.extname(reqUrl) == '' && reqUrl[reqUrl.length - 1] !== '/') {
             req.url = reqUrl + '/';
         }
         next();
-    })
+    })*/
 
     app.get('/admin/*', async (req: express.Request, res: express.Response) => {
         let reqUrl = req.url;

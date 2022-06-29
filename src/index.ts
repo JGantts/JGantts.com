@@ -32,8 +32,16 @@ exports.start = async () => {
 
     const app = express();
 
-    app.listen(PORT_HTTP, listenResponse);
-    app.listen(PORT_HTTPS, listenResponse);
+    if (process.env.NODE_SITE_PUB_ENV !== 'prod') {
+        app.listen(PORT_HTTP, listenResponse);
+    } else {
+        const httpServer = express();
+        httpServer.listen(PORT_HTTP, listenResponse);
+        httpServer.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+            res.redirect('https://' + req.hostname + req.url);
+        })
+        app.listen(PORT_HTTPS, listenResponse);
+    }
 
     app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
         let path = req.url;
@@ -101,18 +109,15 @@ exports.start = async () => {
                 default: throw Error('Unrecognized file type');
                 break;
             }
-            console.log("writing head2");
             res.writeHead(200, {'Content-Type': contentType});
             res.write(contents);
         } catch (e) {
             let err = e as Error
             if (err) {
-                console.log(err.message)
-                console.log("writing head3");
                 res.writeHead(500, {'Content-Type': 'text/html'});
                 res.write("<p>500 - It's not you, it's us.</p>");
                 logger.debug(JSON.stringify(fileName));
-                logger.debug(err);
+                logger.debug(err.message);
             }
         }
         res.end();

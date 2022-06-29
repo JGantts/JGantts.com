@@ -32,35 +32,35 @@ exports.start = async () => {
 
     const app = express();
 
-    if (process.env.NODE_SITE_PUB_ENV !== 'prod') {
-        app.listen(PORT_HTTP, listenResponse);
-    } else {
-        const httpServer = express();
-        httpServer.listen(PORT_HTTP, listenResponse);
-        httpServer.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-            logger.debug(`what: ${req.protocol}`);
-            logger.debug(`Redirect to ${'https://' + req.hostname + req.url}`);
-            res.redirect('https://' + req.hostname + req.url);
-        })
-        app.listen(PORT_HTTPS, listenResponse);
+    app.listen(8080, listenResponse);
+
+    if (process.env.NODE_SITE_PUB_ENV === 'prod') {
+        app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+            if (!req.secure) {
+                logger.debug(`Redirect to ${'https://' + req.hostname + req.url}`);
+                res.redirect('https://' + req.hostname + req.url);
+            } else {
+                next();
+            }
+        });
     }
 
     app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-        let path = req.url;
-        logger.debug(`Request${path}`);
-        if (path[path.length - 1] !== '/') {
-            req.url = path + '/';
+        let reqUrl = req.url;
+        logger.debug(`Request${reqUrl}`);
+        if (path.extname(reqUrl) == '' && reqUrl[reqUrl.length - 1] !== '/') {
+            req.url = reqUrl + '/';
         }
         next();
     })
 
     app.get('/admin/*', async (req: express.Request, res: express.Response) => {
-        let path = req.url;
+        let reqUrl = req.url;
 
-        if (path === "/admin/error/crash/") {
+        if (reqUrl === "/admin/error/crash/") {
             logger.debug("Admin-effected crash.");
             cluster.worker.kill();
-        } else if (path === "/admin/error/500/") {
+        } else if (reqUrl === "/admin/error/500/") {
             res.writeHead(500, {'Content-Type': 'text/html'});
             res.write("<p>Hello, Admin</p>");
             res.write(`<p>Here's your ${'500'} error.</p>`);

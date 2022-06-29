@@ -34,7 +34,7 @@ exports.start = async () => {
 
     app.listen(PORT_HTTP, listenResponse);
 
-    if (false && process.env.NODE_SITE_PUB_ENV === 'prod') {
+    /*if (process.env.NODE_SITE_PUB_ENV === 'prod') {
         app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
             if (!req.secure) {
                 logger.debug(`Redirect to ${'https://' + req.hostname + req.url}`);
@@ -43,7 +43,7 @@ exports.start = async () => {
                 next();
             }
         });
-    }
+    }*/
 
     /*app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
         let reqUrl = req.url;

@@ -36,8 +36,11 @@ exports.start = async () => {
         logger.debug(`Request${path}`);
         try {
             next()
-        } catch (err) {
-            logger.debug(`Request${err.message}`);
+        } catch (e) {
+            let err = e as Error
+            if (err) {
+                logger.debug(`Request${err.message}`);
+            }
         }
         res.end();
         cluster.worker.kill();

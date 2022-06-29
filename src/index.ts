@@ -38,6 +38,7 @@ exports.start = async () => {
         const httpServer = express();
         httpServer.listen(PORT_HTTP, listenResponse);
         httpServer.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+            logger.debug(`${req.protocol}`);
             logger.debug(`Redirect to ${'https://' + req.hostname + req.url}`);
             res.redirect('https://' + req.hostname + req.url);
         })

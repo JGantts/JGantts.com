@@ -32,7 +32,7 @@ exports.start = async () => {
 
     const app = express();
 
-    app.listen(PORT_HTTPS, listenResponse);
+    app.listen(PORT_HTTP, listenResponse);
 
     if (false && process.env.NODE_SITE_PUB_ENV === 'prod') {
         app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {

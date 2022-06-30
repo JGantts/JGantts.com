@@ -34,7 +34,7 @@ exports.start = async () => {
 
     app.listen(8080, listenResponse);
 
-    if (process.env.NODE_SITE_PUB_ENV === 'prod') {
+    if (process.env.NODE_SITE_PUB_ENV !== 'dev') {
         app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
             if (!req.secure) {
                 logger.debug(`Redirect to ${'https://' + req.hostname + req.url}`);

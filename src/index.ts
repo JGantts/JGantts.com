@@ -23,7 +23,7 @@ exports.start = async () => {
 
     logger.debug(`${APP_NAME} starting`);
 
-    const PORT_HTTP = 8080;
+    const PORT_HTTP = 80;
     const PORT_HTTPS = 443;
 
     let listenResponse = (): void => {
@@ -40,7 +40,7 @@ exports.start = async () => {
         http.get('*', function(req, res) {
             let redirection  = 'https://' + req.hostname + req.url;
             logger.debug(`Redirect to ${redirection}`);
-            res.redirect('https://' + redirection);
+            res.redirect(redirection);
         })
         http.listen(PORT_HTTP);
     }
@@ -79,7 +79,7 @@ exports.start = async () => {
             res.write(`<p>Here's your ${'500'} error.</p>`);
         } else {
             res.writeHead(200, {'Content-Type': 'text/html'});
-            res.write("<p>Hey Admin</p>");
+            res.write("<p>Hey Admin. What's up?</p>");
             res.write(`<p>Here's your ${'200'} response.</p>`);
         }
         res.end();

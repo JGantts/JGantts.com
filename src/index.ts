@@ -23,8 +23,8 @@ exports.start = async () => {
 
     logger.debug(`${APP_NAME} starting`);
 
-    //const PORT_HTTP = 80;
-    //const PORT_HTTPS = 443;
+    const PORT_HTTP = 8080;
+    const PORT_HTTPS = 443;
 
     let listenResponse = (): void => {
         logger.debug(`Node Site #${process.pid} started`);
@@ -32,24 +32,30 @@ exports.start = async () => {
 
     const app = express();
 
-    app.listen(8080, listenResponse);
+    app.listen(PORT_HTTPS, listenResponse);
 
-
-    logger.debug(process.env.NODE_SITE_PUB_ENV);
     if (process.env.NODE_SITE_PUB_ENV !== 'dev') {
-        app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-            if (!req.secure) {
-                logger.debug(`Redirect to ${'https://' + req.hostname + req.url}`);
-                res.redirect('https://' + req.hostname + req.url);
-            } else {
-                next();
-            }
-        });
+        var http = express();
+        http.get('*', function(req, res) {
+            let redirection  = 'https://' + req.hostname + req.url;
+            logger.debug(`Redirect to ${redirection}`);
+            res.redirect('https://' + redirection);
+        })
+        http.listen(PORT_HTTP);
     }
 
     app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        if (!req.secure) {
+            logger.debug(`Redirect to ${'https://' + req.hostname + req.url}`);
+            res.redirect('https://' + req.hostname + req.url);
+        } else {
+            next();
+        }
+    });
+
+    app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
         let reqUrl = req.url;
-        logger.debug(`Request${reqUrl}`);
+        logger.debug(`Request: ${reqUrl}`);
         if (path.extname(reqUrl) == '' && reqUrl[reqUrl.length - 1] !== '/') {
             req.url = reqUrl + '/';
         }

@@ -34,6 +34,7 @@ exports.start = async () => {
 
     app.listen(PORT_HTTPS, listenResponse);
 
+    logger.debug(`NODE_SITE_PUB_ENV: ${process.env.NODE_SITE_PUB_ENV}`);
     if (process.env.NODE_SITE_PUB_ENV !== 'dev') {
         var http = express();
         http.get('*', function(req, res) {

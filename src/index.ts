@@ -32,7 +32,27 @@ exports.start = async () => {
 
     const app = express();
 
-    app.listen(PORT_HTTP, listenResponse);
+    if (process.env.NODE_SITE_PUB_ENV !== 'prod') {
+        app.listen(PORT_HTTP, listenResponse);
+    } else {
+        const httpServer = express();
+        httpServer.listen(PORT_HTTP, listenResponse);
+        httpServer.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+            logger.debug(`${req.protocol}`);
+            logger.debug(`Redirect to ${'https://' + req.hostname + req.url}`);
+            res.redirect('https://' + req.hostname + req.url);
+        })
+        app.listen(PORT_HTTPS, listenResponse);
+    }
+
+    app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        let reqUrl = req.url;
+        logger.debug(`Request${reqUrl}`);
+        if (path.extname(reqUrl) == '' && reqUrl[reqUrl.length - 1] !== '/') {
+            req.url = reqUrl + '/';
+        }
+        next();
+    })
 
     app.get('/admin/*', async (req: express.Request, res: express.Response) => {
         let reqUrl = req.url;

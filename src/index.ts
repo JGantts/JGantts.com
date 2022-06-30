@@ -23,8 +23,8 @@ exports.start = async () => {
 
     logger.debug(`${APP_NAME} starting`);
 
-    const PORT_HTTP = 80;
-    const PORT_HTTPS = 443;
+    //const PORT_HTTP = 80;
+    //const PORT_HTTPS = 443;
 
     let listenResponse = (): void => {
         logger.debug(`Node Site #${process.pid} started`);
@@ -32,17 +32,17 @@ exports.start = async () => {
 
     const app = express();
 
-    if (process.env.NODE_SITE_PUB_ENV !== 'prod') {
-        app.listen(PORT_HTTP, listenResponse);
-    } else {
-        const httpServer = express();
-        httpServer.listen(PORT_HTTP, listenResponse);
-        httpServer.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-            logger.debug(`${req.protocol}`);
-            logger.debug(`Redirect to ${'https://' + req.hostname + req.url}`);
-            res.redirect('https://' + req.hostname + req.url);
-        })
-        app.listen(PORT_HTTPS, listenResponse);
+    app.listen(8080, listenResponse);
+
+    if (process.env.NODE_SITE_PUB_ENV === 'prod') {
+        app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+            if (!req.secure) {
+                logger.debug(`Redirect to ${'https://' + req.hostname + req.url}`);
+                res.redirect('https://' + req.hostname + req.url);
+            } else {
+                next();
+            }
+        });
     }
 
     app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -53,6 +53,10 @@ exports.start = async () => {
         }
         next();
     })
+
+
+
+
 
     app.get('/admin/*', async (req: express.Request, res: express.Response) => {
         let reqUrl = req.url;

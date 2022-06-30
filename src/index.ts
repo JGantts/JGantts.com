@@ -34,6 +34,8 @@ exports.start = async () => {
 
     app.listen(8080, listenResponse);
 
+
+    logger.debug(process.env.NODE_SITE_PUB_ENV);
     if (process.env.NODE_SITE_PUB_ENV !== 'dev') {
         app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
             if (!req.secure) {

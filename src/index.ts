@@ -32,10 +32,9 @@ exports.start = async () => {
 
     const app = express();
 
-    app.listen(PORT_HTTPS, listenResponse);
-
     logger.debug(`NODE_SITE_PUB_ENV: ${process.env.NODE_SITE_PUB_ENV}`);
     if (process.env.NODE_SITE_PUB_ENV !== 'dev') {
+        app.listen(PORT_HTTPS, listenResponse);
         var http = express();
         http.get('*', function(req, res) {
             let redirection  = 'https://' + req.hostname + req.url;
@@ -43,6 +42,8 @@ exports.start = async () => {
             res.redirect(redirection);
         })
         http.listen(PORT_HTTP);
+    } else {
+        app.listen(PORT_HTTP, listenResponse);
     }
 
     app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {

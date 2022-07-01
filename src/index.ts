@@ -1,6 +1,7 @@
 import express from 'express';
 import http from "http"
 import path from 'path';
+import { AddressInfo } from 'net'
 var url = require('url');
 var async = require('async');
 var fs = require('graceful-fs').promises;
@@ -13,12 +14,12 @@ exports.heartbeat = async () => {
 };
 
 exports.shutdown = async () => {
-    await server.close();
+    await server?.close();
     return true;
 };
 
 exports.port = () => {
-    return server.address().port;
+    return (server?.address() as AddressInfo)?.port;
 };
 
 exports.start = async () => {
@@ -36,7 +37,7 @@ exports.start = async () => {
 
     const app = express();
     server = app.listen(0, (): void => {
-        logger.debug(`Node Site #${process.pid} started on port ${server.address().port}`);
+        logger.debug(`Node Site #${process.pid} started on port ${(server?.address() as AddressInfo)?.port}`);
     });
 
     logger.debug(`NODE_SITE_PUB_ENV: ${process.env.NODE_SITE_PUB_ENV}`);
@@ -80,7 +81,7 @@ exports.start = async () => {
 
         if (reqUrl === "/admin/error/crash/") {
             logger.debug("Admin-effected crash.");
-            cluster.worker.kill();
+            //cluster.worker.kill();
         } else if (reqUrl === "/admin/error/500/") {
             res.writeHead(500, {'Content-Type': 'text/html'});
             res.write("<p>Hey Admin. What's up?</p>");

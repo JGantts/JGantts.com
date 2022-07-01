@@ -106,8 +106,6 @@ exports.start = async () => {
             if (err) {
                 res.writeHead(404, {'Content-Type': 'text/html'});
                 res.write("<p>404 - Not Found</p>");
-                res.write("<p>Sorry 'bout that.'</p>");
-                res.write("<p>So sorry.'</p>");
                 logger.debug(JSON.stringify(fileName));
                 logger.debug(err.message);
             }

@@ -6,18 +6,20 @@ var async = require('async');
 var fs = require('graceful-fs').promises;
 const log4js = require("log4js");
 
-let servers: http.Server[] = []
+let server: http.Server;
 
 exports.heartbeat = async () => {
     return true;
-}
+};
 
 exports.shutdown = async () => {
-    servers.forEach(async (server) => {
-        await server.close();
-    });
+    await server.close();
     return true;
-}
+};
+
+exports.port = () => {
+    return server.address().port;
+};
 
 exports.start = async () => {
     const APP_NAME = "jgantts-website";
@@ -32,17 +34,13 @@ exports.start = async () => {
 
     logger.debug(`${APP_NAME} starting`);
 
-    const PORT_HTTP = 80;
-    const PORT_HTTPS = 443;
-
-    let listenResponse = (): void => {
-        logger.debug(`Node Site #${process.pid} started`);
-    }
-
     const app = express();
+    server = app.listen(0, (): void => {
+        logger.debug(`Node Site #${process.pid} started on port ${server.address().port}`);
+    });
 
     logger.debug(`NODE_SITE_PUB_ENV: ${process.env.NODE_SITE_PUB_ENV}`);
-    if (process.env.NODE_SITE_PUB_ENV !== 'dev') {
+    /*if (process.env.NODE_SITE_PUB_ENV !== 'dev') {
         servers.push(app.listen(PORT_HTTPS, listenResponse));
         var http = express();
         http.get('*', function(req, res) {
@@ -53,7 +51,7 @@ exports.start = async () => {
         servers.push(http.listen(PORT_HTTP));
     } else {
         servers.push(app.listen(PORT_HTTP, listenResponse));
-    }
+    }*/
 
     app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
         if (!req.secure) {
@@ -147,4 +145,4 @@ exports.start = async () => {
         }
         res.end();
     });
-}
+};

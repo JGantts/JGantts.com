@@ -41,40 +41,6 @@ exports.start = async () => {
     });
 
     logger.debug(`NODE_SITE_PUB_ENV: ${process.env.NODE_SITE_PUB_ENV}`);
-    /*if (process.env.NODE_SITE_PUB_ENV !== 'dev') {
-        servers.push(app.listen(PORT_HTTPS, listenResponse));
-        var http = express();
-        http.get('*', function(req, res) {
-            let redirection  = 'https://' + req.hostname + req.url;
-            logger.debug(`Redirect to ${redirection}`);
-            res.redirect(redirection);
-        })
-        servers.push(http.listen(PORT_HTTP));
-    } else {
-        servers.push(app.listen(PORT_HTTP, listenResponse));
-    }*/
-
-    /*app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-        if (!req.secure) {
-            logger.debug(`Redirect to ${'https://' + req.hostname + req.url}`);
-            res.redirect('https://' + req.hostname + req.url);
-        } else {
-            next();
-        }
-    });*/
-
-    /*app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-        let reqUrl = req.url;
-        logger.debug(`Request: ${reqUrl}`);
-        if (path.extname(reqUrl) == '' && reqUrl[reqUrl.length - 1] !== '/') {
-            req.url = reqUrl + '/';
-        }
-        next();
-    })*/
-
-
-
-
 
     app.get('/admin*', async (req: express.Request, res: express.Response) => {
         let reqUrl = req.url;
@@ -138,8 +104,8 @@ exports.start = async () => {
         } catch (e) {
             let err = e as Error
             if (err) {
-                res.writeHead(500, {'Content-Type': 'text/html'});
-                res.write("<p>500 - It's not you, it's us.</p>");
+                res.writeHead(404, {'Content-Type': 'text/html'});
+                res.write("<p>404 - Not Found</p>");
                 logger.debug(JSON.stringify(fileName));
                 logger.debug(err.message);
             }

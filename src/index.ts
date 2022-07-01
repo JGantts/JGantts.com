@@ -1,12 +1,22 @@
 const cluster = require('cluster');
 import express from 'express';
+import http from "http"
 import path from 'path';
 var url = require('url');
 var async = require('async');
 var fs = require('graceful-fs').promises;
 const log4js = require("log4js");
 
-exports.isAlive = async () => {
+let servers: http.Server[] = []
+
+exports.heartbeat = async () => {
+    return true;
+}
+
+exports.shutdown = async () => {
+    servers.forEach(async (server) => {
+        await server.close();
+    });
     return true;
 }
 
@@ -34,16 +44,16 @@ exports.start = async () => {
 
     logger.debug(`NODE_SITE_PUB_ENV: ${process.env.NODE_SITE_PUB_ENV}`);
     if (process.env.NODE_SITE_PUB_ENV !== 'dev') {
-        app.listen(PORT_HTTPS, listenResponse);
+        servers.push(app.listen(PORT_HTTPS, listenResponse));
         var http = express();
         http.get('*', function(req, res) {
             let redirection  = 'https://' + req.hostname + req.url;
             logger.debug(`Redirect to ${redirection}`);
             res.redirect(redirection);
         })
-        http.listen(PORT_HTTP);
+        servers.push(http.listen(PORT_HTTP));
     } else {
-        app.listen(PORT_HTTP, listenResponse);
+        servers.push(app.listen(PORT_HTTP, listenResponse));
     }
 
     app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {

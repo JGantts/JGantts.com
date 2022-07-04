@@ -1,13 +1,42 @@
 import express from 'express';
 import http from "http"
+const net = require('net');
 import path from 'path';
+const crypto = require("crypto");
 import { AddressInfo } from 'net'
-var url = require('url');
-var async = require('async');
-var fs = require('graceful-fs').promises;
+const url = require('url');
+const async = require('async');
+const fs = require('graceful-fs').promises;
 const log4js = require("log4js");
 
 let server: http.Server;
+
+
+
+let portInUse = (port, callback) => {
+    return new Promise(async (resolve, reject) => {
+        var server = net.createServer(function(socket) {
+            socket.write('Echo server\r\n');
+            socket.pipe(socket);
+        });
+
+        server.on('error', function (e) {
+            resolve(true);
+        });
+
+        server.on('listening', function (e) {
+            server.close();
+            resolve(false);
+        });
+
+        server.listen(port, '127.0.0.1');
+    });
+};
+
+portInUse(5858, function(returnValue) {
+    console.log(returnValue);
+});
+
 
 exports.heartbeat = async () => {
     return true;
@@ -35,8 +64,14 @@ exports.start = async () => {
 
     logger.debug(`${APP_NAME} starting`);
 
+    let port: number;
+    do {
+        port = crypto.randomInt(49152, 65535);
+        let inUse = await portInUse(port);
+    } while (inUse);
+
     const app = express();
-    server = app.listen(0, (): void => {
+    server = app.listen(port, (): void => {
         logger.debug(`Node Site #${process.pid} started on port ${(server?.address() as AddressInfo)?.port}`);
     });
 

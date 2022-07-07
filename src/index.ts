@@ -83,7 +83,6 @@ exports.start = async () => {
         } else if (reqUrl === "/admin/error/500/") {
             res.writeHead(500, {'Content-Type': 'text/html'});
             res.write("<p>Hey Admin. What's up?</p>");
-            res.write("<p>Force Deploy</p>");
             res.write(`<p>Here's your ${'500'} error.</p>`);
         } else {
             res.writeHead(200, {'Content-Type': 'text/html'});

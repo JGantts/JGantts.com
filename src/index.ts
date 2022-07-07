@@ -1,6 +1,6 @@
 import express from 'express';
 import http from "http"
-const net = require('net');
+import net from 'net';
 import path from 'path';
 const crypto = require("crypto");
 import { AddressInfo } from 'net'
@@ -13,18 +13,18 @@ let server: http.Server;
 
 
 
-let portInUse = (port, callback) => {
+let portInUse = (port: number): Promise<boolean> => {
     return new Promise(async (resolve, reject) => {
-        var server = net.createServer(function(socket) {
+        var server = net.createServer(function(socket: net.Socket) {
             socket.write('Echo server\r\n');
             socket.pipe(socket);
         });
 
-        server.on('error', function (e) {
+        server.on('error', function (e: Error) {
             resolve(true);
         });
 
-        server.on('listening', function (e) {
+        server.on('listening', function (e: Error) {
             server.close();
             resolve(false);
         });
@@ -32,10 +32,6 @@ let portInUse = (port, callback) => {
         server.listen(port, '127.0.0.1');
     });
 };
-
-portInUse(5858, function(returnValue) {
-    console.log(returnValue);
-});
 
 
 exports.heartbeat = async () => {
@@ -65,9 +61,10 @@ exports.start = async () => {
     logger.debug(`${APP_NAME} starting`);
 
     let port: number;
+    let inUse: boolean;
     do {
         port = crypto.randomInt(49152, 65535);
-        let inUse = await portInUse(port);
+        inUse = await portInUse(port);
     } while (inUse);
 
     const app = express();
@@ -86,6 +83,7 @@ exports.start = async () => {
         } else if (reqUrl === "/admin/error/500/") {
             res.writeHead(500, {'Content-Type': 'text/html'});
             res.write("<p>Hey Admin. What's up?</p>");
+            res.write("<p>Force Deploy</p>");
             res.write(`<p>Here's your ${'500'} error.</p>`);
         } else {
             res.writeHead(200, {'Content-Type': 'text/html'});

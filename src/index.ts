@@ -52,8 +52,17 @@ exports.start = async () => {
     const PUBLIC_DIR = path.join(path.dirname(await fs.realpath(__filename)), 'PUBLIC');
 
     log4js.configure({
-        appenders: { publish: { type: "file", filename: `${APP_NAME}.log` } },
-        categories: { default: { appenders: ["publish"], level: "error" } }
+        appenders: {
+            out: {
+                type: "stdout",
+                layout: {
+                    type: "pattern",
+                    pattern: "%d{hh.mm.ss} [work] %p %c %m"
+                }
+            },
+            publish: { type: "file", filename: `${APP_NAME}.log` }
+         },
+        categories: { default: { appenders: ["publish", "out"], level: "error" } }
     });
     const logger = log4js.getLogger();
     logger.level = "debug";
@@ -66,6 +75,8 @@ exports.start = async () => {
         port = crypto.randomInt(49152, 65535);
         inUse = await portInUse(port);
     } while (inUse);
+
+    logger.debug(`Node Site #${process.pid} selected port ${port}`);
 
     const app = express();
     server = app.listen(port, (): void => {

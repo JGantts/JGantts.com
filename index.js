@@ -15,7 +15,5 @@ logger.level = "debug";
 logger.debug("Begin Log");
 
 logger.debug(`Node Site #${process.pid} starting`);
-console.log(`Node Site #${process.pid} starting`);
 website.start();
 logger.debug(`Node Site #${process.pid} started`);
-console.log(`Node Site #${process.pid} started`);

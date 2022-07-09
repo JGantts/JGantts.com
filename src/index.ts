@@ -85,8 +85,8 @@ exports.start = async () => {
 
     logger.debug(`NODE_SITE_PUB_ENV: ${process.env.NODE_SITE_PUB_ENV}`);
 
-    app.get('/.well-known/pki-validation/7E166EFD1CA6C0A1EC8452A62671C9DC.txt', async function(req, res) {
-        let contents = await fs.readFile(`/keys/jgantts.com/7E166EFD1CA6C0A1EC8452A62671C9DC.txt`);
+    app.get('/.well-known/pki-validation/4DB2391814BC4FE0D4101E7674212502.txt', async function(req, res) {
+        let contents = await fs.readFile(`/keys/jgantts.com/4DB2391814BC4FE0D4101E7674212502.txt`);
         res.writeHead(200, {'Content-Type': "text/plain"});
         res.write(contents);
         res.end()

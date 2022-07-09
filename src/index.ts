@@ -139,6 +139,9 @@ exports.start = async () => {
                 case '.pdf': contentType = 'application/pdf';
                 break;
 
+                case '.json': contentType = 'application/json';
+                break;
+
                 default: throw Error('Unrecognized file type');
                 break;
             }

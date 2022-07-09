@@ -18,6 +18,23 @@ header {
     background-color: black;
 }
 
+.banner-lil {
+    text-shadow: 2px 2px 4px black;
+    color: white;
+    background-image: linear-gradient(
+        to bottom,
+        #e70000 16.666%,
+        #ff8c00 16.666%,
+        #ff8c00 33.333%,
+        #ffef00 33.333%,
+        #ffef00 50%,
+        #00811f 50%,
+        #00811f 66.666%,
+        #0044ff 66.666%,
+        #0044ff 83.333%,
+        #760089 83.333%);
+}
+
 .header-spacer {
     height: 35px;
 }

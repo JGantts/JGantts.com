@@ -90,7 +90,7 @@ exports.start = async () => {
         logger.debug(reqUrl);
         if (reqUrl === "/admin/error/crash/") {
             logger.debug("Admin-effected crash.");
-            cluster.worker.kill();
+            process.exit();
         } else if (reqUrl === "/admin/error/uncaughtexception/") {
             logger.debug("Admin-effected exception.");
             throw new Error("Admin-effected exception.");

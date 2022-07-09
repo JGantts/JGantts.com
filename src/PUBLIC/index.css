@@ -7,18 +7,18 @@ header {
     align-items: center;
 }
 
-.banner {
+.banner-truth {
     font: 400 24px "Open Sans", sans-serif;
     width: 100%;
     height: 35px;
 }
 
-.banner-riw {
+.banner-truth-riw {
     color: white;
     background-color: black;
 }
 
-.banner-lil {
+.banner-truth-lil {
     text-shadow: 2px 2px 4px black;
     color: white;
     background-image: linear-gradient(
@@ -33,6 +33,22 @@ header {
         #0044ff 66.666%,
         #0044ff 83.333%,
         #760089 83.333%);
+}
+
+.banner-truth-trahr {
+    color: black;
+    background-image: linear-gradient(
+        to bottom,
+        #5ccefa,
+		#5ccefa 20%,
+		#f6a8b7 20%,
+		#f6a8b7 40%,
+		#fff 40%,
+		#fff 60%,
+		#f6a8b7 60%,
+		#f6a8b7 80%,
+		#5ccefa 80%,
+		#5ccefa);
 }
 
 .header-spacer {

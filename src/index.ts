@@ -85,7 +85,7 @@ exports.start = async () => {
 
     logger.debug(`NODE_SITE_PUB_ENV: ${process.env.NODE_SITE_PUB_ENV}`);
 
-    app.get('/admin*', async (req: express.Request, res: express.Response) => {
+    app.get('/admin*', (req: express.Request, res: express.Response) => {
         let reqUrl = req.url;
         logger.debug(reqUrl);
         if (reqUrl === "/admin/error/crash/") {

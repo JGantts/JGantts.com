@@ -3,7 +3,7 @@ import http from "http"
 import net from 'net';
 import path from 'path';
 const crypto = require("crypto");
-import { AddressInfo } from 'net'
+import { AddressInfo } from 'net';
 const url = require('url');
 const async = require('async');
 const fs = require('graceful-fs').promises;
@@ -87,10 +87,13 @@ exports.start = async () => {
 
     app.get('/admin*', async (req: express.Request, res: express.Response) => {
         let reqUrl = req.url;
-
+        logger.debug(reqUrl);
         if (reqUrl === "/admin/error/crash/") {
             logger.debug("Admin-effected crash.");
-            //cluster.worker.kill();
+            cluster.worker.kill();
+        } else if (reqUrl === "/admin/error/uncaughtexception/") {
+            logger.debug("Admin-effected exception.");
+            throw new Error("Admin-effected exception.");
         } else if (reqUrl === "/admin/error/500/") {
             res.writeHead(500, {'Content-Type': 'text/html'});
             res.write("<p>Hey Admin. What's up?</p>");

@@ -157,9 +157,20 @@ exports.start = async () => {
                 res.write("<p>404 - Not Found</p>");
                 res.write("<p>Yeah...</p>");
                 logger.debug(JSON.stringify(fileName));
-                logger.debug(err.message);
             }
         }
         res.end();
+    });
+
+    app.use((err, req, res, next) => {
+        logger.error(err);
+        res.writeHead(500, {'Content-Type': 'text/html'});
+        res.write("<p>500 - Internal Server Error</p>");
+        res.write(
+            `<p>Yeah...</ br>This is entirely unexpected. ` +
+            `We recommend that you <span class='code'>sit by a lake<span>.</p>` +
+            `<p>This recomendation vetted by <a href='https://xkcd.com/1024/'>xkcd.com</a>.</p>`
+        );
+        res.end()
     });
 };

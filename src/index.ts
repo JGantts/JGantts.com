@@ -162,7 +162,7 @@ exports.start = async () => {
         res.end();
     });
 
-    app.use((err, req, res, next) => {
+    app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
         logger.error(err);
         res.writeHead(500, {'Content-Type': 'text/html'});
         res.write("<p>500 - Internal Server Error</p>");

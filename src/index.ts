@@ -114,7 +114,6 @@ exports.start = async () => {
         }
         fileName = path.resolve(fileName);
         try {
-            let contents = await fs.readFile(fileName);
             let contentType: string
             switch(path.parse(fileName).ext) {
                 case '.html': contentType = 'text/html';
@@ -139,15 +138,22 @@ exports.start = async () => {
                 case '.svg': contentType = 'image/svg+xml';
                 break;
 
+                case '.ico': contentType = 'image/x-icon';
+                break;
+
                 case '.pdf': contentType = 'application/pdf';
                 break;
 
                 case '.json': contentType = 'application/json';
                 break;
 
+                case '.xml': contentType = 'text/xml';
+                break;
+
                 default: throw Error('Unrecognized file type');
                 break;
             }
+            let contents = await fs.readFile(fileName);
             res.writeHead(200, {'Content-Type': contentType});
             res.write(contents);
         } catch (e) {

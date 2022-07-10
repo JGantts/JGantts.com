@@ -82,30 +82,19 @@ header {
     background-color: black;
 }
 
-.banner-truth-trahr {
-    color: black;
-    background-image: linear-gradient(
-        to bottom,
-        #5ccefa,
-		#5ccefa 20%,
-		#f6a8b7 20%,
-		#f6a8b7 40%,
-		#fff 40%,
-		#fff 60%,
-		#f6a8b7 60%,
-		#f6a8b7 80%,
-		#5ccefa 80%,
-		#5ccefa);
-}
-
 .banner-truth-rrahr {
     color: #FF2400;
     background-color: black;
 }
 
 .banner-truth-su {
-    color: #FF2400;
-    background-color: black;
+    text-shadow: 2px 2px 4px black;
+    color: white;
+    background-image: linear-gradient(
+        to bottom,
+        #0057B7,
+        #0057B7 50%,
+        #FFDD00 50%);
 }
 
 .banner-truth-ttc {
@@ -124,8 +113,19 @@ header {
 }
 
 .banner-truth-trahr {
-    color: #FF2400;
-    background-color: black;
+    color: black;
+    background-image: linear-gradient(
+        to bottom,
+        #5ccefa,
+		#5ccefa 20%,
+		#f6a8b7 20%,
+		#f6a8b7 40%,
+		#fff 40%,
+		#fff 60%,
+		#f6a8b7 60%,
+		#f6a8b7 80%,
+		#5ccefa 80%,
+		#5ccefa);
 }
 
 .banner-truth-wiahr {

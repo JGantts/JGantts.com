@@ -1,6 +1,6 @@
 {
   "name": "jgantts.com",
-  "version": "1.2.35",
+  "version": "1.2.36",
   "description": "jgantts.com",
   "main": "out/index.js",
   "scripts": {

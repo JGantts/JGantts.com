@@ -5,6 +5,13 @@ header {
     display: flex;
     justify-content: center;
     align-items: center;
+    box-shadow: 2px 2px 4px black;
+}
+
+@media (prefers-color-scheme: dark) {
+    header {
+        box-shadow: 0 0 8px white;
+    }
 }
 
 .banner-truth {
@@ -13,8 +20,38 @@ header {
     height: 35px;
 }
 
-.banner-truth-riw {
-    color: white;
+.banner-truth-drahr {
+    color: #FF2400;
+    background-color: black;
+}
+
+.banner-truth-dis {
+    color: #FF2400;
+    background-color: black;
+}
+
+.banner-truth-ftu {
+    color: #FF2400;
+    background-color: black;
+}
+
+.banner-truth-ft {
+    color: #FF2400;
+    background-color: black;
+}
+
+.banner-truth-gig {
+    color: #FF2400;
+    background-color: black;
+}
+
+.banner-truth-iaa {
+    color: #FF2400;
+    background-color: black;
+}
+
+.banner-truth-lew {
+    color: #FF2400;
     background-color: black;
 }
 
@@ -35,6 +72,11 @@ header {
         #760089 83.333%);
 }
 
+.banner-truth-riw {
+    color: white;
+    background-color: black;
+}
+
 .banner-truth-trahr {
     color: black;
     background-image: linear-gradient(
@@ -49,6 +91,46 @@ header {
 		#f6a8b7 80%,
 		#5ccefa 80%,
 		#5ccefa);
+}
+
+.banner-truth-rrahr {
+    color: #FF2400;
+    background-color: black;
+}
+
+.banner-truth-su {
+    color: #FF2400;
+    background-color: black;
+}
+
+.banner-truth-ttc {
+    color: #FF2400;
+    background-color: black;
+}
+
+.banner-truth-ttr {
+    color: #FF2400;
+    background-color: black;
+}
+
+.banner-truth-tsib {
+    color: #FF2400;
+    background-color: black;
+}
+
+.banner-truth-trahr {
+    color: #FF2400;
+    background-color: black;
+}
+
+.banner-truth-wiahr {
+    color: #FF2400;
+    background-color: black;
+}
+
+.banner-truth-wip {
+    color: #FF2400;
+    background-color: black;
 }
 
 .header-spacer {

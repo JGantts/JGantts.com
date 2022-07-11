@@ -7,8 +7,9 @@
     "start": "npm run build && node index.js",
     "prebuild": "if [ -d 'dist/' ]; then rm -Rf dist/ ; fi",
     "build": "tsc",
-    "postbuild": "npm run && npm run copy-src && npm run copy-package",
+    "postbuild": "npm run copy-src && npm run copy-hard && npm run copy-package",
     "copy-src": "rsync -av --exclude '*.ts' src/ dist/out",
+    "copy-hard": "rsync -av ./hard/ dist/out/PUBLIC/hard/",
     "copy-package": "rsync -av ./package.json dist/package.json && rsync -av ./package-lock.json dist/package-lock.json",
     "test": "echo \"Error: no test specified\" && exit 0"
   },
@@ -43,6 +44,7 @@
     "log4js": "^6.5.2",
     "mysql": "^2.18.1",
     "node-cron": "^3.0.1",
+    "sass": "^1.53.0",
     "tar": "^6.1.11",
     "uuid": "^8.3.2"
   }

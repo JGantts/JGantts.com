@@ -125,6 +125,9 @@ exports.start = async () => {
                 case '.js': contentType = 'application/javascript';
                 break;
 
+                case '.map': contentType = 'application/json';
+                break;
+
                 case '.gif': contentType = 'image/gif';
                 break;
 
@@ -165,6 +168,7 @@ exports.start = async () => {
                 logger.debug(JSON.stringify(fileName));
             }
         }
+        logger.debug(`${req.url}`);
         res.end();
     });
 

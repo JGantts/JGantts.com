@@ -49,6 +49,7 @@ exports.port = async () => {
 
 exports.start = async () => {
     const APP_NAME = "jgantts-website";
+    const SRC_DIR = path.dirname(await fs.realpath(__filename));
     const PUBLIC_DIR = path.join(path.dirname(await fs.realpath(__filename)), 'PUBLIC');
 
     log4js.configure({
@@ -108,7 +109,7 @@ exports.start = async () => {
 
     app.get('/resume/', async (req: express.Request, res: express.Response) => {
         let resumeName = 'ganttj_coverResumePortfolio_2022_07.pdf';
-        let fileName = path.join(`resume`, resumeName);
+        let fileName = path.join(SRC_DIR, `resume/${resumeName}`);
         fileName = path.resolve(fileName);
         try {
             let contents = await fs.readFile(fileName);

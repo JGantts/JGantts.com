@@ -106,6 +106,29 @@ exports.start = async () => {
         res.end();
     });
 
+    app.get('/resume/', async (req: express.Request, res: express.Response) => {
+        let resumeName = 'ganttj_coverResumePortfolio_2022_07.pdf';
+        let fileName = path.join(`resume`, resumeName);
+        fileName = path.resolve(fileName);
+        try {
+            let contents = await fs.readFile(fileName);
+            res.writeHead(200, {
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `inline;filename=${resumeName}`
+            });
+            res.write(contents);
+        } catch (e) {
+            let err = e as Error
+            if (err) {
+                res.writeHead(500, {'Content-Type': 'text/html'});
+                res.write("<p>500 - Server Error</p>");
+                res.write("<p>Resume not found</p>");
+                logger.debug(JSON.stringify(err));
+            }
+        }
+        res.end();
+    });
+
     app.get('/*', async (req: express.Request, res: express.Response) => {
         let query = url.parse(req.url, true);
         let fileName = path.join(PUBLIC_DIR, query.pathname);

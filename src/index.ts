@@ -107,7 +107,7 @@ exports.start = async () => {
         res.end();
     });
 
-    app.get('/resume/', async (req: express.Request, res: express.Response) => {
+    app.get('/resume.pdf', async (req: express.Request, res: express.Response) => {
         let resumeName = 'ganttj_coverResumePortfolio_2022_07_12.pdf';
         let fileName = path.join(SRC_DIR, `resume/${resumeName}`);
         fileName = path.resolve(fileName);

@@ -110,7 +110,7 @@ exports.start = async () => {
     });
 
     for (let site: any in config.sites) {
-        require(site.path)(app, site.uri);
+        app.use(site.uri, require(site.path));
     }
 
     app.get('/resume.pdf', async (req: express.Request, res: express.Response) => {

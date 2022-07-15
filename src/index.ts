@@ -9,6 +9,8 @@ const async = require('async');
 const fs = require('graceful-fs').promises;
 const log4js = require("log4js");
 
+const config = require('./config').config;
+
 let server: http.Server;
 
 
@@ -106,6 +108,10 @@ exports.start = async () => {
         }
         res.end();
     });
+
+    for (let site: any in config.sites) {
+        require(site.path)(app, site.uri);
+    }
 
     app.get('/resume.pdf', async (req: express.Request, res: express.Response) => {
         let resumeName = 'ganttj_coverResumePortfolio_2022_07_12.pdf';

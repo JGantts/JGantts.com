@@ -1,3 +1,6 @@
+
+console.log(`cwd: ${process.cwd()}`);
+
 import express from 'express';
 import http from "http"
 import net from 'net';

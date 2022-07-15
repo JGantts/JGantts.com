@@ -9,6 +9,8 @@ const async = require('async');
 const fs = require('graceful-fs').promises;
 const log4js = require("log4js");
 
+console.log(`cwd: ${process.cwd()}`);
+
 const config = require('./config').config as Config.Config;
 
 let server: http.Server;

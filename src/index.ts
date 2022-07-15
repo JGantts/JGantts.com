@@ -115,8 +115,8 @@ exports.start = async () => {
     });
 
     for (let siteKey in config.sites) {
+        let site = config.sites[siteKey];
         try {
-            let site = config.sites[siteKey];
             app.use(site.uri, require(site.path));
         } catch (e) {
             let err = e as Error

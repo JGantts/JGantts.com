@@ -9,7 +9,7 @@ const async = require('async');
 const fs = require('graceful-fs').promises;
 const log4js = require("log4js");
 
-const config = require('./config').config;
+const config = require('./config').config as Config.Config;
 
 let server: http.Server;
 
@@ -109,7 +109,8 @@ exports.start = async () => {
         res.end();
     });
 
-    for (let site: any in config.sites) {
+    for (let siteKey in config.sites) {
+        let site = config.sites[siteKey];
         app.use(site.uri, require(site.path));
     }
 

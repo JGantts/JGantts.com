@@ -123,6 +123,8 @@ exports.start = async () => {
             if (err) {
                 logger.debug(`Error while loading site ${site.name}`);
                 logger.debug(JSON.stringify(err));
+                logger.debug(err);
+                logger.debug(err.message);
             }
         }
     }

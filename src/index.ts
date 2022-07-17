@@ -117,7 +117,12 @@ exports.start = async () => {
     for (let siteKey in config.sites) {
         let site = config.sites[siteKey];
         try {
-            app.use(site.uri, require(site.path));
+            let innerSiteApp = await require(site.path)(site.uri);
+            //let innerSiteRouter = express.Router();
+            //innerSiteRouter.all('*', innerSiteApp);
+            app.use(site.uri, innerSiteApp);
+            logger.debug(`Loaded site ${site.name}`);
+            logger.debug(`Loaded to ${site.uri}`);
         } catch (e) {
             let err = e as Error
             if (err) {
@@ -126,7 +131,13 @@ exports.start = async () => {
                 logger.debug(err);
                 logger.debug(err.message);
             }
+            app.get(site.uri, async (req, res) => {
+                res.end(`Site ${site.name} failed to start with server.`);
+            });
         }
+        app.get(site.uri, async (req, res) => {
+            res.end(`Request failed to reach site ${site.name}.`);
+        });
     }
 
     app.get('/resume.pdf', async (req: express.Request, res: express.Response) => {

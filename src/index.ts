@@ -76,6 +76,7 @@ exports.start = async () => {
     logger.level = "debug";
 
     logger.debug(`${APP_NAME} starting`);
+    logger.debug(new Error().stack);
 
     let port: number;
     let inUse: boolean;
@@ -136,6 +137,9 @@ exports.start = async () => {
             });
         }
         app.get(site.uri, async (req, res) => {
+            res.end(`Request failed to reach site ${site.name}.`);
+        });
+        app.post(site.uri, async (req, res) => {
             res.end(`Request failed to reach site ${site.name}.`);
         });
     }
@@ -208,6 +212,9 @@ exports.start = async () => {
                 break;
 
                 case '.xml': contentType = 'text/xml';
+                break;
+
+                case '.zip': contentType = 'application/zip';
                 break;
 
                 default: throw Error('Unrecognized file type');

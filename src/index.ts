@@ -170,6 +170,7 @@ exports.start = async () => {
     app.get('/*', async (req: express.Request, res: express.Response) => {
         let query = url.parse(req.url, true);
         let fileName = path.join(PUBLIC_DIR, query.pathname);
+        fileName = decodeURI(fileName);
         if(path.parse(fileName).ext === "") {
             fileName += 'index.html'
         }

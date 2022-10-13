@@ -149,8 +149,8 @@ exports.start = async () => {
             "heartbeat": true,
 
             "server": "jgantts.com",
-            "serverSettingsPath": "api/cowlin/v1/",
-            
+            "serverSettingsPath": "api/cowlin/credits-maker/v1/",
+
             "adType": "classic"
         }));
     });

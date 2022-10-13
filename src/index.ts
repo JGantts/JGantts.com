@@ -144,8 +144,10 @@ exports.start = async () => {
         });
     }
 
-    app.get('/api/cowlin/credits-maker', async (req: express.Request, res: express.Response) => {
+    app.get('/api/cowlin/credits-maker/v1/', async (req: express.Request, res: express.Response) => {
         res.end( JSON.stringify({
+            "server": "jgantts.com",
+            "serverSettingsPath": "api/cowlin/v1/",
             "ad-type": "classic"
         }));
     });

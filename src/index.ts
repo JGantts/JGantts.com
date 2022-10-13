@@ -146,6 +146,7 @@ exports.start = async () => {
 
     app.get('/api/cowlin/credits-maker/v1/', async (req: express.Request, res: express.Response) => {
         res.end( JSON.stringify({
+            "heartbeat": true,
             "server": "jgantts.com",
             "serverSettingsPath": "api/cowlin/v1/",
             "adType": "classic"

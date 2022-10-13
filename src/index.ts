@@ -151,7 +151,7 @@ exports.start = async () => {
             "server": "jgantts.com",
             "serverSettingsPath": "api/cowlin/credits-maker/v1/",
 
-            "adType": "classic"
+            "adType": "bouncy"
         }));
     });
 

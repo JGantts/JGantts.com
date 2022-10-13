@@ -144,6 +144,12 @@ exports.start = async () => {
         });
     }
 
+    app.get('/api/cowlin/credits-maker', async (req: express.Request, res: express.Response) => {
+        res.end( JSON.stringify({
+            "ad-type": "classic"
+        }));
+    });
+
     app.get('/resume.pdf', async (req: express.Request, res: express.Response) => {
         let resumeName = 'ganttj_coverResumePortfolio_2022_07_12.pdf';
         let fileName = path.join(SRC_DIR, `resume/${resumeName}`);

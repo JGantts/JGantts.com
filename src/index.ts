@@ -148,7 +148,7 @@ exports.start = async () => {
         res.end( JSON.stringify({
             "server": "jgantts.com",
             "serverSettingsPath": "api/cowlin/v1/",
-            "ad-type": "classic"
+            "adType": "classic"
         }));
     });
 

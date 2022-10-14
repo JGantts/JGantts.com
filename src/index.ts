@@ -57,7 +57,7 @@ exports.port = async () => {
 exports.start = async () => {
     const APP_NAME = "jgantts-website";
     const SRC_DIR = path.dirname(await fs.realpath(__filename));
-    const PUBLIC_DIR = path.join(path.dirname(await fs.realpath(__filename)), 'PUBLIC');
+    const PUBLIC_DIR = path.join(SRC_DIR, 'PUBLIC');
 
     log4js.configure({
         appenders: {
@@ -145,13 +145,18 @@ exports.start = async () => {
     }
 
     app.get('/api/cowlin/credits-maker/v1/', async (req: express.Request, res: express.Response) => {
+        let settingsConfigFile = "./cowlin.credits-maker.settings.config.json";
+        settingsConfigFile = path.resolve(path.join(SRC_DIR, settingsConfigFile));
+        logger.debug(settingsConfigFile)
+        settingsConfigFile = await fs.readFile(settingsConfigFile);
+        settingsConfigFile = JSON.parse(settingsConfigFile);
         res.end( JSON.stringify({
             "heartbeat": true,
 
             "server": "jgantts.com",
             "serverSettingsPath": "api/cowlin/credits-maker/v1/",
 
-            "adType": "bouncy"
+            "settings": settingsConfigFile
         }));
     });
 

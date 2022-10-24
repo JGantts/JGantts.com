@@ -25,7 +25,7 @@ async function launch() {
 
     let port = await website.port();
 
-    httpProxy.createProxyServer({target: `http://localhost:${port}`}).listen(HTTP_PORT);
+    httpProxy.createProxyServer({target: `http://localhost:${port}`}).listen(3000);
 
     logger.debug(`Node Site #${process.pid} started @${port}`);
 }

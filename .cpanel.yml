@@ -1,9 +1,0 @@
----
-deployment:
-  tasks:
-    - export DEPLOYPATH=/home/cctxay/apps/jgantts.com
-    - export REPOPATH=/home/cctxay/repositories/jgantts.com
-    - /bin/npm build
-    - /bin/rm -rfv $DEPLOYPATH
-    - /bin/cp -R $REPOPATH $DEPLOYPATH
-    - /bin/touch DEPLOYPATH/tmp/restart.txt

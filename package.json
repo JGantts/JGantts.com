@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "",
+    "prebuild": "if [ -d 'PUBLIC/' ]; then rm -Rf PUBLIC/ ; fi",
+    "build": "npx @11ty/eleventy",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -17,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/JGantts/JGantts.com/issues"
   },
-  "homepage": "https://github.com/JGantts/JGantts.com#readme"
+  "homepage": "https://github.com/JGantts/JGantts.com#readme",
+  "devDependencies": {
+    "@11ty/eleventy": "^1.0.2"
+  }
 }

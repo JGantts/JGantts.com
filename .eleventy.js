@@ -5,7 +5,7 @@ module.exports = function(eleventyConfig) {
   return {
     dir: {
       input: "public_templates",
-      output: "PUBLIC"
+      output: "public"
     }
   }
 };

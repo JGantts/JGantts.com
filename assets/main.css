@@ -37,7 +37,7 @@ body:before {
 }
 
 body:after {
-	background-color: #1D6EB8;
+	background-color: #FF0000;
 	content: '';
 	display: block;
 	height: 100%;
@@ -50,6 +50,13 @@ body:after {
 	visibility: hidden;
 	width: 100%;
 	z-index: 1;
+}
+
+
+@media (prefers-color-scheme: dark) {
+	body:after {
+		background-color: #00FF00;
+	}
 }
 
 body.is-loading:after {

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "prebuild": "if [ -d 'public/' ]; then rm -Rf public/ ; fi",
-    "build:sass": "sass sass:public/css"
+    "build:sass": "sass sass:public/css",
     "build:eleventy": "npx @11ty/eleventy",
     "build": "npm-run-all build:*",
     "start": "node index.js",

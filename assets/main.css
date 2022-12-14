@@ -37,7 +37,7 @@ body:before {
 }
 
 body:after {
-	background-color: #FF0000;
+	background-color: #0E3B63;
 	content: '';
 	display: block;
 	height: 100%;
@@ -55,7 +55,7 @@ body:after {
 
 @media (prefers-color-scheme: dark) {
 	body:after {
-		background-color: #00FF00;
+		background-color: #2184DE;
 	}
 }
 

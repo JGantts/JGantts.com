@@ -23,7 +23,7 @@ const groceryList = ref([
       which is explained in the guide section on v-for.
     -->
     <TodoItem
-      v-for="item in groceryList"
+      v-for="item in groceryList.value"
       :todo="item"
       :key="item.id"
     ></TodoItem>

@@ -1,9 +1,7 @@
-<script>
-export default {
-  props: {
-    todo: Object
-  }
-}
+<script setup>
+const props = defineProps({
+  todo: Object
+})
 </script>
 
 <template>

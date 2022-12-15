@@ -3,7 +3,7 @@ Here we show the simplest possible component which accepts a prop and renders it
 Learn more about components in the guide!
 -->
 
-<script setup>
+<script>
 import TodoItem from './TodoItem.vue'
 
 export default {

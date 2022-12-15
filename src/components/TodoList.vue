@@ -24,6 +24,5 @@ const groceryList = ref([
       :todo="item"
       :key="item.id"
     ></TodoItem>
-  	<p>Hi</p>
   </ol>
 </template>

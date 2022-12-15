@@ -21,8 +21,6 @@ const groceryList = ref([
     -->
     <TodoItem
       v-for="item in groceryList"
-      :todo="item"
-      :key="item.id"
     ></TodoItem>
   </ol>
 </template>

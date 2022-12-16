@@ -17,11 +17,15 @@ const groceryList = ref([
 <template>
   <ol>
     <p>Item 1</p>
-    <P
+    <TodoItem
       v-for="item in groceryList"
       :todo="item"
       :key="item.id"
-    >Hi</p>
+    ></TodoItem>
+    <TodoItem
+      :todo="{ text: 'Hi' }"
+    >
+    </TodoItem>
     <p>Item n</p>
   </ol>
 </template>

@@ -22,10 +22,12 @@ const groceryList = ref([
       We also need to provide each component with a "key",
       which is explained in the guide section on v-for.
     -->
+    <p>Item 1</p>
     <TodoItem
       v-for="item in groceryList"
       :todo="item"
       :key="item.id"
     ></TodoItem>
+    <p>Item n</p>
   </ol>
 </template>

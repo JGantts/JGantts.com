@@ -1,7 +1,10 @@
 <template>
   <div id="app">
-    <h1>JGantts.com</h1>
-    <router-view/>
+  		<div id="wrapper">
+  			<div id="main">
+          <router-view/>
+  			</div>
+  		</div>
   </div>
 </template>
 

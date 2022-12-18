@@ -24,7 +24,7 @@ export default {
 @font-face {
   font-family: "Figtree";
   src: local("Figtree"),
-    url(@/fonts/Figtree/Figtree-VariableFont_wght.ttf),
+    url(./fonts/Figtree/Figtree-VariableFont_wght.ttf),
     format("truetype");
 }
 

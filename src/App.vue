@@ -23,9 +23,57 @@ export default {
 <style>
 @font-face {
   font-family: "Figtree";
-  src: local("Figtree"),
-    url(./fonts/Figtree/Figtree-VariableFont_wght.ttf),
-    format("truetype");
+  font-weight: 300;
+  font-display: auto;
+  src:
+    local("Figtree"),
+    url(./fonts/Figtree/Figtree-Light.woff2),
+    format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-weight: 400;
+  font-display: auto;
+  src:
+    local("Figtree"),
+    url(./fonts/Figtree/Figtree-Regular.woff2),
+    format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-weight: 500;
+  font-display: auto;
+  src:
+    local("Figtree"),
+    url(./fonts/Figtree/Figtree-Medium.woff2),
+    format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-weight: 700;
+  font-display: auto;
+  src:
+    local("Figtree"),
+    url(./fonts/Figtree/Figtree-Bold.woff2),
+    format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-weight: 800;
+  font-display: auto;
+  src:
+    local("Figtree"),
+    url(./fonts/Figtree/Figtree-ExtraBold.woff2),
+    format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-weight: 900;
+  font-display: auto;
+  src:
+    local("Figtree"),
+    url(./fonts/Figtree/Figtree-Black.woff2),
+    format("woff2");
 }
 
 #app {

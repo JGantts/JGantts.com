@@ -1,11 +1,11 @@
 <template>
   <div id="app">
-	<div id="background-holder">
-    	<div id="wrapper">
-	  		<router-view/>
-    	</div>
-    	<div id="background"></div>
-	</div>
+    <div id="background-holder">
+      <div id="wrapper">
+        <router-view/>
+      </div>
+      <div id="background"></div>
+    </div>
   </div>
 </template>
 

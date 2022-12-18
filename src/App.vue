@@ -16,6 +16,133 @@ export default {
 </script>
 
 <style>
+#app {
+  font-family: 'Figtree', Arial, sans-serif;
+}
+
+#app {
+  color: #000000;
+}
+
+@media (prefers-color-scheme: dark) {
+    #app {
+      color: #FFFFFF;
+    }
+}
+
+#text01 {
+	color: #000000;
+	font-family: 'Figtree', sans-serif;
+	font-size: 2em;
+	line-height: 1.5;
+	font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+	#text01 {
+		color: #FFFFFF;
+	}
+}
+
+#text02 {
+	font-size: 1em;
+	line-height: 1.5;
+	font-weight: 300;
+}
+
+#text03 {
+	font-size: 0.625em;
+	line-height: 1.5;
+	font-weight: 300;
+}
+
+#text04 {
+	font-size: 1em;
+	line-height: 1.5;
+	font-weight: 400;
+}
+
+#text06 {
+	text-align: justify;
+	font-size: 0.625em;
+	line-height: 1.5;
+	font-weight: 400;
+}
+
+@media (prefers-color-scheme: dark) {
+	#text06 {
+		color: #FFFFFF;
+	}
+}
+
+#text06 a {
+	text-decoration: underline;
+}
+
+#text06 a:hover {
+	text-decoration: none;
+}
+
+#text06 span.p:nth-child(n + 2) {
+	margin-top: 1rem;
+}
+
+#text05 {
+	color: #000000;
+	font-family: 'Figtree', sans-serif;
+	font-size: 1em;
+	line-height: 1.5;
+	font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+	#text05 {
+		color: #FFFFFF;
+	}
+}
+
+#text05 a {
+	text-decoration: underline;
+}
+
+#text05 a:hover {
+	text-decoration: none;
+}
+
+#text05 span.p:nth-child(n + 2) {
+	margin-top: 1rem;
+}
+
+#text07 {
+	color: #000000;
+	font-family: 'Figtree', sans-serif;
+	font-size: 0.5em;
+	line-height: 1.5;
+	font-weight: 300;
+}
+
+@media (prefers-color-scheme: dark) {
+	#text07 {
+		color: #FFFFFF;
+	}
+}
+
+#text07 a {
+	text-decoration: underline;
+}
+
+#text07 a:hover {
+	text-decoration: none;
+}
+
+#text07 span.p:nth-child(n + 2) {
+	margin-top: 1rem;
+}
+
+
+
+
+
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td,article,aside,canvas,details,embed,figure,figcaption,footer,header,hgroup,menu,nav,output,ruby,section,summary,time,mark,audio,video{margin:0;padding:0;border:0;font-size:100%;font:inherit;vertical-align:baseline;}article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section{display:block;}body{line-height:1;}ol,ul{list-style:none;}blockquote,q{quotes:none;}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none;}table{border-collapse:collapse;border-spacing:0;}body{-webkit-text-size-adjust:none}mark{background-color:transparent;color:inherit}input::-moz-focus-inner{border:0;padding:0}input[type="text"],input[type="email"],select,textarea{-moz-appearance:none;-webkit-appearance:none;-ms-appearance:none;appearance:none}
 
 *, *:before, *:after {
@@ -277,189 +404,6 @@ h1 span.p, h2 span.p, h3 span.p, p span.p {
 
 h1 span[style], h2 span[style], h3 span[style], p span[style], h1 strong, h2 strong, h3 strong, p strong, h1 a, h2 a, h3 a, p a, h1 code, h2 code, h3 code, p code, h1 mark, h2 mark, h3 mark, p mark {
 	-webkit-text-fill-color: currentcolor;
-}
-
-#text01 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 2em;
-	line-height: 1.5;
-	font-weight: 600;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text01 {
-		color: #FFFFFF;
-	}
-}
-
-#text01 a {
-	text-decoration: underline;
-}
-
-#text01 a:hover {
-	text-decoration: none;
-}
-
-#text01 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
-#text02 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 1em;
-	line-height: 1.5;
-	font-weight: 300;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text02 {
-		color: #FFFFFF;
-	}
-}
-
-#text02 a {
-	text-decoration: underline;
-}
-
-#text02 a:hover {
-	text-decoration: none;
-}
-
-#text02 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
-#text03 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 0.625em;
-	line-height: 1.5;
-	font-weight: 300;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text03 {
-		color: #FFFFFF;
-	}
-}
-
-#text03 a {
-	text-decoration: underline;
-}
-
-#text03 a:hover {
-	text-decoration: none;
-}
-
-#text03 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
-#text04 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 1em;
-	line-height: 1.5;
-	font-weight: 400;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text04 {
-		color: #FFFFFF;
-	}
-}
-
-#text04 a {
-	text-decoration: underline;
-}
-
-#text04 a:hover {
-	text-decoration: none;
-}
-
-#text04 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
-#text06 {
-	text-align: justify;
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 0.625em;
-	line-height: 1.5;
-	font-weight: 400;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text06 {
-		color: #FFFFFF;
-	}
-}
-
-#text06 a {
-	text-decoration: underline;
-}
-
-#text06 a:hover {
-	text-decoration: none;
-}
-
-#text06 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
-#text05 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 1em;
-	line-height: 1.5;
-	font-weight: 600;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text05 {
-		color: #FFFFFF;
-	}
-}
-
-#text05 a {
-	text-decoration: underline;
-}
-
-#text05 a:hover {
-	text-decoration: none;
-}
-
-#text05 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
-#text07 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 0.5em;
-	line-height: 1.5;
-	font-weight: 300;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text07 {
-		color: #FFFFFF;
-	}
-}
-
-#text07 a {
-	text-decoration: underline;
-}
-
-#text07 a:hover {
-	text-decoration: none;
-}
-
-#text07 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
 }
 
 .container {

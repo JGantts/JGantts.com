@@ -1,3 +1,90 @@
+<template>
+  <div id="app">
+  		<div id="wrapper">
+  			<div id="main">
+          <router-view/>
+  			</div>
+  		</div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'App',
+  async created() {
+	await new Promise(r => setTimeout(r, 1000));
+	document.body.classList.remove("is-loading");
+  }
+}
+
+</script>
+
+<style>
+#app {
+  font-family: 'Figtree', Arial, sans-serif;
+}
+
+#app {
+  color: #000000;
+}
+
+@media (prefers-color-scheme: dark) {
+    #app {
+      color: #FFFFFF;
+    }
+}
+
+#text01 {
+	color: #000000;
+	font-family: 'Figtree', sans-serif;
+	font-size: 2em;
+	line-height: 1.5;
+	font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+	#text01 {
+		color: #FFFFFF;
+	}
+}
+
+#text02 {
+	font-size: 1em;
+	line-height: 1.5;
+	font-weight: 300;
+}
+
+#text03 {
+	font-size: 0.625em;
+	line-height: 1.5;
+	font-weight: 300;
+}
+
+#text04 {
+	font-size: 1em;
+	line-height: 1.5;
+	font-weight: 400;
+}
+
+#text05 {
+	font-size: 1em;
+	line-height: 1.5;
+	font-weight: 600;
+}
+
+#text06 {
+	text-align: justify;
+	font-size: 0.625em;
+	line-height: 1.5;
+	font-weight: 400;
+}
+
+#text07 {
+	font-size: 0.5em;
+	line-height: 1.5;
+	font-weight: 300;
+}
+
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td,article,aside,canvas,details,embed,figure,figcaption,footer,header,hgroup,menu,nav,output,ruby,section,summary,time,mark,audio,video{margin:0;padding:0;border:0;font-size:100%;font:inherit;vertical-align:baseline;}article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section{display:block;}body{line-height:1;}ol,ul{list-style:none;}blockquote,q{quotes:none;}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none;}table{border-collapse:collapse;border-spacing:0;}body{-webkit-text-size-adjust:none}mark{background-color:transparent;color:inherit}input::-moz-focus-inner{border:0;padding:0}input[type="text"],input[type="email"],select,textarea{-moz-appearance:none;-webkit-appearance:none;-ms-appearance:none;appearance:none}
 
 *, *:before, *:after {
@@ -29,7 +116,6 @@ body:before {
 	background-position: center, 0% 0%;
 	background-repeat: repeat, repeat;
 }
-
 @media (prefers-color-scheme: dark) {
 	body:before {
 		background-image: url('data:image/svg+xml;charset=utf8,%3Csvg%20width%3D%22384%22%20height%3D%22216%22%20viewBox%3D%220%200%20384%20216%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20rect%20%7B%20fill%3A%20rgba(29,110,184,0.502)%3B%20%7D%20%3C%2Fstyle%3E%20%3Crect%20x%3D%222.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%222.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%222.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%222.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%222.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%222.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%222.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.6%22%20%2F%3E%20%3Crect%20x%3D%222.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%222.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.1%22%20%2F%3E%20%3Crect%20x%3D%2226.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2226.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2226.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2226.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2226.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.8%22%20%2F%3E%20%3Crect%20x%3D%2226.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2226.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.1%22%20%2F%3E%20%3Crect%20x%3D%2226.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%2226.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%2250.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.1%22%20%2F%3E%20%3Crect%20x%3D%2250.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2250.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.5%22%20%2F%3E%20%3Crect%20x%3D%2250.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%2250.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2250.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.2%22%20%2F%3E%20%3Crect%20x%3D%2250.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.4%22%20%2F%3E%20%3Crect%20x%3D%2250.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%2250.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.5%22%20%2F%3E%20%3Crect%20x%3D%2274.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2274.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.6%22%20%2F%3E%20%3Crect%20x%3D%2274.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2274.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.3%22%20%2F%3E%20%3Crect%20x%3D%2274.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%2274.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2274.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%2274.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2274.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2298.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%2298.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2298.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.1%22%20%2F%3E%20%3Crect%20x%3D%2298.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.5%22%20%2F%3E%20%3Crect%20x%3D%2298.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.6%22%20%2F%3E%20%3Crect%20x%3D%2298.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%2298.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.5%22%20%2F%3E%20%3Crect%20x%3D%2298.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%2298.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.2%22%20%2F%3E%20%3Crect%20x%3D%22122.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.5%22%20%2F%3E%20%3Crect%20x%3D%22122.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.3%22%20%2F%3E%20%3Crect%20x%3D%22122.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22122.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22122.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.2%22%20%2F%3E%20%3Crect%20x%3D%22122.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.8%22%20%2F%3E%20%3Crect%20x%3D%22122.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22122.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.8%22%20%2F%3E%20%3Crect%20x%3D%22122.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22146.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.6%22%20%2F%3E%20%3Crect%20x%3D%22146.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.7%22%20%2F%3E%20%3Crect%20x%3D%22146.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22146.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.4%22%20%2F%3E%20%3Crect%20x%3D%22146.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.8%22%20%2F%3E%20%3Crect%20x%3D%22146.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.7%22%20%2F%3E%20%3Crect%20x%3D%22146.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22146.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.5%22%20%2F%3E%20%3Crect%20x%3D%22146.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22170.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22170.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22170.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22170.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22170.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22170.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22170.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.6%22%20%2F%3E%20%3Crect%20x%3D%22170.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22170.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22194.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22194.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.4%22%20%2F%3E%20%3Crect%20x%3D%22194.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.6%22%20%2F%3E%20%3Crect%20x%3D%22194.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22194.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22194.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.2%22%20%2F%3E%20%3Crect%20x%3D%22194.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22194.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.4%22%20%2F%3E%20%3Crect%20x%3D%22194.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.5%22%20%2F%3E%20%3Crect%20x%3D%22218.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22218.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22218.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.4%22%20%2F%3E%20%3Crect%20x%3D%22218.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22218.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22218.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.2%22%20%2F%3E%20%3Crect%20x%3D%22218.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.2%22%20%2F%3E%20%3Crect%20x%3D%22218.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.6%22%20%2F%3E%20%3Crect%20x%3D%22218.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22242.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22242.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.6%22%20%2F%3E%20%3Crect%20x%3D%22242.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22242.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.5%22%20%2F%3E%20%3Crect%20x%3D%22242.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22242.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22242.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22242.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.8%22%20%2F%3E%20%3Crect%20x%3D%22242.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.1%22%20%2F%3E%20%3Crect%20x%3D%22266.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22266.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.8%22%20%2F%3E%20%3Crect%20x%3D%22266.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22266.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22266.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.5%22%20%2F%3E%20%3Crect%20x%3D%22266.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.4%22%20%2F%3E%20%3Crect%20x%3D%22266.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.4%22%20%2F%3E%20%3Crect%20x%3D%22266.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.3%22%20%2F%3E%20%3Crect%20x%3D%22266.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.1%22%20%2F%3E%20%3Crect%20x%3D%22290.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22290.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.3%22%20%2F%3E%20%3Crect%20x%3D%22290.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22290.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22290.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22290.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22290.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22290.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22290.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.1%22%20%2F%3E%20%3Crect%20x%3D%22314.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22314.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.3%22%20%2F%3E%20%3Crect%20x%3D%22314.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22314.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22314.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22314.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22314.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22314.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22314.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22338.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22338.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22338.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22338.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22338.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.7%22%20%2F%3E%20%3Crect%20x%3D%22338.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22338.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.8%22%20%2F%3E%20%3Crect%20x%3D%22338.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.8%22%20%2F%3E%20%3Crect%20x%3D%22338.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22362.0%22%20y%3D%222.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22362.0%22%20y%3D%2226.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.8%22%20%2F%3E%20%3Crect%20x%3D%22362.0%22%20y%3D%2250.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%221%22%20%2F%3E%20%3Crect%20x%3D%22362.0%22%20y%3D%2274.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.2%22%20%2F%3E%20%3Crect%20x%3D%22362.0%22%20y%3D%2298.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22362.0%22%20y%3D%22122.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.8%22%20%2F%3E%20%3Crect%20x%3D%22362.0%22%20y%3D%22146.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220.8%22%20%2F%3E%20%3Crect%20x%3D%22362.0%22%20y%3D%22170.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%20%3Crect%20x%3D%22362.0%22%20y%3D%22194.0%22%20width%3D%2220.0%22%20height%3D%2220.0%22%20fill-opacity%3D%220%22%20%2F%3E%3C%2Fsvg%3E'), linear-gradient(343deg, #082845 25%, #2184DE 100%);
@@ -266,189 +352,6 @@ h1 span.p, h2 span.p, h3 span.p, p span.p {
 
 h1 span[style], h2 span[style], h3 span[style], p span[style], h1 strong, h2 strong, h3 strong, p strong, h1 a, h2 a, h3 a, p a, h1 code, h2 code, h3 code, p code, h1 mark, h2 mark, h3 mark, p mark {
 	-webkit-text-fill-color: currentcolor;
-}
-
-#text01 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 2em;
-	line-height: 1.5;
-	font-weight: 600;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text01 {
-		color: #FFFFFF;
-	}
-}
-
-#text01 a {
-	text-decoration: underline;
-}
-
-#text01 a:hover {
-	text-decoration: none;
-}
-
-#text01 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
-#text02 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 1em;
-	line-height: 1.5;
-	font-weight: 300;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text02 {
-		color: #FFFFFF;
-	}
-}
-
-#text02 a {
-	text-decoration: underline;
-}
-
-#text02 a:hover {
-	text-decoration: none;
-}
-
-#text02 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
-#text03 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 0.625em;
-	line-height: 1.5;
-	font-weight: 300;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text03 {
-		color: #FFFFFF;
-	}
-}
-
-#text03 a {
-	text-decoration: underline;
-}
-
-#text03 a:hover {
-	text-decoration: none;
-}
-
-#text03 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
-#text04 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 1em;
-	line-height: 1.5;
-	font-weight: 400;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text04 {
-		color: #FFFFFF;
-	}
-}
-
-#text04 a {
-	text-decoration: underline;
-}
-
-#text04 a:hover {
-	text-decoration: none;
-}
-
-#text04 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
-#text06 {
-	text-align: justify;
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 0.625em;
-	line-height: 1.5;
-	font-weight: 400;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text06 {
-		color: #FFFFFF;
-	}
-}
-
-#text06 a {
-	text-decoration: underline;
-}
-
-#text06 a:hover {
-	text-decoration: none;
-}
-
-#text06 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
-#text05 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 1em;
-	line-height: 1.5;
-	font-weight: 600;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text05 {
-		color: #FFFFFF;
-	}
-}
-
-#text05 a {
-	text-decoration: underline;
-}
-
-#text05 a:hover {
-	text-decoration: none;
-}
-
-#text05 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
-#text07 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 0.5em;
-	line-height: 1.5;
-	font-weight: 300;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text07 {
-		color: #FFFFFF;
-	}
-}
-
-#text07 a {
-	text-decoration: underline;
-}
-
-#text07 a:hover {
-	text-decoration: none;
-}
-
-#text07 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
 }
 
 .container {
@@ -1397,3 +1300,5 @@ h1 span[style], h2 span[style], h3 span[style], p span[style], h1 strong, h2 str
 		font-size: 1.125em;
 	}
 }
+
+</style>

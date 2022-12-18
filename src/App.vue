@@ -8,13 +8,6 @@
   </div>
 </template>
 
-<script setup>
-export default {
-  name: 'App'
-}
-
-</script>
-
 <script>
 /* Carrd Site JS | carrd.co | License: MIT */
 
@@ -1340,6 +1333,13 @@ export default {
 
 })();
 <script>
+
+<script setup>
+export default {
+  name: 'App'
+}
+
+</script>
 
 <style>
 #app {

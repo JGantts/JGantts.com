@@ -4,7 +4,7 @@
     	<div id="wrapper">
 	  		<router-view/>
     	</div>
-    	<div id="background">BackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorundBackgorund</div>
+    	<div id="background">Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background </div>
 	</div>
   </div>
 </template>

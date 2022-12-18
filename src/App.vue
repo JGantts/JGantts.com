@@ -21,6 +21,13 @@ export default {
 </script>
 
 <style>
+@font-face {
+  font-family: "Figtree";
+  src: local("Figtree"),
+    url(./fonts/Figtree/Figtree-VariableFont_wght.ttf),
+    format("truetype");
+}
+
 #app {
   font-family: 'Figtree', Arial, sans-serif;
 }

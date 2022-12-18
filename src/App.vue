@@ -4,7 +4,7 @@
     	<div id="wrapper">
 	  		<router-view/>
     	</div>
-    	<div id="background">Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background Background </div>
+    	<div id="background"></div>
 	</div>
   </div>
 </template>
@@ -38,6 +38,9 @@ export default {
     left: 0;
     top: 0;
 	z-index: -100;
+	background-attachment: scroll;
+	pointer-events: none;
+	z-index: 0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -109,45 +112,6 @@ body {
 	min-width: 320px;
 	overflow-x: hidden;
 	word-wrap: break-word;
-}
-
-body:before {
-	background-attachment: scroll;
-	content: '';
-	display: block;
-	height: var(--background-height);
-	left: 0;
-	pointer-events: none;
-	position: fixed;
-	top: 0;
-	transform: scale(1);
-	width: 100vw;
-	z-index: 0;
-	background-image: linear-gradient(343deg, #0E3B63 0%, #1C8AED 75%);
-	background-size: 185px, auto;
-	background-position: center, 0% 0%;
-	background-repeat: repeat, repeat;
-}
-@media (prefers-color-scheme: dark) {
-	body:before {
-		background-image: linear-gradient(343deg, #082845 25%, #2184DE 100%);
-	}
-}
-
-body:after {
-	background-color: #1D6EB8;
-	content: '';
-	display: block;
-	height: 100%;
-	left: 0;
-	opacity: 0;
-	position: fixed;
-	top: 0;
-	transform: scale(1);
-	transition: opacity 2.75s ease-in-out 0.25s, visibility 2.75s 0.25s;
-	visibility: hidden;
-	width: 100%;
-	z-index: 1;
 }
 
 body.is-loading:after {

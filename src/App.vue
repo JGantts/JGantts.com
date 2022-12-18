@@ -8,7 +8,7 @@
   </div>
 </template>
 
-<script setup>
+<script>
 export default {
   name: 'App'
 }
@@ -62,6 +62,12 @@ export default {
 	font-weight: 400;
 }
 
+#text05 {
+	font-size: 1em;
+	line-height: 1.5;
+	font-weight: 600;
+}
+
 #text06 {
 	text-align: justify;
 	font-size: 0.625em;
@@ -69,80 +75,16 @@ export default {
 	font-weight: 400;
 }
 
-@media (prefers-color-scheme: dark) {
-	#text06 {
-		color: #FFFFFF;
-	}
-}
-
-#text06 a {
-	text-decoration: underline;
-}
-
-#text06 a:hover {
-	text-decoration: none;
-}
-
-#text06 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
-#text05 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
-	font-size: 1em;
-	line-height: 1.5;
-	font-weight: 600;
-}
-
-@media (prefers-color-scheme: dark) {
-	#text05 {
-		color: #FFFFFF;
-	}
-}
-
-#text05 a {
-	text-decoration: underline;
-}
-
-#text05 a:hover {
-	text-decoration: none;
-}
-
-#text05 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
-
 #text07 {
-	color: #000000;
-	font-family: 'Figtree', sans-serif;
 	font-size: 0.5em;
 	line-height: 1.5;
 	font-weight: 300;
 }
 
-@media (prefers-color-scheme: dark) {
-	#text07 {
-		color: #FFFFFF;
-	}
-}
-
-#text07 a {
-	text-decoration: underline;
-}
-
-#text07 a:hover {
-	text-decoration: none;
-}
-
-#text07 span.p:nth-child(n + 2) {
-	margin-top: 1rem;
-}
+</style>
 
 
-
-
-
+<comment>
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td,article,aside,canvas,details,embed,figure,figcaption,footer,header,hgroup,menu,nav,output,ruby,section,summary,time,mark,audio,video{margin:0;padding:0;border:0;font-size:100%;font:inherit;vertical-align:baseline;}article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section{display:block;}body{line-height:1;}ol,ul{list-style:none;}blockquote,q{quotes:none;}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none;}table{border-collapse:collapse;border-spacing:0;}body{-webkit-text-size-adjust:none}mark{background-color:transparent;color:inherit}input::-moz-focus-inner{border:0;padding:0}input[type="text"],input[type="email"],select,textarea{-moz-appearance:none;-webkit-appearance:none;-ms-appearance:none;appearance:none}
 
 *, *:before, *:after {
@@ -1353,4 +1295,4 @@ h1 span[style], h2 span[style], h3 span[style], p span[style], h1 strong, h2 str
 	}
 }
 
-</style>
+</comment>

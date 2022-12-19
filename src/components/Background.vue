@@ -29,7 +29,7 @@ export default {
       } else if(newPixelsPerSide > 0) {
         //Add boxes
         for(side in [this.topRowBoxes.left, this.topRowBoxes.right]) {
-          [...Array(newPixelsPerSide)].forEach((_, _) => {
+          [...Array(newPixelsPerSide)].forEach((v, i) => {
             side.push(
               [ ]
             );
@@ -52,8 +52,8 @@ export default {
         let side = sideAndDirection.side;
         let direction = sideAndDirection.dir;
         side.forEach(function (column, index) {
-          console.log('%d: %s', i, value);
-        })
+          
+        });
       }
     }
   },

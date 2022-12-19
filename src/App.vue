@@ -82,6 +82,14 @@ export default {
 
 #app {
   color: #000000;
+      background-color: #EFEFEF;
+}
+
+@media (prefers-color-scheme: dark) {
+    #app {
+      color: #FFFFFF;
+      background-color: #0f0f0f;
+    }
 }
 
 #backgorund-holder {
@@ -96,12 +104,6 @@ export default {
   background-attachment: scroll;
   pointer-events: none;
   z-index: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-    #app {
-      color: #FFFFFF;
-    }
 }
 
 #text01 {

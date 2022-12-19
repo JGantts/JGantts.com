@@ -99,7 +99,7 @@ export default {
           g: Math.floor(Math.random()*10) + 45, 
           b: Math.floor(Math.random()*10) + 245,
         };
-        column.push({
+        column.boxes.push({
           position: position,
           color: color,
           element: this.addBox(position, color),

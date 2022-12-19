@@ -38,9 +38,10 @@ export default {
 
       } else if(countToAdd > 0) {
         //Add boxes
-        for(let side in [this.topRowBoxes.left, this.topRowBoxes.right]) {
-          [...Array(newPixelsPerSide)].forEach((v, i) => {
-            side.push(
+        let sides = [this.topRowBoxes.left, this.topRowBoxes.right]
+        for(let sideIndex in sides) {
+          [...Array(countToAdd)].forEach((v, i) => {
+            sides[sideIndex].push(
               {
                 spawnInterval: Math.floor(Math.random()*100),
                 spawnCountdown: 0,
@@ -51,12 +52,12 @@ export default {
         }
         if (oldPixelsPerSide === 0) {
           let slowOnes = getRandomElements(side, 3);
-          for(let slowOne in slowOnes) {
-            slowOne.spawnInterval = Math.floor(Math.random()*10) + 90;
+          for(let slowOneIndex in slowOnes) {
+            slowOnes[slowOneIndex].spawnInterval = Math.floor(Math.random()*10) + 90;
           }
           let fastOnes = getRandomElements(side, 3);
-          for(let fastOne in fastOnes) {
-            fastOne.spawnInterval = Math.floor(Math.random()*10);
+          for(let fastOneIndex in fastOnes) {
+            fastOnes[fastOneIndex].spawnInterval = Math.floor(Math.random()*10);
           }
         }
       }

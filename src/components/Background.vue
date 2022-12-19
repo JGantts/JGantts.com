@@ -12,7 +12,8 @@ export default {
         countPerSide: 0,
         left: [ ],
         right: [ ],
-      }
+      },
+      baseElement: document.getElementById('animation-base'),
     };
   },
 
@@ -105,7 +106,7 @@ export default {
         }
       });
       newBox.$mount();
-      this.$refs.container.appendChild(newBox.$el);
+      baseElement.appendChild(newBox.$el);
       return newBox;
     },
   },

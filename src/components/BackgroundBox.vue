@@ -26,6 +26,8 @@ export default {
     position: absolute,
     left: position.x*boxSize,
     top: position.y*boxSize,
+    width: boxSize,
+    height: boxSize,
   }">
   </div>
 </template>

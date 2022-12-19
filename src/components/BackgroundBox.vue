@@ -23,7 +23,7 @@ export default {
 <template>
   <div :style="{
     color: `rgb(${color.r}, ${color.g}, ${color.b})`,
-    position: absolute,
+    position: `absolute`,
     left: position.x*boxSize,
     top: position.y*boxSize,
     width: boxSize,

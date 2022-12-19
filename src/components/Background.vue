@@ -116,7 +116,7 @@ export default {
         }
       });
       newBox.$mount();
-      baseElement.appendChild(newBox.$el);
+      this.baseElement.appendChild(newBox.$el);
       return newBox;
     },
   },

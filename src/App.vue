@@ -24,7 +24,9 @@ export default {
 @font-face {
   font-family: "Figtree";
   font-weight: 300;
+  font-style: normal;
   font-display: auto;
+  unicode-range: U+000-5FF;
   src:
     local("Figtree"),
     url(assets/fonts//Figtree/Figtree-Light.woff2),
@@ -33,7 +35,9 @@ export default {
 @font-face {
   font-family: "Figtree";
   font-weight: 400;
+  font-style: normal;
   font-display: auto;
+  unicode-range: U+000-5FF;
   src:
     local("Figtree"),
     url(assets/fonts/Figtree/Figtree-Regular.woff2),
@@ -42,7 +46,9 @@ export default {
 @font-face {
   font-family: "Figtree";
   font-weight: 500;
+  font-style: normal;
   font-display: auto;
+  unicode-range: U+000-5FF;
   src:
     local("Figtree"),
     url(assets/fonts/Figtree/Figtree-Medium.woff2),
@@ -51,7 +57,9 @@ export default {
 @font-face {
   font-family: "Figtree";
   font-weight: 700;
+  font-style: normal;
   font-display: auto;
+  unicode-range: U+000-5FF;
   src:
     local("Figtree"),
     url(assets/fonts/Figtree/Figtree-Bold.woff2),
@@ -60,7 +68,9 @@ export default {
 @font-face {
   font-family: "Figtree";
   font-weight: 800;
+  font-style: normal;
   font-display: auto;
+  unicode-range: U+000-5FF;
   src:
     local("Figtree"),
     url(assets/fonts/Figtree/Figtree-ExtraBold.woff2),
@@ -69,7 +79,9 @@ export default {
 @font-face {
   font-family: "Figtree";
   font-weight: 900;
+  font-style: normal;
   font-display: auto;
+  unicode-range: U+000-5FF;
   src:
     local("Figtree"),
     url(assets/fonts/Figtree/Figtree-Black.woff2),

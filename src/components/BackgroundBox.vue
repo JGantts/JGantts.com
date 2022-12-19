@@ -11,7 +11,7 @@ export default {
   },
   methods: {
     xDirection() {
-      if(positons.x < 0) {
+      if(this.positons.x < 0) {
         return -1;
       }
       return 1;

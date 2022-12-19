@@ -74,13 +74,15 @@ export default {
       let sidesAndDirections = [
         {side: this.topRowBoxes.left, dir: -1},
         {side: this.topRowBoxes.right, dir: 1}
-      ]
-      for(let index in sidesAndDirections) {
+      ];
+      for (let index in sidesAndDirections) {
         let side = sidesAndDirections[index].side;
         let direction = sidesAndDirections[index].dir;
-        side.forEach(function (column, index) {
-          this.renderColumn(column, direction*(index+1));
-        });
+        console.log(side);
+        console.log(JSON.stringify(side));
+        for (let indexB in side) {
+          this.renderColumn(side[indexB], direction*(indexB+1));
+        }
       }
     },
 

@@ -78,9 +78,6 @@ export default {
       for(let index in sidesAndDirections) {
         let side = sidesAndDirections[index].side;
         let direction = sidesAndDirections[index].dir;
-        console.log(side);
-        console.log(JSON.stringify(side));
-        console.log(JSON.stringify(sideAndDirection));
         side.forEach(function (column, index) {
           this.renderColumn(column, direction*(index+1));
         });

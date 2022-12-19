@@ -49,15 +49,15 @@ export default {
               }
             );
           })
-        }
-        if (oldPixelsPerSide === 0) {
-          let slowOnes = getRandomElements(sides[sideIndex], 3);
-          for(let slowOneIndex in slowOnes) {
-            slowOnes[slowOneIndex].spawnInterval = Math.floor(Math.random()*10) + 90;
-          }
-          let fastOnes = getRandomElements(sides[sideIndex], 3);
-          for(let fastOneIndex in fastOnes) {
-            fastOnes[fastOneIndex].spawnInterval = Math.floor(Math.random()*10);
+          if (oldPixelsPerSide === 0) {
+            let slowOnes = getRandomElements(sides[sideIndex], 3);
+            for(let slowOneIndex in slowOnes) {
+              slowOnes[slowOneIndex].spawnInterval = Math.floor(Math.random()*10) + 90;
+            }
+            let fastOnes = getRandomElements(sides[sideIndex], 3);
+            for(let fastOneIndex in fastOnes) {
+              fastOnes[fastOneIndex].spawnInterval = Math.floor(Math.random()*10);
+            }
           }
         }
       }

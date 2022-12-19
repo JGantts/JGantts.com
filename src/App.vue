@@ -112,7 +112,7 @@ export default {
   left: 0;
   top: 0;
   z-index: -100;
-  background-attachment: fixed;
+  background-attachment: scroll;
   pointer-events: none;
   z-index: 0;
 }

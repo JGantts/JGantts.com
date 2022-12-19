@@ -11,7 +11,7 @@ export default {
   },
   methods: {
     xDirection() {
-      if(this.positons.x < 0) {
+      if(this.position.x < 0) {
         return -1;
       }
       return 1;
@@ -22,7 +22,7 @@ export default {
 
 <template>
   <div :style="{
-    color: rgb(color.r, color.g, color.b),
+    color: `rgb(${color.r}, ${color.g}, ${color.b})`,
     position: absolute,
     left: position.x*boxSize,
     top: position.y*boxSize,

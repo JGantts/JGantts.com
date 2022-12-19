@@ -108,7 +108,7 @@ export default {
 }
 
 #background {
-  position: absolute;
+  position: fixed;
   left: 0;
   top: 0;
   height: 100vh;

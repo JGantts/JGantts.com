@@ -62,10 +62,10 @@ export default {
 
     async renderLoop() {
       console.log("render loop");
-      await Promise.all(
+      await Promise.all([
         new Promise(r => setTimeout(r, 50)),
-        this.renderScene()
-      );
+        this.renderScene(),
+      ]);
       console.log("done render loop");
       this.renderLoop();
       console.log("recall render loop");

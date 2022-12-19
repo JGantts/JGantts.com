@@ -71,12 +71,13 @@ export default {
 
     async renderScene() {
       console.log("render scene");
-      for(let sideAndDirection in [
+      let sidesAndDirections = [
         {side: this.topRowBoxes.left, dir: -1},
         {side: this.topRowBoxes.right, dir: 1}
-      ]) {
-        let side = sideAndDirection.side;
-        let direction = sideAndDirection.dir;
+      ]
+      for(let index in sidesAndDirections) {
+        let side = sidesAndDirections[index].side;
+        let direction = sidesAndDirections[index].dir;
         console.log(side);
         console.log(JSON.stringify(side));
         console.log(JSON.stringify(sideAndDirection));

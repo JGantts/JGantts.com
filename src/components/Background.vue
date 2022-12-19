@@ -66,7 +66,9 @@ export default {
         new Promise(r => setTimeout(r, 50)),
         this.renderScene(),
       );
+      console.log("done render loop");
       this.renderLoop();
+      console.log("recall render loop");
     },
 
     async renderScene() {

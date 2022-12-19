@@ -116,7 +116,7 @@ export default {
   color: #000000;
   font-size: 2em;
   line-height: 1.5;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -146,7 +146,7 @@ export default {
 #text05 {
   font-size: 1em;
   line-height: 1.5;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 #text06 {

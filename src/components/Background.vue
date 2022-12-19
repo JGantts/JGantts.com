@@ -13,7 +13,7 @@ export default {
         left: [ ],
         right: [ ],
       },
-      baseElement: document.getElementById('animation-base'),
+      baseElement: null,
     };
   },
 
@@ -131,6 +131,7 @@ export default {
 
   async mounted() {
     console.log("Hello, world!");
+    this.baseElement = document.getElementById('animation-base');
     await this.resizedWindow();
     this.renderLoop();
   },

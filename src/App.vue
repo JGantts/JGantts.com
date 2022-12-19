@@ -106,7 +106,6 @@ export default {
 
 #text01 {
   color: #000000;
-  font-family: 'Figtree', sans-serif;
   font-size: 2em;
   line-height: 1.5;
   font-weight: 600;

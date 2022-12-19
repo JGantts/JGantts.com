@@ -64,6 +64,7 @@ export default {
     window.removeEventListener("resize", this.resizedWindow);
   },
   mounted() {
+    console.log("Hello, world!");
    this.resizedWindow();
   },
 }

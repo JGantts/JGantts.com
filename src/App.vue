@@ -109,9 +109,9 @@ export default {
 
 #background {
   position: fixed;
-  left: 0;
-  top: 0;
-  right: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   height: 100vh;
   width: 100vw;
   z-index: -100;

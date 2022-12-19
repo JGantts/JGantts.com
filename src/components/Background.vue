@@ -84,6 +84,7 @@ export default {
           this.renderColumn(side[indexB], direction*(indexB+1));
         }
       }
+      console.log("done render scene")
     },
 
     async renderColumn(column, xPosition) {

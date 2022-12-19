@@ -27,7 +27,7 @@ export default {
 
       console.log(countToAdd);
 
-      if (countToAdd = 0) {
+      if (countToAdd === 0) {
         return;
 
       } else if(countToAdd < 0) {

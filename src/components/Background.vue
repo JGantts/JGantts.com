@@ -61,6 +61,7 @@ export default {
     },
 
     async renderLoop() {
+      console.log("render loop");
       await Promise.all(
         new Promise(r => setTimeout(r, 50)),
         this.renderScene(),
@@ -69,6 +70,7 @@ export default {
     },
 
     async renderScene() {
+      console.log("render scene");
       for(sideAndDirection in [
         {side: this.topRowBoxes.left, dir: -1},
         {side: this.topRowBoxes.right, dir: 1}
@@ -82,6 +84,7 @@ export default {
     },
 
     async renderColumn(column, xPosition) {
+      console.log("render column");
       column.spawnCountdown += 1;
       if(column.length == 0 || column.spawnCountdown >= column.spawnInterval) {
         let position = { x: xPosition, y: column.boxes.length };
@@ -99,6 +102,7 @@ export default {
     },
 
     addBox(position, color) {
+      console.log("add box");
       var newBox = new BoxClass({
         propsData: {
           position: position,

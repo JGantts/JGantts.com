@@ -88,7 +88,7 @@ export default {
 
 #app {
   color: #000000;
-  background-color: #EFEFEF;
+  background-color: #FAFAFA;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -275,7 +275,7 @@ a {
   position: relative;
   text-align: var(--alignment);
   z-index: 1;
-  background-color: #FAFAFA;
+  background-color: #EFEFEF;
   border-radius: var(--border-radius-tl) var(--border-radius-tr) var(--border-radius-br) var(--border-radius-bl);
 }
 

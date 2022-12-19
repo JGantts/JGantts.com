@@ -71,7 +71,7 @@ export default {
 
     async renderScene() {
       console.log("render scene");
-      for(sideAndDirection in [
+      for(let sideAndDirection in [
         {side: this.topRowBoxes.left, dir: -1},
         {side: this.topRowBoxes.right, dir: 1}
       ]) {

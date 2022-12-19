@@ -10,7 +10,7 @@
 </template>
 
 <script>
-import Background from './Background.vue'
+import Background from './components/Background.vue'
 
 export default {
   name: 'App',

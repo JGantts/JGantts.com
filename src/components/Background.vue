@@ -25,6 +25,8 @@ export default {
       let oldPixelsPerSide = this.topRowBoxes.left.length;
       let countToAdd = newPixelsPerSide - oldPixelsPerSide;
 
+      console.log(countToAdd);
+
       if (countToAdd = 0) {
         return;
 
@@ -66,9 +68,7 @@ export default {
         new Promise(r => setTimeout(r, 50)),
         this.renderScene(),
       ]);
-      console.log("done render loop");
       this.renderLoop();
-      console.log("recall render loop");
     },
 
     async renderScene() {
@@ -86,7 +86,6 @@ export default {
           this.renderColumn(side[indexB], direction*(indexB+1));
         }
       }
-      console.log("done render scene")
     },
 
     async renderColumn(column, xPosition) {

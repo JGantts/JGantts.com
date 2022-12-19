@@ -4,18 +4,23 @@
       <div id="wrapper">
         <router-view/>
       </div>
-      <div id="background"></div>
+      <Background></Background>
     </div>
   </div>
 </template>
 
 <script>
+import Background from './Background.vue'
+
 export default {
   name: 'App',
+  components: {
+    Background,
+  },
   async created() {
-  await new Promise(r => setTimeout(r, 1000));
-  document.body.classList.remove("is-loading");
-  }
+   await new Promise(r => setTimeout(r, 1000));
+   document.body.classList.remove("is-loading");
+  },
 }
 
 </script>

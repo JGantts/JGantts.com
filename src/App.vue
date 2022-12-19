@@ -82,7 +82,7 @@ export default {
 
 #app {
   color: #000000;
-      background-color: #EFEFEF;
+  background-color: #EFEFEF;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -97,9 +97,9 @@ export default {
 }
 
 #background {
-    position: absolute;
-    left: 0;
-    top: 0;
+  position: absolute;
+  left: 0;
+  top: 0;
   z-index: -100;
   background-attachment: scroll;
   pointer-events: none;

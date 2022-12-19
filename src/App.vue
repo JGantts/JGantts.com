@@ -4,7 +4,7 @@
       <div id="wrapper">
         <router-view/>
       </div>
-      <Background></Background>
+      <Background id="background"></Background>
     </div>
   </div>
 </template>

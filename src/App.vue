@@ -27,7 +27,7 @@ export default {
   font-display: auto;
   src:
     local("Figtree"),
-    url(./assets/fonts//Figtree/Figtree-Light.woff2),
+    url(assets/fonts//Figtree/Figtree-Light.woff2),
     format("woff2");
 }
 @font-face {
@@ -36,7 +36,7 @@ export default {
   font-display: auto;
   src:
     local("Figtree"),
-    url(./assets/fonts/Figtree/Figtree-Regular.woff2),
+    url(assets/fonts/Figtree/Figtree-Regular.woff2),
     format("woff2");
 }
 @font-face {
@@ -45,7 +45,7 @@ export default {
   font-display: auto;
   src:
     local("Figtree"),
-    url(./assets/fonts/Figtree/Figtree-Medium.woff2),
+    url(assets/fonts/Figtree/Figtree-Medium.woff2),
     format("woff2");
 }
 @font-face {
@@ -54,7 +54,7 @@ export default {
   font-display: auto;
   src:
     local("Figtree"),
-    url(./assets/fonts/Figtree/Figtree-Bold.woff2),
+    url(assets/fonts/Figtree/Figtree-Bold.woff2),
     format("woff2");
 }
 @font-face {
@@ -63,7 +63,7 @@ export default {
   font-display: auto;
   src:
     local("Figtree"),
-    url(./assets/fonts/Figtree/Figtree-ExtraBold.woff2),
+    url(assets/fonts/Figtree/Figtree-ExtraBold.woff2),
     format("woff2");
 }
 @font-face {
@@ -72,7 +72,7 @@ export default {
   font-display: auto;
   src:
     local("Figtree"),
-    url(./assets/fonts/Figtree/Figtree-Black.woff2),
+    url(assets/fonts/Figtree/Figtree-Black.woff2),
     format("woff2");
 }
 

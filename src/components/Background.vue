@@ -123,9 +123,10 @@ export default {
     window.removeEventListener("resize", this.resizedWindow);
   },
 
-  mounted() {
+  async mounted() {
     console.log("Hello, world!");
-    this.resizedWindow();
+    await this.resizedWindow();
+    this.renderLoop();
   },
 }
 

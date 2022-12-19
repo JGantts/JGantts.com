@@ -111,6 +111,7 @@ export default {
   position: fixed;
   left: 0;
   top: 0;
+  right: 0;
   height: 100vh;
   width: 100vw;
   z-index: -100;

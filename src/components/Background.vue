@@ -96,11 +96,12 @@ export default {
         (column.boxes.length == 0 || column.spawnCountdown >= column.spawnInterval)
         && column.boxes.length*boxSize < window.outerHeight
       ) {
+        console.log(xPosition);
         let position = { x: xPosition, y: column.boxes.length };
         let color = { 
-          r: Math.floor(Math.random()*10) + 190, 
-          g: Math.floor(Math.random()*10) + 45, 
-          b: Math.floor(Math.random()*10) + 245,
+          r: Math.floor(Math.random()*50) + 170, 
+          g: Math.floor(Math.random()*50) + 30, 
+          b: Math.floor(Math.random()*50) + 205,
         };
         column.boxes.push({
           position: position,

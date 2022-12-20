@@ -129,12 +129,16 @@ export default {
           parentColor = column[column.length-1].color;
         }
         if (sideIndex > 0) {
-          leftCousinColor = side[sideIndex - 1].color;
+          let leftLineage = side[sideIndex - 1];
+          if(leftLineage.length > column.boxes.length) {
+            leftCousinColor = leftLineage.boxes[column.boxes.length - 1].color;
+          }
         }
         if (sideIndex < side.length - 1) {
-          console.log(sideIndex);
-          console.log(side.length);
-          rightCousinColor = side[sideIndex + 1].color;
+          let rightLineage = side[sideIndex + 1];
+          if(rightLineage.length > column.boxes.length) {
+            rightCousinColor = rightLineage.boxes[column.boxes.length - 1].color;
+          }
         }
         let colorToTint = {
           r: 0,

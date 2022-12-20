@@ -73,7 +73,7 @@ export default {
           }
         }
       }
-    },
+    }, 
 
     async renderLoop() {
       console.log("render loop");

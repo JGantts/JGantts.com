@@ -64,11 +64,11 @@ export default {
           if (oldPixelsPerSide === 0) {
             let slowOnes = getRandomElements(sides[sideIndex], 3);
             for(let slowOneIndex in slowOnes) {
-              slowOnes[slowOneIndex].spawnIncrement = 0.5 + Math.floor((Math.random()/10));
+              slowOnes[slowOneIndex].spawnIncrement = 0.5 + Math.random()/10;
             }
             let fastOnes = getRandomElements(sides[sideIndex], 3);
             for(let fastOneIndex in fastOnes) {
-              fastOnes[fastOneIndex].spawnIncrement = 1.5 - Math.floor((Math.random()/10));
+              fastOnes[fastOneIndex].spawnIncrement = 1.5 - Math.random()/10;
             }
           }
         }
@@ -103,7 +103,11 @@ export default {
 
     async renderColumn(column, xPosition) {
       console.log("render column");
-      column.spawnCountdown += column.spawnIncrement;
+      if(column.spawnCountdown < 0) {
+        column.spawnCountdown += 1;
+      } else {
+        column.spawnCountdown += column.spawnIncrement;
+      }
       if(
         column.spawnCountdown >= column.spawnIncrement
         && (column.boxes.length-1)*boxSize < window.outerHeight

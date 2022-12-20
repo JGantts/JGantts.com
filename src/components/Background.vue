@@ -117,11 +117,14 @@ export default {
         let position = { x: xPosition, y: column.boxes.length };
 
         let color = color = { 
-          r: Math.floor(Math.random()*50) + 0, 
-          g: Math.floor(Math.random()*50) + 100, 
+          r: Math.floor(Math.random()*50) + 0,
+          g: Math.floor(Math.random()*50) + 100,
           b: Math.floor(Math.random()*50) + 200,
           a: Math.floor(Math.random()*200) + 25,
         };
+        if (Math.random()>0.99) {
+          color.r = 255
+        }
         let parent = null;
         let leftCousin = null;
         let rightCousin = null;

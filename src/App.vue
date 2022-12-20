@@ -95,13 +95,13 @@ export default {
 
 #app {
   color: #000000;
-  background-color: rgba(0, 0, 0, 0);
+  background-color: #1D6EB880;
 }
 
 @media (prefers-color-scheme: dark) {
     #app {
       color: #FFFFFF;
-      background-color: rgba(0, 0, 0, 0);
+      background-color: #12457380;
     }
 }
 

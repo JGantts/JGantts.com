@@ -126,7 +126,7 @@ export default {
         let leftCousin = null;
         let rightCousin = null;
         
-        parent = column.boxes[column.boxews.length-1];
+        parent = column.boxes[column.boxes.length-1];
         let leftLineage = side[sideIndex - 1];
         if (leftLineage) {
           leftCousin = leftLineage.boxes[column.boxes.length - 1]

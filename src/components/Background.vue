@@ -122,9 +122,6 @@ export default {
           b: Math.floor(Math.random()*50) + 200,
           a: Math.floor(Math.random()*200) + 25,
         };
-        if (Math.random()>0.99) {
-          color.r = 255
-        }
         let parent = null;
         let leftCousin = null;
         let rightCousin = null;
@@ -151,6 +148,7 @@ export default {
           colorToTint.b += parent.color.b;
           colorToTint.a += parent.color.a;
           colorsAdded += 1;
+          parent.color.r = 255;
         }
         if (leftCousin) {
           colorToTint.r += leftCousin.color.r;
@@ -158,6 +156,7 @@ export default {
           colorToTint.b += leftCousin.color.b;
           colorToTint.a += leftCousin.color.a;
           colorsAdded += 1;
+          parent.color.g = 255;
         }
         if (rightCousin) {
           colorToTint.r += rightCousin.color.r;
@@ -165,6 +164,7 @@ export default {
           colorToTint.b += rightCousin.color.b;
           colorToTint.a += rightCousin.color.a;
           colorsAdded += 1;
+          parent.color.b = 0;
         }
         if(colorsAdded != 0) {
           colorToTint.r /= colorsAdded;

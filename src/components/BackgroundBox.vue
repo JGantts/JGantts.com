@@ -16,18 +16,35 @@ export default {
       }
       return 1;
     },
+    rgbToHex(rgb) {
+      return `#${decToTwoDigitHex(rbg.r)}${decToTwoDigitHex(rbg.g)}${decToTwoDigitHex(rbg.b)}`
+    }
   },
+}
+
+function decToTwoDigitHex(dec) {
+  let hexRaw = dec.toString(16);
+  return (hexRaw.length==1) ? "0"+hexRaw : hexRaw;
 }
 </script>
 
 <template>
-  <div :style="{
-    backgroundColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
-    position: `absolute`,
-    left: `${position.x*boxSize}`,
-    top: `${position.y*boxSize}`,
-    width: `${boxSize}`,
-    height: `${boxSize}`,
-  }">
+  <div class="box">
   </div>
 </template>
+
+<style>
+  .box {
+    position: absolute;
+    width: v-bind(boxSize);
+    height: v-bind(boxSize);
+  }
+</style>
+
+<style scoped>
+  .box {
+    background-color: v-bind("rgbToHex(color)");
+    left: v-bind("position.x*boxSize");
+    top: v-bind("position.y*boxSize")
+  }
+</style>

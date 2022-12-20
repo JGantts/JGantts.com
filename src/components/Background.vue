@@ -115,16 +115,31 @@ export default {
         column.spawnCountdown = 0
         console.log(xPosition);
         let position = { x: xPosition, y: column.boxes.length };
-        let color = { 
-          r: Math.floor(Math.random()*50) + 0, 
-          g: Math.floor(Math.random()*50) + 100, 
-          b: Math.floor(Math.random()*50) + 200,
-          a: Math.floor(Math.random()*200) + 25,
-        };
+        let color = nil;
         if(Math.random()>0.995) {
-          color.g = Math.floor(Math.random()*100) + 120;
-          color.b = Math.floor(Math.random()*50) + 100;
-          color.a = 255;
+          //seaweed
+          color = { 
+            r: Math.floor(Math.random()*50) + 0, 
+            g: Math.floor(Math.random()*100) + 120,
+            b: Math.floor(Math.random()*50) + 100,
+            a: 255
+          };
+        } else if(Math.random()>0.9991) {
+          //fish
+          color = { 
+            r: Math.floor(Math.random()*50) + 200, 
+            g: Math.floor(Math.random()*50) + 0,
+            b: Math.floor(Math.random()*50) + 0,
+            a: 255
+          };
+        }else {
+          //ocean
+          color = { 
+            r: Math.floor(Math.random()*50) + 0, 
+            g: Math.floor(Math.random()*50) + 100, 
+            b: Math.floor(Math.random()*50) + 200,
+            a: Math.floor(Math.random()*200) + 25,
+          };
         }
         column.boxes.push({
           position: position,

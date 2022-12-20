@@ -90,26 +90,26 @@ export default {
     },
 
     async renderColumn(column, xPosition) {
-    //  if(column.spawnCountdown < 0) {
-    //    column.spawnCountdown += 1;
-    //  } else {
-    //    column.spawnCountdown += column.spawnIncrement;
-     // }
-     // if(
-     //   column.spawnCountdown >= 1
-      //  && (column.boxes.length-1)*boxSize < window.outerHeight
-     // ) {
+      if(column.spawnCountdown < 0) {
+        column.spawnCountdown += 1;
+      } else {
+        column.spawnCountdown += column.spawnIncrement;
+      }
+      if(
+        column.spawnCountdown >= 1
+        && (column.boxes.length-1)*boxSize < window.outerHeight
+      ) {
         column.spawnCountdown = 0
         let position = { x: xPosition, y: column.boxes.length };
         let color = { 
           r: Math.floor(Math.random()*50) + 0,
           g: Math.floor(Math.random()*50) + 100,
           b: Math.floor(Math.random()*50) + 200,
-         // a: Math.floor(Math.random()*200) + 25,
+          a: Math.floor(Math.random()*200) + 25,
         };
 
         
-        /*let parent = null;
+        let parent = null;
         let leftCousin = null;
         let rightCousin = null;
         
@@ -182,7 +182,7 @@ export default {
           color.g = green;
           color.b = blue;
           color.a = alpha;
-        }*/
+        }
         
 
         column.boxes.push({
@@ -190,7 +190,7 @@ export default {
           color: color,
           element: this.addBox(position, color),
         });
-     // }
+      }
     },
 
     addBox(position, color) {

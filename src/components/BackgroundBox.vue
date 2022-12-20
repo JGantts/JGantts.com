@@ -17,7 +17,7 @@ export default {
       return 1;
     },
     rgbaToHex(rgb) {
-      return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}`
+      return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}${decToTwoDigitHex(rgb.a)}`
     }
   },
 }

@@ -16,8 +16,8 @@ export default {
       }
       return 1;
     },
-    rgbToHex(rgb) {
-      return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}`
+    rgbaToHex(rgb) {
+      return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}${decToTwoDigitHex(rgb.a)}`
     }
   },
 }
@@ -30,7 +30,7 @@ function decToTwoDigitHex(dec) {
 
 <template>
   <div class="box" :style="{
-    '--backgroundColor': `${rgbToHex(color)}`,
+    '--backgroundColor': `${rgbaToHex(color)}`,
     '--left': `${position.x*boxSize - xDirection()*boxSize/2}px`,
     '--top': `${position.y*boxSize}px`,
     '--boxSize': `${boxSize}px`

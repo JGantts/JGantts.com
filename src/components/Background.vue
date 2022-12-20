@@ -119,6 +119,7 @@ export default {
           r: Math.floor(Math.random()*50) + 0, 
           g: Math.floor(Math.random()*50) + 100, 
           b: Math.floor(Math.random()*50) + 200,
+          a: Math.floor(Math.random()*200) + 25,
         };
         column.boxes.push({
           position: position,

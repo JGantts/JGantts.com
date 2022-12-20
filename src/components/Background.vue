@@ -191,10 +191,10 @@ export default {
           blue = Math.floor(blue/multiplierSum);
           alpha = Math.floor(alpha/multiplierSum);
 
-          color.r += red;
-          color.g += green;
-          color.b += blue;
-          color.a += alpha;
+          color.r = red;
+          color.g = green;
+          color.b = blue;
+          color.a = alpha;
         }
 
         column.boxes.push({

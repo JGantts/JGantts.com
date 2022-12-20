@@ -169,8 +169,8 @@ export default {
           colorToTint.b /= colorsAdded;
           colorToTint.a /= colorsAdded;
 
-          let randomMultiplier = Math.random()>0.99 ? 5 : 1;
-          let consistentMultiplier = 3;
+          let randomMultiplier = Math.random()>0.99 ? 57 : 1;
+          let consistentMultiplier = 7;
           let multiplierSum = randomMultiplier + consistentMultiplier;
 
           let red =
@@ -254,6 +254,7 @@ function getRandomElements(arr, n) {
   <div id="animation-base" style="
     position: absolute;
     left: 50vw;
+    top: -20px;
   ">
   </div>
 </template>

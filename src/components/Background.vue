@@ -115,7 +115,7 @@ export default {
         column.spawnCountdown = 0
         console.log(xPosition);
         let position = { x: xPosition, y: column.boxes.length };
-        let color = nil;
+        let color = null;
         if(Math.random()>0.995) {
           //seaweed
           color = { 

@@ -21,7 +21,7 @@ export default {
     async resizedWindow() {
       let newWidthRaw = window.outerWidth/boxSize;
       let newWidthPerSideRaw = newWidthRaw/2;
-      let newPixelsPerSide = Math.ceil(newWidthPerSideRaw);
+      let newPixelsPerSide = Math.ceil(newWidthPerSideRaw) + 1;
       let oldPixelsPerSide = this.topRowBoxes.left.length;
       let countToAdd = newPixelsPerSide - oldPixelsPerSide;
 

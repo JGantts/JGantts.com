@@ -78,7 +78,7 @@ export default {
     async renderLoop() {
       console.log("render loop");
       await Promise.all([
-        new Promise(r => setTimeout(r, 50)),
+        new Promise(r => setTimeout(r, 500)),
         this.renderScene(),
       ]);
       this.renderLoop();

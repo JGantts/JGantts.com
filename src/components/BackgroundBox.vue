@@ -29,12 +29,7 @@ function decToTwoDigitHex(dec) {
 </script>
 
 <template>
-  <div class="box" :style="{
-    '--backgroundColor': this.rgbToHex(this.color),
-    '--left': `${position.x*boxSize}`,
-    '--top': `${position.y*boxSize}`,
-    '--boxSize': `${boxSize}`
-  }">
+  <div class="box" >
   </div>
 </template>
 

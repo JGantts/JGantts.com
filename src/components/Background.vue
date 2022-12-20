@@ -96,7 +96,7 @@ export default {
         column.spawnCountdown += column.spawnIncrement;
       }
       if(
-        column.spawnCountdown >= column.spawnIncrement
+        column.spawnCountdown >= 1
         && (column.boxes.length-1)*boxSize < window.outerHeight
       ) {
         column.spawnCountdown = 0

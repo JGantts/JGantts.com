@@ -251,10 +251,16 @@ function getRandomElements(arr, n) {
 </script>
 
 <template>
-  <div id="animation-base" style="
-    position: absolute;
-    left: 50vw;
-    top: -20px;
-  ">
+  <div id="animation-base">
   </div>
 </template>
+
+<style scoped>
+#animation-base {
+  position: absolute;
+  left: 50vw;
+  top: -20px;
+  height: calc(100vh+ 20px);
+  overflow-y: clip;
+}
+</style>

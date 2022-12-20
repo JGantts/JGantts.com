@@ -95,13 +95,13 @@ export default {
 
 #app {
   color: #000000;
-  background-color: rgba(0, 0, 0, 0);
+  background-image: linear-gradient(343deg, #0E3B63 0%, #2184DE 60%);
 }
 
 @media (prefers-color-scheme: dark) {
     #app {
       color: #FFFFFF;
-      background-color: rgba(0, 0, 0, 0);
+      background-image: linear-gradient(343deg, #082845 25%, #2184DE 100%);
     }
 }
 

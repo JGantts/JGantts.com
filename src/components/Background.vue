@@ -33,6 +33,18 @@ export default {
       } else if(countToAdd < 0) {
         //Subtract boxes
         let countToDelete = Math.abs(countToAdd);
+        for(let i=0; i< countToDelete; i++) {
+          let columnLeft = this.topRowBoxes[i];
+          for(let index in columnLeft.boxes) {
+            let toDelete = columnLeft.boxes[index].element;
+            toDelete.parentNode.removeChild(toDelete);
+          }
+          let columnRight = this.topRowBoxes[i];
+          for(let index in columnLeft.boxes) {
+            let toDelete = columnRight.boxes[index].element;
+            toDelete.parentNode.removeChild(toDelete);
+          }
+        }
         this.topRowBoxes.left.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);
         this.topRowBoxes.right.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);
 
@@ -43,8 +55,8 @@ export default {
           [...Array(countToAdd)].forEach((v, i) => {
             sides[sideIndex].push(
               {
-                spawnInterval: Math.floor(Math.random()*100),
-                spawnCountdown: 0,
+                spawnIncrement: Math.random()+0.5,
+                spawnCountdown: -Math.random()*100,
                 boxes: [ ],
               }
             );
@@ -52,11 +64,11 @@ export default {
           if (oldPixelsPerSide === 0) {
             let slowOnes = getRandomElements(sides[sideIndex], 3);
             for(let slowOneIndex in slowOnes) {
-              slowOnes[slowOneIndex].spawnInterval = Math.floor(Math.random()*10) + 90;
+              slowOnes[slowOneIndex].spawnIncrement = 0.5 + Math.random()/10;
             }
             let fastOnes = getRandomElements(sides[sideIndex], 3);
             for(let fastOneIndex in fastOnes) {
-              fastOnes[fastOneIndex].spawnInterval = Math.floor(Math.random()*10);
+              fastOnes[fastOneIndex].spawnIncrement = 1.5 - Math.random()/10;
             }
           }
         }
@@ -91,11 +103,16 @@ export default {
 
     async renderColumn(column, xPosition) {
       console.log("render column");
-      column.spawnCountdown += 1;
+      if(column.spawnCountdown < 0) {
+        column.spawnCountdown += 1;
+      } else {
+        column.spawnCountdown += column.spawnIncrement;
+      }
       if(
-        column.spawnCountdown >= column.spawnInterval
+        column.spawnCountdown >= column.spawnIncrement
         && (column.boxes.length-1)*boxSize < window.outerHeight
       ) {
+        column.spawnCountdown = 0
         console.log(xPosition);
         let position = { x: xPosition, y: column.boxes.length };
         let color = { 

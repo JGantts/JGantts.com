@@ -78,7 +78,7 @@ export default {
     async renderLoop() {
       console.log("render loop");
       await Promise.all([
-        new Promise(r => setTimeout(r, 500)),
+        new Promise(r => setTimeout(r, 50)),
         this.renderScene(),
       ]);
       this.renderLoop();
@@ -103,7 +103,6 @@ export default {
 
     async renderColumn(side, sideIndex, column, xPosition) {
       console.log("render column");
-      console.log(column);
       if(column.spawnCountdown < 0) {
         column.spawnCountdown += 1;
       } else {

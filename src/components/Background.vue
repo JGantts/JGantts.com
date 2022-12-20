@@ -84,6 +84,8 @@ export default {
         //console.log(side);
         //console.log(JSON.stringify(side));
         for (let indexB in side) {
+          console.log(indexB);
+          console.log(direction);
           this.renderColumn(side[indexB], direction*(indexB+1));
         }
       }

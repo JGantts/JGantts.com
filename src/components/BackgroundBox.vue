@@ -29,7 +29,9 @@ function decToTwoDigitHex(dec) {
 </script>
 
 <template>
-  <div class="box" >
+  <div class="box" :style="{
+    '--boxSize': `${boxSize}`
+  }">
   </div>
 </template>
 

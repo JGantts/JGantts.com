@@ -90,15 +90,15 @@ export default {
     },
 
     async renderColumn(side, sideIndex, column, xPosition) {
-      if(column.spawnCountdown < 0) {
-        column.spawnCountdown += 1;
-      } else {
-        column.spawnCountdown += column.spawnIncrement;
-      }
-      if(
-        column.spawnCountdown >= 1
-        && (column.boxes.length-1)*boxSize < window.outerHeight
-      ) {
+    //  if(column.spawnCountdown < 0) {
+    //    column.spawnCountdown += 1;
+    //  } else {
+    //    column.spawnCountdown += column.spawnIncrement;
+     // }
+     // if(
+     //   column.spawnCountdown >= 1
+      //  && (column.boxes.length-1)*boxSize < window.outerHeight
+     // ) {
         column.spawnCountdown = 0
         let position = { x: xPosition, y: column.boxes.length };
         let color = { 
@@ -190,7 +190,7 @@ export default {
           color: color,
           element: this.addBox(position, color),
         });
-      }
+     // }
     },
 
     addBox(position, color) {

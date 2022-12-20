@@ -91,6 +91,8 @@ export default {
 
     async renderColumn(column, xPosition) {
       console.log("render column");
+      console.log(column.boxes.length);
+      console.log(window.outerHeight);
       column.spawnCountdown += 1;
       if(
         (column.boxes.length == 0 || column.spawnCountdown >= column.spawnInterval)

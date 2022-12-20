@@ -33,6 +33,18 @@ export default {
       } else if(countToAdd < 0) {
         //Subtract boxes
         let countToDelete = Math.abs(countToAdd);
+        for(let i=0; i< countToDelete; i++) {
+          let columnLeft = this.topRowBoxes[i];
+          for(let index in columnLeft.boxes) {
+            let toDelete = columnLeft.boxes[index].element;
+            toDelete.parentNode.removeChild(toDelete);
+          }
+          let columnRight = this.topRowBoxes[i];
+          for(let index in columnLeft.boxes) {
+            let toDelete = columnRight.boxes[index].element;
+            toDelete.parentNode.removeChild(toDelete);
+          }
+        }
         this.topRowBoxes.left.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);
         this.topRowBoxes.right.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);
 

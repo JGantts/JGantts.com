@@ -55,7 +55,7 @@ export default {
           [...Array(countToAdd)].forEach((v, i) => {
             sides[sideIndex].push(
               {
-                spawnInterval: Math.random()+0.5,
+                spawnIncrement: Math.random()+0.5,
                 spawnCountdown: -Math.random()*100,
                 boxes: [ ],
               }
@@ -64,11 +64,11 @@ export default {
           if (oldPixelsPerSide === 0) {
             let slowOnes = getRandomElements(sides[sideIndex], 3);
             for(let slowOneIndex in slowOnes) {
-              slowOnes[slowOneIndex].spawnInterval = 0.5 + Math.floor((Math.random()/10));
+              slowOnes[slowOneIndex].spawnIncrement = 0.5 + Math.floor((Math.random()/10));
             }
             let fastOnes = getRandomElements(sides[sideIndex], 3);
             for(let fastOneIndex in fastOnes) {
-              fastOnes[fastOneIndex].spawnInterval = 1.5 - Math.floor((Math.random()/10));
+              fastOnes[fastOneIndex].spawnIncrement = 1.5 - Math.floor((Math.random()/10));
             }
           }
         }
@@ -103,9 +103,9 @@ export default {
 
     async renderColumn(column, xPosition) {
       console.log("render column");
-      column.spawnCountdown += 1;
+      column.spawnCountdown += column.spawnIncrement;
       if(
-        column.spawnCountdown >= column.spawnInterval
+        column.spawnCountdown >= column.spawnIncrement
         && (column.boxes.length-1)*boxSize < window.outerHeight
       ) {
         column.spawnCountdown = 0

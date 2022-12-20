@@ -41,10 +41,10 @@ function decToTwoDigitHex(dec) {
 <style>
   .box {
     position: absolute;
-    width: var(--boxSize);
-    height: var(--boxSize);
-    border-radius: calc(var(--boxSize)/4);
-    border-width: calc(var(--boxSize)/5);
+    width: calc(var(--boxSize)*4/5);
+    height: calc(var(--boxSize)*4/5);
+    border-radius: calc(var(--boxSize)/3);
+    border-width: calc(var(--boxSize)*1/5);
     border-color: rgba(0, 0, 0, 0);
   }
 </style>

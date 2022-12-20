@@ -93,7 +93,7 @@ export default {
       console.log("render column");
       column.spawnCountdown += 1;
       if(
-        (column.boxes.length == 0 || column.spawnCountdown >= column.spawnInterval)
+        column.spawnCountdown >= column.spawnInterval
         && column.boxes.length*boxSize < window.outerHeight
       ) {
         console.log(xPosition);

@@ -29,22 +29,27 @@ function decToTwoDigitHex(dec) {
 </script>
 
 <template>
-  <div class="box">
+  <div class="box" :style="{
+    '--backgroundColor': this.rgbToHex(this.color),
+    '--left': `${position.x*boxSize}`,
+    '--top': `${position.y*boxSize}`,
+    '--boxSize': `${boxSize}`
+  }">
   </div>
 </template>
 
 <style>
   .box {
     position: absolute;
-    width: v-bind(boxSize);
-    height: v-bind(boxSize);
+    width: var(--boxSize);
+    height: var(--boxSize);
   }
 </style>
 
 <style scoped>
   .box {
-    background-color: v-bind("rgbToHex(color)");
-    left: v-bind("position.x*boxSize");
-    top: v-bind("position.y*boxSize")
+    background-color: var(--backgroundColor);
+    left: var(--left);
+    top: var(--top);
   }
 </style>

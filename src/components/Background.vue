@@ -77,7 +77,7 @@ export default {
 
     async renderLoop() {
       await Promise.all([
-        new Promise(r => setTimeout(r, 500)),
+        new Promise(r => setTimeout(r, 50)),
         this.renderScene(),
       ]);
       this.renderLoop();
@@ -113,7 +113,7 @@ export default {
       
         let position = { x: xPosition, y: column.boxes.length };
 
-        let color = color = { 
+        let color = { 
           r: Math.floor(Math.random()*50) + 0,
           g: Math.floor(Math.random()*50) + 100,
           b: Math.floor(Math.random()*50) + 200,

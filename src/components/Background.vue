@@ -164,6 +164,7 @@ export default {
           colorToTint.a += rightCousin.color.a;
           colorsAdded += 1;
         }
+        console.log(colorToTint);
         colorToTint.r /= colorsAdded;
         colorToTint.g /= colorsAdded;
         colorToTint.b /= colorsAdded;

@@ -168,6 +168,7 @@ export default {
         colorToTint.g /= colorsAdded;
         colorToTint.b /= colorsAdded;
         colorToTint.a /= colorsAdded;
+        console.log(colorToTint);
         if(colorToTint.a != 0) {
           color.r += colorToTint.r;
           color.g += colorToTint.g;

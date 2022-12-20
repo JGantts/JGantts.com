@@ -94,7 +94,7 @@ export default {
       column.spawnCountdown += 1;
       if(
         column.spawnCountdown >= column.spawnInterval
-        && column.boxes.length*boxSize < window.outerHeight
+        && (column.boxes.length-1)*boxSize < window.outerHeight
       ) {
         console.log(xPosition);
         let position = { x: xPosition, y: column.boxes.length };

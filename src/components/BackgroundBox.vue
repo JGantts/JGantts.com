@@ -31,7 +31,7 @@ function decToTwoDigitHex(dec) {
 <template>
   <div class="box" :style="{
     '--backgroundColor': `${rgbToHex(color)}`,
-    '--left': `${position.x*boxSize}px`,
+    '--left': `${position.x*boxSize - xDirection()*boxSize/2}px`,
     '--top': `${position.y*boxSize}px`,
     '--boxSize': `${boxSize}px`
   }">

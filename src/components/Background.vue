@@ -158,7 +158,7 @@ function getRandomElements(arr, n) {
 
 <template>
   <div id="animation-base" style="
-    position: absolute,
+    position: absolute;
     left: 50vw;
   ">
   </div>

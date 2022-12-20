@@ -96,12 +96,12 @@ export default {
         //console.log(side);
         //console.log(JSON.stringify(side));
         for (let indexB in side) {
-          this.renderColumn(side[indexB], direction*(Number(indexB)+1));
+          this.renderColumn(side, indexB, side[indexB], direction*(Number(indexB)+1));
         }
       }
     },
 
-    async renderColumn(column, xPosition) {
+    async renderColumn(side, sideIndex, column, xPosition) {
       console.log("render column");
       if(column.spawnCountdown < 0) {
         column.spawnCountdown += 1;
@@ -113,34 +113,70 @@ export default {
         && (column.boxes.length-1)*boxSize < window.outerHeight
       ) {
         column.spawnCountdown = 0
-        console.log(xPosition);
+      
         let position = { x: xPosition, y: column.boxes.length };
-        let color = null;
-        if(Math.random()>0.995) {
-          //seaweed
-          color = { 
-            r: Math.floor(Math.random()*50) + 0, 
-            g: Math.floor(Math.random()*100) + 120,
-            b: Math.floor(Math.random()*50) + 100,
-            a: 255
-          };
-        } else if(Math.random()>0.9991) {
-          //fish
-          color = { 
-            r: Math.floor(Math.random()*50) + 150,
-            g: Math.floor(Math.random()*50) + 50,
-            b: Math.floor(Math.random()*50) + 50,
-            a: 255
-          };
-        }else {
-          //ocean
-          color = { 
-            r: Math.floor(Math.random()*50) + 0, 
-            g: Math.floor(Math.random()*50) + 100, 
-            b: Math.floor(Math.random()*50) + 200,
-            a: Math.floor(Math.random()*200) + 25,
-          };
+
+        let color = color = { 
+          r: Math.floor(Math.random()*50) + 0, 
+          g: Math.floor(Math.random()*50) + 100, 
+          b: Math.floor(Math.random()*50) + 200,
+          a: Math.floor(Math.random()*200) + 25,
+        };
+        let parentColor = null;
+        let leftCousinColor = null;
+        let rightCousinColor = null;
+        if (column.length > 1) {
+          parentColor = column[column.length-1].color;
         }
+        if (sideIndex > 0) {
+          leftCousinColor = side[sideIndex - 1].color;
+        }
+        if (sideIndex < side.length - 1) {
+          rightCousinColor = side[sideIndex + 1].color;
+        }
+        let colorToTint = {
+          r: 0,
+          g: 0,
+          b: 0,
+          a: 0
+        }
+        let colorsAdded = 0;
+        if (parentColor != null) {
+          colorToTint.r += parentColor.r;
+          colorToTint.g += parentColor.g;
+          colorToTint.b += parentColor.b;
+          colorToTint.a += parentColor.a;
+          colorsAdded += 1;
+        }
+        if (leftCousinColor != null) {
+          colorToTint.r += leftCousinColor.r;
+          colorToTint.g += leftCousinColor.g;
+          colorToTint.b += leftCousinColor.b;
+          colorToTint.a += leftCousinColor.a;
+          colorsAdded += 1;
+        }
+        if (rightCousinColor != null) {
+          colorToTint.r += rightCousinColor.r;
+          colorToTint.g += rightCousinColor.g;
+          colorToTint.b += rightCousinColor.b;
+          colorToTint.a += rightCousinColor.a;
+          colorsAdded += 1;
+        }
+        colorToTint.r /= colorsAdded;
+        colorToTint.g /= colorsAdded;
+        colorToTint.b /= colorsAdded;
+        colorToTint.a /= colorsAdded;
+        if(colorToTint.a != 0) {
+          color.r += colorToTint.r;
+          color.g += colorToTint.g;
+          color.b += colorToTint.b;
+          color.a += colorToTint.a;
+          color.r /= 2;
+          color.g /= 2;
+          color.b /= 2;
+          color.a /= 2;
+        }
+        
         column.boxes.push({
           position: position,
           color: color,

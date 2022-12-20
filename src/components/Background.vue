@@ -123,23 +123,18 @@ export default {
           b: Math.floor(Math.random()*50) + 200,
           a: Math.floor(Math.random()*200) + 25,
         };
-        let parentColor = null;
-        let leftCousinColor = null;
-        let rightCousinColor = null;
-        if (column.length > 1) {
-          parentColor = column[column.length-1].color;
+        let parent = null;
+        let leftCousin = null;
+        let rightCousin = null;
+        
+        parent = column[column.length-1];
+        let leftLineage = side[sideIndex - 1];
+        if (leftLineage) {
+          leftCousin = leftLineage.boxes[column.boxes.length - 1]
         }
-        if (side.length > sideIndex + 1) {
-          let leftLineage = side[sideIndex - 1];
-          if(leftLineage.boxes.length >= column.boxes.length) {
-            leftCousinColor = leftLineage.boxes[column.boxes.length - 1].color;
-          }
-        }
-        if (sideIndex < side.length - 1) {
-          let rightLineage = side[sideIndex + 1];
-          if(rightLineage.boxes.length >= column.boxes.length) {
-            rightCousinColor = rightLineage.boxes[column.boxes.length - 1].color;
-          }
+        let rightLineage = side[sideIndex + 1];
+        if (rightLineage) {
+          rightCousin = rightLineage.boxes[column.boxes.length - 1]
         }
         let colorToTint = {
           r: 0,
@@ -148,25 +143,25 @@ export default {
           a: 0
         }
         let colorsAdded = 0;
-        if (parentColor != null) {
-          colorToTint.r += parentColor.r;
-          colorToTint.g += parentColor.g;
-          colorToTint.b += parentColor.b;
-          colorToTint.a += parentColor.a;
+        if (parent) {
+          colorToTint.r += parent.color.r;
+          colorToTint.g += parent.color.g;
+          colorToTint.b += parent.color.b;
+          colorToTint.a += parent.color.a;
           colorsAdded += 1;
         }
-        if (leftCousinColor != null) {
-          colorToTint.r += leftCousinColor.r;
-          colorToTint.g += leftCousinColor.g;
-          colorToTint.b += leftCousinColor.b;
-          colorToTint.a += leftCousinColor.a;
+        if (leftCousin) {
+          colorToTint.r += leftCousin.color.r;
+          colorToTint.g += leftCousin.color.g;
+          colorToTint.b += leftCousin.color.b;
+          colorToTint.a += leftCousin.color.a;
           colorsAdded += 1;
         }
-        if (rightCousinColor != null) {
-          colorToTint.r += rightCousinColor.r;
-          colorToTint.g += rightCousinColor.g;
-          colorToTint.b += rightCousinColor.b;
-          colorToTint.a += rightCousinColor.a;
+        if (rightCousin) {
+          colorToTint.r += rightCousin.color.r;
+          colorToTint.g += rightCousin.color.g;
+          colorToTint.b += rightCousin.color.b;
+          colorToTint.a += rightCousin.color.a;
           colorsAdded += 1;
         }
         colorToTint.r /= colorsAdded;

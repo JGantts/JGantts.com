@@ -101,9 +101,9 @@ export default {
         console.log(xPosition);
         let position = { x: xPosition, y: column.boxes.length };
         let color = { 
-          r: Math.floor(Math.random()*50) + 170, 
-          g: Math.floor(Math.random()*50) + 30, 
-          b: Math.floor(Math.random()*50) + 205,
+          r: Math.floor(Math.random()*50) + 0, 
+          g: Math.floor(Math.random()*50) + 100, 
+          b: Math.floor(Math.random()*50) + 200,
         };
         column.boxes.push({
           position: position,

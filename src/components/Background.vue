@@ -43,8 +43,8 @@ export default {
           [...Array(countToAdd)].forEach((v, i) => {
             sides[sideIndex].push(
               {
-                spawnInterval: Math.floor(Math.random()*100),
-                spawnCountdown: 0,
+                spawnInterval: Math.floor(Math.random())*2,
+                spawnCountdown: -Math.floor(Math.random()*100),
                 boxes: [ ],
               }
             );
@@ -96,6 +96,7 @@ export default {
         column.spawnCountdown >= column.spawnInterval
         && (column.boxes.length-1)*boxSize < window.outerHeight
       ) {
+        column.spawnCountdown = 0
         console.log(xPosition);
         let position = { x: xPosition, y: column.boxes.length };
         let color = { 

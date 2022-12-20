@@ -130,13 +130,13 @@ export default {
         }
         if (sideIndex > 0) {
           let leftLineage = side[sideIndex - 1];
-          if(leftLineage.length > column.boxes.length) {
+          if(leftLineage.boxes.length >= column.boxes.length) {
             leftCousinColor = leftLineage.boxes[column.boxes.length - 1].color;
           }
         }
         if (sideIndex < side.length - 1) {
           let rightLineage = side[sideIndex + 1];
-          if(rightLineage.length > column.boxes.length) {
+          if(rightLineage.boxes.length >= column.boxes.length) {
             rightCousinColor = rightLineage.boxes[column.boxes.length - 1].color;
           }
         }

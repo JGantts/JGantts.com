@@ -55,8 +55,8 @@ export default {
           [...Array(countToAdd)].forEach((v, i) => {
             sides[sideIndex].push(
               {
-                spawnInterval: Math.floor(Math.random()+0.5),
-                spawnCountdown: -Math.floor(Math.random()*100),
+                spawnInterval: Math.random()+0.5,
+                spawnCountdown: -Math.random()*100,
                 boxes: [ ],
               }
             );

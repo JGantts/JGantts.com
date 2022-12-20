@@ -22,12 +22,12 @@ export default {
 
 <template>
   <div :style="{
-    color: `rgb(${color.r}, ${color.g}, ${color.b})`,
-    position: `absolute`,
-    left: position.x*boxSize,
-    top: position.y*boxSize,
-    width: boxSize,
-    height: boxSize,
+    "background-color": `rgb(${color.r}, ${color.g}, ${color.b})`,
+    "position": `absolute`,
+    "left": `${position.x*boxSize}`,
+    "top": `${position.y*boxSize}`,
+    "width": `${boxSize}`,
+    "height": `${boxSize}`,
   }">
   </div>
 </template>

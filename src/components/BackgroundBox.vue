@@ -16,8 +16,8 @@ export default {
       }
       return 1;
     },
-    rgbToHex(rgb) {
-      return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}`
+    rgbaToHex(rgb) {
+      return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}${decToTwoDigitHex(rgb.a)}`
     }
   },
 }
@@ -30,8 +30,8 @@ function decToTwoDigitHex(dec) {
 
 <template>
   <div class="box" :style="{
-    '--backgroundColor': `${rgbToHex(color)}`,
-    '--left': `${position.x*boxSize}px`,
+    '--backgroundColor': `${rgbaToHex(color)}`,
+    '--left': `${position.x*boxSize - xDirection()*boxSize/2}px`,
     '--top': `${position.y*boxSize}px`,
     '--boxSize': `${boxSize}px`
   }">
@@ -41,8 +41,10 @@ function decToTwoDigitHex(dec) {
 <style>
   .box {
     position: absolute;
-    width: var(--boxSize);
-    height: var(--boxSize);
+    width: calc(var(--boxSize)*9/10);
+    height: calc(var(--boxSize)*9/10);
+    border-width: calc(var(--boxSize)*1/10);
+    border-color: rgba(0, 0, 0, 0);
   }
 </style>
 

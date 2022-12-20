@@ -44,7 +44,7 @@ function decToTwoDigitHex(dec) {
     width: var(--boxSize);
     height: var(--boxSize);
     border-radius: calc(var(--boxSize)/4);
-    border-width: calc(var(--boxSize)/10);
+    border-width: calc(var(--boxSize)/5);
     border-color: rgba(0, 0, 0, 0);
   }
 </style>

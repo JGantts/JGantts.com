@@ -92,7 +92,10 @@ export default {
     async renderColumn(column, xPosition) {
       console.log("render column");
       column.spawnCountdown += 1;
-      if(column.length == 0 || column.spawnCountdown >= column.spawnInterval) {
+      if(
+        (column.length == 0 || column.spawnCountdown >= column.spawnInterval)
+        && column.length*boxSize < window.outerHeight
+      ) {
         let position = { x: xPosition, y: column.boxes.length };
         let color = { 
           r: Math.floor(Math.random()*10) + 190, 

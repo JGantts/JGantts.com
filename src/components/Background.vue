@@ -156,7 +156,6 @@ export default {
           colorToTint.b += leftCousin.color.b;
           colorToTint.a += leftCousin.color.a;
           colorsAdded += 1;
-          leftCousin.color.g = 255;
         }
         if (rightCousin) {
           colorToTint.r += rightCousin.color.r;

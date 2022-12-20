@@ -121,7 +121,7 @@ export default {
           b: Math.floor(Math.random()*50) + 200,
           a: Math.floor(Math.random()*200) + 25,
         };
-        if(Math.random()>0.98) {
+        if(Math.random()>0.995) {
           color.g = Math.floor(Math.random()*100) + 120;
           color.b = Math.floor(Math.random()*50) + 100;
           color.a = 255;

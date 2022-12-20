@@ -168,18 +168,33 @@ export default {
           colorToTint.g /= colorsAdded;
           colorToTint.b /= colorsAdded;
           colorToTint.a /= colorsAdded;
-          color.r += colorToTint.r;
-          color.g += colorToTint.g;
-          color.b += colorToTint.b;
-          color.a += colorToTint.a;
-          color.r /= 2;
-          color.g /= 2;
-          color.b /= 2;
-          color.a /= 2;
-          color.r = Math.floor(color.r);
-          color.g = Math.floor(color.g);
-          color.b = Math.floor(color.b);
-          color.a = Math.floor(color.a);
+
+          let randomMultiplier = 1;
+          let consistentMultiplier = 3;
+          let multiplierSum = randomMultiplier + consistentMultiplier;
+
+          let red =
+            randomMultiplier * color.r
+            + consistentMultiplier * colorToTint.r;
+          let green =
+            randomMultiplier * color.g
+            + consistentMultiplier * colorToTint.g;
+          let blue =
+            randomMultiplier * color.b
+            + consistentMultiplier * colorToTint.b;
+          let alpha =
+            randomMultiplier * color.a
+            + consistentMultiplier * colorToTint.a;
+
+          red = Math.floor(red/multiplierSum);
+          green = Math.floor(green/multiplierSum);
+          blue = Math.floor(blue/multiplierSum);
+          alpha = Math.floor(alpha/multiplierSum);
+
+          color.r += red;
+          color.g += green;
+          color.b += blue;
+          color.a += alpha;
         }
 
         column.boxes.push({

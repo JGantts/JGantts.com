@@ -96,12 +96,12 @@ export default {
         //console.log(side);
         //console.log(JSON.stringify(side));
         for (let indexB in side) {
-          this.renderColumn(side[indexB], direction*(Number(indexB)+1));
+          this.renderColumn(side, Number(indexB), side[indexB], direction*(Number(indexB)+1));
         }
       }
     },
 
-    async renderColumn(column, xPosition) {
+    async renderColumn(side, sideIndex, column, xPosition) {
       console.log("render column");
       if(column.spawnCountdown < 0) {
         column.spawnCountdown += 1;
@@ -113,14 +113,75 @@ export default {
         && (column.boxes.length-1)*boxSize < window.outerHeight
       ) {
         column.spawnCountdown = 0
-        console.log(xPosition);
+      
         let position = { x: xPosition, y: column.boxes.length };
-        let color = { 
-          r: Math.floor(Math.random()*50) + 0, 
-          g: Math.floor(Math.random()*50) + 100, 
+
+        let color = color = { 
+          r: Math.floor(Math.random()*50) + 0,
+          g: Math.floor(Math.random()*50) + 100,
           b: Math.floor(Math.random()*50) + 200,
           a: Math.floor(Math.random()*200) + 25,
         };
+        let parent = null;
+        let leftCousin = null;
+        let rightCousin = null;
+        
+        parent = column.boxes[column.boxes.length-1];
+        let leftLineage = side[sideIndex - 1];
+        if (leftLineage) {
+          leftCousin = leftLineage.boxes[column.boxes.length - 1]
+        }
+        let rightLineage = side[sideIndex + 1];
+        if (rightLineage) {
+          rightCousin = rightLineage.boxes[column.boxes.length - 1]
+        }
+        let colorToTint = {
+          r: 0,
+          g: 0,
+          b: 0,
+          a: 0
+        }
+        let colorsAdded = 0;
+        if (parent) {
+          colorToTint.r += parent.color.r;
+          colorToTint.g += parent.color.g;
+          colorToTint.b += parent.color.b;
+          colorToTint.a += parent.color.a;
+          colorsAdded += 1;
+        }
+        if (leftCousin) {
+          colorToTint.r += leftCousin.color.r;
+          colorToTint.g += leftCousin.color.g;
+          colorToTint.b += leftCousin.color.b;
+          colorToTint.a += leftCousin.color.a;
+          colorsAdded += 1;
+        }
+        if (rightCousin) {
+          colorToTint.r += rightCousin.color.r;
+          colorToTint.g += rightCousin.color.g;
+          colorToTint.b += rightCousin.color.b;
+          colorToTint.a += rightCousin.color.a;
+          colorsAdded += 1;
+        }
+        if(colorsAdded != 0) {
+          colorToTint.r /= colorsAdded;
+          colorToTint.g /= colorsAdded;
+          colorToTint.b /= colorsAdded;
+          colorToTint.a /= colorsAdded;
+          color.r += colorToTint.r;
+          color.g += colorToTint.g;
+          color.b += colorToTint.b;
+          color.a += colorToTint.a;
+          color.r /= 2;
+          color.g /= 2;
+          color.b /= 2;
+          color.a /= 2;
+          color.r = Math.floor(color.r);
+          color.g = Math.floor(color.g);
+          color.b = Math.floor(color.b);
+          color.a = Math.floor(color.a);
+        }
+
         column.boxes.push({
           position: position,
           color: color,

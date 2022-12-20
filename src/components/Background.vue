@@ -96,7 +96,7 @@ export default {
         //console.log(side);
         //console.log(JSON.stringify(side));
         for (let indexB in side) {
-          this.renderColumn(side, indexB, side[indexB], direction*(Number(indexB)+1));
+          this.renderColumn(side, Number(indexB), side[indexB], direction*(Number(indexB)+1));
         }
       }
     },

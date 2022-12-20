@@ -127,9 +127,9 @@ export default {
         } else if(Math.random()>0.9991) {
           //fish
           color = { 
-            r: Math.floor(Math.random()*50) + 200, 
-            g: Math.floor(Math.random()*50) + 0,
-            b: Math.floor(Math.random()*50) + 0,
+            r: Math.floor(Math.random()*50) + 150,
+            g: Math.floor(Math.random()*50) + 50,
+            b: Math.floor(Math.random()*50) + 50,
             a: 255
           };
         }else {

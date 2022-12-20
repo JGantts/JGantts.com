@@ -55,7 +55,7 @@ export default {
           [...Array(countToAdd)].forEach((v, i) => {
             sides[sideIndex].push(
               {
-                spawnInterval: Math.floor(Math.random())+0.5,
+                spawnInterval: Math.floor(Math.random()+0.5),
                 spawnCountdown: -Math.floor(Math.random()*100),
                 boxes: [ ],
               }
@@ -64,11 +64,11 @@ export default {
           if (oldPixelsPerSide === 0) {
             let slowOnes = getRandomElements(sides[sideIndex], 3);
             for(let slowOneIndex in slowOnes) {
-              slowOnes[slowOneIndex].spawnInterval = Math.floor(Math.random()*10) + 90;
+              slowOnes[slowOneIndex].spawnInterval = 0.5 + Math.floor((Math.random()/10));
             }
             let fastOnes = getRandomElements(sides[sideIndex], 3);
             for(let fastOneIndex in fastOnes) {
-              fastOnes[fastOneIndex].spawnInterval = Math.floor(Math.random()*10);
+              fastOnes[fastOneIndex].spawnInterval = 1.5 - Math.floor((Math.random()/10));
             }
           }
         }

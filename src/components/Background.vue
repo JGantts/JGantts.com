@@ -93,8 +93,8 @@ export default {
       console.log("render column");
       column.spawnCountdown += 1;
       if(
-        (column.length == 0 || column.spawnCountdown >= column.spawnInterval)
-        && column.length*boxSize < window.outerHeight
+        (column.boxes.length == 0 || column.spawnCountdown >= column.spawnInterval)
+        && column.boxes.length*boxSize < window.outerHeight
       ) {
         let position = { x: xPosition, y: column.boxes.length };
         let color = { 

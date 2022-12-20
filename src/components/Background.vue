@@ -84,12 +84,12 @@ export default {
         //console.log(side);
         //console.log(JSON.stringify(side));
         for (let indexB in side) {
-          this.renderColumn(side, Number(indexB), side[indexB], direction*(Number(indexB)+1));
+          this.renderColumn(side[indexB], direction*(Number(indexB)+1));
         }
       }
     },
 
-    async renderColumn(side, sideIndex, column, xPosition) {
+    async renderColumn(column, xPosition) {
     //  if(column.spawnCountdown < 0) {
     //    column.spawnCountdown += 1;
     //  } else {
@@ -109,7 +109,7 @@ export default {
         };
 
         
-        let parent = null;
+        /*let parent = null;
         let leftCousin = null;
         let rightCousin = null;
         
@@ -182,7 +182,7 @@ export default {
           color.g = green;
           color.b = blue;
           color.a = alpha;
-        }
+        }*/
         
 
         column.boxes.push({

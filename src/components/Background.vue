@@ -76,7 +76,6 @@ export default {
     },
 
     async renderLoop() {
-      console.log("render loop");
       await Promise.all([
         new Promise(r => setTimeout(r, 50)),
         this.renderScene(),
@@ -85,7 +84,6 @@ export default {
     },
 
     async renderScene() {
-      console.log("render scene");
       let sidesAndDirections = [
         {side: this.topRowBoxes.left, dir: -1},
         {side: this.topRowBoxes.right, dir: 1}
@@ -102,7 +100,6 @@ export default {
     },
 
     async renderColumn(side, sideIndex, column, xPosition) {
-      console.log("render column");
       if(column.spawnCountdown < 0) {
         column.spawnCountdown += 1;
       } else {
@@ -206,7 +203,6 @@ export default {
     },
 
     addBox(position, color) {
-      console.log("add box");
       var newBox = new BoxClass({
         propsData: {
           position: position,
@@ -228,7 +224,6 @@ export default {
   },
 
   async mounted() {
-    console.log("Hello, world!");
     this.baseElement = document.getElementById('animation-base');
     await this.resizedWindow();
     this.renderLoop();

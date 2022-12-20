@@ -84,12 +84,12 @@ export default {
         //console.log(side);
         //console.log(JSON.stringify(side));
         for (let indexB in side) {
-          this.renderColumn(side[indexB], direction*(Number(indexB)+1));
+          this.renderColumn(side, Number(indexB), side[indexB], direction*(Number(indexB)+1));
         }
       }
     },
 
-    async renderColumn(column, xPosition) {
+    async renderColumn(side, sideIndex, column, xPosition) {
       if(column.spawnCountdown < 0) {
         column.spawnCountdown += 1;
       } else {

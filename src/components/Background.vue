@@ -176,6 +176,10 @@ export default {
           color.g /= 2;
           color.b /= 2;
           color.a /= 2;
+          color.r = Math.floor(color.r);
+          color.g = Math.floor(color.g);
+          color.b = Math.floor(color.b);
+          color.a = Math.floor(color.a);
         }
 
         column.boxes.push({

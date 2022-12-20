@@ -102,10 +102,8 @@ export default {
     },
 
     async renderColumn(side, sideIndex, column, xPosition) {
-      if (!column) {
-        console.log("fhjsd;ofhsoufhoh");
-      }
       console.log("render column");
+      console.log(column);
       if(column.spawnCountdown < 0) {
         column.spawnCountdown += 1;
       } else {

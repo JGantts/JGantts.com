@@ -95,13 +95,13 @@ export default {
 
 #app {
   color: #000000;
-  background-image: linear-gradient(343deg, #0E3B63 0%, #2184DE 60%);
+  background-color: rgba(0,0,0,0);
 }
 
 @media (prefers-color-scheme: dark) {
     #app {
       color: #FFFFFF;
-      background-image: linear-gradient(343deg, #082845 25%, #2184DE 100%);
+      background-color: rgba(0,0,0,0);
     }
 }
 
@@ -118,6 +118,16 @@ export default {
   background-attachment: scroll;
   pointer-events: none;
   z-index: 0;
+}
+
+#background {
+  background-image: linear-gradient(343deg, #0E3B63 0%, #2184DE 60%);
+}
+
+@media (prefers-color-scheme: dark) {
+    #app {
+      background-image: linear-gradient(343deg, #082845 25%, #2184DE 100%);
+    }
 }
 
 #text01 {

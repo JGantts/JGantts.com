@@ -128,7 +128,7 @@ export default {
         if (column.length > 1) {
           parentColor = column[column.length-1].color;
         }
-        if (sideIndex > 0) {
+        if (side.length > 0) {
           let leftLineage = side[sideIndex - 1];
           if(leftLineage.boxes.length >= column.boxes.length) {
             leftCousinColor = leftLineage.boxes[column.boxes.length - 1].color;

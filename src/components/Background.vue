@@ -33,18 +33,6 @@ export default {
       } else if(countToAdd < 0) {
         //Subtract boxes
         let countToDelete = Math.abs(countToAdd);
-        for(let i=0; i< countToDelete; i++) {
-          let columnLeft = this.topRowBoxes[i];
-          for(let index in columnLeft.boxes) {
-            let toDelete = columnLeft.boxes[index].element;
-            toDelete.parentNode.removeChild(toDelete);
-          }
-          let columnRight = this.topRowBoxes[i];
-          for(let index in columnLeft.boxes) {
-            let toDelete = columnRight.boxes[index].element;
-            toDelete.parentNode.removeChild(toDelete);
-          }
-        }
         this.topRowBoxes.left.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);
         this.topRowBoxes.right.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);
 
@@ -76,6 +64,7 @@ export default {
     },
 
     async renderLoop() {
+      console.log("render loop");
       await Promise.all([
         new Promise(r => setTimeout(r, 50)),
         this.renderScene(),
@@ -84,6 +73,7 @@ export default {
     },
 
     async renderScene() {
+      console.log("render scene");
       let sidesAndDirections = [
         {side: this.topRowBoxes.left, dir: -1},
         {side: this.topRowBoxes.right, dir: 1}
@@ -110,15 +100,15 @@ export default {
         && (column.boxes.length-1)*boxSize < window.outerHeight
       ) {
         column.spawnCountdown = 0
-      
         let position = { x: xPosition, y: column.boxes.length };
-
         let color = { 
           r: Math.floor(Math.random()*50) + 0,
           g: Math.floor(Math.random()*50) + 100,
           b: Math.floor(Math.random()*50) + 200,
           a: Math.floor(Math.random()*200) + 25,
         };
+
+        /*
         let parent = null;
         let leftCousin = null;
         let rightCousin = null;
@@ -193,6 +183,7 @@ export default {
           color.b = blue;
           color.a = alpha;
         }
+        */
 
         column.boxes.push({
           position: position,
@@ -203,6 +194,7 @@ export default {
     },
 
     addBox(position, color) {
+      console.log("add box");
       var newBox = new BoxClass({
         propsData: {
           position: position,
@@ -224,6 +216,7 @@ export default {
   },
 
   async mounted() {
+    console.log("Hello, world!");
     this.baseElement = document.getElementById('animation-base');
     await this.resizedWindow();
     this.renderLoop();

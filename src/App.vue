@@ -121,7 +121,7 @@ export default {
 }
 
 #app {
-  background-image: linear-gradient(343deg, #0E3B63 0%, #2184DE 60%);
+  background-image: linear-gradient(343deg, #2184DE 0%, #74AEE3 60%);
 }
 
 @media (prefers-color-scheme: dark) {

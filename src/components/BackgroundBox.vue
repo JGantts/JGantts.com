@@ -30,7 +30,9 @@ function decToTwoDigitHex(dec) {
 
 <template>
   <div class="box" :style="{
-    '--boxSize': `${boxSize}`
+    '--left': `${position.x*boxSize}px`,
+    '--top': `${position.y*boxSize}px`,
+    '--boxSize': `${boxSize}px`
   }">
   </div>
 </template>

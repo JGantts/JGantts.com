@@ -4,18 +4,25 @@
       <div id="wrapper">
         <router-view/>
       </div>
-      <div id="background"></div>
+      <div id="background">
+        <Background></Background>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
+import Background from './components/Background.vue'
+
 export default {
   name: 'App',
+  components: {
+    Background,
+  },
   async created() {
-  await new Promise(r => setTimeout(r, 1000));
-  document.body.classList.remove("is-loading");
-  }
+   await new Promise(r => setTimeout(r, 1000));
+   document.body.classList.remove("is-loading");
+  },
 }
 
 </script>
@@ -88,13 +95,13 @@ export default {
 
 #app {
   color: #000000;
-  background-color: #FAFAFA;
+  background-color: rgba(0, 0, 0, 0);
 }
 
 @media (prefers-color-scheme: dark) {
     #app {
       color: #FFFFFF;
-      background-color: #0f0f0f;
+      background-color: rgba(0, 0, 0, 0);
     }
 }
 
@@ -103,9 +110,11 @@ export default {
 }
 
 #background {
-  position: absolute;
+  position: fixed;
   left: 0;
   top: 0;
+  right: 0;
+  width: 100vw;
   z-index: -100;
   background-attachment: scroll;
   pointer-events: none;

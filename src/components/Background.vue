@@ -122,7 +122,7 @@ export default {
           a: Math.floor(Math.random()*200) + 25,
         };
         if(Math.random()>0.98) {
-          color.g = Math.floor(Math.random()*100) + 100;
+          color.g = Math.floor(Math.random()*100) + 155;
           color.a = 255;
         }
         column.boxes.push({

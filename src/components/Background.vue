@@ -119,7 +119,7 @@ export default {
           b: Math.floor(Math.random()*50) + 200,
           a: Math.floor(Math.random()*200) + 25,
         };
-        /*let parent = null;
+        let parent = null;
         let leftCousin = null;
         let rightCousin = null;
         
@@ -192,7 +192,7 @@ export default {
           color.g = green;
           color.b = blue;
           color.a = alpha;
-        }*/
+        }
 
         column.boxes.push({
           position: position,

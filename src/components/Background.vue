@@ -126,7 +126,7 @@ export default {
         let leftCousin = null;
         let rightCousin = null;
         
-        parent = column[column.length-1];
+        parent = column.boxes[column.boxews.length-1];
         let leftLineage = side[sideIndex - 1];
         if (leftLineage) {
           leftCousin = leftLineage.boxes[column.boxes.length - 1]
@@ -148,7 +148,6 @@ export default {
           colorToTint.b += parent.color.b;
           colorToTint.a += parent.color.a;
           colorsAdded += 1;
-          parent.color.r = 255;
         }
         if (leftCousin) {
           colorToTint.r += leftCousin.color.r;
@@ -163,7 +162,6 @@ export default {
           colorToTint.b += rightCousin.color.b;
           colorToTint.a += rightCousin.color.a;
           colorsAdded += 1;
-          rightCousin.color.b = 0;
         }
         if(colorsAdded != 0) {
           colorToTint.r /= colorsAdded;

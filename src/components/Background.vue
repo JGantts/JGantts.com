@@ -116,7 +116,7 @@ export default {
       
         let position = { x: xPosition, y: column.boxes.length };
 
-        let color = { 
+        let color = color = { 
           r: Math.floor(Math.random()*50) + 0,
           g: Math.floor(Math.random()*50) + 100,
           b: Math.floor(Math.random()*50) + 200,
@@ -169,8 +169,8 @@ export default {
           colorToTint.b /= colorsAdded;
           colorToTint.a /= colorsAdded;
 
-          let randomMultiplier = Math.random()>0.99 ? 30 : 1;
-          let consistentMultiplier = 5;
+          let randomMultiplier = Math.random()>0.99 ? 57 : 1;
+          let consistentMultiplier = 7;
           let multiplierSum = randomMultiplier + consistentMultiplier;
 
           let red =

@@ -132,6 +132,8 @@ export default {
           leftCousinColor = side[sideIndex - 1].color;
         }
         if (sideIndex < side.length - 1) {
+          console.log(sideIndex);
+          console.log(side.length);
           rightCousinColor = side[sideIndex + 1].color;
         }
         let colorToTint = {
@@ -176,7 +178,7 @@ export default {
           color.b /= 2;
           color.a /= 2;
         }
-        
+
         column.boxes.push({
           position: position,
           color: color,

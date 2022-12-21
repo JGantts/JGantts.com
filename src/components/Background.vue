@@ -7,7 +7,7 @@ let boxSize = 10;
 
 export default {
   data() {
-    return { 
+    return {
       topRowBoxes: {
         countPerSide: 0,
         left: [ ],
@@ -101,18 +101,18 @@ export default {
       ) {
         column.spawnCountdown = 0
         let position = { x: xPosition, y: column.boxes.length };
-        let color = { 
+        let color = {
           r: Math.floor(Math.random()*50) + 0,
           g: Math.floor(Math.random()*50) + 100,
           b: Math.floor(Math.random()*50) + 200,
           a: Math.floor(Math.random()*200) + 25,
         };
 
-        
+
         let parent = null;
         let leftCousin = null;
         let rightCousin = null;
-        
+
         parent = column.boxes[column.boxes.length-1];
         let leftLineage = side[sideIndex - 1];
         if (leftLineage) {
@@ -183,7 +183,7 @@ export default {
           color.b = blue;
           color.a = alpha;
         }
-        
+
 
         column.boxes.push({
           position: position,
@@ -249,6 +249,5 @@ function getRandomElements(arr, n) {
   left: 50vw;
   top: -20px;
   height: calc(100vh+ 20px);
-  overflow-y: clip;
 }
 </style>

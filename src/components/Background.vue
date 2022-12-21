@@ -69,7 +69,7 @@ export default {
         new Promise(r => setTimeout(r, 50)),
         this.renderScene(),
       ]);
-      this.renderLoop();
+      window.requestAnimationFrame(this.renderLoop);
     },
 
     async renderScene() {
@@ -219,7 +219,7 @@ export default {
     console.log("Hello, world!");
     this.baseElement = document.getElementById('animation-base');
     await this.resizedWindow();
-    this.renderLoop();
+    window.requestAnimationFrame(this.renderLoop);
   },
 }
 

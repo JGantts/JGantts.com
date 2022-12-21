@@ -43,7 +43,7 @@ export default {
           [...Array(countToAdd)].forEach((v, i) => {
             sides[sideIndex].push(
               {
-                spawnIncrement: Math.random()+0.5,
+                spawnIncrement: Math.random()*0.25+0.75,
                 spawnCountdown: -Math.random()*100,
                 boxes: [ ],
               }
@@ -156,8 +156,8 @@ export default {
           colorToTint.b /= colorsAdded;
           colorToTint.a /= colorsAdded;
 
-          let randomMultiplier = Math.random()>0.99 ? 57 : 1;
-          let consistentMultiplier = 7;
+          let randomMultiplier = Math.random()>0.99 ? 30 : 1;
+          let consistentMultiplier = 10;
           let multiplierSum = randomMultiplier + consistentMultiplier;
 
           let red =
@@ -246,8 +246,10 @@ function getRandomElements(arr, n) {
 <style scoped>
 #animation-base {
   position: absolute;
-  left: 50vw;
+  left: 0;
   top: -20px;
-  height: calc(100vh+ 20px);
+  width: 100vw;
+  height: calc(100vh + 20px);
+  overflow: clip;
 }
 </style>

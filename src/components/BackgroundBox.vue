@@ -51,7 +51,7 @@ function decToTwoDigitHex(dec) {
 <style scoped>
   .box {
     background-color: var(--backgroundColor);
-    left: var(--left);
+    left: calc(var(--left) + 50vw);
     top: var(--top);
   }
 </style>

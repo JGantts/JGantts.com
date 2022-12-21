@@ -7,7 +7,7 @@ let boxSize = 10;
 
 export default {
   data() {
-    return { 
+    return {
       topRowBoxes: {
         countPerSide: 0,
         left: [ ],
@@ -33,18 +33,6 @@ export default {
       } else if(countToAdd < 0) {
         //Subtract boxes
         let countToDelete = Math.abs(countToAdd);
-        for(let i=0; i< countToDelete; i++) {
-          let columnLeft = this.topRowBoxes[i];
-          for(let index in columnLeft.boxes) {
-            let toDelete = columnLeft.boxes[index].element;
-            toDelete.parentNode.removeChild(toDelete);
-          }
-          let columnRight = this.topRowBoxes[i];
-          for(let index in columnLeft.boxes) {
-            let toDelete = columnRight.boxes[index].element;
-            toDelete.parentNode.removeChild(toDelete);
-          }
-        }
         this.topRowBoxes.left.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);
         this.topRowBoxes.right.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);
 
@@ -77,11 +65,11 @@ export default {
 
     async renderLoop() {
       console.log("render loop");
-      await Promise.all([
-        new Promise(r => setTimeout(r, 50)),
-        this.renderScene(),
-      ]);
-      this.renderLoop();
+      // await Promise.all([
+      //  new Promise(r => setTimeout(r, 50)),
+        this.renderScene()//,
+      //]);
+      window.requestAnimationFrame(this.renderLoop);
     },
 
     async renderScene() {
@@ -102,30 +90,29 @@ export default {
     },
 
     async renderColumn(side, sideIndex, column, xPosition) {
-      console.log("render column");
       if(column.spawnCountdown < 0) {
         column.spawnCountdown += 1;
       } else {
         column.spawnCountdown += column.spawnIncrement;
       }
       if(
-        column.spawnCountdown >= column.spawnIncrement
+        column.spawnCountdown >= 1
         && (column.boxes.length-1)*boxSize < window.outerHeight
       ) {
         column.spawnCountdown = 0
-      
         let position = { x: xPosition, y: column.boxes.length };
-
-        let color = color = { 
+        let color = {
           r: Math.floor(Math.random()*50) + 0,
           g: Math.floor(Math.random()*50) + 100,
           b: Math.floor(Math.random()*50) + 200,
           a: Math.floor(Math.random()*200) + 25,
         };
+
+
         let parent = null;
         let leftCousin = null;
         let rightCousin = null;
-        
+
         parent = column.boxes[column.boxes.length-1];
         let leftLineage = side[sideIndex - 1];
         if (leftLineage) {
@@ -197,6 +184,7 @@ export default {
           color.a = alpha;
         }
 
+
         column.boxes.push({
           position: position,
           color: color,
@@ -231,7 +219,7 @@ export default {
     console.log("Hello, world!");
     this.baseElement = document.getElementById('animation-base');
     await this.resizedWindow();
-    this.renderLoop();
+    window.requestAnimationFrame(this.renderLoop);
   },
 }
 
@@ -261,6 +249,5 @@ function getRandomElements(arr, n) {
   left: 50vw;
   top: -20px;
   height: calc(100vh+ 20px);
-  overflow-y: clip;
 }
 </style>

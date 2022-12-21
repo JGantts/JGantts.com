@@ -103,7 +103,7 @@ export default {
         let position = { x: xPosition, y: column.boxes.length };
         let color = {
           r: Math.floor(Math.random()*50) + 0,
-          g: Math.floor(Math.random()*50) + 100,
+          g: Math.floor(Math.random()*255) + 0,
           b: Math.floor(Math.random()*50) + 200,
           a: Math.floor(Math.random()*200) + 25,
         };

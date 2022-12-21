@@ -246,8 +246,10 @@ function getRandomElements(arr, n) {
 <style scoped>
 #animation-base {
   position: absolute;
-  left: 50vw;
-  top: -20px;
-  height: calc(100vh+ 20px);
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: clip;
 }
 </style>

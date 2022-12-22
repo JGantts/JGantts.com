@@ -3,7 +3,7 @@ import BackgroundBox from './BackgroundBox.vue';
 import Vue from 'vue';
 var BoxClass = Vue.extend(BackgroundBox);
 
-let boxSize = 10;
+let boxSize = 12;
 
 let lastTimestamp = null;
 
@@ -94,7 +94,7 @@ export default {
       if(column.spawnCountdown < 0) {
         column.spawnCountdown += 1;
       } else {
-        column.spawnCountdown += column.spawnIncrement * interval/60;
+        column.spawnCountdown += column.spawnIncrement * interval/60 * 10/boxSize;
       }
       if (column.spawnCountdown >= 1) {
         column.spawnCountdown = 0

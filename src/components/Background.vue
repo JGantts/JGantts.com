@@ -27,8 +27,6 @@ export default {
       let oldPixelsPerSide = this.topRowBoxes.left.length;
       let countToAdd = newPixelsPerSide - oldPixelsPerSide;
 
-      console.log(countToAdd);
-
       if (countToAdd === 0) {
         return;
 
@@ -48,6 +46,7 @@ export default {
                 spawnIncrement: Math.random()*0.25+0.75,
                 spawnCountdown: -Math.random()*100,
                 boxes: [ ],
+                doneAnimating: false,
               }
             );
           })
@@ -66,7 +65,6 @@ export default {
     },
 
     async renderLoop() {
-      console.log("render loop");
       let thisTimestamp = Date.now();
       await this.renderScene(thisTimestamp - lastTimestamp);
       lastTimestamp = thisTimestamp;
@@ -74,7 +72,6 @@ export default {
     },
 
     async renderScene(interval) {
-      console.log("render scene");
       let sidesAndDirections = [
         {side: this.topRowBoxes.left, dir: -1},
         {side: this.topRowBoxes.right, dir: 1}
@@ -82,8 +79,6 @@ export default {
       for (let index in sidesAndDirections) {
         let side = sidesAndDirections[index].side;
         let direction = sidesAndDirections[index].dir;
-        //console.log(side);
-        //console.log(JSON.stringify(side));
         for (let indexB in side) {
           this.renderColumn(side, Number(indexB), side[indexB], direction*(Number(indexB)+1), interval);
         }
@@ -91,16 +86,17 @@ export default {
     },
 
     async renderColumn(side, sideIndex, column, xPosition, interval) {
+      if (column.doneAnimating || (column.boxes.length-1)*boxSize > window.outerHeight) {
+        column.doneAnimating = true;
+        return;
+      }
+
       if(column.spawnCountdown < 0) {
         column.spawnCountdown += 1;
       } else {
-        console.log(interval)
         column.spawnCountdown += column.spawnIncrement * interval/60;
       }
-      if(
-        column.spawnCountdown >= 1
-        && (column.boxes.length-1)*boxSize < window.outerHeight
-      ) {
+      if (column.spawnCountdown >= 1) {
         column.spawnCountdown = 0
         let position = { x: xPosition, y: column.boxes.length };
         let color = {
@@ -196,7 +192,6 @@ export default {
     },
 
     addBox(position, color) {
-      console.log("add box");
       var newBox = new BoxClass({
         propsData: {
           position: position,

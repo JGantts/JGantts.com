@@ -5,6 +5,8 @@ var BoxClass = Vue.extend(BackgroundBox);
 
 let boxSize = 10;
 
+let lastTimestamp = null;
+
 export default {
   data() {
     return {
@@ -65,14 +67,13 @@ export default {
 
     async renderLoop() {
       console.log("render loop");
-      // await Promise.all([
-      //  new Promise(r => setTimeout(r, 50)),
-        this.renderScene()//,
-      //]);
+      let thisTimestamp = Date.now();
+      await this.renderScene(thisTimestamp - lastTimestamp);
+      lastTimestamp = thisTimestamp;
       window.requestAnimationFrame(this.renderLoop);
     },
 
-    async renderScene() {
+    async renderScene(interval) {
       console.log("render scene");
       let sidesAndDirections = [
         {side: this.topRowBoxes.left, dir: -1},
@@ -84,16 +85,17 @@ export default {
         //console.log(side);
         //console.log(JSON.stringify(side));
         for (let indexB in side) {
-          this.renderColumn(side, Number(indexB), side[indexB], direction*(Number(indexB)+1));
+          this.renderColumn(side, Number(indexB), side[indexB], direction*(Number(indexB)+1), interval);
         }
       }
     },
 
-    async renderColumn(side, sideIndex, column, xPosition) {
+    async renderColumn(side, sideIndex, column, xPosition, interval) {
       if(column.spawnCountdown < 0) {
         column.spawnCountdown += 1;
       } else {
-        column.spawnCountdown += column.spawnIncrement;
+        console.log(interval)
+        column.spawnCountdown += column.spawnIncrement * interval/60;
       }
       if(
         column.spawnCountdown >= 1
@@ -156,7 +158,7 @@ export default {
           colorToTint.b /= colorsAdded;
           colorToTint.a /= colorsAdded;
 
-          let randomMultiplier = Math.random()>0.99 ? 30 : 1;
+          let randomMultiplier = 1;
           let consistentMultiplier = 10;
           let multiplierSum = randomMultiplier + consistentMultiplier;
 
@@ -219,6 +221,7 @@ export default {
     console.log("Hello, world!");
     this.baseElement = document.getElementById('animation-base');
     await this.resizedWindow();
+    lastTimestamp = Date.now()
     window.requestAnimationFrame(this.renderLoop);
   },
 }

@@ -105,6 +105,16 @@ export default {
     }
 }
 
+body {
+  background-color: rgb(255,255,255);
+}
+
+@media (prefers-color-scheme: dark) {
+    body {
+      background-color: rgb(0,0,0);
+    }
+}
+
 #backgorund-holder {
     position: relative;
 }

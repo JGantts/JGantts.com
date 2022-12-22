@@ -158,7 +158,7 @@ export default {
           colorToTint.b /= colorsAdded;
           colorToTint.a /= colorsAdded;
 
-          let randomMultiplier = Math.random()>0.99 ? 30 : 1;
+          let randomMultiplier = 1;
           let consistentMultiplier = 10;
           let multiplierSum = randomMultiplier + consistentMultiplier;
 

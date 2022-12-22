@@ -6,7 +6,7 @@ export default {
   },
   data() {
     return {
-      boxSize: 10,
+      boxSize: 12,
     }
   },
   methods: {

@@ -33,7 +33,8 @@ function decToTwoDigitHex(dec) {
     '--backgroundColor': `${rgbaToHex(color)}`,
     '--left': `${position.x*boxSize - xDirection()*boxSize/2}px`,
     '--top': `${position.y*boxSize}px`,
-    '--boxSize': `${boxSize}px`
+    '--boxSize': `${boxSize*9/10}px`,
+    '--borderWidth': `${boxSize*1/10}px`
   }">
   </div>
 </template>
@@ -41,11 +42,44 @@ function decToTwoDigitHex(dec) {
 <style>
   .box {
     position: absolute;
-    width: calc(var(--boxSize)*9/10);
-    height: calc(var(--boxSize)*9/10);
-    border-width: calc(var(--boxSize)*1/10);
+    width: var(--boxSize);
+    height: var(--boxSize);
+    border-width: var(--borderWidth);
     border-color: rgba(0, 0, 0, 0);
   }
+
+  .box {
+    animation: fadeIn 1s;
+    -webkit-animation: fadeIn 1s;
+    -moz-animation: fadeIn 1s;
+    -o-animation: fadeIn 1s;
+    -ms-animation: fadeIn 1s;
+  }
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@-moz-keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@-webkit-keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@-o-keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@-ms-keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
 </style>
 
 <style scoped>

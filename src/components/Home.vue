@@ -22,13 +22,11 @@ export default {
               <p id="text04">Jacob Gantt</p>
               <ul id="links01" class="links">
                 <li class="n01">
-                  <i class="fa-solid fa-envelope" /><a href="mailto:gantt42@gmail.com">gantt42@gmail.com</a>
+                  <a href="mailto:gantt42@gmail.com"><i class="fa-solid fa-envelope" />&nbsp;&nbsp;&nbsp;<span class="underline-link">gantt42@gmail.com</span></a>
                 </li><li class="n02">
-                  <i class="fa-brands fa-github"></i>
-                  <a href="https://github.com/JGantts">github.com/JGantts</a>
+                  <a href="https://github.com/JGantts"><i class="fa-brands fa-github"></i>&nbsp;&nbsp;&nbsp;<span class="underline-link">github.com/JGantts</span></a>
                 </li><li class="n03">
-                  <i class="fa-solid fa-file-pdf"></i>
-                  <a href="https://jgantts.com/resume/GanttJ-Resume.pdf">GanttJ-Resume.pdf</a>
+                  <a href="https://jgantts.com/resume/GanttJ-Resume.pdf"><i class="fa-solid fa-file-pdf"></i>&nbsp;&nbsp;&nbsp;<span class="underline-link">GanttJ-Resume.pdf</span></a>
                 </li>
               </ul>
             </div>

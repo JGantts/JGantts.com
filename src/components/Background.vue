@@ -1,4 +1,4 @@
-<script lang="ts">
+<script>
 import BackgroundBox from './BackgroundBox.vue';
 import { mount } from 'mount-vue-component'
 import { h } from 'vue'

@@ -25,7 +25,7 @@
                 </li><li class="n02">
                   <a href="https://github.com/JGantts"><i class="fa-brands fa-github"></i>&nbsp;&nbsp;<span class="underline-link">github.com/JGantts</span></a>
                 </li><li class="n03">
-                  <a href="https://jgantts.com/resume/GanttJ-Resume.pdf"><i class="fa-solid fa-file-pdf"></i>&nbsp;&nbsp;<span class="underline-link">GanttJ-Resume.pdf</span></a>
+                  <a href="/resume/GanttJ-Resume.pdf"><i class="fa-solid fa-file-pdf"></i>&nbsp;&nbsp;<span class="underline-link">GanttJ-Resume.pdf</span></a>
                 </li>
               </ul>
             </div>

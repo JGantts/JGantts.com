@@ -1,7 +1,8 @@
 <script>
 import BackgroundBox from './BackgroundBox.vue';
-import Vue from 'vue';
-var BoxClass = Vue.extend(BackgroundBox);
+import { mount } from 'mount-vue-component'
+import { h } from 'vue'
+
 
 let boxSize = 12;
 
@@ -192,15 +193,11 @@ export default {
     },
 
     addBox(position, color) {
-      var newBox = new BoxClass({
-        propsData: {
-          position: position,
-          color: color,
-        }
-      });
-      newBox.$mount();
-      this.baseElement.appendChild(newBox.$el);
-      return newBox;
+      const { vNode, destroy, el } = mount(BackgroundBox, { props:{
+        position: position,
+        color: color,
+      } })
+      this.baseElement.appendChild(el)
     },
   },
 

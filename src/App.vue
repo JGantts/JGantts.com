@@ -131,7 +131,7 @@ import Background from './components/Background.vue'
 
 @media (max-width: 736px) {
   #main01 > .inner {
-    --padding-horizontal: 2rem;
+    --padding-horizontal: 0;
     --padding-vertical: 1.625rem;
     --spacing: 0rem;
   }
@@ -145,7 +145,7 @@ import Background from './components/Background.vue'
 
 @media (max-width: 360px) {
   #main01 > .inner {
-    --padding-horizontal: 1.5rem;
+    --padding-horizontal: 0;
     --padding-vertical: 1.21875rem;
     --spacing: 0rem;
   }
@@ -234,12 +234,14 @@ import Background from './components/Background.vue'
     --padding-horizontal: 0;
     --padding-vertical: 0;
     --spacing: 0rem;
+    --width: 11rem;
   }
 }
 
 @media (max-width: 480px) {
   #main03 > .inner {
     --spacing: 0rem;
+    --width: 11rem;
   }
 }
 
@@ -248,6 +250,7 @@ import Background from './components/Background.vue'
     --padding-horizontal: 0;
     --padding-vertical: 0;
     --spacing: 0rem;
+    --width: 11rem;
   }
 }
 </style>

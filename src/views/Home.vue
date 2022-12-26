@@ -3,8 +3,7 @@
 </script>
 
 <template>
-
-<div id="main02" class="main">
+  <div id="main02" class="main">
     <div class="inner">
       <div id="container02" class="container columns full">
         <div class="wrapper">

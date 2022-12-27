@@ -23,24 +23,29 @@ import Background from './components/Background.vue'
         <div id="container-nav" class="container default full">
           <div class="wrapper">
             <div class="inner">
-              <div class="main main-nav">
-                <div class="inner">
-                    <p id="text05">I write software!</p>
-                    <p id="text07">© 2022 Jacob Gantt</p>
-                </div>
-              </div>
-              <div class="main main-nav">
-                <div class="inner">
-                    <p id="text05">I write software!</p>
-                    <p id="text07">© 2022 Jacob Gantt</p>
-                </div>
-              </div>
-              <div class="main main-nav">
-                <div class="inner">
-                    <p id="text05">I write software!</p>
-                    <p id="text07">© 2022 Jacob Gantt</p>
-                </div>
-              </div>
+              <ul>
+                <li>
+                  <div class="main main-nav">
+                    <div class="inner">
+                      <p id="text05">link01</p>
+                    </div>
+                  </div>
+                </li>
+                <li>
+                  <div class="main main-nav">
+                    <div class="inner">
+                      <p id="text05">link02</p>
+                    </div>
+                  </div>
+                </li>
+                <li>
+                  <div class="main main-nav">
+                    <div class="inner">
+                      <p id="text05">link03</p>
+                    </div>
+                  </div>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
@@ -73,6 +78,35 @@ import Background from './components/Background.vue'
   .main {
     background-color: #1F1F1F;
   }
+}
+
+#container-nav > .wrapper > .inner > ul {
+  display: flex;
+  flex-direction: row;
+
+}
+
+#container-nav > .wrapper > .inner > ul > li {
+  display: inline;
+  padding: 0.25rem;
+}
+
+@media (max-width: 736px) {
+#container-nav > .wrapper > .inner > ul {
+  flex-direction: column; 
+}
+}
+
+@media (max-width: 480px) {
+#container-nav > .wrapper > .inner > ul {
+  flex-direction: column; 
+}
+}
+
+@media (max-width: 360px) {
+#container-nav > .wrapper > .inner > ul {
+  flex-direction: column; 
+}
 }
 
 #main01 {
@@ -353,7 +387,7 @@ import Background from './components/Background.vue'
   --padding-horizontal: 0;
   --padding-vertical: 0;
   --spacing: 0rem;
-  --width: 9rem;
+  --width: 6rem;
 }
 
 @media (max-width: 736px) {
@@ -361,14 +395,14 @@ import Background from './components/Background.vue'
     --padding-horizontal: 0;
     --padding-vertical: 0;
     --spacing: 0rem;
-    --width: 11rem;
+    --width: 6rem;
   }
 }
 
 @media (max-width: 480px) {
   .main-nav > .inner {
     --spacing: 0rem;
-    --width: 11rem;
+    --width: 6rem;
   }
 }
 
@@ -377,7 +411,7 @@ import Background from './components/Background.vue'
     --padding-horizontal: 0;
     --padding-vertical: 0;
     --spacing: 0rem;
-    --width: 11rem;
+    --width: 6rem;
   }
 }
 </style>

@@ -3,47 +3,48 @@
 </script>
 
 <template>
-    <div id="container-nav" class="container default full">
-        <div class="wrapper">
-            <div class="inner">
-                <ul>
-                <li>
-                    <router-link to="/">
-                        <div class="main main-nav">
-                            <div class="inner">
-                            <p id="text05">Home</p>
-                            </div>
-                        </div>
-                    </router-link>
-                </li>
-                <li>
-                    <router-link to="/jganttscom-background/">
-                        <div class="main main-nav">
-                            <div class="inner">
-                            <p id="text05">Background Project</p>
-                            </div>
-                        </div>
-                    </router-link>
-                </li>
-                <li>
-                    <router-link to="/about">
-                        <div class="main main-nav">
-                            <div class="inner">
-                            <p id="text05">link03</p>
-                            </div>
-                        </div>
-                    </router-link>
-                </li>
-                </ul>
-            </div>
-        </div>
+  <div id="container-nav" class="container default full">
+    <div class="wrapper">
+      <div class="inner">
+        <ul>
+          <li>
+            <router-link to="/">
+              <div class="main main-nav">
+                <div class="inner">
+                  <p id="text05">Home</p>
+                </div>
+              </div>
+            </router-link>
+          </li>
+          <li>
+            <router-link to="/jganttscom-background/">
+              <div class="main main-nav">
+                <div class="inner">
+                  <p id="text05">Background Project</p>
+                </div>
+              </div>
+            </router-link>
+          </li>
+          <li>
+            <router-link to="/about">
+             <div class="main main-nav">
+               <div class="inner">
+                  <p id="text05">link03</p>
+                </div>
+              </div>
+            </router-link>
+          </li>
+        </ul>
+      </div>
     </div>
+  </div>
 </template>
 
 <style>
 #container-nav > .wrapper > .inner > ul {
   display: flex;
   flex-direction: row;
+  align-items: center;
 
 }
 

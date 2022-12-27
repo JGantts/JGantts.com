@@ -13,7 +13,7 @@
               <p id="text04">Jacob Gantt</p>
               <ul id="links01" class="links">
                 <li class="n01">
-                  <a href="mailto:gantt42@gmail.com"><i class="fa-solid fa-envelope" />&nbsp;&nbsp;<span class="underline-link">gantt42@gmail.com</span></a>
+                  <a href="mailto:gantt42@gmail.com"><i class="fa-solid fa-envelope" />&nbsp;<span class="underline-link">gantt42@gmail.com</span></a>
                 </li><li class="n02">
                   <a href="https://github.com/JGantts"><i class="fa-brands fa-github"></i>&nbsp;&nbsp;<span class="underline-link">github.com/JGantts</span></a>
                 </li><li class="n03">

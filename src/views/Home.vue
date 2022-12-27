@@ -31,7 +31,7 @@
   </div>
 </template>
 
-<style>
+<style scoped>
 #main02 {
   --alignment: center;
   --flex-alignment: center;
@@ -57,7 +57,7 @@
   border-radius: var(--border-radius-tl) var(--border-radius-tr) var(--border-radius-br) var(--border-radius-bl);
   max-width: 100%;
   position: relative;
-  width: var(--width);
+  width: calc(var(--width) + va(--padding-horizontal));
   z-index: 1;
   padding: var(--padding-vertical) var(--padding-horizontal);
 }
@@ -84,13 +84,11 @@
 #main02 > .inner > .full:first-child {
   border-top-left-radius: inherit;
   border-top-right-radius: inherit;
-  margin-top: calc(var(--padding-vertical) * -1) !important;
 }
 
 #main02 > .inner > .full:last-child {
   border-bottom-left-radius: inherit;
   border-bottom-right-radius: inherit;
-  margin-bottom: calc(var(--padding-vertical) * -1) !important;
 }
 
 #main02 > .inner > .full.screen {
@@ -104,16 +102,16 @@
 }
 
 #main02 > .inner {
-  --padding-horizontal: 3rem;
-  --padding-vertical: 3rem;
+  --padding-horizontal: 0.75rem;
+  --padding-vertical: 0.75rem;
   --spacing: 0rem;
-  --width: 25rem;
+  --width: 20rem;
 }
 
 @media (max-width: 736px) {
   #main02 > .inner {
-    --padding-horizontal: 2rem;
-    --padding-vertical: 1.625rem;
+    --padding-horizontal: 0.75rem;
+    --padding-vertical: 0.75rem;
     --spacing: 0rem;
   }
 }
@@ -126,8 +124,8 @@
 
 @media (max-width: 360px) {
   #main02 > .inner {
-    --padding-horizontal: 1.5rem;
-    --padding-vertical: 1.21875rem;
+    --padding-horizontal: 0.75rem;
+    --padding-vertical: 0.75rem;
     --spacing: 0rem;
   }
 }

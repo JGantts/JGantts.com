@@ -12,7 +12,7 @@ const router = createRouter({
       component: Home
     },
     {
-      path: "/jgantts_com-background/",
+      path: "/jganttscom-background/",
       name: "Background",
       component: BackgorundDescriptionPage
     },

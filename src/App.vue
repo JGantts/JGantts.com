@@ -25,25 +25,31 @@ import Background from './components/Background.vue'
             <div class="inner">
               <ul>
                 <li>
-                  <div class="main main-nav">
-                    <div class="inner">
-                      <p id="text05">link01</p>
+                  <router-link to="/">
+                    <div class="main main-nav">
+                      <div class="inner">
+                        <p id="text05">Home</p>
+                      </div>
                     </div>
-                  </div>
+                  </router-link>
                 </li>
                 <li>
-                  <div class="main main-nav">
-                    <div class="inner">
-                      <p id="text05">link02</p>
+                  <router-link to="/jganttscom-background/">
+                    <div class="main main-nav">
+                      <div class="inner">
+                        <p id="text05">Background Project</p>
+                      </div>
                     </div>
-                  </div>
+                  </router-link>
                 </li>
                 <li>
-                  <div class="main main-nav">
-                    <div class="inner">
-                      <p id="text05">link03</p>
+                  <router-link to="/about">
+                    <div class="main main-nav">
+                      <div class="inner">
+                        <p id="text05">link03</p>
+                      </div>
                     </div>
-                  </div>
+                  </router-link>
                 </li>
               </ul>
             </div>

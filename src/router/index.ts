@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import BackgorundDescriptionPage from '../views/BackgorundDescriptionPage.vue'
+import NotFound from '../views/NotFound.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,6 +17,7 @@ const router = createRouter({
       name: "Background",
       component: BackgorundDescriptionPage
     },
+    { path: "/:pathMatch(.*)*", component: NotFound },
   ]
 })
 

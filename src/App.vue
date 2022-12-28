@@ -49,15 +49,18 @@ import NavBar from './components/NavBar.vue'
 <style>
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.25s ease;
+  transition: all 0.5s ease;
+  overflow: hidden;
 }
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+  max-height: 1rem;
 }
 .fade-enter-to,
 .fade-leave-from {
   opacity: 1;
+  max-height: 150vh;
 }
 
 .main {

@@ -20,7 +20,11 @@ import NavBar from './components/NavBar.vue'
             </div>
           </div>
         </div>
-        <router-view/>
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
         <NavBar />
         <div id="main03" class="main">
           <div class="inner">
@@ -43,6 +47,19 @@ import NavBar from './components/NavBar.vue'
 </template>
 
 <style>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
+}
+
 .main {
   background-color: #EFEFEF;
 }

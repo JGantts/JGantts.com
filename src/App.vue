@@ -293,4 +293,8 @@ import NavBar from './components/NavBar.vue'
     --width: 11rem;
   }
 }
+
+.router-link-active {
+  text-decoration: underline !important;
+}
 </style>

@@ -17,6 +17,7 @@ export default {
         right: [ ],
       },
       baseElement: null,
+      elementsToAdd: [],
     };
   },
 
@@ -81,12 +82,16 @@ export default {
         let side = sidesAndDirections[index].side;
         let direction = sidesAndDirections[index].dir;
         for (let indexB in side) {
-          this.renderColumn(side, Number(indexB), side[indexB], direction*(Number(indexB)+1), interval);
+          this.calculateColumn(side, Number(indexB), side[indexB], direction*(Number(indexB)+1), interval);
         }
       }
+      for (let key in this.elementsToAdd) {
+        this.baseElement.appendChild(this.elementsToAdd[key])
+      }
+      this.elementsToAdd = []
     },
 
-    async renderColumn(side, sideIndex, column, xPosition, interval) {
+    async calculateColumn(side, sideIndex, column, xPosition, interval) {
       if (column.doneAnimating || (column.boxes.length-1)*boxSize > window.outerHeight) {
         column.doneAnimating = true;
         return;
@@ -197,7 +202,7 @@ export default {
         position: position,
         color: color,
       } })
-      this.baseElement.appendChild(el)
+      this.elementsToAdd.push(el)
     },
   },
 

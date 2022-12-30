@@ -1,22 +1,17 @@
 <script>
-import BackgroundBox from './BackgroundBox.vue';
-import { mount } from 'mount-vue-component'
-import { h } from 'vue'
+import { SVG, extend as SVGextend, Element as SVGElement } from '@svgdotjs/svg.js'
 
 
 let boxSize = 12;
+let topBuffer = 4;
 
 let lastTimestamp = null;
 
 export default {
   data() {
     return {
-      topRowBoxes: {
-        countPerSide: 0,
-        left: [ ],
-        right: [ ],
-      },
-      baseElement: null,
+      topRowBoxes: [],
+      draw: null,
       elementsToAdd: [],
     };
   },
@@ -24,9 +19,9 @@ export default {
   methods: {
     async resizedWindow() {
       let newWidthRaw = window.outerWidth/boxSize;
-      let newWidthPerSideRaw = newWidthRaw/2;
+      let newWidthPerSideRaw = newWidthRaw;
       let newPixelsPerSide = Math.ceil(newWidthPerSideRaw) + 1;
-      let oldPixelsPerSide = this.topRowBoxes.left.length;
+      let oldPixelsPerSide = this.topRowBoxes.length;
       let countToAdd = newPixelsPerSide - oldPixelsPerSide;
 
       if (countToAdd === 0) {
@@ -40,29 +35,16 @@ export default {
 
       } else if(countToAdd > 0) {
         //Add boxes
-        let sides = [this.topRowBoxes.left, this.topRowBoxes.right]
-        for(let sideIndex in sides) {
-          [...Array(countToAdd)].forEach((v, i) => {
-            sides[sideIndex].push(
-              {
-                spawnIncrement: Math.random()*0.25+0.75,
-                spawnCountdown: -Math.random()*100,
-                boxes: [ ],
-                doneAnimating: false,
-              }
-            );
-          })
-          if (oldPixelsPerSide === 0) {
-            let slowOnes = getRandomElements(sides[sideIndex], 3);
-            for(let slowOneIndex in slowOnes) {
-              slowOnes[slowOneIndex].spawnIncrement = 0.5 + Math.random()/10;
+        [...Array(countToAdd)].forEach((v, i) => {
+          this.topRowBoxes.push(
+            {
+              spawnIncrement: Math.random()*0.5 + 0.5,
+              spawnCountdown: 0,
+              boxes: [ ],
+              doneAnimating: false,
             }
-            let fastOnes = getRandomElements(sides[sideIndex], 3);
-            for(let fastOneIndex in fastOnes) {
-              fastOnes[fastOneIndex].spawnIncrement = 1.5 - Math.random()/10;
-            }
-          }
-        }
+          );
+        })
       }
     },
 
@@ -74,16 +56,8 @@ export default {
     },
 
     async renderScene(interval) {
-      let sidesAndDirections = [
-        {side: this.topRowBoxes.left, dir: -1},
-        {side: this.topRowBoxes.right, dir: 1}
-      ];
-      for (let index in sidesAndDirections) {
-        let side = sidesAndDirections[index].side;
-        let direction = sidesAndDirections[index].dir;
-        for (let indexB in side) {
-          this.calculateColumn(side, Number(indexB), side[indexB], direction*(Number(indexB)+1), interval);
-        }
+      for (let key in this.topRowBoxes) {
+        this.calculateColumn(key, interval);
       }
       for (let key in this.elementsToAdd) {
         this.baseElement.appendChild(this.elementsToAdd[key])
@@ -91,8 +65,11 @@ export default {
       this.elementsToAdd = []
     },
 
-    async calculateColumn(side, sideIndex, column, xPosition, interval) {
-      if (column.doneAnimating || (column.boxes.length-1)*boxSize > window.outerHeight) {
+    async calculateColumn(key, interval) {
+      let index = Number(key)
+      let column = this.topRowBoxes[key]
+
+      if (column.doneAnimating || (column.boxes.length-1-topBuffer)*boxSize > window.innerHeight) {
         column.doneAnimating = true;
         return;
       }
@@ -104,12 +81,12 @@ export default {
       }
       if (column.spawnCountdown >= 1) {
         column.spawnCountdown = 0
-        let position = { x: xPosition, y: column.boxes.length };
+        let position = { x: index, y: column.boxes.length };
         let color = {
-          r: Math.floor(Math.random()*50) + 0,
-          g: Math.floor(Math.random()*255) + 0,
-          b: Math.floor(Math.random()*50) + 200,
-          a: Math.floor(Math.random()*25) + 200,
+          r: Math.random()*50 + 0,
+          g: Math.random()*255 + 0,
+          b: Math.random()*50 + 200,
+          a: Math.random()*25 + 200,
         };
 
         let fakeBackground = {
@@ -133,11 +110,11 @@ export default {
         let rightCousin = null;
 
         parent = column.boxes[column.boxes.length-1];
-        let leftLineage = side[sideIndex - 1];
+        let leftLineage = this.topRowBoxes[index - 1];
         if (leftLineage) {
           leftCousin = leftLineage.boxes[column.boxes.length - 1]
         }
-        let rightLineage = side[sideIndex + 1];
+        let rightLineage = this.topRowBoxes[index + 1];
         if (rightLineage) {
           rightCousin = rightLineage.boxes[column.boxes.length - 1]
         }
@@ -213,11 +190,11 @@ export default {
     },
 
     addBox(position, color) {
-      const { vNode, destroy, el } = mount(BackgroundBox, { props:{
-        position: position,
-        color: color,
-      } })
-      this.elementsToAdd.push(el)
+      let rect = 
+        this.draw
+          .rect(boxSize, boxSize)
+          .move(position.x*boxSize, (position.y-topBuffer)*boxSize)
+          .attr({ fill: rgbaToHex(color) })
     },
   },
 
@@ -231,10 +208,10 @@ export default {
 
   async mounted() {
     console.log("Hello, world!");
-    this.baseElement = document.getElementById('animation-base');
+    this.draw = SVG().addTo('#animation-base').size("100%", "100%")
     await this.resizedWindow();
-    lastTimestamp = Date.now()
     await new Promise(resolve => setTimeout(resolve, 400))
+    lastTimestamp = Date.now()
     window.requestAnimationFrame(this.renderLoop);
   },
 }
@@ -252,6 +229,21 @@ function getRandomElements(arr, n) {
     }
     return result;
 }
+
+function xDirection(position) {
+  if(position.x < 0) {
+    return -1;
+  }
+  return 1;
+}
+
+function rgbaToHex(rgb) {
+  return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}`
+}
+function decToTwoDigitHex(dec) {
+  let hexRaw = Math.floor(dec).toString(16);
+  return (hexRaw.length==1) ? "0"+hexRaw : hexRaw;
+}
 </script>
 
 <template>
@@ -263,9 +255,9 @@ function getRandomElements(arr, n) {
 #animation-base {
   position: absolute;
   left: 0;
-  top: -20px;
+  top: -0;
   width: 100vw;
-  height: calc(100vh + 20px);
+  height: 100vh;
   overflow: clip;
 }
 </style>

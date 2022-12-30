@@ -234,6 +234,7 @@ export default {
     this.baseElement = document.getElementById('animation-base');
     await this.resizedWindow();
     lastTimestamp = Date.now()
+    await new Promise(resolve => setTimeout(resolve, 400))
     window.requestAnimationFrame(this.renderLoop);
   },
 }

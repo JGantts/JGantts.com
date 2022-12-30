@@ -114,11 +114,13 @@ body {
 
 #app {
   background-image: linear-gradient(343deg, #2184DE 0%, #74AEE3 60%);
+  background-image: linear-gradient(343deg, #EFEFEF 25%, #EFEFEF 100%);
 }
 
 @media (prefers-color-scheme: dark) {
     #app {
       background-image: linear-gradient(343deg, #082845 25%, #2184DE 100%);
+      background-image: linear-gradient(343deg, #1F1F1F 25%, #1F1F1F 100%);
     }
 }
 

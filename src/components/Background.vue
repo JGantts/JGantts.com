@@ -109,9 +109,24 @@ export default {
           r: Math.floor(Math.random()*50) + 0,
           g: Math.floor(Math.random()*255) + 0,
           b: Math.floor(Math.random()*50) + 200,
-          a: Math.floor(Math.random()*200) + 25,
+          a: Math.floor(Math.random()*25) + 200,
         };
 
+        let fakeBackground = {
+          r: 29,
+          g: 65,
+          b: 107,
+          a: 255,
+        };
+
+        color.r += fakeBackground.r;
+        color.r /= 2;
+        color.g += fakeBackground.g;
+        color.g /= 2;
+        color.b += fakeBackground.b;
+        color.b /= 2;
+        color.a += fakeBackground.a;
+        color.a /= 2;
 
         let parent = null;
         let leftCousin = null;

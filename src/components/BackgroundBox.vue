@@ -33,7 +33,7 @@ function decToTwoDigitHex(dec) {
     '--backgroundColor': `${rgbaToHex(color)}`,
     '--left': `${position.x*boxSize - xDirection()*boxSize/2}px`,
     '--top': `${position.y*boxSize}px`,
-    '--boxSize': `${boxSize*9/10}px`,
+    '--boxSize': `${boxSize*10/10}px`,
     '--borderWidth': `${boxSize*1/10}px`
   }">
   </div>

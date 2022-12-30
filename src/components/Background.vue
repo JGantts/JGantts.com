@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 import { SVG, extend as SVGextend, Element as SVGElement } from '@svgdotjs/svg.js'
 
 
@@ -243,6 +243,45 @@ function rgbaToHex(rgb) {
 function decToTwoDigitHex(dec) {
   let hexRaw = Math.floor(dec).toString(16);
   return (hexRaw.length==1) ? "0"+hexRaw : hexRaw;
+}
+
+let timeChunkSize = 64
+let timeChunkDistance = 64
+/*function rainOddsForDate(date: string): number {
+  
+
+
+        let currentTimeChunkStartSecond = date.timeIntervalSince1970 - date.timeIntervalSince1970.truncatingRemainder(dividingBy: Double(timeChunkSize))
+        
+        var oddsSum: CGFloat = 0
+        
+        for x in -timeChunkDistance ... timeChunkDistance {
+            let timeChunkStartSecond = currentTimeChunkStartSecond + TimeInterval(timeChunkDistance*x)
+            srand48(Int(timeChunkStartSecond))
+            let resultFromDistribution = gaussianDistribution(variance: CGFloat(drand48())*90 + 10, x: CGFloat(x))
+            let toAdd = resultFromDistribution * CGFloat(drand48())
+            oddsSum += toAdd
+        }
+        let toReturn = oddsSum/2.7182812690734863
+        return toReturn
+}*/
+
+let gaussianDistance = 20
+function gaussianDistribution(variance: number): number[] {
+  let output: number[] = []
+  for (let i = 0; i <= gaussianDistance; i++) {
+    output.push(gaussianDistributionAt(variance, i))
+  }
+  return output
+}
+
+function gaussianDistributionAt(variance: number, x: number): number {
+    let e = 2.71828
+    //let variance: CGFloat = standardDeviation*standardDeviation
+    let sqrtTwoPiVariance: number = Math.sqrt(2*Math.PI*variance)
+    let negativeXSquaredOver2Variance: number = 1-(x*x)/(2*variance)
+    let output: number = (1/sqrtTwoPiVariance)*Math.pow(e, negativeXSquaredOver2Variance)
+    return output
 }
 </script>
 

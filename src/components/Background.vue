@@ -8,11 +8,18 @@ let topBuffer = 4;
 let lastTimestamp = null;
 
 export default {
-  data() {
+  data(): { 
+    topRowBoxes: {
+      spawnIncrement: number,
+      spawnCountdown: number,
+      boxes: number[],
+      doneAnimating: boolean,
+    }[],
+    draw: number | null
+  } {
     return {
       topRowBoxes: [],
       draw: null,
-      elementsToAdd: [],
     };
   },
 
@@ -29,22 +36,61 @@ export default {
 
       } else if(countToAdd < 0) {
         //Subtract boxes
-        let countToDelete = Math.abs(countToAdd);
+        /*let countToDelete = Math.abs(countToAdd);
         this.topRowBoxes.left.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);
-        this.topRowBoxes.right.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);
+        this.topRowBoxes.right.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);*/
 
       } else if(countToAdd > 0) {
         //Add boxes
-        [...Array(countToAdd)].forEach((v, i) => {
-          this.topRowBoxes.push(
-            {
-              spawnIncrement: Math.random()*0.5 + 0.5,
-              spawnCountdown: 0,
-              boxes: [ ],
-              doneAnimating: false,
-            }
-          );
-        })
+        let gaussianDists: number[][] = [];
+        for (let i=0; i < countToAdd + gaussianDistance*2; i++) {
+          gaussianDists.push(gaussianDistribution(Math.random()*0.5 + 0.25))
+        }
+        let gaussianSums: number[] = [];
+        for (let i=gaussianDistance; i < countToAdd; i++) {
+          let sum = 0
+          for (let j=0; j < gaussianDistance*2; j++) {
+            sum += gaussianDists[i-(j-gaussianDistance)][j]
+          }
+          let localizedToZero = sum/e-1
+          let scaledToOne = localizedToZero*4
+          let scaledToRange = (scaledToOne*gaussianRange/2) + gaussianMid
+          let clamppedToRange = 
+            scaledToRange > gaussianMax 
+              ? gaussianMax
+              : scaledToRange < gaussianMin
+                ? gaussianMin
+                : scaledToRange
+          gaussianSums.push(clamppedToRange)
+        }
+        console.log(gaussianSums)
+        console.log(`average: ${
+          gaussianSums
+            .reduce(
+              (previousValue, currentValue) => previousValue+currentValue,
+               0)
+            /gaussianSums.length
+        }`)
+        console.log(`min: ${
+          gaussianSums
+            .reduce(
+              (previousValue, currentValue) => (previousValue<currentValue) ? previousValue : currentValue,
+               Number.MAX_VALUE)
+        }`)
+        console.log(`max: ${
+          gaussianSums
+            .reduce(
+              (previousValue, currentValue) => (previousValue>currentValue) ? previousValue : currentValue,
+               0)
+        }`)
+        for (let i=0; i < gaussianSums.length; i++) {
+          this.topRowBoxes.push({
+            spawnIncrement: gaussianSums[i],
+            spawnCountdown: 0,
+            boxes: [],
+            doneAnimating: false,
+          })
+        }
       }
     },
 
@@ -245,38 +291,21 @@ function decToTwoDigitHex(dec) {
   return (hexRaw.length==1) ? "0"+hexRaw : hexRaw;
 }
 
-let timeChunkSize = 64
-let timeChunkDistance = 64
-/*function rainOddsForDate(date: string): number {
-  
-
-
-        let currentTimeChunkStartSecond = date.timeIntervalSince1970 - date.timeIntervalSince1970.truncatingRemainder(dividingBy: Double(timeChunkSize))
-        
-        var oddsSum: CGFloat = 0
-        
-        for x in -timeChunkDistance ... timeChunkDistance {
-            let timeChunkStartSecond = currentTimeChunkStartSecond + TimeInterval(timeChunkDistance*x)
-            srand48(Int(timeChunkStartSecond))
-            let resultFromDistribution = gaussianDistribution(variance: CGFloat(drand48())*90 + 10, x: CGFloat(x))
-            let toAdd = resultFromDistribution * CGFloat(drand48())
-            oddsSum += toAdd
-        }
-        let toReturn = oddsSum/2.7182812690734863
-        return toReturn
-}*/
-
 let gaussianDistance = 20
+let gaussianMin = 0.5
+let gaussianMax = 0.75
+let gaussianRange = gaussianMax - gaussianMin
+let gaussianMid = (gaussianMax + gaussianMin)/2
 function gaussianDistribution(variance: number): number[] {
   let output: number[] = []
-  for (let i = 0; i <= gaussianDistance; i++) {
+  for (let i = -gaussianDistance; i <= gaussianDistance; i++) {
     output.push(gaussianDistributionAt(variance, i))
   }
   return output
 }
 
+let e = 2.71828
 function gaussianDistributionAt(variance: number, x: number): number {
-    let e = 2.71828
     //let variance: CGFloat = standardDeviation*standardDeviation
     let sqrtTwoPiVariance: number = Math.sqrt(2*Math.PI*variance)
     let negativeXSquaredOver2Variance: number = 1-(x*x)/(2*variance)

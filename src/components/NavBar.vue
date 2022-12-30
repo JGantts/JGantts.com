@@ -41,6 +41,11 @@
 </template>
 
 <style>
+.router-link-active > .main > .inner {
+  border: 0.1rem solid #c25a00;
+  background-color: #ff9233;
+}
+
 #container-nav > .wrapper > .inner > ul {
   display: flex;
   flex-direction: row;
@@ -103,6 +108,15 @@
   width: var(--width);
   z-index: 1;
   padding: var(--padding-vertical) var(--padding-horizontal);
+  border-width: 10px;
+  border: 0.1rem solid #DE7B21;
+  background-color: #EFEFEF;
+}
+
+@media (prefers-color-scheme: dark) {
+  .main-nav > .inner {
+    background-color: #303030;
+  }
 }
 
 .main-nav > .inner > * {

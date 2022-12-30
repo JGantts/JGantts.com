@@ -43,7 +43,7 @@
 <style>
 .router-link-active > .main > .inner {
   border: 0.1rem solid #c25a00;
-  background-color: #ff9233;
+  background-color: #ff7b29;
 }
 
 #container-nav > .wrapper > .inner > ul {

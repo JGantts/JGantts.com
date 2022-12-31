@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
-let BOX_SIZE = 8
+let BOX_SIZE = 4
 let TOP_BUFFER = 4
 let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
@@ -20,15 +20,17 @@ let columns: {
   }[],
   doneAnimating: boolean,
 }[] = []
-let canvas: any = null
-let gl: any = null
-let program: any = null
+let canvas: HTMLCanvasElement
+let canvasContext: CanvasRenderingContext2D
 
 
 /*
   Rendering functions
 */
 async function resizedWindow() {
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+
   /*
     Check if (and how many) new columns to add
   */
@@ -96,12 +98,14 @@ async function renderLoop() {
   await renderScene(thisTimestamp - lastTimestamp)
   lastTimestamp = thisTimestamp
   //Attempt force framerate
-  await new Promise(resolve => setTimeout(resolve, 50))
+  //await new Promise(resolve => setTimeout(resolve, 50))
   window.requestAnimationFrame(renderLoop)
 }
 
 async function renderScene(interval: number) {
+  //console.log("wut")
   for (let key in columns) {
+  console.log("wut")
     renderColumn(Number(key), interval)
   }
 }
@@ -228,40 +232,18 @@ async function renderColumn(index: number, interval: number) {
     /*
       Render new box
     */
+    console.log("who")
     renderBox(position, color)
   }
 }
 
 function renderBox(position: { x: number, y: number }, color: { r: number, g: number, b: number}) {
-  // @ts-ignore
-  gl.attachShader(program, createShader(gl.VERTEX_SHADER, vertexShader.textContent));
-  // @ts-ignore
-  gl.attachShader(program, createShader(gl.FRAGMENT_SHADER, fragmentShader.textContent));
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    throw gl.getProgramInfoLog(program);
-  }
-  gl.useProgram(program);
+  canvasContext.fillStyle = rgbaToHex(color)
+  let left = (position.x - HORIZONTAL_BUFFERS)*BOX_SIZE
+  let top = (position.y-TOP_BUFFER)*BOX_SIZE
+  canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 
-  const vertices = [
-    [-1, -1],
-    [1, -1],
-    [-1, 1],
-    [1, 1],
-  ];
-  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-  // @ts-ignore
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices.flat()), gl.STATIC_DRAW);
-
-  const vertexPosition = gl.getAttribLocation(program, "vertexPosition");
-  gl.enableVertexAttribArray(vertexPosition);
-  gl.vertexAttribPointer(vertexPosition, vertices[0].length, gl.FLOAT, false, 0, 0);
-
-  gl.uniform2f(
-    gl.getUniformLocation(program, 'canvasSize'),
-    canvas.width, canvas.height
-  );
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertices.length);
+  console.log("uh")
 
 /*
   let rect = 
@@ -278,16 +260,6 @@ function renderBox(position: { x: number, y: number }, color: { r: number, g: nu
 /*
   Helper functions
 */
-function createShader(type: any, sourceCode: any) {
-  const shader = gl.createShader(type);
-  gl.shaderSource(shader, sourceCode.trim());
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    throw gl.getShaderInfoLog(shader);
-  }
-  return shader;
-}
-
 function rgbaToHex(rgb: { r: number, g: number, b: number}) {
   return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}`
 }
@@ -346,10 +318,8 @@ darkModePreference.addEventListener("change", e => {
 
 onMounted(async () => {
   console.log("Hello, world!")
-  canvas = document.getElementById('animation-base')
-  gl = canvas?.getContext("webgl2")
-  if (!gl) { throw "WebGL2 not supported" }
-  program = gl.createProgram();
+  canvas = document.getElementById('animation-base') as HTMLCanvasElement
+  canvasContext = canvas.getContext("2d")!
   await resizedWindow()
   //await new Promise(resolve => setTimeout(resolve, 400))
   lastTimestamp = Date.now()
@@ -364,7 +334,7 @@ window.addEventListener("resize", resizedWindow)
 </script>
 
 <template>
-  <canvas id="animation-base" />
+  <canvas id="animation-base" width="100" height="100"/>
 </template>
 
 <style scoped>

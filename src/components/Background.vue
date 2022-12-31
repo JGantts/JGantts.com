@@ -124,7 +124,7 @@ export default {
     async calculateColumn(index: number, interval: number) {
       let column = this.topRowBoxes[index]
 
-      if (column.doneAnimating || (column.boxes.length-1-topBuffer)*boxSize*MAGIC_NUMBER_B > window.innerHeight) {
+      if (column.doneAnimating || (column.boxes.length-1-topBuffer)*boxSize/MAGIC_NUMBER_B > window.innerHeight) {
         column.doneAnimating = true;
         return;
       }

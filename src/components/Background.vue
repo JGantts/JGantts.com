@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
-let BOX_SIZE = 20
+let BOX_SIZE = 8
 let TOP_BUFFER = 4
 let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
 let MAGIC_NUMBER_B = 1.5
+
+let FADE_DELAY = 500
 
 /*
   Initialize variables
@@ -17,6 +19,7 @@ let columns: {
   boxes: {
     position: { x: number, y: number },
     color: { r: number, g: number, b: number},
+    fadeInState: number
   }[],
   doneAnimating: boolean,
 }[] = []
@@ -214,6 +217,7 @@ async function calculateColumn(index: number, interval: number) {
     column.boxes.push({
       position: position,
       color: color,
+      fadeInState: 0
     })
   }
 }
@@ -222,6 +226,7 @@ async function calculateColumn(index: number, interval: number) {
 async function renderColumn(columnIndex: number) {
   let column = columns[columnIndex]
   for (let boxKey in column.boxes) {
+    column.boxes[boxKey].fadeInState += 1/FADE_DELAY
     tryRenderBox(columnIndex, Number(boxKey))
   }
 }
@@ -245,7 +250,8 @@ function tryRenderBox(columnIndex: number, boxIndex: number) {
       colorTL: leftAunt.color,
       colorTR: parent.color,
       colorBR: me.color,
-      colorBL: leftCousin.color
+      colorBL: leftCousin.color,
+      fadeIn: (me.fadeInState > 1 ? 1 : me.fadeInState)
     })
 }
 
@@ -256,6 +262,7 @@ function renderGradient(
     colorTR: { r: number, g: number, b: number},
     colorBR: { r: number, g: number, b: number},
     colorBL: { r: number, g: number, b: number},
+    fadeIn: number
 }) {
   let left = (gradientData.position.x - HORIZONTAL_BUFFERS)*BOX_SIZE
   let top = (gradientData.position.y-TOP_BUFFER)*BOX_SIZE
@@ -263,14 +270,14 @@ function renderGradient(
   let bottom = top + BOX_SIZE
 
   let gradientTLBR = canvasContext.createLinearGradient(left, top, right, bottom)
-  gradientTLBR.addColorStop(0, rgbAToHex(gradientData.colorTL, 1))
-  gradientTLBR.addColorStop(1, rgbAToHex(gradientData.colorBR, 1))
+  gradientTLBR.addColorStop(0, rgbAToHex(gradientData.colorTL, 1*gradientData.fadeIn))
+  gradientTLBR.addColorStop(1, rgbAToHex(gradientData.colorBR, 1*gradientData.fadeIn))
   canvasContext.fillStyle = gradientTLBR
   canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 
   let gradientBLTR = canvasContext.createLinearGradient(left, bottom, right, top)
-  gradientBLTR.addColorStop(0, rgbAToHex(gradientData.colorBL, 0.5))
-  gradientBLTR.addColorStop(1, rgbAToHex(gradientData.colorTR, 0.5))
+  gradientBLTR.addColorStop(0, rgbAToHex(gradientData.colorBL, 0.5*gradientData.fadeIn))
+  gradientBLTR.addColorStop(1, rgbAToHex(gradientData.colorTR, 0.5*gradientData.fadeIn))
   canvasContext.fillStyle = gradientBLTR
   canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 }

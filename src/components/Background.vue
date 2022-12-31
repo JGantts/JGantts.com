@@ -278,7 +278,7 @@ function renderBox(position: { x: number, y: number }, color: { r: number, g: nu
 /*
   Helper functions
 */
-function createShader(type, sourceCode) {
+function createShader(type: any, sourceCode: any) {
   const shader = gl.createShader(type);
   gl.shaderSource(shader, sourceCode.trim());
   gl.compileShader(shader);

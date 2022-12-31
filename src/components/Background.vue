@@ -6,8 +6,21 @@ let BOX_SIZE = 8;
 let TOP_BUFFER = 4;
 let MAGIC_NUMBER_B = 1.5
 
-let lastTimestamp = 0;
+let LIGHT_BACKGROUND = `#EFEFEF`
+let DARK_BACKGROUND = `#1F1F1F`
 
+let currentBackground = window.matchMedia("(prefers-color-scheme: dark)").matches ? DARK_BACKGROUND : LIGHT_BACKGROUND
+
+const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
+darkModePreference.addEventListener("change", e => {
+  if (e.matches){
+    currentBackground = DARK_BACKGROUND
+  } else {
+    currentBackground = LIGHT_BACKGROUND
+  }
+});
+
+let lastTimestamp = 0;
 let topRowBoxes: {
   spawnIncrement: number,
   spawnCountdown: number,
@@ -31,9 +44,7 @@ async function resizedWindow() {
 
   } else if(countToAdd < 0) {
     //Subtract boxes
-    /*let countToDelete = Math.abs(countToAdd);
-    this.topRowBoxes.left.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);
-    this.topRowBoxes.right.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);*/
+      //or not
 
   } else if(countToAdd > 0) {
     //Add boxes
@@ -41,7 +52,6 @@ async function resizedWindow() {
     for (let i=0; i < countToAdd + gaussianDistance*2; i++) {
       gaussianDists.push(gaussianDistribution(Math.random()*90 + 10))
     }
-    console.log(gaussianDists)
     let gaussianSums: number[] = [];
     for (let i=gaussianDistance; i < countToAdd; i++) {
       let sum = 0
@@ -65,26 +75,6 @@ async function resizedWindow() {
       }
       gaussianSums.push(clamppedToRange)
     }
-    console.log(gaussianSums)
-    console.log(`average: ${
-      gaussianSums
-        .reduce(
-          (previousValue, currentValue) => previousValue+currentValue,
-            0)
-        /gaussianSums.length
-    }`)
-    console.log(`min: ${
-      gaussianSums
-        .reduce(
-          (previousValue, currentValue) => (previousValue<currentValue) ? previousValue : currentValue,
-            Number.MAX_VALUE)
-    }`)
-    console.log(`max: ${
-      gaussianSums
-        .reduce(
-          (previousValue, currentValue) => (previousValue>currentValue) ? previousValue : currentValue,
-            0)
-    }`)
     for (let i=0; i < gaussianSums.length; i++) {
       topRowBoxes.push({
         spawnIncrement: gaussianSums[i]*(spawnIncrementMax - spawnIncrementMin) + spawnIncrementMin,
@@ -231,7 +221,7 @@ function addBox(position: { x: number, y: number }, color: { r: number, g: numbe
     draw
       .rect(BOX_SIZE, BOX_SIZE)
       .move(position.x*BOX_SIZE, (position.y-TOP_BUFFER)*BOX_SIZE)
-      .attr({ fill: `#1F1F1F` })
+      .attr({ fill: currentBackground })
   rect
     .animate(2000, 0, "last")
     .attr({ fill: rgbaToHex(color) })

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
-let BOX_SIZE = 4
+let BOX_SIZE = 16
 let TOP_BUFFER = 4
 let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5

@@ -92,8 +92,8 @@ export default {
         }`)
         for (let i=0; i < gaussianSums.length; i++) {
           this.topRowBoxes.push({
-            spawnIncrement: 1,
-            spawnCountdown: gaussianSums[i]*-100,
+            spawnIncrement: gaussianSums[i]*(spawnIncrementMax - spawnIncrementMin) + spawnIncrementMin,
+            spawnCountdown: gaussianSums[i]*(spawnCountdownMax - spawnCountdownMin) + spawnCountdownMin,
             boxes: [],
             doneAnimating: false,
           })
@@ -297,6 +297,11 @@ function decToTwoDigitHex(dec) {
   let hexRaw = Math.floor(dec).toString(16);
   return (hexRaw.length==1) ? "0"+hexRaw : hexRaw;
 }
+
+let spawnIncrementMin = 0.8
+let spawnIncrementMax = 1.08
+let spawnCountdownMin = -100
+let spawnCountdownMax = 0
 
 let gaussianDistance = 20
 let gaussianMin = 0

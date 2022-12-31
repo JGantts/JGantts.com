@@ -222,12 +222,15 @@ async function calculateColumn(index: number, interval: number) {
   }
 }
 
-
 async function renderColumn(columnIndex: number) {
   let column = columns[columnIndex]
-  for (let boxKey in column.boxes) {
-    column.boxes[boxKey].fadeInState += 1/FADE_DELAY
-    tryRenderBox(columnIndex, Number(boxKey))
+  let start = column.boxes.length - 10
+  start = start < 0 ? 0 : start
+  for (let boxIndex=start; boxIndex<column.boxes.length; boxIndex++) {
+    column.boxes[boxIndex].fadeInState += 1/FADE_DELAY
+    //if (column.boxes[boxIndex].fadeInState < 1) {
+      tryRenderBox(columnIndex, boxIndex)
+    //}
   }
 }
 

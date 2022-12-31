@@ -233,7 +233,9 @@ async function renderColumn(index: number, interval: number) {
 }
 
 function renderBox(position: { x: number, y: number }, color: { r: number, g: number, b: number}) {
+  // @ts-ignore
   gl.attachShader(program, createShader(gl.VERTEX_SHADER, vertexShader.textContent));
+  // @ts-ignore
   gl.attachShader(program, createShader(gl.FRAGMENT_SHADER, fragmentShader.textContent));
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
@@ -248,6 +250,7 @@ function renderBox(position: { x: number, y: number }, color: { r: number, g: nu
     [1, 1],
   ];
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  // @ts-ignore
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices.flat()), gl.STATIC_DRAW);
 
   const vertexPosition = gl.getAttribLocation(program, "vertexPosition");

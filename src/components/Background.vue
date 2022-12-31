@@ -5,7 +5,7 @@ import { SVG, extend as SVGextend, Element as SVGElement } from '@svgdotjs/svg.j
 let boxSize = 6;
 let topBuffer = 4;
 
-let lastTimestamp = null;
+let lastTimestamp = 0;
 
 export default {
   data(): { 
@@ -108,19 +108,14 @@ export default {
       window.requestAnimationFrame(this.renderLoop);
     },
 
-    async renderScene(interval) {
+    async renderScene(interval: number) {
       for (let key in this.topRowBoxes) {
-        this.calculateColumn(key, interval);
+        this.calculateColumn(Number(key), interval);
       }
-      for (let key in this.elementsToAdd) {
-        this.baseElement.appendChild(this.elementsToAdd[key])
-      }
-      this.elementsToAdd = []
     },
 
-    async calculateColumn(key, interval) {
-      let index = Number(key)
-      let column = this.topRowBoxes[key]
+    async calculateColumn(index: number, interval: number) {
+      let column = this.topRowBoxes[index]
 
       if (column.doneAnimating || (column.boxes.length-1-topBuffer)*boxSize > window.innerHeight) {
         column.doneAnimating = true;
@@ -298,8 +293,8 @@ function decToTwoDigitHex(dec) {
   return (hexRaw.length==1) ? "0"+hexRaw : hexRaw;
 }
 
-let spawnIncrementMin = 0.8
-let spawnIncrementMax = 1.08
+let spawnIncrementMin = 1
+let spawnIncrementMax = 1
 let spawnCountdownMin = -100
 let spawnCountdownMax = 0
 

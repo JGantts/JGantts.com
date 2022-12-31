@@ -2,8 +2,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { SVG, extend as SVGextend, Element as SVGElement } from '@svgdotjs/svg.js'
 
-let BOX_SIZE = 8;
-let TOP_BUFFER = 4;
+let BOX_SIZE = 8
+let TOP_BUFFER = 4
 let MAGIC_NUMBER_A = 5.5
 let MAGIC_NUMBER_B = 1.5
 
@@ -23,13 +23,13 @@ darkModePreference.addEventListener("change", e => {
   } else {
     currentBackground = LIGHT_BACKGROUND
   }
-});
+})
 
 
 /*
   Initialize variables
 */
-let lastTimestamp = 0;
+let lastTimestamp = 0
 let columns: {
   spawnIncrement: number,
   spawnCountdown: number,
@@ -46,14 +46,14 @@ let draw: any = null
   Render functions
 */
 async function resizedWindow() {
-  let newWidthRaw = (window.outerWidth/BOX_SIZE)*MAGIC_NUMBER_B;
-  let newWidthPerSideRaw = newWidthRaw;
-  let newPixelsPerSide = Math.ceil(newWidthPerSideRaw) + 1;
-  let oldPixelsPerSide = columns.length;
-  let countToAdd = newPixelsPerSide - oldPixelsPerSide;
+  let newWidthRaw = (window.outerWidth/BOX_SIZE)*MAGIC_NUMBER_B
+  let newWidthPerSideRaw = newWidthRaw
+  let newPixelsPerSide = Math.ceil(newWidthPerSideRaw) + 1
+  let oldPixelsPerSide = columns.length
+  let countToAdd = newPixelsPerSide - oldPixelsPerSide
 
   if (countToAdd === 0) {
-    return;
+    return
 
   } else if(countToAdd < 0) {
     //Subtract columns
@@ -65,11 +65,11 @@ async function resizedWindow() {
     /*
       Calculate the random begining offsets (for the nice-looking gaussian wave "falling curtain" effect)
     */
-    let gaussianDists: number[][] = [];
+    let gaussianDists: number[][] = []
     for (let i=0; i < countToAdd + gaussianDistance*2; i++) {
       gaussianDists.push(gaussianDistribution(Math.random()*90 + 10))
     }
-    let gaussianSums: number[] = [];
+    let gaussianSums: number[] = []
     for (let i=gaussianDistance; i < countToAdd; i++) {
       let sum = 0
       for (let j=0; j < gaussianDistance*2; j++) {
@@ -106,17 +106,17 @@ async function resizedWindow() {
 }
 
 async function renderLoop() {
-  let thisTimestamp = Date.now();
-  await renderScene(thisTimestamp - lastTimestamp);
-  lastTimestamp = thisTimestamp;
+  let thisTimestamp = Date.now()
+  await renderScene(thisTimestamp - lastTimestamp)
+  lastTimestamp = thisTimestamp
   //Attempt force framerate
-  await new Promise(resolve => setTimeout(resolve, 50));
-  window.requestAnimationFrame(renderLoop);
+  await new Promise(resolve => setTimeout(resolve, 50))
+  window.requestAnimationFrame(renderLoop)
 }
 
 async function renderScene(interval: number) {
   for (let key in columns) {
-    renderColumn(Number(key), interval);
+    renderColumn(Number(key), interval)
   }
 }
 
@@ -127,8 +127,8 @@ async function renderColumn(index: number, interval: number) {
     Are we done filling out this column?
   */
   if (column.doneAnimating || (column.boxes.length-TOP_BUFFER)*BOX_SIZE > window.outerHeight) {
-    column.doneAnimating = true;
-    return;
+    column.doneAnimating = true
+    return
   }
 
   /*
@@ -136,9 +136,9 @@ async function renderColumn(index: number, interval: number) {
   */
   let intervalRatio = interval/100
   if(column.spawnCountdown < 0) {
-    column.spawnCountdown += 1*intervalRatio;
+    column.spawnCountdown += 1*intervalRatio
   } else {
-    column.spawnCountdown += column.spawnIncrement*intervalRatio;
+    column.spawnCountdown += column.spawnIncrement*intervalRatio
   }
   if (column.spawnCountdown >= 1) {
     column.spawnCountdown = 0
@@ -147,7 +147,7 @@ async function renderColumn(index: number, interval: number) {
       Add new box
     */
     /* position */
-    let position = { x: index, y: column.boxes.length };
+    let position = { x: index, y: column.boxes.length }
 
     /* random color */
     let color = {
@@ -160,24 +160,24 @@ async function renderColumn(index: number, interval: number) {
       g: 65,
       b: 107,
     }
-    color.r += fakeBackground.r;
-    color.r /= 2;
-    color.g += fakeBackground.g;
-    color.g /= 2;
-    color.b += fakeBackground.b;
-    color.b /= 2;
+    color.r += fakeBackground.r
+    color.r /= 2
+    color.g += fakeBackground.g
+    color.g /= 2
+    color.b += fakeBackground.b
+    color.b /= 2
 
     /* smooth out color with existing neighbors */
-    let parent = null;
-    let leftCousin = null;
-    let rightCousin = null;
+    let parent = null
+    let leftCousin = null
+    let rightCousin = null
 
-    parent = column.boxes[column.boxes.length-1];
-    let leftLineage = columns[index - 1];
+    parent = column.boxes[column.boxes.length-1]
+    let leftLineage = columns[index - 1]
     if (leftLineage) {
       leftCousin = leftLineage.boxes[column.boxes.length - 1]
     }
-    let rightLineage = columns[index + 1];
+    let rightLineage = columns[index + 1]
     if (rightLineage) {
       rightCousin = rightLineage.boxes[column.boxes.length - 1]
     }
@@ -187,51 +187,51 @@ async function renderColumn(index: number, interval: number) {
       b: 0,
       a: 0
     }
-    let colorsAdded = 0;
+    let colorsAdded = 0
     if (parent) {
-      colorToTint.r += parent.color.r;
-      colorToTint.g += parent.color.g;
-      colorToTint.b += parent.color.b;
-      colorsAdded += 1;
+      colorToTint.r += parent.color.r
+      colorToTint.g += parent.color.g
+      colorToTint.b += parent.color.b
+      colorsAdded += 1
     }
     if (leftCousin) {
-      colorToTint.r += leftCousin.color.r;
-      colorToTint.g += leftCousin.color.g;
-      colorToTint.b += leftCousin.color.b;
-      colorsAdded += 1;
+      colorToTint.r += leftCousin.color.r
+      colorToTint.g += leftCousin.color.g
+      colorToTint.b += leftCousin.color.b
+      colorsAdded += 1
     }
     if (rightCousin) {
-      colorToTint.r += rightCousin.color.r;
-      colorToTint.g += rightCousin.color.g;
-      colorToTint.b += rightCousin.color.b;
-      colorsAdded += 1;
+      colorToTint.r += rightCousin.color.r
+      colorToTint.g += rightCousin.color.g
+      colorToTint.b += rightCousin.color.b
+      colorsAdded += 1
     }
     if(colorsAdded != 0) {
-      colorToTint.r /= colorsAdded;
-      colorToTint.g /= colorsAdded;
-      colorToTint.b /= colorsAdded;
+      colorToTint.r /= colorsAdded
+      colorToTint.g /= colorsAdded
+      colorToTint.b /= colorsAdded
 
-      let randomMultiplier = 1;
-      let consistentMultiplier = 10;
-      let multiplierSum = randomMultiplier + consistentMultiplier;
+      let randomMultiplier = 1
+      let consistentMultiplier = 10
+      let multiplierSum = randomMultiplier + consistentMultiplier
 
       let red =
         randomMultiplier * color.r
-        + consistentMultiplier * colorToTint.r;
+        + consistentMultiplier * colorToTint.r
       let green =
         randomMultiplier * color.g
-        + consistentMultiplier * colorToTint.g;
+        + consistentMultiplier * colorToTint.g
       let blue =
         randomMultiplier * color.b
-        + consistentMultiplier * colorToTint.b;
+        + consistentMultiplier * colorToTint.b
 
-      red = Math.floor(red/multiplierSum);
-      green = Math.floor(green/multiplierSum);
-      blue = Math.floor(blue/multiplierSum);
+      red = Math.floor(red/multiplierSum)
+      green = Math.floor(green/multiplierSum)
+      blue = Math.floor(blue/multiplierSum)
 
-      color.r = red;
-      color.g = green;
-      color.b = blue;
+      color.r = red
+      color.g = green
+      color.b = blue
     }
 
     column.boxes.push({
@@ -265,8 +265,8 @@ function rgbaToHex(rgb: { r: number, g: number, b: number}) {
   return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}`
 }
 function decToTwoDigitHex(dec: number) {
-  let hexRaw = Math.floor(dec).toString(16);
-  return (hexRaw.length==1) ? "0"+hexRaw : hexRaw;
+  let hexRaw = Math.floor(dec).toString(16)
+  return (hexRaw.length==1) ? "0"+hexRaw : hexRaw
 }
 
 let spawnIncrementMin = 1
@@ -296,19 +296,19 @@ function gaussianDistributionAt(variance: number, x: number): number {
 }
 
 onMounted(async () => {
-  console.log("Hello, world!");
+  console.log("Hello, world!")
   draw = SVG().addTo('#animation-base').size("100%", "100%")
-  await resizedWindow();
+  await resizedWindow()
   //await new Promise(resolve => setTimeout(resolve, 400))
   lastTimestamp = Date.now()
-  window.requestAnimationFrame(renderLoop);
+  window.requestAnimationFrame(renderLoop)
 })
 
 onUnmounted(() => {
-  window.removeEventListener("resize", resizedWindow);
+  window.removeEventListener("resize", resizedWindow)
 })
 
-window.addEventListener("resize", resizedWindow);
+window.addEventListener("resize", resizedWindow)
 </script>
 
 <template>

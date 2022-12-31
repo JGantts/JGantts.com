@@ -1,31 +1,39 @@
-<script>
-import BackgroundBox from './BackgroundBox.vue';
-import { mount } from 'mount-vue-component'
-import { h } from 'vue'
+<script lang="ts">
+import { SVG, extend as SVGextend, Element as SVGElement } from '@svgdotjs/svg.js'
 
 
-let boxSize = 12;
+let boxSize = 8;
+let topBuffer = 4;
 
-let lastTimestamp = null;
+let lastTimestamp = 0;
+
+let MAGIC_NUMBER_B = 1.5
 
 export default {
-  data() {
+  data(): { 
+    topRowBoxes: {
+      spawnIncrement: number,
+      spawnCountdown: number,
+      boxes: {
+        position: { x: number, y: number },
+        color: { r: number, g: number, b: number},
+      }[],
+      doneAnimating: boolean,
+    }[],
+    draw: any
+  } {
     return {
-      topRowBoxes: {
-        countPerSide: 0,
-        left: [ ],
-        right: [ ],
-      },
-      baseElement: null,
+      topRowBoxes: [],
+      draw: null,
     };
   },
 
   methods: {
     async resizedWindow() {
-      let newWidthRaw = window.outerWidth/boxSize;
-      let newWidthPerSideRaw = newWidthRaw/2;
+      let newWidthRaw = (window.outerWidth/boxSize)*MAGIC_NUMBER_B;
+      let newWidthPerSideRaw = newWidthRaw;
       let newPixelsPerSide = Math.ceil(newWidthPerSideRaw) + 1;
-      let oldPixelsPerSide = this.topRowBoxes.left.length;
+      let oldPixelsPerSide = this.topRowBoxes.length;
       let countToAdd = newPixelsPerSide - oldPixelsPerSide;
 
       if (countToAdd === 0) {
@@ -33,34 +41,67 @@ export default {
 
       } else if(countToAdd < 0) {
         //Subtract boxes
-        let countToDelete = Math.abs(countToAdd);
+        /*let countToDelete = Math.abs(countToAdd);
         this.topRowBoxes.left.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);
-        this.topRowBoxes.right.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);
+        this.topRowBoxes.right.splice(this.topRowBoxes.left.length - countToDelete, countToDelete);*/
 
       } else if(countToAdd > 0) {
         //Add boxes
-        let sides = [this.topRowBoxes.left, this.topRowBoxes.right]
-        for(let sideIndex in sides) {
-          [...Array(countToAdd)].forEach((v, i) => {
-            sides[sideIndex].push(
-              {
-                spawnIncrement: Math.random()*0.25+0.75,
-                spawnCountdown: -Math.random()*100,
-                boxes: [ ],
-                doneAnimating: false,
-              }
-            );
-          })
-          if (oldPixelsPerSide === 0) {
-            let slowOnes = getRandomElements(sides[sideIndex], 3);
-            for(let slowOneIndex in slowOnes) {
-              slowOnes[slowOneIndex].spawnIncrement = 0.5 + Math.random()/10;
-            }
-            let fastOnes = getRandomElements(sides[sideIndex], 3);
-            for(let fastOneIndex in fastOnes) {
-              fastOnes[fastOneIndex].spawnIncrement = 1.5 - Math.random()/10;
-            }
+        let gaussianDists: number[][] = [];
+        for (let i=0; i < countToAdd + gaussianDistance*2; i++) {
+          gaussianDists.push(gaussianDistribution(Math.random()*90 + 10))
+        }
+        console.log(gaussianDists)
+        let gaussianSums: number[] = [];
+        for (let i=gaussianDistance; i < countToAdd; i++) {
+          let sum = 0
+          for (let j=0; j < gaussianDistance*2; j++) {
+            sum += gaussianDists[i-(j-gaussianDistance)][j]
           }
+
+          let MAGIC_NUMBER_A = 5.5
+
+          let localizedToZero = sum/e-1
+          let scaledToOne = localizedToZero*MAGIC_NUMBER_A
+          let scaledToRange = (scaledToOne*gaussianRange/2) + gaussianMid
+          let clamppedToRange = 
+            scaledToRange > gaussianMax 
+              ? gaussianMax
+              : scaledToRange < gaussianMin
+                ? gaussianMin
+                : scaledToRange
+          if (clamppedToRange != scaledToRange) {
+            console.log(scaledToRange)
+          }
+          gaussianSums.push(clamppedToRange)
+        }
+        console.log(gaussianSums)
+        console.log(`average: ${
+          gaussianSums
+            .reduce(
+              (previousValue, currentValue) => previousValue+currentValue,
+               0)
+            /gaussianSums.length
+        }`)
+        console.log(`min: ${
+          gaussianSums
+            .reduce(
+              (previousValue, currentValue) => (previousValue<currentValue) ? previousValue : currentValue,
+               Number.MAX_VALUE)
+        }`)
+        console.log(`max: ${
+          gaussianSums
+            .reduce(
+              (previousValue, currentValue) => (previousValue>currentValue) ? previousValue : currentValue,
+               0)
+        }`)
+        for (let i=0; i < gaussianSums.length; i++) {
+          this.topRowBoxes.push({
+            spawnIncrement: gaussianSums[i]*(spawnIncrementMax - spawnIncrementMin) + spawnIncrementMin,
+            spawnCountdown: gaussianSums[i]*(spawnCountdownMax - spawnCountdownMin) + spawnCountdownMin,
+            boxes: [],
+            doneAnimating: false,
+          })
         }
       }
     },
@@ -69,55 +110,67 @@ export default {
       let thisTimestamp = Date.now();
       await this.renderScene(thisTimestamp - lastTimestamp);
       lastTimestamp = thisTimestamp;
+      //Attempt force framerate
+      await new Promise(resolve => setTimeout(resolve, 50));
       window.requestAnimationFrame(this.renderLoop);
     },
 
-    async renderScene(interval) {
-      let sidesAndDirections = [
-        {side: this.topRowBoxes.left, dir: -1},
-        {side: this.topRowBoxes.right, dir: 1}
-      ];
-      for (let index in sidesAndDirections) {
-        let side = sidesAndDirections[index].side;
-        let direction = sidesAndDirections[index].dir;
-        for (let indexB in side) {
-          this.renderColumn(side, Number(indexB), side[indexB], direction*(Number(indexB)+1), interval);
-        }
+    async renderScene(interval: number) {
+      for (let key in this.topRowBoxes) {
+        this.calculateColumn(Number(key), interval);
       }
     },
 
-    async renderColumn(side, sideIndex, column, xPosition, interval) {
-      if (column.doneAnimating || (column.boxes.length-1)*boxSize > window.outerHeight) {
+    async calculateColumn(index: number, interval: number) {
+      let column = this.topRowBoxes[index]
+
+      if (column.doneAnimating || (column.boxes.length-topBuffer)*boxSize > window.outerHeight) {
         column.doneAnimating = true;
         return;
       }
 
+      let intervalRatio = interval/100
       if(column.spawnCountdown < 0) {
-        column.spawnCountdown += 1;
+        column.spawnCountdown += 1*intervalRatio;
       } else {
-        column.spawnCountdown += column.spawnIncrement * interval/60 * 10/boxSize;
+        column.spawnCountdown += column.spawnIncrement*intervalRatio;
       }
+      /*let remainder = column.spawnCountdown - Math.floor(column.spawnCountdown)
+      let times = column.spawnCountdown - remainder
+      console.log(times)
+      column.spawnCountdown = remainder*/
       if (column.spawnCountdown >= 1) {
         column.spawnCountdown = 0
-        let position = { x: xPosition, y: column.boxes.length };
+        let position = { x: index, y: column.boxes.length };
         let color = {
-          r: Math.floor(Math.random()*50) + 0,
-          g: Math.floor(Math.random()*255) + 0,
-          b: Math.floor(Math.random()*50) + 200,
-          a: Math.floor(Math.random()*200) + 25,
+          r: Math.random()*50 + 0,
+          g: Math.random()*255 + 0,
+          b: Math.random()*50 + 200,
         };
 
+        let fakeBackground = {
+          r: 29,
+          g: 65,
+          b: 107,
+        };
+
+        color.r += fakeBackground.r;
+        color.r /= 2;
+        color.g += fakeBackground.g;
+        color.g /= 2;
+        color.b += fakeBackground.b;
+        color.b /= 2;
 
         let parent = null;
         let leftCousin = null;
         let rightCousin = null;
 
         parent = column.boxes[column.boxes.length-1];
-        let leftLineage = side[sideIndex - 1];
+        let leftLineage = this.topRowBoxes[index - 1];
         if (leftLineage) {
           leftCousin = leftLineage.boxes[column.boxes.length - 1]
         }
-        let rightLineage = side[sideIndex + 1];
+        let rightLineage = this.topRowBoxes[index + 1];
         if (rightLineage) {
           rightCousin = rightLineage.boxes[column.boxes.length - 1]
         }
@@ -132,28 +185,24 @@ export default {
           colorToTint.r += parent.color.r;
           colorToTint.g += parent.color.g;
           colorToTint.b += parent.color.b;
-          colorToTint.a += parent.color.a;
           colorsAdded += 1;
         }
         if (leftCousin) {
           colorToTint.r += leftCousin.color.r;
           colorToTint.g += leftCousin.color.g;
           colorToTint.b += leftCousin.color.b;
-          colorToTint.a += leftCousin.color.a;
           colorsAdded += 1;
         }
         if (rightCousin) {
           colorToTint.r += rightCousin.color.r;
           colorToTint.g += rightCousin.color.g;
           colorToTint.b += rightCousin.color.b;
-          colorToTint.a += rightCousin.color.a;
           colorsAdded += 1;
         }
         if(colorsAdded != 0) {
           colorToTint.r /= colorsAdded;
           colorToTint.g /= colorsAdded;
           colorToTint.b /= colorsAdded;
-          colorToTint.a /= colorsAdded;
 
           let randomMultiplier = 1;
           let consistentMultiplier = 10;
@@ -168,36 +217,33 @@ export default {
           let blue =
             randomMultiplier * color.b
             + consistentMultiplier * colorToTint.b;
-          let alpha =
-            randomMultiplier * color.a
-            + consistentMultiplier * colorToTint.a;
 
           red = Math.floor(red/multiplierSum);
           green = Math.floor(green/multiplierSum);
           blue = Math.floor(blue/multiplierSum);
-          alpha = Math.floor(alpha/multiplierSum);
 
           color.r = red;
           color.g = green;
           color.b = blue;
-          color.a = alpha;
         }
 
 
         column.boxes.push({
           position: position,
           color: color,
-          element: this.addBox(position, color),
-        });
+        })
+        this.addBox(position, color)
       }
     },
-
-    addBox(position, color) {
-      const { vNode, destroy, el } = mount(BackgroundBox, { props:{
-        position: position,
-        color: color,
-      } })
-      this.baseElement.appendChild(el)
+    addBox(position: { x: number, y: number }, color: { r: number, g: number, b: number}) {
+      let rect = 
+        this.draw
+          .rect(boxSize, boxSize)
+          .move(position.x*boxSize, (position.y-topBuffer)*boxSize)
+          .attr({ fill: `#1F1F1F` })
+      //rect
+      //  .animate(2000, 0, "last")
+          .attr({ fill: rgbaToHex(color) })
     },
   },
 
@@ -211,25 +257,47 @@ export default {
 
   async mounted() {
     console.log("Hello, world!");
-    this.baseElement = document.getElementById('animation-base');
+    this.draw = SVG().addTo('#animation-base').size("100%", "100%")
     await this.resizedWindow();
+    //await new Promise(resolve => setTimeout(resolve, 400))
     lastTimestamp = Date.now()
     window.requestAnimationFrame(this.renderLoop);
   },
 }
 
-function getRandomElements(arr, n) {
-    var result = new Array(n),
-        len = arr.length,
-        taken = new Array(len);
-    if (n > len)
-        throw new RangeError("getRandom: more elements taken than available");
-    while (n--) {
-        var x = Math.floor(Math.random() * len);
-        result[n] = arr[x in taken ? taken[x] : x];
-        taken[x] = --len in taken ? taken[len] : len;
-    }
-    return result;
+function rgbaToHex(rgb: { r: number, g: number, b: number}) {
+  return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}`
+}
+function decToTwoDigitHex(dec: number) {
+  let hexRaw = Math.floor(dec).toString(16);
+  return (hexRaw.length==1) ? "0"+hexRaw : hexRaw;
+}
+
+let spawnIncrementMin = 1
+let spawnIncrementMax = 1
+let spawnCountdownMin = -30
+let spawnCountdownMax = 0
+
+let gaussianDistance = 20
+let gaussianMin = 0
+let gaussianMax = 1
+let gaussianRange = gaussianMax - gaussianMin
+let gaussianMid = (gaussianMax + gaussianMin)/2
+function gaussianDistribution(variance: number): number[] {
+  let output: number[] = []
+  for (let i = -gaussianDistance; i <= gaussianDistance; i++) {
+    output.push(gaussianDistributionAt(variance, i))
+  }
+  return output
+}
+
+let e = 2.7182812690734863
+function gaussianDistributionAt(variance: number, x: number): number {
+    //let variance: CGFloat = standardDeviation*standardDeviation
+    let sqrtTwoPiVariance: number = Math.sqrt(2*Math.PI*variance)
+    let negativeXSquaredOver2Variance: number = 1-(x*x)/(2*variance)
+    let output: number = (1/sqrtTwoPiVariance)*Math.pow(e, negativeXSquaredOver2Variance)
+    return output
 }
 </script>
 
@@ -242,9 +310,9 @@ function getRandomElements(arr, n) {
 #animation-base {
   position: absolute;
   left: 0;
-  top: -20px;
+  top: -0;
   width: 100vw;
-  height: calc(100vh + 20px);
+  height: 100vh;
   overflow: clip;
 }
 </style>

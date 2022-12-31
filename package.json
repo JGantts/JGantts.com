@@ -12,6 +12,7 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore"
   },
   "dependencies": {
+    "@svgdotjs/svg.js": "^3.1.2",
     "mount-vue-component": "^0.10.2",
     "vue": "^3.2.45",
     "vue-router": "^4.1.6"

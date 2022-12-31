@@ -241,9 +241,9 @@ export default {
           .rect(boxSize, boxSize)
           .move(position.x*boxSize, (position.y-topBuffer)*boxSize)
           .attr({ fill: `#1F1F1F` })
-      //rect
-      //  .animate(2000, 0, "last")
-          .attr({ fill: rgbaToHex(color) })
+      rect
+        .animate(2000, 0, "last")
+        .attr({ fill: rgbaToHex(color) })
     },
   },
 

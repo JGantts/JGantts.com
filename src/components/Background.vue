@@ -7,7 +7,24 @@ let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
 let MAGIC_NUMBER_B = 1.5
 
-let FADE_DELAY = 500
+let FADE_DELAY = 900
+
+type Position = {
+  x: number,
+  y: number 
+}
+
+type Color = { 
+  r: number, 
+  g: number, 
+  b: number
+}
+
+type Box = {
+    position: Position,
+    color: Color,
+    alpha: number
+  }
 
 /*
   Initialize variables
@@ -16,12 +33,9 @@ let lastTimestamp = 0
 let columns: {
   spawnIncrement: number,
   spawnCountdown: number,
-  boxes: {
-    position: { x: number, y: number },
-    color: { r: number, g: number, b: number},
-    fadeInState: number
-  }[],
+  boxes: Box[],
   doneAnimating: boolean,
+  animationLine: number,
 }[] = []
 let canvas: HTMLCanvasElement
 let canvasContext: CanvasRenderingContext2D
@@ -91,6 +105,7 @@ async function resizedWindow() {
         spawnCountdown: gaussianSums[i]*(spawnCountdownMax - spawnCountdownMin) + spawnCountdownMin,
         boxes: [],
         doneAnimating: false,
+        animationLine: 0,
       })
     }
   }
@@ -217,20 +232,22 @@ async function calculateColumn(index: number, interval: number) {
     column.boxes.push({
       position: position,
       color: color,
-      fadeInState: 0
+      alpha: 0
     })
   }
 }
 
 async function renderColumn(columnIndex: number) {
   let column = columns[columnIndex]
-  let start = column.boxes.length - 10
-  start = start < 0 ? 0 : start
-  for (let boxIndex=start; boxIndex<column.boxes.length; boxIndex++) {
-    column.boxes[boxIndex].fadeInState += 1/FADE_DELAY
-    //if (column.boxes[boxIndex].fadeInState < 1) {
+  if (column.animationLine < column.boxes.length) {
+    for (let boxIndex=column.animationLine; boxIndex<column.boxes.length; boxIndex++) {
+      column.boxes[boxIndex].alpha += 1/FADE_DELAY
+      if (column.boxes[boxIndex].alpha > 1) {
+        column.boxes[boxIndex].alpha = 1
+        column.animationLine = boxIndex
+      }
       tryRenderBox(columnIndex, boxIndex)
-    //}
+    }
   }
 }
 
@@ -250,39 +267,41 @@ function tryRenderBox(columnIndex: number, boxIndex: number) {
     let me = column.boxes[boxIndex]
     renderGradient({
       position: { x: columnIndex-1, y: boxIndex-1},
-      colorTL: leftAunt.color,
-      colorTR: parent.color,
-      colorBR: me.color,
-      colorBL: leftCousin.color,
-      fadeIn: (me.fadeInState > 1 ? 1 : me.fadeInState)
+      boxTL: leftAunt,
+      boxTR: parent,
+      boxBR: me,
+      boxBL: leftCousin,
     })
 }
 
 function renderGradient(
   gradientData: {
-    position: { x: number, y: number },
-    colorTL: { r: number, g: number, b: number},
-    colorTR: { r: number, g: number, b: number},
-    colorBR: { r: number, g: number, b: number},
-    colorBL: { r: number, g: number, b: number},
-    fadeIn: number
+    position: Position,
+    boxTL: Box,
+    boxTR: Box,
+    boxBR: Box,
+    boxBL: Box
 }) {
   let left = (gradientData.position.x - HORIZONTAL_BUFFERS)*BOX_SIZE
   let top = (gradientData.position.y-TOP_BUFFER)*BOX_SIZE
   let right = left + BOX_SIZE
   let bottom = top + BOX_SIZE
 
-  let gradientTLBR = canvasContext.createLinearGradient(left, top, right, bottom)
-  gradientTLBR.addColorStop(0, rgbAToHex(gradientData.colorTL, 1*gradientData.fadeIn))
-  gradientTLBR.addColorStop(1, rgbAToHex(gradientData.colorBR, 1*gradientData.fadeIn))
+  canvasContext.fillStyle = boxToHex(gradientData.boxTL, 1)
+  canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
+
+  /*let gradientTLBR = canvasContext.createLinearGradient(left, top, right, bottom)
+  gradientTLBR.addColorStop(0, boxToHex(gradientData.boxTL, 1))
+  gradientTLBR.addColorStop(1, boxToHex(gradientData.boxBR, 1))
   canvasContext.fillStyle = gradientTLBR
   canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 
   let gradientBLTR = canvasContext.createLinearGradient(left, bottom, right, top)
-  gradientBLTR.addColorStop(0, rgbAToHex(gradientData.colorBL, 0.5*gradientData.fadeIn))
-  gradientBLTR.addColorStop(1, rgbAToHex(gradientData.colorTR, 0.5*gradientData.fadeIn))
+  gradientBLTR.addColorStop(0, boxToHex(gradientData.boxBL, 0.5))
+  gradientBLTR.addColorStop(1, boxToHex(gradientData.boxTR, 0.5))
   canvasContext.fillStyle = gradientBLTR
-  canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
+  canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)*/
+
 }
 
 
@@ -315,8 +334,8 @@ function randomBlue(): { r: number, g: number, b: number} {
   return color
 }
 
-function rgbAToHex(rgb: { r: number, g: number, b: number}, a: number) {
-  return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}${decToTwoDigitHex(a*255)}`
+function boxToHex(box: Box, alphaMultiplier: number) {
+  return `#${decToTwoDigitHex(box.color.r)}${decToTwoDigitHex(box.color.g)}${decToTwoDigitHex(box.color.b)}${decToTwoDigitHex(box.alpha*255*alphaMultiplier)}`
 }
 function decToTwoDigitHex(dec: number) {
   let hexRaw = Math.floor(dec).toString(16)

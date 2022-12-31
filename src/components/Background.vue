@@ -2,7 +2,7 @@
 import { SVG, extend as SVGextend, Element as SVGElement } from '@svgdotjs/svg.js'
 
 
-let boxSize = 12;
+let boxSize = 6;
 let topBuffer = 4;
 
 let lastTimestamp = null;
@@ -15,7 +15,7 @@ export default {
       boxes: number[],
       doneAnimating: boolean,
     }[],
-    draw: number | null
+    draw: any
   } {
     return {
       topRowBoxes: [],
@@ -44,16 +44,20 @@ export default {
         //Add boxes
         let gaussianDists: number[][] = [];
         for (let i=0; i < countToAdd + gaussianDistance*2; i++) {
-          gaussianDists.push(gaussianDistribution(Math.random()*0.5 + 0.25))
+          gaussianDists.push(gaussianDistribution(Math.random()*90 + 10))
         }
+        console.log(gaussianDists)
         let gaussianSums: number[] = [];
         for (let i=gaussianDistance; i < countToAdd; i++) {
           let sum = 0
           for (let j=0; j < gaussianDistance*2; j++) {
             sum += gaussianDists[i-(j-gaussianDistance)][j]
           }
+
+          let MAGIC_NUMBER_A = 5.5
+
           let localizedToZero = sum/e-1
-          let scaledToOne = localizedToZero*4
+          let scaledToOne = localizedToZero*MAGIC_NUMBER_A
           let scaledToRange = (scaledToOne*gaussianRange/2) + gaussianMid
           let clamppedToRange = 
             scaledToRange > gaussianMax 
@@ -61,6 +65,9 @@ export default {
               : scaledToRange < gaussianMin
                 ? gaussianMin
                 : scaledToRange
+          if (clamppedToRange != scaledToRange) {
+            console.log(scaledToRange)
+          }
           gaussianSums.push(clamppedToRange)
         }
         console.log(gaussianSums)
@@ -85,8 +92,8 @@ export default {
         }`)
         for (let i=0; i < gaussianSums.length; i++) {
           this.topRowBoxes.push({
-            spawnIncrement: gaussianSums[i],
-            spawnCountdown: 0,
+            spawnIncrement: 1,
+            spawnCountdown: gaussianSums[i]*-100,
             boxes: [],
             doneAnimating: false,
           })
@@ -292,8 +299,8 @@ function decToTwoDigitHex(dec) {
 }
 
 let gaussianDistance = 20
-let gaussianMin = 0.5
-let gaussianMax = 0.75
+let gaussianMin = 0
+let gaussianMax = 1
 let gaussianRange = gaussianMax - gaussianMin
 let gaussianMid = (gaussianMax + gaussianMin)/2
 function gaussianDistribution(variance: number): number[] {
@@ -304,7 +311,7 @@ function gaussianDistribution(variance: number): number[] {
   return output
 }
 
-let e = 2.71828
+let e = 2.7182812690734863
 function gaussianDistributionAt(variance: number, x: number): number {
     //let variance: CGFloat = standardDeviation*standardDeviation
     let sqrtTwoPiVariance: number = Math.sqrt(2*Math.PI*variance)

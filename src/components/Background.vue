@@ -108,6 +108,8 @@ export default {
       let thisTimestamp = Date.now();
       await this.renderScene(thisTimestamp - lastTimestamp);
       lastTimestamp = thisTimestamp;
+      //Attempt force framerate
+      await new Promise(resolve => setTimeout(resolve, 50));
       window.requestAnimationFrame(this.renderLoop);
     },
 
@@ -128,7 +130,7 @@ export default {
       if(column.spawnCountdown < 0) {
         column.spawnCountdown += 1;
       } else {
-        column.spawnCountdown += column.spawnIncrement * interval/60 * 10/boxSize;
+        column.spawnCountdown += column.spawnIncrement;
       }
       if (column.spawnCountdown >= 1) {
         column.spawnCountdown = 0
@@ -263,7 +265,7 @@ function decToTwoDigitHex(dec: number) {
 
 let spawnIncrementMin = 1
 let spawnIncrementMax = 1
-let spawnCountdownMin = -100
+let spawnCountdownMin = -30
 let spawnCountdownMax = 0
 
 let gaussianDistance = 20

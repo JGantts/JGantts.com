@@ -4,7 +4,9 @@ import { SVG, extend as SVGextend, Element as SVGElement } from '@svgdotjs/svg.j
 
 let BOX_SIZE = 8;
 let TOP_BUFFER = 4;
+let MAGIC_NUMBER_A = 5.5
 let MAGIC_NUMBER_B = 1.5
+
 
 /*
   Set and check for dark mode
@@ -23,11 +25,12 @@ darkModePreference.addEventListener("change", e => {
   }
 });
 
+
 /*
   Initialize variables
 */
 let lastTimestamp = 0;
-let topRowBoxes: {
+let columns: {
   spawnIncrement: number,
   spawnCountdown: number,
   boxes: {
@@ -38,6 +41,7 @@ let topRowBoxes: {
 }[] = []
 let draw: any = null
 
+
 /*
   Render functions
 */
@@ -45,18 +49,22 @@ async function resizedWindow() {
   let newWidthRaw = (window.outerWidth/BOX_SIZE)*MAGIC_NUMBER_B;
   let newWidthPerSideRaw = newWidthRaw;
   let newPixelsPerSide = Math.ceil(newWidthPerSideRaw) + 1;
-  let oldPixelsPerSide = topRowBoxes.length;
+  let oldPixelsPerSide = columns.length;
   let countToAdd = newPixelsPerSide - oldPixelsPerSide;
 
   if (countToAdd === 0) {
     return;
 
   } else if(countToAdd < 0) {
-    //Subtract boxes
+    //Subtract columns
       //or not
 
   } else if(countToAdd > 0) {
-    //Add boxes
+    //Add columns
+
+    /*
+      Calculate the random begining offsets (for the nice-looking gaussian wave "falling curtain" effect)
+    */
     let gaussianDists: number[][] = [];
     for (let i=0; i < countToAdd + gaussianDistance*2; i++) {
       gaussianDists.push(gaussianDistribution(Math.random()*90 + 10))
@@ -67,8 +75,6 @@ async function resizedWindow() {
       for (let j=0; j < gaussianDistance*2; j++) {
         sum += gaussianDists[i-(j-gaussianDistance)][j]
       }
-
-      let MAGIC_NUMBER_A = 5.5
 
       let localizedToZero = sum/e-1
       let scaledToOne = localizedToZero*MAGIC_NUMBER_A
@@ -84,8 +90,12 @@ async function resizedWindow() {
       }
       gaussianSums.push(clamppedToRange)
     }
+
+    /*
+      Take the begining offsets and initialize the columns
+    */
     for (let i=0; i < gaussianSums.length; i++) {
-      topRowBoxes.push({
+      columns.push({
         spawnIncrement: gaussianSums[i]*(spawnIncrementMax - spawnIncrementMin) + spawnIncrementMin,
         spawnCountdown: gaussianSums[i]*(spawnCountdownMax - spawnCountdownMin) + spawnCountdownMin,
         boxes: [],
@@ -105,44 +115,51 @@ async function renderLoop() {
 }
 
 async function renderScene(interval: number) {
-  for (let key in topRowBoxes) {
+  for (let key in columns) {
     renderColumn(Number(key), interval);
   }
 }
 
 async function renderColumn(index: number, interval: number) {
-  let column = topRowBoxes[index]
+  let column = columns[index]
 
+  /*
+    Are we done filling out this column?
+  */
   if (column.doneAnimating || (column.boxes.length-TOP_BUFFER)*BOX_SIZE > window.outerHeight) {
     column.doneAnimating = true;
     return;
   }
 
+  /*
+    Are we ready for the new box? (techincaly dead code atm, was used to make some columns faster than others)
+  */
   let intervalRatio = interval/100
   if(column.spawnCountdown < 0) {
     column.spawnCountdown += 1*intervalRatio;
   } else {
     column.spawnCountdown += column.spawnIncrement*intervalRatio;
   }
-  /*let remainder = column.spawnCountdown - Math.floor(column.spawnCountdown)
-  let times = column.spawnCountdown - remainder
-  console.log(times)
-  column.spawnCountdown = remainder*/
   if (column.spawnCountdown >= 1) {
     column.spawnCountdown = 0
+
+    /*
+      Add new box
+    */
+    /* position */
     let position = { x: index, y: column.boxes.length };
+
+    /* random color */
     let color = {
       r: Math.random()*50 + 0,
       g: Math.random()*255 + 0,
       b: Math.random()*50 + 200,
-    };
-
+    }
     let fakeBackground = {
       r: 29,
       g: 65,
       b: 107,
-    };
-
+    }
     color.r += fakeBackground.r;
     color.r /= 2;
     color.g += fakeBackground.g;
@@ -150,16 +167,17 @@ async function renderColumn(index: number, interval: number) {
     color.b += fakeBackground.b;
     color.b /= 2;
 
+    /* smooth out color with existing neighbors */
     let parent = null;
     let leftCousin = null;
     let rightCousin = null;
 
     parent = column.boxes[column.boxes.length-1];
-    let leftLineage = topRowBoxes[index - 1];
+    let leftLineage = columns[index - 1];
     if (leftLineage) {
       leftCousin = leftLineage.boxes[column.boxes.length - 1]
     }
-    let rightLineage = topRowBoxes[index + 1];
+    let rightLineage = columns[index + 1];
     if (rightLineage) {
       rightCousin = rightLineage.boxes[column.boxes.length - 1]
     }
@@ -216,16 +234,19 @@ async function renderColumn(index: number, interval: number) {
       color.b = blue;
     }
 
-
     column.boxes.push({
       position: position,
       color: color,
     })
-    addBox(position, color)
+
+    /*
+      Render new box
+    */
+    renderBox(position, color)
   }
 }
 
-function addBox(position: { x: number, y: number }, color: { r: number, g: number, b: number}) {
+function renderBox(position: { x: number, y: number }, color: { r: number, g: number, b: number}) {
   let rect = 
     draw
       .rect(BOX_SIZE, BOX_SIZE)
@@ -268,7 +289,6 @@ function gaussianDistribution(variance: number): number[] {
 
 let e = 2.7182812690734863
 function gaussianDistributionAt(variance: number, x: number): number {
-    //let variance: CGFloat = standardDeviation*standardDeviation
     let sqrtTwoPiVariance: number = Math.sqrt(2*Math.PI*variance)
     let negativeXSquaredOver2Variance: number = 1-(x*x)/(2*variance)
     let output: number = (1/sqrtTwoPiVariance)*Math.pow(e, negativeXSquaredOver2Variance)

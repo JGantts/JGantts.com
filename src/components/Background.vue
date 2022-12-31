@@ -7,25 +7,6 @@ let TOP_BUFFER = 4
 let MAGIC_NUMBER_A = 5.5
 let MAGIC_NUMBER_B = 1.5
 
-
-/*
-  Set and check for dark mode
-*/
-let LIGHT_BACKGROUND = `#EFEFEF`
-let DARK_BACKGROUND = `#1F1F1F`
-
-let currentBackground = window.matchMedia("(prefers-color-scheme: dark)").matches ? DARK_BACKGROUND : LIGHT_BACKGROUND
-
-const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
-darkModePreference.addEventListener("change", e => {
-  if (e.matches){
-    currentBackground = DARK_BACKGROUND
-  } else {
-    currentBackground = LIGHT_BACKGROUND
-  }
-})
-
-
 /*
   Initialize variables
 */
@@ -43,9 +24,12 @@ let draw: any = null
 
 
 /*
-  Render functions
+  Rendering functions
 */
 async function resizedWindow() {
+  /*
+    Check if (and how many) new columns to add
+  */
   let newWidthRaw = (window.outerWidth/BOX_SIZE)*MAGIC_NUMBER_B
   let newWidthPerSideRaw = newWidthRaw
   let newPixelsPerSide = Math.ceil(newWidthPerSideRaw) + 1
@@ -85,9 +69,9 @@ async function resizedWindow() {
           : scaledToRange < gaussianMin
             ? gaussianMin
             : scaledToRange
-      if (clamppedToRange != scaledToRange) {
-        console.log(scaledToRange)
-      }
+      //if (clamppedToRange != scaledToRange) {
+        //console.log(scaledToRange)
+      //}
       gaussianSums.push(clamppedToRange)
     }
 
@@ -295,6 +279,27 @@ function gaussianDistributionAt(variance: number, x: number): number {
     return output
 }
 
+/*
+  Actual setup code
+*/
+//Set and check for dark mode
+let LIGHT_BACKGROUND = `#EFEFEF`
+let DARK_BACKGROUND = `#1F1F1F`
+
+let currentBackground = window.matchMedia("(prefers-color-scheme: dark)").matches ? DARK_BACKGROUND : LIGHT_BACKGROUND
+
+const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
+darkModePreference.addEventListener("change", e => {
+  if (e.matches){
+    currentBackground = DARK_BACKGROUND
+  } else {
+    currentBackground = LIGHT_BACKGROUND
+  }
+})
+
+/*
+  And begin!
+*/
 onMounted(async () => {
   console.log("Hello, world!")
   draw = SVG().addTo('#animation-base').size("100%", "100%")

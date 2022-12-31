@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
-let BOX_SIZE = 32
+let BOX_SIZE = 16
 let TOP_BUFFER = 4
 let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
@@ -16,10 +16,7 @@ let columns: {
   spawnCountdown: number,
   boxes: {
     position: { x: number, y: number },
-    colorTL: { r: number, g: number, b: number},
-    colorTR: { r: number, g: number, b: number},
-    colorBR: { r: number, g: number, b: number},
-    colorBL: { r: number, g: number, b: number},
+    color: { r: number, g: number, b: number},
   }[],
   doneAnimating: boolean,
 }[] = []
@@ -108,6 +105,7 @@ async function renderLoop() {
 async function renderScene(interval: number) {
   //console.log("wut")
   for (let key in columns) {
+  console.log("wut")
     renderColumn(Number(key), interval)
   }
 }
@@ -142,10 +140,22 @@ async function renderColumn(index: number, interval: number) {
     let position = { x: index, y: column.boxes.length }
 
     /* random color */
-    let colorTL: { r: number, g: number, b: number }
-    let colorTR: { r: number, g: number, b: number }
-    let colorBR: { r: number, g: number, b: number }
-    let colorBL: { r: number, g: number, b: number }
+    let color = {
+      r: Math.random()*50 + 0,
+      g: Math.random()*255 + 0,
+      b: Math.random()*50 + 200,
+    }
+    let fakeBackground = {
+      r: 29,
+      g: 65,
+      b: 107,
+    }
+    color.r += fakeBackground.r
+    color.r /= 2
+    color.g += fakeBackground.g
+    color.g /= 2
+    color.b += fakeBackground.b
+    color.b /= 2
 
     /* smooth out color with existing neighbors */
     let parent = null
@@ -169,64 +179,71 @@ async function renderColumn(index: number, interval: number) {
     }
     let colorsAdded = 0
     if (parent) {
-      colorTL = parent.colorBL
-      colorTR = parent.colorBR
-    } else {
-      colorTL = randomBlue()
-      colorTR = randomBlue()
+      colorToTint.r += parent.color.r
+      colorToTint.g += parent.color.g
+      colorToTint.b += parent.color.b
+      colorsAdded += 1
     }
     if (leftCousin) {
-      colorBL = leftCousin.colorBR
-    } else {
-      colorBL = randomBlue()
+      colorToTint.r += leftCousin.color.r
+      colorToTint.g += leftCousin.color.g
+      colorToTint.b += leftCousin.color.b
+      colorsAdded += 1
     }
     if (rightCousin) {
-      colorBR = rightCousin.colorBL
-    } else {
-      colorBR = randomBlue()
+      colorToTint.r += rightCousin.color.r
+      colorToTint.g += rightCousin.color.g
+      colorToTint.b += rightCousin.color.b
+      colorsAdded += 1
+    }
+    if(colorsAdded != 0) {
+      colorToTint.r /= colorsAdded
+      colorToTint.g /= colorsAdded
+      colorToTint.b /= colorsAdded
+
+      let randomMultiplier = 1
+      let consistentMultiplier = 10
+      let multiplierSum = randomMultiplier + consistentMultiplier
+
+      let red =
+        randomMultiplier * color.r
+        + consistentMultiplier * colorToTint.r
+      let green =
+        randomMultiplier * color.g
+        + consistentMultiplier * colorToTint.g
+      let blue =
+        randomMultiplier * color.b
+        + consistentMultiplier * colorToTint.b
+
+      red = Math.floor(red/multiplierSum)
+      green = Math.floor(green/multiplierSum)
+      blue = Math.floor(blue/multiplierSum)
+
+      color.r = red
+      color.g = green
+      color.b = blue
     }
 
-    let box = {
-      position,
-      colorTL,
-      colorTR,
-      colorBR,
-      colorBL,
-    }
-    column.boxes.push(box)
+    column.boxes.push({
+      position: position,
+      color: color,
+    })
 
     /*
       Render new box
     */
-    renderBox(box)
+    console.log("who")
+    renderBox(position, color)
   }
 }
 
-function renderBox(
-  box: {
-    position: { x: number, y: number },
-    colorTL: { r: number, g: number, b: number},
-    colorTR: { r: number, g: number, b: number},
-    colorBR: { r: number, g: number, b: number},
-    colorBL: { r: number, g: number, b: number},
-}) {
-  let left = (box.position.x - HORIZONTAL_BUFFERS)*BOX_SIZE
-  let top = (box.position.y-TOP_BUFFER)*BOX_SIZE
-  let right = left + BOX_SIZE
-  let bottom = top + BOX_SIZE
-
-  let gradientTLBR = canvasContext.createLinearGradient(left, top, right, bottom)
-  gradientTLBR.addColorStop(0, rgbAToHex(box.colorTL, 1))
-  gradientTLBR.addColorStop(1, rgbAToHex(box.colorBR, 1))
-  canvasContext.fillStyle = gradientTLBR
+function renderBox(position: { x: number, y: number }, color: { r: number, g: number, b: number}) {
+  canvasContext.fillStyle = rgbaToHex(color)
+  let left = (position.x - HORIZONTAL_BUFFERS)*BOX_SIZE
+  let top = (position.y-TOP_BUFFER)*BOX_SIZE
   canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 
-  let gradientBLTR = canvasContext.createLinearGradient(left, bottom, right, top)
-  gradientBLTR.addColorStop(0, rgbAToHex(box.colorBL, 0.5))
-  gradientBLTR.addColorStop(1, rgbAToHex(box.colorTR, 0.5))
-  canvasContext.fillStyle = gradientBLTR
-  canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
-
+  console.log("uh")
 
 /*
   let rect = 
@@ -243,29 +260,8 @@ function renderBox(
 /*
   Helper functions
 */
-function randomBlue(): { r: number, g: number, b: number} {
-  let color = {
-      r: Math.random()*50 + 0,
-      g: Math.random()*255 + 0,
-      b: Math.random()*50 + 200,
-    }
-    let fakeBackground = {
-      r: 29,
-      g: 65,
-      b: 107,
-    }
-    color.r += fakeBackground.r
-    color.r /= 2
-    color.g += fakeBackground.g
-    color.g /= 2
-    color.b += fakeBackground.b
-    color.b /= 2
-
-    return color
-}
-
-function rgbAToHex(rgb: { r: number, g: number, b: number}, a: number) {
-  return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}${decToTwoDigitHex(a*255)}`
+function rgbaToHex(rgb: { r: number, g: number, b: number}) {
+  return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}`
 }
 function decToTwoDigitHex(dec: number) {
   let hexRaw = Math.floor(dec).toString(16)

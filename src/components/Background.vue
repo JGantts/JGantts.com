@@ -2,7 +2,7 @@
 import { SVG, extend as SVGextend, Element as SVGElement } from '@svgdotjs/svg.js'
 
 
-let boxSize = 6;
+let boxSize = 8;
 let topBuffer = 4;
 
 let lastTimestamp = 0;
@@ -129,11 +129,16 @@ export default {
         return;
       }
 
+      let intervalRatio = interval/100
       if(column.spawnCountdown < 0) {
-        column.spawnCountdown += 1;
+        column.spawnCountdown += 1*intervalRatio;
       } else {
-        column.spawnCountdown += column.spawnIncrement;
+        column.spawnCountdown += column.spawnIncrement*intervalRatio;
       }
+      /*let remainder = column.spawnCountdown - Math.floor(column.spawnCountdown)
+      let times = column.spawnCountdown - remainder
+      console.log(times)
+      column.spawnCountdown = remainder*/
       if (column.spawnCountdown >= 1) {
         column.spawnCountdown = 0
         let position = { x: index, y: column.boxes.length };
@@ -235,7 +240,12 @@ export default {
         this.draw
           .rect(boxSize, boxSize)
           .move(position.x*boxSize, (position.y-topBuffer)*boxSize)
-          .attr({ fill: rgbaToHex(color) })
+          .attr({ fill: `#1F1F1F` })
+
+      rect
+        .animate(2000, 0, "last").attr({ fill: rgbaToHex(color) })
+
+          
     },
   },
 
@@ -251,7 +261,7 @@ export default {
     console.log("Hello, world!");
     this.draw = SVG().addTo('#animation-base').size("100%", "100%")
     await this.resizedWindow();
-    await new Promise(resolve => setTimeout(resolve, 400))
+    //await new Promise(resolve => setTimeout(resolve, 400))
     lastTimestamp = Date.now()
     window.requestAnimationFrame(this.renderLoop);
   },

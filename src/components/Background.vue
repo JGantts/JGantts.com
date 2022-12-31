@@ -7,8 +7,6 @@ let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
 let MAGIC_NUMBER_B = 1.5
 
-let FADE_DELAY = 900
-
 type Position = {
   x: number,
   y: number 
@@ -70,11 +68,14 @@ async function resizedWindow() {
     /*
       Calculate the random begining offsets (for the nice-looking gaussian wave "falling curtain" effect)
     */
-    let gaussianDists: number[][] = []
+    let gaussianDists: { lowres: number[], highres: number[] }[] = []
     for (let i=0; i < countToAdd + gaussianDistance*2; i++) {
       gaussianDists.push(gaussianDistribution(Math.random()*90 + 10))
     }
-    let gaussianSums: number[] = []
+    let gaussianSums: { lowres: number[], highres: number[] } = {
+      lowres: [],
+      highres: []
+    }
     for (let i=gaussianDistance; i < countToAdd; i++) {
       let sum = 0
       for (let j=0; j < gaussianDistance*2; j++) {
@@ -90,9 +91,6 @@ async function resizedWindow() {
           : scaledToRange < gaussianMin
             ? gaussianMin
             : scaledToRange
-      //if (clamppedToRange != scaledToRange) {
-        //console.log(scaledToRange)
-      //}
       gaussianSums.push(clamppedToRange)
     }
 
@@ -241,7 +239,7 @@ async function renderColumn(columnIndex: number) {
   let column = columns[columnIndex]
   if (column.animationLine < column.boxes.length) {
     for (let boxIndex=column.animationLine; boxIndex<column.boxes.length; boxIndex++) {
-      column.boxes[boxIndex].alpha += 1/FADE_DELAY
+      column.boxes[boxIndex].alpha += 0.1
       if (column.boxes[boxIndex].alpha > 1) {
         column.boxes[boxIndex].alpha = 1
         column.animationLine = boxIndex
@@ -287,10 +285,10 @@ function renderGradient(
   let right = left + BOX_SIZE
   let bottom = top + BOX_SIZE
 
-  canvasContext.fillStyle = boxToHex(gradientData.boxTL, 1)
+  canvasContext.fillStyle = currentBackground
   canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 
-  /*let gradientTLBR = canvasContext.createLinearGradient(left, top, right, bottom)
+  let gradientTLBR = canvasContext.createLinearGradient(left, top, right, bottom)
   gradientTLBR.addColorStop(0, boxToHex(gradientData.boxTL, 1))
   gradientTLBR.addColorStop(1, boxToHex(gradientData.boxBR, 1))
   canvasContext.fillStyle = gradientTLBR
@@ -300,7 +298,7 @@ function renderGradient(
   gradientBLTR.addColorStop(0, boxToHex(gradientData.boxBL, 0.5))
   gradientBLTR.addColorStop(1, boxToHex(gradientData.boxTR, 0.5))
   canvasContext.fillStyle = gradientBLTR
-  canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)*/
+  canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 
 }
 
@@ -352,12 +350,18 @@ let gaussianMin = 0
 let gaussianMax = 1
 let gaussianRange = gaussianMax - gaussianMin
 let gaussianMid = (gaussianMax + gaussianMin)/2
-function gaussianDistribution(variance: number): number[] {
-  let output: number[] = []
+
+let highresScale = 10
+function gaussianDistribution(variance: number): { lowres: number[], highres: number[] } {
+  let lowres: number[] = []
+  let highres: number[] = []
   for (let i = -gaussianDistance; i <= gaussianDistance; i++) {
-    output.push(gaussianDistributionAt(variance, i))
+    lowres.push(gaussianDistributionAt(variance, i))
   }
-  return output
+  for (let i = -gaussianDistance*highresScale; i <= gaussianDistance*highresScale; i++) {
+    highres.push(gaussianDistributionAt(variance, i/highresScale))
+  }
+  return { lowres, highres }
 }
 
 let e = 2.7182812690734863

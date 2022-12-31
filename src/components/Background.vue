@@ -8,7 +8,6 @@ let topBuffer = 4;
 let lastTimestamp = 0;
 
 let MAGIC_NUMBER_B = 1.5
-let MAGIC_NUMBER_C = 2;
 
 export default {
   data(): { 
@@ -125,7 +124,7 @@ export default {
     async calculateColumn(index: number, interval: number) {
       let column = this.topRowBoxes[index]
 
-      if (column.doneAnimating || (column.boxes.length-topBuffer)*boxSize/MAGIC_NUMBER_C > window.outerHeight) {
+      if (column.doneAnimating || (column.boxes.length-topBuffer)*boxSize > window.outerHeight) {
         column.doneAnimating = true;
         return;
       }

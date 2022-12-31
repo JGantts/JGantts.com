@@ -4,6 +4,7 @@ import { SVG, extend as SVGextend, Element as SVGElement } from '@svgdotjs/svg.j
 
 let BOX_SIZE = 8
 let TOP_BUFFER = 4
+let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
 let MAGIC_NUMBER_B = 1.5
 
@@ -32,7 +33,7 @@ async function resizedWindow() {
   */
   let newWidthRaw = (window.outerWidth/BOX_SIZE)*MAGIC_NUMBER_B
   let newWidthPerSideRaw = newWidthRaw
-  let newPixelsPerSide = Math.ceil(newWidthPerSideRaw) + 1
+  let newPixelsPerSide = Math.ceil(newWidthPerSideRaw) + 1 + HORIZONTAL_BUFFERS*2
   let oldPixelsPerSide = columns.length
   let countToAdd = newPixelsPerSide - oldPixelsPerSide
 
@@ -234,7 +235,7 @@ function renderBox(position: { x: number, y: number }, color: { r: number, g: nu
   let rect = 
     draw
       .rect(BOX_SIZE, BOX_SIZE)
-      .move(position.x*BOX_SIZE, (position.y-TOP_BUFFER)*BOX_SIZE)
+      .move((position.x - HORIZONTAL_BUFFERS)*BOX_SIZE, (position.y-TOP_BUFFER)*BOX_SIZE)
       .attr({ fill: currentBackground })
   rect
     .animate(2000, 0, "last")

@@ -7,6 +7,8 @@ let topBuffer = 4;
 
 let lastTimestamp = 0;
 
+let MAGIC_NUMBER_B = 1.5
+
 export default {
   data(): { 
     topRowBoxes: {
@@ -28,7 +30,6 @@ export default {
 
   methods: {
     async resizedWindow() {
-      let MAGIC_NUMBER_B = 1.5
       let newWidthRaw = (window.outerWidth/boxSize)*MAGIC_NUMBER_B;
       let newWidthPerSideRaw = newWidthRaw;
       let newPixelsPerSide = Math.ceil(newWidthPerSideRaw) + 1;
@@ -123,7 +124,7 @@ export default {
     async calculateColumn(index: number, interval: number) {
       let column = this.topRowBoxes[index]
 
-      if (column.doneAnimating || (column.boxes.length-1-topBuffer)*boxSize > window.innerHeight) {
+      if (column.doneAnimating || (column.boxes.length-1-topBuffer)*boxSize*MAGIC_NUMBER_B > window.innerHeight) {
         column.doneAnimating = true;
         return;
       }

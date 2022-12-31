@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
-let BOX_SIZE = 16
+let BOX_SIZE = 20
 let TOP_BUFFER = 4
 let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
@@ -105,12 +105,14 @@ async function renderLoop() {
 async function renderScene(interval: number) {
   //console.log("wut")
   for (let key in columns) {
-  console.log("wut")
-    renderColumn(Number(key), interval)
+    calculateColumn(Number(key), interval)
+  }
+  for (let key in columns) {
+    renderColumn(Number(key))
   }
 }
 
-async function renderColumn(index: number, interval: number) {
+async function calculateColumn(index: number, interval: number) {
   let column = columns[index]
 
   /*
@@ -140,22 +142,7 @@ async function renderColumn(index: number, interval: number) {
     let position = { x: index, y: column.boxes.length }
 
     /* random color */
-    let color = {
-      r: Math.random()*50 + 0,
-      g: Math.random()*255 + 0,
-      b: Math.random()*50 + 200,
-    }
-    let fakeBackground = {
-      r: 29,
-      g: 65,
-      b: 107,
-    }
-    color.r += fakeBackground.r
-    color.r /= 2
-    color.g += fakeBackground.g
-    color.g /= 2
-    color.b += fakeBackground.b
-    color.b /= 2
+    let color = randomBlue()
 
     /* smooth out color with existing neighbors */
     let parent = null
@@ -228,40 +215,98 @@ async function renderColumn(index: number, interval: number) {
       position: position,
       color: color,
     })
-
-    /*
-      Render new box
-    */
-    console.log("who")
-    renderBox(position, color)
   }
 }
 
-function renderBox(position: { x: number, y: number }, color: { r: number, g: number, b: number}) {
-  canvasContext.fillStyle = rgbaToHex(color)
-  let left = (position.x - HORIZONTAL_BUFFERS)*BOX_SIZE
-  let top = (position.y-TOP_BUFFER)*BOX_SIZE
+
+async function renderColumn(columnIndex: number) {
+  let column = columns[columnIndex]
+  for (let boxKey in column.boxes) {
+    tryRenderBox(columnIndex, Number(boxKey))
+  }
+}
+
+function tryRenderBox(columnIndex: number, boxIndex: number) {
+    let column = columns[columnIndex]
+    let leftCousin = null
+    let leftLineage = columns[columnIndex - 1]
+    if (leftLineage == null) {
+      return
+    }
+    leftCousin = leftLineage.boxes[boxIndex]
+    let parent = column.boxes[boxIndex-1]
+    let leftAunt = leftLineage.boxes[boxIndex - 1]
+    if (leftCousin == null || leftAunt == null || parent == null) {
+      return
+    }
+    let me = column.boxes[boxIndex]
+    renderGradient({
+      position: { x: columnIndex-1, y: boxIndex-1},
+      colorTL: leftAunt.color,
+      colorTR: parent.color,
+      colorBR: me.color,
+      colorBL: leftCousin.color
+    })
+}
+
+function renderGradient(
+  gradientData: {
+    position: { x: number, y: number },
+    colorTL: { r: number, g: number, b: number},
+    colorTR: { r: number, g: number, b: number},
+    colorBR: { r: number, g: number, b: number},
+    colorBL: { r: number, g: number, b: number},
+}) {
+  let left = (gradientData.position.x - HORIZONTAL_BUFFERS)*BOX_SIZE
+  let top = (gradientData.position.y-TOP_BUFFER)*BOX_SIZE
+  let right = left + BOX_SIZE
+  let bottom = top + BOX_SIZE
+
+  let gradientTLBR = canvasContext.createLinearGradient(left, top, right, bottom)
+  gradientTLBR.addColorStop(0, rgbAToHex(gradientData.colorTL, 1))
+  gradientTLBR.addColorStop(1, rgbAToHex(gradientData.colorBR, 1))
+  canvasContext.fillStyle = gradientTLBR
   canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 
-  console.log("uh")
-
-/*
-  let rect = 
-    draw
-      .rect(BOX_SIZE, BOX_SIZE)
-      .move((position.x - HORIZONTAL_BUFFERS)*BOX_SIZE, (position.y-TOP_BUFFER)*BOX_SIZE)
-      .attr({ fill: currentBackground })
-  rect
-    .animate(2000, 0, "last")
-    .attr({ fill: rgbaToHex(color) })*/
+  let gradientBLTR = canvasContext.createLinearGradient(left, bottom, right, top)
+  gradientBLTR.addColorStop(0, rgbAToHex(gradientData.colorBL, 0.5))
+  gradientBLTR.addColorStop(1, rgbAToHex(gradientData.colorTR, 0.5))
+  canvasContext.fillStyle = gradientBLTR
+  canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 }
 
 
 /*
   Helper functions
 */
-function rgbaToHex(rgb: { r: number, g: number, b: number}) {
-  return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}`
+function randomBlue(): { r: number, g: number, b: number} {
+  let color = {
+    r: Math.random()*50 + 0,
+    g: Math.random()*255 + 0,
+    b: Math.random()*50 + 200,
+  }
+  /*color = {
+    r: Math.random()*255 + 0,
+    g: Math.random()*255 + 0,
+    b: Math.random()*255 + 0,
+  }*/
+  let fakeBackground = {
+    r: 29,
+    g: 65,
+    b: 107,
+  }
+  color.r += fakeBackground.r
+  color.r /= 2
+  color.g += fakeBackground.g
+  color.g /= 2
+  color.b += fakeBackground.b
+  color.b /= 2
+
+  return color
+}
+
+function rgbAToHex(rgb: { r: number, g: number, b: number}, a: number) {
+  return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}${decToTwoDigitHex(a*255)}`
 }
 function decToTwoDigitHex(dec: number) {
   let hexRaw = Math.floor(dec).toString(16)

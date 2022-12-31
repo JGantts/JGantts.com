@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { SVG, extend as SVGextend, Element as SVGElement } from '@svgdotjs/svg.js'
 
 let BOX_SIZE = 8
 let TOP_BUFFER = 4
@@ -21,7 +20,9 @@ let columns: {
   }[],
   doneAnimating: boolean,
 }[] = []
-let draw: any = null
+let canvas: any = null
+let gl: any = null
+let program: any = null
 
 
 /*
@@ -232,6 +233,34 @@ async function renderColumn(index: number, interval: number) {
 }
 
 function renderBox(position: { x: number, y: number }, color: { r: number, g: number, b: number}) {
+  gl.attachShader(program, createShader(gl.VERTEX_SHADER, vertexShader.textContent));
+  gl.attachShader(program, createShader(gl.FRAGMENT_SHADER, fragmentShader.textContent));
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    throw gl.getProgramInfoLog(program);
+  }
+  gl.useProgram(program);
+
+  const vertices = [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ];
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices.flat()), gl.STATIC_DRAW);
+
+  const vertexPosition = gl.getAttribLocation(program, "vertexPosition");
+  gl.enableVertexAttribArray(vertexPosition);
+  gl.vertexAttribPointer(vertexPosition, vertices[0].length, gl.FLOAT, false, 0, 0);
+
+  gl.uniform2f(
+    gl.getUniformLocation(program, 'canvasSize'),
+    canvas.width, canvas.height
+  );
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertices.length);
+
+/*
   let rect = 
     draw
       .rect(BOX_SIZE, BOX_SIZE)
@@ -239,13 +268,23 @@ function renderBox(position: { x: number, y: number }, color: { r: number, g: nu
       .attr({ fill: currentBackground })
   rect
     .animate(2000, 0, "last")
-    .attr({ fill: rgbaToHex(color) })
+    .attr({ fill: rgbaToHex(color) })*/
 }
 
 
 /*
   Helper functions
 */
+function createShader(type, sourceCode) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, sourceCode.trim());
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    throw gl.getShaderInfoLog(shader);
+  }
+  return shader;
+}
+
 function rgbaToHex(rgb: { r: number, g: number, b: number}) {
   return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}`
 }
@@ -301,9 +340,13 @@ darkModePreference.addEventListener("change", e => {
 /*
   And begin!
 */
+
 onMounted(async () => {
   console.log("Hello, world!")
-  draw = SVG().addTo('#animation-base').size("100%", "100%")
+  canvas = document.getElementById('animation-base')
+  gl = canvas?.getContext("webgl2")
+  if (!gl) { throw "WebGL2 not supported" }
+  program = gl.createProgram();
   await resizedWindow()
   //await new Promise(resolve => setTimeout(resolve, 400))
   lastTimestamp = Date.now()
@@ -318,8 +361,7 @@ window.addEventListener("resize", resizedWindow)
 </script>
 
 <template>
-  <div id="animation-base">
-  </div>
+  <canvas id="animation-base" />
 </template>
 
 <style scoped>

@@ -12,7 +12,10 @@ export default {
     topRowBoxes: {
       spawnIncrement: number,
       spawnCountdown: number,
-      boxes: number[],
+      boxes: {
+        position: { x: number, y: number },
+        color: { r: number, g: number, b: number},
+      }[],
       doneAnimating: boolean,
     }[],
     draw: any
@@ -134,14 +137,12 @@ export default {
           r: Math.random()*50 + 0,
           g: Math.random()*255 + 0,
           b: Math.random()*50 + 200,
-          a: Math.random()*25 + 200,
         };
 
         let fakeBackground = {
           r: 29,
           g: 65,
           b: 107,
-          a: 255,
         };
 
         color.r += fakeBackground.r;
@@ -150,8 +151,6 @@ export default {
         color.g /= 2;
         color.b += fakeBackground.b;
         color.b /= 2;
-        color.a += fakeBackground.a;
-        color.a /= 2;
 
         let parent = null;
         let leftCousin = null;
@@ -177,28 +176,24 @@ export default {
           colorToTint.r += parent.color.r;
           colorToTint.g += parent.color.g;
           colorToTint.b += parent.color.b;
-          colorToTint.a += parent.color.a;
           colorsAdded += 1;
         }
         if (leftCousin) {
           colorToTint.r += leftCousin.color.r;
           colorToTint.g += leftCousin.color.g;
           colorToTint.b += leftCousin.color.b;
-          colorToTint.a += leftCousin.color.a;
           colorsAdded += 1;
         }
         if (rightCousin) {
           colorToTint.r += rightCousin.color.r;
           colorToTint.g += rightCousin.color.g;
           colorToTint.b += rightCousin.color.b;
-          colorToTint.a += rightCousin.color.a;
           colorsAdded += 1;
         }
         if(colorsAdded != 0) {
           colorToTint.r /= colorsAdded;
           colorToTint.g /= colorsAdded;
           colorToTint.b /= colorsAdded;
-          colorToTint.a /= colorsAdded;
 
           let randomMultiplier = 1;
           let consistentMultiplier = 10;
@@ -213,31 +208,25 @@ export default {
           let blue =
             randomMultiplier * color.b
             + consistentMultiplier * colorToTint.b;
-          let alpha =
-            randomMultiplier * color.a
-            + consistentMultiplier * colorToTint.a;
 
           red = Math.floor(red/multiplierSum);
           green = Math.floor(green/multiplierSum);
           blue = Math.floor(blue/multiplierSum);
-          alpha = Math.floor(alpha/multiplierSum);
 
           color.r = red;
           color.g = green;
           color.b = blue;
-          color.a = alpha;
         }
 
 
         column.boxes.push({
           position: position,
           color: color,
-          element: this.addBox(position, color),
-        });
+        })
+        this.addBox(position, color)
       }
     },
-
-    addBox(position, color) {
+    addBox(position: { x: number, y: number }, color: { r: number, g: number, b: number}) {
       let rect = 
         this.draw
           .rect(boxSize, boxSize)
@@ -264,31 +253,10 @@ export default {
   },
 }
 
-function getRandomElements(arr, n) {
-    var result = new Array(n),
-        len = arr.length,
-        taken = new Array(len);
-    if (n > len)
-        throw new RangeError("getRandom: more elements taken than available");
-    while (n--) {
-        var x = Math.floor(Math.random() * len);
-        result[n] = arr[x in taken ? taken[x] : x];
-        taken[x] = --len in taken ? taken[len] : len;
-    }
-    return result;
-}
-
-function xDirection(position) {
-  if(position.x < 0) {
-    return -1;
-  }
-  return 1;
-}
-
-function rgbaToHex(rgb) {
+function rgbaToHex(rgb: { r: number, g: number, b: number}) {
   return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}`
 }
-function decToTwoDigitHex(dec) {
+function decToTwoDigitHex(dec: number) {
   let hexRaw = Math.floor(dec).toString(16);
   return (hexRaw.length==1) ? "0"+hexRaw : hexRaw;
 }

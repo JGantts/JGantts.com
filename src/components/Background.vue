@@ -6,6 +6,9 @@ let BOX_SIZE = 8;
 let TOP_BUFFER = 4;
 let MAGIC_NUMBER_B = 1.5
 
+/*
+  Set and check for dark mode
+*/
 let LIGHT_BACKGROUND = `#EFEFEF`
 let DARK_BACKGROUND = `#1F1F1F`
 
@@ -20,6 +23,9 @@ darkModePreference.addEventListener("change", e => {
   }
 });
 
+/*
+  Initialize variables
+*/
 let lastTimestamp = 0;
 let topRowBoxes: {
   spawnIncrement: number,
@@ -32,6 +38,9 @@ let topRowBoxes: {
 }[] = []
 let draw: any = null
 
+/*
+  Render functions
+*/
 async function resizedWindow() {
   let newWidthRaw = (window.outerWidth/BOX_SIZE)*MAGIC_NUMBER_B;
   let newWidthPerSideRaw = newWidthRaw;
@@ -97,11 +106,11 @@ async function renderLoop() {
 
 async function renderScene(interval: number) {
   for (let key in topRowBoxes) {
-    calculateColumn(Number(key), interval);
+    renderColumn(Number(key), interval);
   }
 }
 
-async function calculateColumn(index: number, interval: number) {
+async function renderColumn(index: number, interval: number) {
   let column = topRowBoxes[index]
 
   if (column.doneAnimating || (column.boxes.length-TOP_BUFFER)*BOX_SIZE > window.outerHeight) {
@@ -227,6 +236,10 @@ function addBox(position: { x: number, y: number }, color: { r: number, g: numbe
     .attr({ fill: rgbaToHex(color) })
 }
 
+
+/*
+  Helper functions
+*/
 function rgbaToHex(rgb: { r: number, g: number, b: number}) {
   return `#${decToTwoDigitHex(rgb.r)}${decToTwoDigitHex(rgb.g)}${decToTwoDigitHex(rgb.b)}`
 }
@@ -276,7 +289,6 @@ onUnmounted(() => {
 })
 
 window.addEventListener("resize", resizedWindow);
-
 </script>
 
 <template>

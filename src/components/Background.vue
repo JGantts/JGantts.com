@@ -125,7 +125,7 @@ async function renderColumn(index: number, interval: number) {
     column.spawnCountdown += column.spawnIncrement*intervalRatio
   }
   if (column.spawnCountdown >= 1) {
-    column.spawnCountdown = 0
+    column.spawnCountdown -= 1
 
     /*
       Add new box

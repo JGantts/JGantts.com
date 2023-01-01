@@ -21,7 +21,6 @@ type Color = {
 type Box = {
     position: Position,
     color: Color,
-    alpha: number
   }
 
 /*
@@ -38,6 +37,7 @@ let columns: {
 let canvas: HTMLCanvasElement
 let canvasContext: CanvasRenderingContext2D
 
+let needsRedraw = false
 
 /*
   Rendering functions
@@ -73,40 +73,26 @@ async function resizedWindow() {
       gaussianDists.push(gaussianDistribution(Math.random()*90 + 10))
     }
     let gaussianSums: { lowres: number[], highres: number[] } = {
-      lowres: [],
-      highres: []
+      lowres: gaussianSum(gaussianDists.map(dist => dist.lowres), countToAdd),
+      highres: gaussianSum(gaussianDists.map(dist => dist.highres), countToAdd)
     }
-    for (let i=gaussianDistance; i < countToAdd; i++) {
-      let sum = 0
-      for (let j=0; j < gaussianDistance*2; j++) {
-        sum += gaussianDists[i-(j-gaussianDistance)][j]
-      }
-
-      let localizedToZero = sum/e-1
-      let scaledToOne = localizedToZero*MAGIC_NUMBER_A
-      let scaledToRange = (scaledToOne*gaussianRange/2) + gaussianMid
-      let clamppedToRange = 
-        scaledToRange > gaussianMax 
-          ? gaussianMax
-          : scaledToRange < gaussianMin
-            ? gaussianMin
-            : scaledToRange
-      gaussianSums.push(clamppedToRange)
-    }
+    
 
     /*
       Take the begining offsets and initialize the columns
     */
-    for (let i=0; i < gaussianSums.length; i++) {
+    for (let i=0; i < gaussianSums.lowres.length; i++) {
       columns.push({
-        spawnIncrement: gaussianSums[i]*(spawnIncrementMax - spawnIncrementMin) + spawnIncrementMin,
-        spawnCountdown: gaussianSums[i]*(spawnCountdownMax - spawnCountdownMin) + spawnCountdownMin,
+        spawnIncrement: gaussianSums.lowres[i]*(spawnIncrementMax - spawnIncrementMin) + spawnIncrementMin,
+        spawnCountdown: gaussianSums.lowres[i]*(spawnCountdownMax - spawnCountdownMin) + spawnCountdownMin,
         boxes: [],
         doneAnimating: false,
         animationLine: 0,
       })
     }
   }
+
+  needsRedraw = true
 }
 
 async function renderLoop() {
@@ -126,9 +112,11 @@ async function renderScene(interval: number) {
   for (let key in columns) {
     renderColumn(Number(key))
   }
+  needsRedraw = false
 }
 
 async function calculateColumn(index: number, interval: number) {
+  interval = 10
   let column = columns[index]
 
   /*
@@ -229,40 +217,46 @@ async function calculateColumn(index: number, interval: number) {
 
     column.boxes.push({
       position: position,
-      color: color,
-      alpha: 0
+      color: color
     })
   }
 }
 
 async function renderColumn(columnIndex: number) {
   let column = columns[columnIndex]
-  if (column.animationLine < column.boxes.length) {
-    for (let boxIndex=column.animationLine; boxIndex<column.boxes.length; boxIndex++) {
-      column.boxes[boxIndex].alpha += 0.1
-      if (column.boxes[boxIndex].alpha > 1) {
-        column.boxes[boxIndex].alpha = 1
-        column.animationLine = boxIndex
-      }
+  if (column.doneAnimating && !needsRedraw) {
+    return
+  }
+  if (needsRedraw) {
+    for (let boxIndex=0; boxIndex<column.boxes.length; boxIndex++) {
       tryRenderBox(columnIndex, boxIndex)
+    }
+  } else {
+    for (let boxIndex=column.boxes.length; boxIndex>=0; boxIndex--) {
+      if(tryRenderBox(columnIndex, boxIndex)) {
+        break
+      }
     }
   }
 }
 
-function tryRenderBox(columnIndex: number, boxIndex: number) {
+function tryRenderBox(columnIndex: number, boxIndex: number): boolean {
     let column = columns[columnIndex]
     let leftCousin = null
     let leftLineage = columns[columnIndex - 1]
     if (leftLineage == null) {
-      return
+      return false
     }
     leftCousin = leftLineage.boxes[boxIndex]
     let parent = column.boxes[boxIndex-1]
     let leftAunt = leftLineage.boxes[boxIndex - 1]
     if (leftCousin == null || leftAunt == null || parent == null) {
-      return
+      return false
     }
     let me = column.boxes[boxIndex]
+    if (me == null) {
+      return false
+    }
     renderGradient({
       position: { x: columnIndex-1, y: boxIndex-1},
       boxTL: leftAunt,
@@ -270,6 +264,7 @@ function tryRenderBox(columnIndex: number, boxIndex: number) {
       boxBR: me,
       boxBL: leftCousin,
     })
+    return true
 }
 
 function renderGradient(
@@ -333,7 +328,7 @@ function randomBlue(): { r: number, g: number, b: number} {
 }
 
 function boxToHex(box: Box, alphaMultiplier: number) {
-  return `#${decToTwoDigitHex(box.color.r)}${decToTwoDigitHex(box.color.g)}${decToTwoDigitHex(box.color.b)}${decToTwoDigitHex(box.alpha*255*alphaMultiplier)}`
+  return `#${decToTwoDigitHex(box.color.r)}${decToTwoDigitHex(box.color.g)}${decToTwoDigitHex(box.color.b)}${decToTwoDigitHex(255*alphaMultiplier)}`
 }
 function decToTwoDigitHex(dec: number) {
   let hexRaw = Math.floor(dec).toString(16)
@@ -351,7 +346,29 @@ let gaussianMax = 1
 let gaussianRange = gaussianMax - gaussianMin
 let gaussianMid = (gaussianMax + gaussianMin)/2
 
-let highresScale = 10
+function gaussianSum(dists: number[][], length: number): number[] {
+  let gaussianSums: number[] = []
+    for (let i=gaussianDistance; i < length; i++) {
+      let sum = 0
+      for (let j=0; j < gaussianDistance*2; j++) {
+        sum += dists[i-(j-gaussianDistance)][j]
+      }
+
+      let localizedToZero = sum/e-1
+      let scaledToOne = localizedToZero*MAGIC_NUMBER_A
+      let scaledToRange = (scaledToOne*gaussianRange/2) + gaussianMid
+      let clamppedToRange = 
+        scaledToRange > gaussianMax 
+          ? gaussianMax
+          : scaledToRange < gaussianMin
+            ? gaussianMin
+            : scaledToRange
+      gaussianSums.push(clamppedToRange)
+    }
+    return gaussianSums
+}
+
+let highresScale = BOX_SIZE
 function gaussianDistribution(variance: number): { lowres: number[], highres: number[] } {
   let lowres: number[] = []
   let highres: number[] = []

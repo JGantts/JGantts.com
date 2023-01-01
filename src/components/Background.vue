@@ -72,19 +72,19 @@ async function resizedWindow() {
     for (let i=0; i < countToAdd + gaussianDistance*2; i++) {
       gaussianDists.push(gaussianDistribution(Math.random()*90 + 10))
     }
-    let gaussianSums: { lowres: number[], highres: number[] } = {
-      lowres: gaussianSum(gaussianDists.map(dist => dist.lowres), countToAdd),
-      highres: gaussianSum(gaussianDists.map(dist => dist.highres), countToAdd)
+    let gaussianResults: { lowres: number[], highres: number[] } = {
+      lowres: gaussianSums(gaussianDists.map(dist => dist.lowres), countToAdd),
+      highres: gaussianSums(gaussianDists.map(dist => dist.highres), countToAdd)
     }
     
 
     /*
       Take the begining offsets and initialize the columns
     */
-    for (let i=0; i < gaussianSums.lowres.length; i++) {
+    for (let i=0; i < gaussianResults.lowres.length; i++) {
       columns.push({
-        spawnIncrement: gaussianSums.lowres[i]*(spawnIncrementMax - spawnIncrementMin) + spawnIncrementMin,
-        spawnCountdown: gaussianSums.lowres[i]*(spawnCountdownMax - spawnCountdownMin) + spawnCountdownMin,
+        spawnIncrement: gaussianResults.lowres[i]*(spawnIncrementMax - spawnIncrementMin) + spawnIncrementMin,
+        spawnCountdown: gaussianResults.lowres[i]*(spawnCountdownMax - spawnCountdownMin) + spawnCountdownMin,
         boxes: [],
         doneAnimating: false,
         animationLine: 0,
@@ -346,7 +346,7 @@ let gaussianMax = 1
 let gaussianRange = gaussianMax - gaussianMin
 let gaussianMid = (gaussianMax + gaussianMin)/2
 
-function gaussianSum(dists: number[][], length: number): number[] {
+function gaussianSums(dists: number[][], length: number): number[] {
   let gaussianSums: number[] = []
     for (let i=gaussianDistance; i < length; i++) {
       let sum = 0
@@ -413,7 +413,7 @@ darkModePreference.addEventListener("change", e => {
 
 onMounted(async () => {
   console.log("Hello, world!")
-  canvas = document.getElementById('animation-base') as HTMLCanvasElement
+  canvas = document.getElementById('lowres-canvas') as HTMLCanvasElement
   canvasContext = canvas.getContext("2d")!
   await resizedWindow()
   //await new Promise(resolve => setTimeout(resolve, 400))
@@ -429,11 +429,36 @@ window.addEventListener("resize", resizedWindow)
 </script>
 
 <template>
-  <canvas id="animation-base" width="100" height="100"/>
+  <div id='canvas-holder'>
+    <canvas
+    id='lowres-canvas'
+    style= 'position: absolute; z-index: 1'
+    >NOOOOO!</canvas>
+    <canvas
+    id='highres-canvas'
+    style= 'position: absolute; z-index: 2'
+    >NOOOOO!</canvas>
+  </div>
 </template>
 
 <style scoped>
-#animation-base {
+#canvas-holder {
+  position: absolute;
+  left: 0;
+  top: -0;
+  width: 100vw;
+  height: 100vh;
+  overflow: clip;
+}
+#lowres-canvas {
+  position: absolute;
+  left: 0;
+  top: -0;
+  width: 100vw;
+  height: 100vh;
+  overflow: clip;
+}
+#highres-canvas {
   position: absolute;
   left: 0;
   top: -0;

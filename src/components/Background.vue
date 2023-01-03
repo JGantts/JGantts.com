@@ -267,7 +267,7 @@ async function calculateRenderClip(interval: number) {
   canvas2Context.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index)+offsetY)
   index++
   for (; index < gaussianLowres.length*highresScale; index++) {
-    canvas2Context.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*150+offsetY)
+    canvas2Context.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*500+offsetY)
   }
   canvas2Context.lineTo(canvas2Element.clientWidth, canvas2Element.clientHeight)
   canvas2Context.lineTo(0, canvas2Element.clientHeight)

@@ -252,7 +252,7 @@ async function calculateColumn(index: number, interval: number) {
   }
 }
 
-let offsetY = -200
+let offsetY = -250
 let doneAnimatingCurtain = false
 async function calculateRenderClip(interval: number) {
   if (doneAnimatingCurtain || offsetY > canvas2Element.height*1.5) {

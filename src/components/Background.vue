@@ -363,12 +363,7 @@ function randomBlue(): { r: number, g: number, b: number} {
     g: Math.random()*255 + 0,
     b: Math.random()*50 + 200,
   }
-  /*color = {
-    r: Math.random()*255 + 0,
-    g: Math.random()*255 + 0,
-    b: Math.random()*255 + 0,
-  }*/
-  let fakeBackground = {
+  /*let fakeBackground = {
     r: 29,
     g: 65,
     b: 107,
@@ -378,7 +373,7 @@ function randomBlue(): { r: number, g: number, b: number} {
   color.g += fakeBackground.g
   color.g /= 2
   color.b += fakeBackground.b
-  color.b /= 2
+  color.b /= 2*/
 
   return color
 }
@@ -505,6 +500,7 @@ window.addEventListener("resize", resizedWindow)*/
   top: -0;
   width: 100vw;
   height: 100vh;
+  opacity: 75%;
   overflow: clip;
 }
 #highres-canvas {

@@ -104,7 +104,6 @@ async function resizedWindow() {
       highres: gaussianSums(highresDistsWithFiller, countToAdd*highresScale, gaussianDistance*highresScale, sum => {
         let scaledOne = sum-2
         let scaledTwo = scaledOne*200
-        console.log(sum)
         return scaledTwo
       })
     }

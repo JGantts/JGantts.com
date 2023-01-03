@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+// @ts-ignore
+import{ Smooth } from '../assets/Smooth'
 
 let BOX_SIZE = 8
 let TOP_BUFFER = 4
 let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
 let MAGIC_NUMBER_B = 1.5
+let MAGIC_NUMBER_C = 3.5
 
 type Position = {
   x: number,
@@ -32,10 +35,14 @@ let columns: {
   spawnCountdown: number,
   boxes: Box[],
   doneAnimating: boolean,
-  animationLine: number,
 }[] = []
-let canvas: HTMLCanvasElement
-let canvasContext: CanvasRenderingContext2D
+let canvas1Element: HTMLCanvasElement
+let canvas1Context: CanvasRenderingContext2D
+let canvas2Element: HTMLCanvasElement
+let canvas2Context: CanvasRenderingContext2D
+let gaussianLowres: number[] = []
+let gaussionSmoothed: any = null
+
 
 let needsRedraw = false
 
@@ -43,8 +50,10 @@ let needsRedraw = false
   Rendering functions
 */
 async function resizedWindow() {
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
+  canvas1Element.width = canvas1Element.clientWidth;
+  canvas1Element.height = canvas1Element.clientHeight;
+  canvas2Element.width = canvas2Element.clientWidth;
+  canvas2Element.height = canvas2Element.clientHeight;
 
   /*
     Check if (and how many) new columns to add
@@ -72,24 +81,51 @@ async function resizedWindow() {
     for (let i=0; i < countToAdd + gaussianDistance*2; i++) {
       gaussianDists.push(gaussianDistribution(Math.random()*90 + 10))
     }
-    let gaussianSums: { lowres: number[], highres: number[] } = {
-      lowres: gaussianSum(gaussianDists.map(dist => dist.lowres), countToAdd),
-      highres: gaussianSum(gaussianDists.map(dist => dist.highres), countToAdd)
+    let lowresDists = gaussianDists.map(dist => dist.lowres)
+    let highresDists = gaussianDists.map(dist => dist.highres)
+    let highresDistsWithFiller: number[][] = []
+    for(let ii=0; ii<highresDists.length*highresScale; ii++) {
+      if (Math.floor(ii/highresScale) == ii/highresScale) {
+        highresDistsWithFiller[ii] = highresDists[ii/highresScale]
+      } else {
+        highresDistsWithFiller[ii] = new Array(gaussianDistance*highresScale*2).fill(0)
+      }
+    }
+    let gaussianResults: { lowres: number[], highres: number[] } = {
+      lowres: gaussianSums(lowresDists, countToAdd, gaussianDistance, sum => {
+        let localizedToZero = sum/e-1
+        let scaledToOne = localizedToZero*MAGIC_NUMBER_A
+        let scaledToRange = (scaledToOne*gaussianRange/2) + gaussianMid
+        let clamppedToRange = 
+          scaledToRange > gaussianMax 
+            ? gaussianMax
+            : scaledToRange < gaussianMin
+              ? gaussianMin
+              : scaledToRange
+        return clamppedToRange
+      }),
+      highres: gaussianSums(highresDistsWithFiller, countToAdd*highresScale, gaussianDistance*highresScale, sum => {
+        let scaledOne = sum-2
+        let scaledTwo = scaledOne*400
+        return scaledTwo
+      })
     }
     
 
     /*
       Take the begining offsets and initialize the columns
     */
-    for (let i=0; i < gaussianSums.lowres.length; i++) {
+    for (let i=0; i < gaussianResults.lowres.length; i++) {
       columns.push({
-        spawnIncrement: gaussianSums.lowres[i]*(spawnIncrementMax - spawnIncrementMin) + spawnIncrementMin,
-        spawnCountdown: gaussianSums.lowres[i]*(spawnCountdownMax - spawnCountdownMin) + spawnCountdownMin,
+        spawnIncrement: gaussianResults.lowres[i]*(spawnIncrementMax - spawnIncrementMin) + spawnIncrementMin,
+        spawnCountdown: gaussianResults.lowres[i]*(spawnCountdownMax - spawnCountdownMin) + spawnCountdownMin,
         boxes: [],
         doneAnimating: false,
-        animationLine: 0,
       })
     }
+    gaussianLowres = gaussianResults.lowres
+    //@ts-ignore
+    gaussionSmoothed = Smooth(gaussianResults.lowres)
   }
 
   needsRedraw = true
@@ -109,14 +145,14 @@ async function renderScene(interval: number) {
   for (let key in columns) {
     calculateColumn(Number(key), interval)
   }
+  calculateRenderClip(interval)
   for (let key in columns) {
     renderColumn(Number(key))
   }
   needsRedraw = false
 }
 
-async function calculateColumn(index: number, interval: number) {
-  interval = 10
+async function calculateColumn(index: number, interval: number) { 
   let column = columns[index]
 
   /*
@@ -131,11 +167,7 @@ async function calculateColumn(index: number, interval: number) {
     Are we ready for the new box? (techincaly dead code atm, was used to make some columns faster than others)
   */
   let intervalRatio = interval/100
-  if(column.spawnCountdown < 0) {
-    column.spawnCountdown += 1*intervalRatio
-  } else {
-    column.spawnCountdown += column.spawnIncrement*intervalRatio
-  }
+  column.spawnCountdown += column.spawnIncrement*intervalRatio
   if (column.spawnCountdown >= 1) {
     column.spawnCountdown -= 1
 
@@ -222,6 +254,31 @@ async function calculateColumn(index: number, interval: number) {
   }
 }
 
+let offsetY = -200
+let doneAnimatingCurtain = false
+async function calculateRenderClip(interval: number) {
+  if (doneAnimatingCurtain || offsetY > canvas2Element.height*1.5) {
+    doneAnimatingCurtain = true
+    return
+  }
+  offsetY += interval/20
+  canvas2Context.clearRect(0, 0, canvas2Element.width, canvas2Element.height);
+  canvas2Context.fillStyle = currentBackground
+  canvas2Context.beginPath()
+  let index=0
+  canvas2Context.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index)+offsetY)
+  index++
+  for (; index < gaussianLowres.length*highresScale; index++) {
+    canvas2Context.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*500+offsetY)
+  }
+  canvas2Context.lineTo(canvas2Element.clientWidth, canvas2Element.clientHeight)
+  canvas2Context.lineTo(0, canvas2Element.clientHeight)
+  canvas2Context.closePath()
+
+  canvas2Context.fillStyle = currentBackground
+  canvas2Context.fill()
+}
+
 async function renderColumn(columnIndex: number) {
   let column = columns[columnIndex]
   if (column.doneAnimating && !needsRedraw) {
@@ -280,21 +337,20 @@ function renderGradient(
   let right = left + BOX_SIZE
   let bottom = top + BOX_SIZE
 
-  canvasContext.fillStyle = currentBackground
-  canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
+  canvas1Context.fillStyle = currentBackground
+  canvas1Context.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 
-  let gradientTLBR = canvasContext.createLinearGradient(left, top, right, bottom)
+  let gradientTLBR = canvas1Context.createLinearGradient(left, top, right, bottom)
   gradientTLBR.addColorStop(0, boxToHex(gradientData.boxTL, 1))
   gradientTLBR.addColorStop(1, boxToHex(gradientData.boxBR, 1))
-  canvasContext.fillStyle = gradientTLBR
-  canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
+  canvas1Context.fillStyle = gradientTLBR
+  canvas1Context.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 
-  let gradientBLTR = canvasContext.createLinearGradient(left, bottom, right, top)
+  let gradientBLTR = canvas1Context.createLinearGradient(left, bottom, right, top)
   gradientBLTR.addColorStop(0, boxToHex(gradientData.boxBL, 0.5))
   gradientBLTR.addColorStop(1, boxToHex(gradientData.boxTR, 0.5))
-  canvasContext.fillStyle = gradientBLTR
-  canvasContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
-
+  canvas1Context.fillStyle = gradientBLTR
+  canvas1Context.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 }
 
 
@@ -307,12 +363,7 @@ function randomBlue(): { r: number, g: number, b: number} {
     g: Math.random()*255 + 0,
     b: Math.random()*50 + 200,
   }
-  /*color = {
-    r: Math.random()*255 + 0,
-    g: Math.random()*255 + 0,
-    b: Math.random()*255 + 0,
-  }*/
-  let fakeBackground = {
+  /*let fakeBackground = {
     r: 29,
     g: 65,
     b: 107,
@@ -322,7 +373,7 @@ function randomBlue(): { r: number, g: number, b: number} {
   color.g += fakeBackground.g
   color.g /= 2
   color.b += fakeBackground.b
-  color.b /= 2
+  color.b /= 2*/
 
   return color
 }
@@ -346,46 +397,37 @@ let gaussianMax = 1
 let gaussianRange = gaussianMax - gaussianMin
 let gaussianMid = (gaussianMax + gaussianMin)/2
 
-function gaussianSum(dists: number[][], length: number): number[] {
+function gaussianSums(dists: number[][], length: number, distance: number, noramalizer: (x: number) => number): number[] {
   let gaussianSums: number[] = []
-    for (let i=gaussianDistance; i < length; i++) {
-      let sum = 0
-      for (let j=0; j < gaussianDistance*2; j++) {
-        sum += dists[i-(j-gaussianDistance)][j]
-      }
-
-      let localizedToZero = sum/e-1
-      let scaledToOne = localizedToZero*MAGIC_NUMBER_A
-      let scaledToRange = (scaledToOne*gaussianRange/2) + gaussianMid
-      let clamppedToRange = 
-        scaledToRange > gaussianMax 
-          ? gaussianMax
-          : scaledToRange < gaussianMin
-            ? gaussianMin
-            : scaledToRange
-      gaussianSums.push(clamppedToRange)
+  for (let i=distance; i < length; i++) {
+    let sum = 0
+    for (let j=0; j < distance*2; j++) {
+      sum += dists[i-(j-distance)][j]
     }
-    return gaussianSums
+
+    gaussianSums.push(noramalizer(sum))
+  }
+  return gaussianSums
 }
 
 let highresScale = BOX_SIZE
 function gaussianDistribution(variance: number): { lowres: number[], highres: number[] } {
   let lowres: number[] = []
   let highres: number[] = []
+  let oneOverSqrtTwoPiVariance: number = 1/Math.sqrt(2*Math.PI*variance)
   for (let i = -gaussianDistance; i <= gaussianDistance; i++) {
-    lowres.push(gaussianDistributionAt(variance, i))
+    lowres.push(gaussianDistributionAt(variance, oneOverSqrtTwoPiVariance, i))
   }
   for (let i = -gaussianDistance*highresScale; i <= gaussianDistance*highresScale; i++) {
-    highres.push(gaussianDistributionAt(variance, i/highresScale))
+    highres.push(gaussianDistributionAt(variance, oneOverSqrtTwoPiVariance, i/highresScale))
   }
   return { lowres, highres }
 }
 
 let e = 2.7182812690734863
-function gaussianDistributionAt(variance: number, x: number): number {
-    let sqrtTwoPiVariance: number = Math.sqrt(2*Math.PI*variance)
+function gaussianDistributionAt(variance: number, oneOverSqrtTwoPiVariance: number, x: number): number {
     let negativeXSquaredOver2Variance: number = 1-(x*x)/(2*variance)
-    let output: number = (1/sqrtTwoPiVariance)*Math.pow(e, negativeXSquaredOver2Variance)
+    let output: number = oneOverSqrtTwoPiVariance*Math.pow(e, negativeXSquaredOver2Variance)
     return output
 }
 
@@ -413,27 +455,55 @@ darkModePreference.addEventListener("change", e => {
 
 onMounted(async () => {
   console.log("Hello, world!")
-  canvas = document.getElementById('animation-base') as HTMLCanvasElement
-  canvasContext = canvas.getContext("2d")!
+  canvas1Element = document.getElementById('lowres-canvas') as HTMLCanvasElement
+  canvas1Context = canvas1Element.getContext("2d")!
+  canvas2Element = document.getElementById('highres-canvas') as HTMLCanvasElement
+  canvas2Context = canvas2Element.getContext("2d")!
   await resizedWindow()
   //await new Promise(resolve => setTimeout(resolve, 400))
   lastTimestamp = Date.now()
   window.requestAnimationFrame(renderLoop)
 })
 
-onUnmounted(() => {
+/*onUnmounted(() => {
   window.removeEventListener("resize", resizedWindow)
 })
 
-window.addEventListener("resize", resizedWindow)
+window.addEventListener("resize", resizedWindow)*/
 </script>
 
 <template>
-  <canvas id="animation-base" width="100" height="100"/>
+  <div id='canvas-holder'>
+    <canvas
+    id='lowres-canvas'
+    style= 'position: absolute; z-index: 1'
+    >NOOOOO!</canvas>
+    <canvas
+    id='highres-canvas'
+    style= 'position: absolute; z-index: 2'
+    >NOOOOO!</canvas>
+  </div>
 </template>
 
 <style scoped>
-#animation-base {
+#canvas-holder {
+  position: absolute;
+  left: 0;
+  top: -0;
+  width: 100vw;
+  height: 100vh;
+  overflow: clip;
+}
+#lowres-canvas {
+  position: absolute;
+  left: 0;
+  top: -0;
+  width: 100vw;
+  height: 100vh;
+  opacity: 75%;
+  overflow: clip;
+}
+#highres-canvas {
   position: absolute;
   left: 0;
   top: -0;

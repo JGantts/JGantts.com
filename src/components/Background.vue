@@ -465,11 +465,11 @@ onMounted(async () => {
   window.requestAnimationFrame(renderLoop)
 })
 
-onUnmounted(() => {
+/*onUnmounted(() => {
   window.removeEventListener("resize", resizedWindow)
 })
 
-window.addEventListener("resize", resizedWindow)
+window.addEventListener("resize", resizedWindow)*/
 </script>
 
 <template>

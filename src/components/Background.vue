@@ -363,18 +363,6 @@ function randomBlue(): { r: number, g: number, b: number} {
     g: Math.random()*255 + 0,
     b: Math.random()*50 + 200,
   }
-  /*let fakeBackground = {
-    r: 29,
-    g: 65,
-    b: 107,
-  }
-  color.r += fakeBackground.r
-  color.r /= 2
-  color.g += fakeBackground.g
-  color.g /= 2
-  color.b += fakeBackground.b
-  color.b /= 2*/
-
   return color
 }
 

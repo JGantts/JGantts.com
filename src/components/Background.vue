@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+// @ts-ignore
 import{ Smooth } from '../assets/Smooth'
 
 let BOX_SIZE = 8
@@ -123,6 +124,7 @@ async function resizedWindow() {
       })
     }
     gaussianLowres = gaussianResults.lowres
+    //@ts-ignore
     gaussionSmoothed = Smooth(gaussianResults.lowres)
   }
 

@@ -103,7 +103,8 @@ async function resizedWindow() {
       }),
       highres: gaussianSums(highresDistsWithFiller, countToAdd*highresScale, gaussianDistance*highresScale, sum => {
         let scaledOne = sum-2
-        let scaledTwo = scaledOne*200
+        let scaledTwo = scaledOne*400
+        console.log(scaledTwo)
         return scaledTwo
       })
     }
@@ -249,14 +250,14 @@ async function calculateColumn(index: number, interval: number) {
   }
 }
 
-let offsetY = -400
+let offsetY = -500
 let doneAnimatingCurtain = false
 async function calculateRenderClip(interval: number) {
   if (doneAnimatingCurtain || offsetY > canvas2Element.height*1.5) {
     doneAnimatingCurtain = true
     return
   }
-  offsetY += interval/12
+  offsetY += interval/20
   canvas2Context.clearRect(0, 0, canvas2Element.width, canvas2Element.height);
   canvas2Context.fillStyle = currentBackground
   canvas2Context.beginPath()

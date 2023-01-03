@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import{ Smooth } from '../assets/Smooth'
 
 let BOX_SIZE = 8
 let TOP_BUFFER = 4
@@ -38,7 +39,8 @@ let canvas1Element: HTMLCanvasElement
 let canvas1Context: CanvasRenderingContext2D
 let canvas2Element: HTMLCanvasElement
 let canvas2Context: CanvasRenderingContext2D
-let gaussianHighRes: number[] = []
+let gaussianLowres: number[] = []
+let gaussionSmoothed: any = null
 
 
 let needsRedraw = false
@@ -104,7 +106,6 @@ async function resizedWindow() {
       highres: gaussianSums(highresDistsWithFiller, countToAdd*highresScale, gaussianDistance*highresScale, sum => {
         let scaledOne = sum-2
         let scaledTwo = scaledOne*400
-        console.log(scaledTwo)
         return scaledTwo
       })
     }
@@ -121,7 +122,8 @@ async function resizedWindow() {
         doneAnimating: false,
       })
     }
-    gaussianHighRes = gaussianResults.highres
+    gaussianLowres = gaussianResults.lowres
+    gaussionSmoothed = Smooth(gaussianResults.lowres)
   }
 
   needsRedraw = true
@@ -250,7 +252,7 @@ async function calculateColumn(index: number, interval: number) {
   }
 }
 
-let offsetY = -500
+let offsetY = -200
 let doneAnimatingCurtain = false
 async function calculateRenderClip(interval: number) {
   if (doneAnimatingCurtain || offsetY > canvas2Element.height*1.5) {
@@ -262,10 +264,10 @@ async function calculateRenderClip(interval: number) {
   canvas2Context.fillStyle = currentBackground
   canvas2Context.beginPath()
   let index=0
-  canvas2Context.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussianHighRes[index]+offsetY)
+  canvas2Context.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index)+offsetY)
   index++
-  for (; index < gaussianHighRes.length; index++) {
-    canvas2Context.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussianHighRes[index]+offsetY)
+  for (; index < gaussianLowres.length*highresScale; index++) {
+    canvas2Context.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*150+offsetY)
   }
   canvas2Context.lineTo(canvas2Element.clientWidth, canvas2Element.clientHeight)
   canvas2Context.lineTo(0, canvas2Element.clientHeight)

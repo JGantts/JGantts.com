@@ -133,7 +133,7 @@ async function resizedWindow() {
 
 async function renderLoop() {
   let thisTimestamp = Date.now()
-  await renderScene(thisTimestamp - lastTimestamp)
+  await renderScene(20)
   lastTimestamp = thisTimestamp
   //Attempt force framerate
   //await new Promise(resolve => setTimeout(resolve, 50))

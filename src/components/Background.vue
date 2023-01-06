@@ -273,8 +273,8 @@ async function calculateRenderClip(interval: number) {
   canvasBContext.clearRect(0, 0, canvasBElement.width, canvasBElement.height);
 
   canvasBContext.beginPath()
-  canvasBContext.moveTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*0.26)
-  canvasBContext.lineTo(canvasBElement.clientWidth*1, canvasBElement.clientHeight*0.26)
+  canvasBContext.moveTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*0.36)
+  canvasBContext.lineTo(canvasBElement.clientWidth*1, canvasBElement.clientHeight*0.36)
   canvasBContext.lineTo(canvasBElement.clientWidth*1, canvasBElement.clientHeight*1)
   canvasBContext.lineTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*1)
   canvasBContext.closePath()
@@ -284,8 +284,8 @@ async function calculateRenderClip(interval: number) {
   canvas2Context.clearRect(0, 0, canvas2Element.width, canvas2Element.height);
 
   canvas2Context.beginPath()
-  canvas2Context.moveTo(canvas2Element.clientWidth*0, canvas2Element.clientHeight*0.25)
-  canvas2Context.lineTo(canvas2Element.clientWidth*1, canvas2Element.clientHeight*0.25)
+  canvas2Context.moveTo(canvas2Element.clientWidth*0, canvas2Element.clientHeight*0.35)
+  canvas2Context.lineTo(canvas2Element.clientWidth*1, canvas2Element.clientHeight*0.35)
   canvas2Context.lineTo(canvas2Element.clientWidth*1, canvas2Element.clientHeight*1)
   canvas2Context.lineTo(canvas2Element.clientWidth*0, canvas2Element.clientHeight*1)
   canvas2Context.closePath()

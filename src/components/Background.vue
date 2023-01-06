@@ -11,7 +11,7 @@ let MAGIC_NUMBER_B = 1.5
 let MAGIC_NUMBER_C = 4
 let MAGIC_NUMBER_D = 0.47
 let MAGIC_NUMBER_E = 1.6
-let MAGIC_NUMBER_F = 285
+let MAGIC_NUMBER_F = 285 + 30
 
 type Position = {
   x: number,
@@ -275,7 +275,7 @@ async function calculateRenderClip(interval: number) {
   offsetY += (interval/20) * MAGIC_NUMBER_E
 
 
-  let offsetX = 2*offsetY/canvasBElement.clientHeight
+  let offsetX = 2*offsetY/canvasBElement.clientHeight*0 + canvasBElement.clientWidth
 
   canvasSmoothContext.clearRect(0, 0, canvasSmoothElement.width, canvasSmoothElement.height);
   canvasLazerContext.clearRect(0, 0, canvasLazerElement.width, canvasLazerElement.height);

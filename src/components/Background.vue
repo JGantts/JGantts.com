@@ -2,6 +2,10 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 // @ts-ignore
 import{ Smooth } from '../assets/Smooth'
+import {
+  sky as radixColor,
+  skyDark as radixColorDark,
+} from '@radix-ui/colors';
 
 let BOX_SIZE = 8
 let TOP_BUFFER = 4

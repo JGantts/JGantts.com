@@ -1,3 +1,35 @@
+@import "@radix-ui/colors/sky.css";
+@import "@radix-ui/colors/skyDark.css";
+
+:root {
+--baseColor1: var(--sky1);
+--baseColor2: var(--sky2);
+--baseColor3: var(--sky3);
+--baseColor4: var(--sky4);
+--baseColor5: var(--sky5);
+--baseColor6: var(--sky6);
+--baseColor7: var(--sky7);
+--baseColor8: var(--sky8);
+--baseColor9: var(--sky9);
+--baseColor10: var(--sky10);
+--baseColor11: var(--sky11);
+--baseColor12: var(--sky12);
+
+--accentColor1: var(--orange1);
+--accentColor2: var(--orange2);
+--accentColor3: var(--orange3);
+--accentColor4: var(--orange4);
+--accentColor5: var(--orange5);
+--accentColor6: var(--orange6);
+--accentColor7: var(--orange7);
+--accentColor8: var(--orange8);
+--accentColor9: var(--orange9);
+--accentColor10: var(--orange10);
+--accentColor11: var(--orange11);
+--accentColor12: var(--orange12);
+}
+
+
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td,article,aside,canvas,details,embed,figure,figcaption,footer,header,hgroup,menu,nav,output,ruby,section,summary,time,mark,audio,video{margin:0;padding:0;border:0;font-size:100%;font:inherit;vertical-align:baseline;}article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section{display:block;}body{line-height:1;}ol,ul{list-style:none;}blockquote,q{quotes:none;}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none;}table{border-collapse:collapse;border-spacing:0;}body{-webkit-text-size-adjust:none}mark{background-color:transparent;color:inherit}input::-moz-focus-inner{border:0;padding:0}input[type="text"],input[type="email"],select,textarea{-moz-appearance:none;-webkit-appearance:none;-ms-appearance:none;appearance:none}
 
 button, input[type="submit"], input[type="reset"] {
@@ -76,25 +108,7 @@ button, input[type="submit"], input[type="reset"] {
 }
 
 #app {
-  color: #000000;
-  background-color: rgba(0,0,0,0);
-}
-
-@media (prefers-color-scheme: dark) {
-    #app {
-      color: #FFFFFF;
-      background-color: rgba(0,0,0,0);
-    }
-}
-
-body {
-  background-color: rgb(255,255,255);
-}
-
-@media (prefers-color-scheme: dark) {
-    body {
-      background-color: rgb(0,0,0);
-    }
+  color: var(--baseColor11);
 }
 
 #backgorund-holder {
@@ -113,15 +127,7 @@ body {
 }
 
 #app {
-  background-image: linear-gradient(343deg, #2184DE 0%, #74AEE3 60%);
-  background-image: linear-gradient(343deg, #EFEFEF 25%, #EFEFEF 100%);
-}
-
-@media (prefers-color-scheme: dark) {
-    #app {
-      background-image: linear-gradient(343deg, #082845 25%, #2184DE 100%);
-      background-image: linear-gradient(343deg, #1F1F1F 25%, #1F1F1F 100%);
-    }
+  background-color: var(--baseColor1)
 }
 
 html {

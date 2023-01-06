@@ -59,6 +59,8 @@ async function resizedWindow() {
   canvas1Element.height = canvas1Element.clientHeight;
   canvas2Element.width = canvas2Element.clientWidth;
   canvas2Element.height = canvas2Element.clientHeight;
+  canvasBElement.width = canvasBElement.clientWidth;
+  canvasBElement.height = canvasBElement.clientHeight;
 
   /*
     Check if (and how many) new columns to add
@@ -271,10 +273,10 @@ async function calculateRenderClip(interval: number) {
   canvasBContext.clearRect(0, 0, canvasBElement.width, canvasBElement.height);
 
   canvasBContext.beginPath()
-  canvasBContext.moveTo(0, 0)
-  canvasBContext.lineTo(canvasBElement.clientWidth, 0)
-  canvasBContext.lineTo(canvasBElement.clientWidth, canvasBElement.clientHeight*0.25)
-  canvasBContext.lineTo(0, canvasBElement.clientHeight*0.25)
+  canvasBContext.moveTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*0.5)
+  canvasBContext.lineTo(canvasBElement.clientWidth*1, canvasBElement.clientHeight*0.5)
+  canvasBContext.lineTo(canvasBElement.clientWidth*1, canvasBElement.clientHeight*1)
+  canvasBContext.lineTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*1)
   canvasBContext.closePath()
   canvasBContext.fillStyle = `#2184DE`
   canvasBContext.fill()
@@ -282,10 +284,10 @@ async function calculateRenderClip(interval: number) {
   canvas2Context.clearRect(0, 0, canvas2Element.width, canvas2Element.height);
 
   canvas2Context.beginPath()
-  canvas2Context.moveTo(0, canvas2Element.clientHeight)
-  canvas2Context.lineTo(canvas2Element.clientWidth, canvas2Element.clientHeight*0.25)
-  canvas2Context.lineTo(canvas2Element.clientWidth, canvas2Element.clientHeight)
-  canvas2Context.lineTo(0, canvas2Element.clientHeight)
+  canvas2Context.moveTo(canvas2Element.clientWidth*0, canvas2Element.clientHeight*0.25)
+  canvas2Context.lineTo(canvas2Element.clientWidth*1, canvas2Element.clientHeight*0.25)
+  canvas2Context.lineTo(canvas2Element.clientWidth*1, canvas2Element.clientHeight*1)
+  canvas2Context.lineTo(canvas2Element.clientWidth*0, canvas2Element.clientHeight*1)
   canvas2Context.closePath()
   canvas2Context.clip()
 

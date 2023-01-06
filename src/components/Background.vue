@@ -39,12 +39,14 @@ let columns: {
   boxes: Box[],
   doneAnimating: boolean,
 }[] = []
-let canvas0Element: HTMLCanvasElement
-let canvas0Context: CanvasRenderingContext2D
-let canvas1Element: HTMLCanvasElement
-let canvas1Context: CanvasRenderingContext2D
-let canvas2Element: HTMLCanvasElement
-let canvas2Context: CanvasRenderingContext2D
+let canvasLazerElement: HTMLCanvasElement
+let canvasLazerContext: CanvasRenderingContext2D
+let canvasBElement: HTMLCanvasElement
+let canvasBContext: CanvasRenderingContext2D
+let canvasPixelElement: HTMLCanvasElement
+let canvasPixelContext: CanvasRenderingContext2D
+let canvasSmoothElement: HTMLCanvasElement
+let canvasSmoothContext: CanvasRenderingContext2D
 let gaussianLowres: number[] = []
 let gaussionSmoothed: any = null
 
@@ -55,12 +57,14 @@ let needsRedraw = false
   Rendering functions
 */
 async function resizedWindow() {
-  canvas1Element.width = canvas1Element.clientWidth;
-  canvas1Element.height = canvas1Element.clientHeight;
-  canvas2Element.width = canvas2Element.clientWidth;
-  canvas2Element.height = canvas2Element.clientHeight;
-  canvas0Element.width = canvas0Element.clientWidth;
-  canvas0Element.height = canvas0Element.clientHeight;
+  canvasLazerElement.width = canvasLazerElement.clientWidth;
+  canvasLazerElement.height = canvasLazerElement.clientHeight;
+  canvasPixelElement.width = canvasPixelElement.clientWidth;
+  canvasPixelElement.height = canvasPixelElement.clientHeight;
+  canvasSmoothElement.width = canvasSmoothElement.clientWidth;
+  canvasSmoothElement.height = canvasSmoothElement.clientHeight;
+  canvasBElement.width = canvasBElement.clientWidth;
+  canvasBElement.height = canvasBElement.clientHeight;
 
   /*
     Check if (and how many) new columns to add
@@ -264,50 +268,64 @@ async function calculateColumn(index: number, interval: number) {
 let offsetY = -MAGIC_NUMBER_F
 let doneAnimatingCurtain = false
 async function calculateRenderClip(interval: number) {
-  if (doneAnimatingCurtain || offsetY > canvas2Element.height*1.5) {
+  if (doneAnimatingCurtain || offsetY > canvasSmoothElement.height*1.5) {
     doneAnimatingCurtain = true
     return
   }
   offsetY += (interval/20) * MAGIC_NUMBER_E
 
-  canvas0Context.clearRect(0, 0, canvas0Element.width, canvas0Element.height);
 
-  let offsetX = 2*offsetY/canvas0Element.clientHeight
+  let offsetX = 2*offsetY/canvasBElement.clientHeight
 
-  canvas0Context.beginPath()
-  canvas0Context.moveTo(canvas0Element.clientWidth*0, canvas0Element.clientHeight*0)
-  canvas0Context.lineTo(canvas0Element.clientWidth*offsetX, canvas0Element.clientHeight*0)
-  canvas0Context.lineTo(canvas0Element.clientWidth*offsetX, canvas0Element.clientHeight*1)
-  canvas0Context.lineTo(canvas0Element.clientWidth*0, canvas0Element.clientHeight*1)
-  canvas0Context.closePath()
-  canvas0Context.fillStyle = `#2184DE`
-  canvas0Context.fill()
+  canvasLazerContext.clearRect(0, 0, canvasLazerElement.width, canvasLazerElement.height);
+  //Must ask about this one...
+  //  Moving the "canvasBContext.clear" line below the "canvasLazerContext.fill" line
+  //  causes the lazer to fail to print
+  canvasBContext.clearRect(0, 0, canvasBElement.width, canvasBElement.height);
 
-  canvas2Context.clearRect(0, 0, canvas2Element.width, canvas2Element.height);
-  canvas2Context.save()
+  canvasLazerContext.beginPath()
+  canvasLazerContext.moveTo(canvasLazerElement.clientWidth*offsetX, canvasLazerElement.clientHeight*0)
+  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX+2, canvasLazerElement.clientHeight*0)
+  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX+2, canvasLazerElement.clientHeight*1)
+  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX, canvasLazerElement.clientHeight*1)
+  canvasLazerContext.closePath()
+  canvasLazerContext.fillStyle = `red`
+  canvasLazerContext.fill()
 
-  canvas2Context.beginPath()
-  canvas2Context.moveTo(canvas2Element.clientWidth*0, canvas2Element.clientHeight*0)
-  canvas2Context.lineTo(canvas2Element.clientWidth*offsetX-2, canvas2Element.clientHeight*0)
-  canvas2Context.lineTo(canvas2Element.clientWidth*offsetX-2, canvas2Element.clientHeight*1)
-  canvas2Context.lineTo(canvas2Element.clientWidth*0, canvas2Element.clientHeight*1)
-  canvas2Context.closePath()
-  canvas2Context.clip()
+  canvasBContext.beginPath()
+  canvasBContext.moveTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*0)
+  canvasBContext.lineTo(canvasBElement.clientWidth*offsetX, canvasBElement.clientHeight*0)
+  canvasBContext.lineTo(canvasBElement.clientWidth*offsetX, canvasBElement.clientHeight*1)
+  canvasBContext.lineTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*1)
+  canvasBContext.closePath()
+  canvasBContext.fillStyle = `#2184DE`
+  canvasBContext.fill()
 
-  canvas2Context.beginPath()
+  canvasSmoothContext.clearRect(0, 0, canvasSmoothElement.width, canvasSmoothElement.height);
+  canvasSmoothContext.save()
+  canvasSmoothContext.beginPath()
+  canvasSmoothContext.moveTo(canvasSmoothElement.clientWidth*0, canvasSmoothElement.clientHeight*0)
+  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*offsetX, canvasSmoothElement.clientHeight*0)
+  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*offsetX, canvasSmoothElement.clientHeight*1)
+  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*0, canvasSmoothElement.clientHeight*1)
+  canvasSmoothContext.closePath()
+  canvasSmoothContext.clip()
+
+  canvasSmoothContext.beginPath()
   let index=0
-  canvas2Context.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index)+offsetY)
+  canvasSmoothContext.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index)+offsetY)
   index++
   for (; index < gaussianLowres.length*highresScale; index++) {
-    canvas2Context.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*500*MAGIC_NUMBER_D+offsetY)
+    canvasSmoothContext.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*500*MAGIC_NUMBER_D+offsetY)
   }
-  canvas2Context.lineTo(canvas2Element.clientWidth, canvas2Element.clientHeight)
-  canvas2Context.lineTo(0, canvas2Element.clientHeight)
-  canvas2Context.closePath()
+  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth, canvasSmoothElement.clientHeight)
+  canvasSmoothContext.lineTo(0, canvasSmoothElement.clientHeight)
+  canvasSmoothContext.closePath()
 
-  canvas2Context.fillStyle = currentBackground
-  canvas2Context.fill()
-  canvas2Context.restore()
+  canvasSmoothContext.fillStyle = currentBackground
+  canvasSmoothContext.fill()
+  canvasSmoothContext.restore()
+  
 }
 
 async function renderColumn(columnIndex: number) {
@@ -368,20 +386,20 @@ function renderGradient(
   let right = left + BOX_SIZE
   let bottom = top + BOX_SIZE
 
-  canvas1Context.fillStyle = currentBackground
-  canvas1Context.fillRect(left, top, BOX_SIZE, BOX_SIZE)
+  canvasPixelContext.fillStyle = currentBackground
+  canvasPixelContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 
-  let gradientTLBR = canvas1Context.createLinearGradient(left, top, right, bottom)
+  let gradientTLBR = canvasPixelContext.createLinearGradient(left, top, right, bottom)
   gradientTLBR.addColorStop(0, boxToHex(gradientData.boxTL, 1))
   gradientTLBR.addColorStop(1, boxToHex(gradientData.boxBR, 1))
-  canvas1Context.fillStyle = gradientTLBR
-  canvas1Context.fillRect(left, top, BOX_SIZE, BOX_SIZE)
+  canvasPixelContext.fillStyle = gradientTLBR
+  canvasPixelContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 
-  let gradientBLTR = canvas1Context.createLinearGradient(left, bottom, right, top)
+  let gradientBLTR = canvasPixelContext.createLinearGradient(left, bottom, right, top)
   gradientBLTR.addColorStop(0, boxToHex(gradientData.boxBL, 0.5))
   gradientBLTR.addColorStop(1, boxToHex(gradientData.boxTR, 0.5))
-  canvas1Context.fillStyle = gradientBLTR
-  canvas1Context.fillRect(left, top, BOX_SIZE, BOX_SIZE)
+  canvasPixelContext.fillStyle = gradientBLTR
+  canvasPixelContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 }
 
 
@@ -474,12 +492,14 @@ darkModePreference.addEventListener("change", e => {
 
 onMounted(async () => {
   console.log("Hello, world!")
-  canvas0Element = document.getElementById('background-canvas') as HTMLCanvasElement
-  canvas0Context = canvas0Element.getContext("2d")!
-  canvas1Element = document.getElementById('lowres-canvas') as HTMLCanvasElement
-  canvas1Context = canvas1Element.getContext("2d")!
-  canvas2Element = document.getElementById('highres-canvas') as HTMLCanvasElement
-  canvas2Context = canvas2Element.getContext("2d")!
+  canvasLazerElement = document.getElementById('background-canvas') as HTMLCanvasElement
+  canvasLazerContext = canvasLazerElement.getContext("2d")!
+  canvasBElement = document.getElementById('background-canvas') as HTMLCanvasElement
+  canvasBContext = canvasBElement.getContext("2d")!
+  canvasPixelElement = document.getElementById('lowres-canvas') as HTMLCanvasElement
+  canvasPixelContext = canvasPixelElement.getContext("2d")!
+  canvasSmoothElement = document.getElementById('highres-canvas') as HTMLCanvasElement
+  canvasSmoothContext = canvasSmoothElement.getContext("2d")!
   
   await resizedWindow()
   //await new Promise(resolve => setTimeout(resolve, 400))
@@ -497,16 +517,20 @@ window.addEventListener("resize", resizedWindow)*/
 <template>
   <div id='canvas-holder'>
     <canvas
+    id='lazer-canvas'
+    style= 'position: absolute; z-index: 4;'
+    >NOOOOO!</canvas>
+    <canvas
     id='background-canvas'
-    style= 'position: absolute; z-index: 1'
+    style= 'position: absolute; z-index: 1;'
     >NOOOOO!</canvas>
     <canvas
     id='lowres-canvas'
-    style= 'position: absolute; z-index: 2'
+    style= 'position: absolute; z-index: 2;'
     >NOOOOO!</canvas>
     <canvas
     id='highres-canvas'
-    style= 'position: absolute; z-index: 3'
+    style= 'position: absolute; z-index: 3;'
     >NOOOOO!</canvas>
   </div>
 </template>

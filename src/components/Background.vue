@@ -277,20 +277,21 @@ async function calculateRenderClip(interval: number) {
 
   let offsetX = 2*offsetY/canvasBElement.clientHeight
 
+  canvasSmoothContext.clearRect(0, 0, canvasSmoothElement.width, canvasSmoothElement.height);
   canvasLazerContext.clearRect(0, 0, canvasLazerElement.width, canvasLazerElement.height);
   //Must ask about this one...
   //  Moving the "canvasBContext.clear" line below the "canvasLazerContext.fill" line
   //  causes the lazer to fail to print
   canvasBContext.clearRect(0, 0, canvasBElement.width, canvasBElement.height);
 
-  canvasLazerContext.beginPath()
-  canvasLazerContext.moveTo(canvasLazerElement.clientWidth*offsetX, canvasLazerElement.clientHeight*0)
-  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX+2, canvasLazerElement.clientHeight*0)
-  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX+2, canvasLazerElement.clientHeight*1)
-  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX, canvasLazerElement.clientHeight*1)
-  canvasLazerContext.closePath()
-  canvasLazerContext.fillStyle = `#EF1F1FAA`
-  canvasLazerContext.fill()
+  canvasSmoothContext.save()
+  canvasSmoothContext.beginPath()
+  canvasSmoothContext.moveTo(canvasSmoothElement.clientWidth*0, canvasSmoothElement.clientHeight*0)
+  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*offsetX, canvasSmoothElement.clientHeight*0)
+  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*offsetX, canvasSmoothElement.clientHeight*1)
+  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*0, canvasSmoothElement.clientHeight*1)
+  canvasSmoothContext.closePath()
+  canvasSmoothContext.clip()
 
   canvasBContext.beginPath()
   canvasBContext.moveTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*0)
@@ -300,16 +301,6 @@ async function calculateRenderClip(interval: number) {
   canvasBContext.closePath()
   canvasBContext.fillStyle = `#2184DE`
   canvasBContext.fill()
-
-  canvasSmoothContext.clearRect(0, 0, canvasSmoothElement.width, canvasSmoothElement.height);
-  canvasSmoothContext.save()
-  canvasSmoothContext.beginPath()
-  canvasSmoothContext.moveTo(canvasSmoothElement.clientWidth*0, canvasSmoothElement.clientHeight*0)
-  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*offsetX, canvasSmoothElement.clientHeight*0)
-  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*offsetX, canvasSmoothElement.clientHeight*1)
-  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*0, canvasSmoothElement.clientHeight*1)
-  canvasSmoothContext.closePath()
-  canvasSmoothContext.clip()
 
   canvasSmoothContext.beginPath()
   let index=0
@@ -325,7 +316,23 @@ async function calculateRenderClip(interval: number) {
   canvasSmoothContext.fillStyle = currentBackground
   canvasSmoothContext.fill()
   canvasSmoothContext.restore()
-  
+
+  canvasLazerContext.beginPath()
+  canvasLazerContext.moveTo(canvasLazerElement.clientWidth*offsetX, canvasLazerElement.clientHeight*0)
+  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX+2, canvasLazerElement.clientHeight*0)
+  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX+2, canvasLazerElement.clientHeight*1)
+  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX, canvasLazerElement.clientHeight*1)
+  canvasLazerContext.closePath()
+  canvasLazerContext.fillStyle = `#EF1F1FAA`
+  canvasLazerContext.fill()
+
+  /*let lazerIntersectX = canvasLazerElement.clientWidth*offsetX+1
+  let lazerIntersectY = gaussionSmoothed((lazerIntersectX+BOX_SIZE*MAGIC_NUMBER_C)/highresScale)*500*MAGIC_NUMBER_D+offsetY
+
+  canvasLazerContext.beginPath()
+  canvasLazerContext.arc(lazerIntersectX, lazerIntersectY, 5, 0, 2*Math.PI)
+  canvasLazerContext.fillStyle = `orange`
+  canvasLazerContext.fill()*/
 }
 
 async function renderColumn(columnIndex: number) {
@@ -537,6 +544,14 @@ window.addEventListener("resize", resizedWindow)*/
 
 <style scoped>
 #canvas-holder {
+  position: absolute;
+  left: 0;
+  top: -0;
+  width: 100vw;
+  height: 100vh;
+  overflow: clip;
+}
+#lazer-canvas {
   position: absolute;
   left: 0;
   top: -0;

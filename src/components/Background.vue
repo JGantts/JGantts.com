@@ -289,7 +289,7 @@ async function calculateRenderClip(interval: number) {
   canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX+2, canvasLazerElement.clientHeight*1)
   canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX, canvasLazerElement.clientHeight*1)
   canvasLazerContext.closePath()
-  canvasLazerContext.fillStyle = `red`
+  canvasLazerContext.fillStyle = `#EF1F1FAA`
   canvasLazerContext.fill()
 
   canvasBContext.beginPath()

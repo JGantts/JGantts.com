@@ -14,10 +14,13 @@ const router = createRouter({
     },
     {
       path: "/jganttscom-background/",
-      name: "Background",
+      name: "background",
       component: BackgorundDescriptionPage
     },
-    { path: "/:pathMatch(.*)*", component: NotFound },
+    {
+      path: "/:pathMatch(.*)*",
+      component: NotFound
+    },
   ]
 })
 

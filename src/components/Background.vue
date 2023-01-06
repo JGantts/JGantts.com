@@ -11,7 +11,7 @@ let MAGIC_NUMBER_B = 1.5
 let MAGIC_NUMBER_C = 4
 let MAGIC_NUMBER_D = 0.47
 let MAGIC_NUMBER_E = 1.6
-let MAGIC_NUMBER_F = 1.45
+let MAGIC_NUMBER_F = 1.425
 
 type Position = {
   x: number,

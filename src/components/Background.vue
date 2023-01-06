@@ -15,7 +15,7 @@ let MAGIC_NUMBER_B = 1.5
 let MAGIC_NUMBER_C = 4
 let MAGIC_NUMBER_D = 0.47
 let MAGIC_NUMBER_E = 1.6
-let MAGIC_NUMBER_F = 285
+let MAGIC_NUMBER_F = 285 + 30
 
 type Position = {
   x: number,
@@ -279,7 +279,7 @@ async function calculateRenderClip(interval: number) {
   offsetY += (interval/20) * MAGIC_NUMBER_E
 
 
-  let offsetX = 2*offsetY/canvasBElement.clientHeight
+  let offsetX = 2*offsetY/canvasBElement.clientHeight*0 + canvasBElement.clientWidth
 
   canvasSmoothContext.clearRect(0, 0, canvasSmoothElement.width, canvasSmoothElement.height);
   canvasLazerContext.clearRect(0, 0, canvasLazerElement.width, canvasLazerElement.height);
@@ -291,8 +291,8 @@ async function calculateRenderClip(interval: number) {
   canvasSmoothContext.save()
   canvasSmoothContext.beginPath()
   canvasSmoothContext.moveTo(canvasSmoothElement.clientWidth*0, canvasSmoothElement.clientHeight*0)
-  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*offsetX, canvasSmoothElement.clientHeight*0)
-  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*offsetX, canvasSmoothElement.clientHeight*1)
+  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*offsetX+1, canvasSmoothElement.clientHeight*0)
+  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*offsetX+1, canvasSmoothElement.clientHeight*1)
   canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*0, canvasSmoothElement.clientHeight*1)
   canvasSmoothContext.closePath()
   canvasSmoothContext.clip()
@@ -321,14 +321,14 @@ async function calculateRenderClip(interval: number) {
   canvasSmoothContext.fill()
   canvasSmoothContext.restore()
 
-  canvasLazerContext.beginPath()
+  /*canvasLazerContext.beginPath()
   canvasLazerContext.moveTo(canvasLazerElement.clientWidth*offsetX, canvasLazerElement.clientHeight*0)
   canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX+2, canvasLazerElement.clientHeight*0)
   canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX+2, canvasLazerElement.clientHeight*1)
   canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX, canvasLazerElement.clientHeight*1)
   canvasLazerContext.closePath()
   canvasLazerContext.fillStyle = `#EF1F1FAA`
-  canvasLazerContext.fill()
+  canvasLazerContext.fill()*/
 
   /*let lazerIntersectX = canvasLazerElement.clientWidth*offsetX+1
   let lazerIntersectY = gaussionSmoothed((lazerIntersectX+BOX_SIZE*MAGIC_NUMBER_C)/highresScale)*500*MAGIC_NUMBER_D+offsetY

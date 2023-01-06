@@ -8,7 +8,10 @@ let TOP_BUFFER = 4
 let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
 let MAGIC_NUMBER_B = 1.5
-let MAGIC_NUMBER_C = 3.5
+let MAGIC_NUMBER_C = 4
+let MAGIC_NUMBER_D = 0.47
+let MAGIC_NUMBER_E = 1.6
+let MAGIC_NUMBER_F = 1.45
 
 type Position = {
   x: number,
@@ -254,14 +257,14 @@ async function calculateColumn(index: number, interval: number) {
   }
 }
 
-let offsetY = -200
+let offsetY = -200*MAGIC_NUMBER_F
 let doneAnimatingCurtain = false
 async function calculateRenderClip(interval: number) {
   if (doneAnimatingCurtain || offsetY > canvas2Element.height*1.5) {
     doneAnimatingCurtain = true
     return
   }
-  offsetY += interval/20
+  offsetY += (interval/20) * MAGIC_NUMBER_E
   canvas2Context.clearRect(0, 0, canvas2Element.width, canvas2Element.height);
   canvas2Context.fillStyle = currentBackground
   canvas2Context.beginPath()
@@ -269,7 +272,7 @@ async function calculateRenderClip(interval: number) {
   canvas2Context.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index)+offsetY)
   index++
   for (; index < gaussianLowres.length*highresScale; index++) {
-    canvas2Context.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*500+offsetY)
+    canvas2Context.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*500*MAGIC_NUMBER_D+offsetY)
   }
   canvas2Context.lineTo(canvas2Element.clientWidth, canvas2Element.clientHeight)
   canvas2Context.lineTo(0, canvas2Element.clientHeight)
@@ -423,8 +426,8 @@ function gaussianDistributionAt(variance: number, oneOverSqrtTwoPiVariance: numb
   Actual setup code
 */
 //Set and check for dark mode
-let LIGHT_BACKGROUND = `#EFEFEF`
-let DARK_BACKGROUND = `#1F1F1F`
+let LIGHT_BACKGROUND = `#8888`//`#EFEFEF88`
+let DARK_BACKGROUND = `#8888`//`#1F1F1F88`
 
 let currentBackground = window.matchMedia("(prefers-color-scheme: dark)").matches ? DARK_BACKGROUND : LIGHT_BACKGROUND
 

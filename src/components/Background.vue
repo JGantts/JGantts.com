@@ -272,7 +272,7 @@ async function calculateRenderClip(interval: number) {
 
   canvas0Context.clearRect(0, 0, canvas0Element.width, canvas0Element.height);
 
-  let offsetX = (offsetY+MAGIC_NUMBER_F/2)/canvas0Element.clientHeight
+  let offsetX = 2*offsetY/canvas0Element.clientHeight
 
   canvas0Context.beginPath()
   canvas0Context.moveTo(canvas0Element.clientWidth*0, canvas0Element.clientHeight*0)

@@ -273,8 +273,8 @@ async function calculateRenderClip(interval: number) {
   canvasBContext.clearRect(0, 0, canvasBElement.width, canvasBElement.height);
 
   canvasBContext.beginPath()
-  canvasBContext.moveTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*0.6)
-  canvasBContext.lineTo(canvasBElement.clientWidth*1, canvasBElement.clientHeight*0.6)
+  canvasBContext.moveTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*0.26)
+  canvasBContext.lineTo(canvasBElement.clientWidth*1, canvasBElement.clientHeight*0.26)
   canvasBContext.lineTo(canvasBElement.clientWidth*1, canvasBElement.clientHeight*1)
   canvasBContext.lineTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*1)
   canvasBContext.closePath()

@@ -39,8 +39,8 @@ let columns: {
   boxes: Box[],
   doneAnimating: boolean,
 }[] = []
-let canvasBElement: HTMLCanvasElement
-let canvasBContext: CanvasRenderingContext2D
+let canvas0Element: HTMLCanvasElement
+let canvas0Context: CanvasRenderingContext2D
 let canvas1Element: HTMLCanvasElement
 let canvas1Context: CanvasRenderingContext2D
 let canvas2Element: HTMLCanvasElement
@@ -59,8 +59,8 @@ async function resizedWindow() {
   canvas1Element.height = canvas1Element.clientHeight;
   canvas2Element.width = canvas2Element.clientWidth;
   canvas2Element.height = canvas2Element.clientHeight;
-  canvasBElement.width = canvasBElement.clientWidth;
-  canvasBElement.height = canvasBElement.clientHeight;
+  canvas0Element.width = canvas0Element.clientWidth;
+  canvas0Element.height = canvas0Element.clientHeight;
 
   /*
     Check if (and how many) new columns to add
@@ -270,23 +270,26 @@ async function calculateRenderClip(interval: number) {
   }
   offsetY += (interval/20) * MAGIC_NUMBER_E
 
-  canvasBContext.clearRect(0, 0, canvasBElement.width, canvasBElement.height);
+  canvas0Context.clearRect(0, 0, canvas0Element.width, canvas0Element.height);
 
-  canvasBContext.beginPath()
-  canvasBContext.moveTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*0.36)
-  canvasBContext.lineTo(canvasBElement.clientWidth*1, canvasBElement.clientHeight*0.36)
-  canvasBContext.lineTo(canvasBElement.clientWidth*1, canvasBElement.clientHeight*1)
-  canvasBContext.lineTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*1)
-  canvasBContext.closePath()
-  canvasBContext.fillStyle = `#2184DE`
-  canvasBContext.fill()
+  let offsetX = (offsetY+MAGIC_NUMBER_F/2)/canvas0Element.clientHeight
+
+  canvas0Context.beginPath()
+  canvas0Context.moveTo(canvas0Element.clientWidth*0, canvas0Element.clientHeight*0)
+  canvas0Context.lineTo(canvas0Element.clientWidth*offsetX, canvas0Element.clientHeight*0)
+  canvas0Context.lineTo(canvas0Element.clientWidth*offsetX, canvas0Element.clientHeight*1)
+  canvas0Context.lineTo(canvas0Element.clientWidth*0, canvas0Element.clientHeight*1)
+  canvas0Context.closePath()
+  canvas0Context.fillStyle = `#2184DE`
+  canvas0Context.fill()
 
   canvas2Context.clearRect(0, 0, canvas2Element.width, canvas2Element.height);
+  canvas2Context.save()
 
   canvas2Context.beginPath()
-  canvas2Context.moveTo(canvas2Element.clientWidth*0, canvas2Element.clientHeight*0.35)
-  canvas2Context.lineTo(canvas2Element.clientWidth*1, canvas2Element.clientHeight*0.35)
-  canvas2Context.lineTo(canvas2Element.clientWidth*1, canvas2Element.clientHeight*1)
+  canvas2Context.moveTo(canvas2Element.clientWidth*0, canvas2Element.clientHeight*0)
+  canvas2Context.lineTo(canvas2Element.clientWidth*offsetX-2, canvas2Element.clientHeight*0)
+  canvas2Context.lineTo(canvas2Element.clientWidth*offsetX-2, canvas2Element.clientHeight*1)
   canvas2Context.lineTo(canvas2Element.clientWidth*0, canvas2Element.clientHeight*1)
   canvas2Context.closePath()
   canvas2Context.clip()
@@ -304,6 +307,7 @@ async function calculateRenderClip(interval: number) {
 
   canvas2Context.fillStyle = currentBackground
   canvas2Context.fill()
+  canvas2Context.restore()
 }
 
 async function renderColumn(columnIndex: number) {
@@ -470,8 +474,8 @@ darkModePreference.addEventListener("change", e => {
 
 onMounted(async () => {
   console.log("Hello, world!")
-  canvasBElement = document.getElementById('background-canvas') as HTMLCanvasElement
-  canvasBContext = canvasBElement.getContext("2d")!
+  canvas0Element = document.getElementById('background-canvas') as HTMLCanvasElement
+  canvas0Context = canvas0Element.getContext("2d")!
   canvas1Element = document.getElementById('lowres-canvas') as HTMLCanvasElement
   canvas1Context = canvas1Element.getContext("2d")!
   canvas2Element = document.getElementById('highres-canvas') as HTMLCanvasElement

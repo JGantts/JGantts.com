@@ -11,7 +11,7 @@ let MAGIC_NUMBER_B = 1.5
 let MAGIC_NUMBER_C = 4
 let MAGIC_NUMBER_D = 0.47
 let MAGIC_NUMBER_E = 1.6
-let MAGIC_NUMBER_F = 1.425
+let MAGIC_NUMBER_F = 285
 
 type Position = {
   x: number,
@@ -39,6 +39,8 @@ let columns: {
   boxes: Box[],
   doneAnimating: boolean,
 }[] = []
+let canvasBElement: HTMLCanvasElement
+let canvasBContext: CanvasRenderingContext2D
 let canvas1Element: HTMLCanvasElement
 let canvas1Context: CanvasRenderingContext2D
 let canvas2Element: HTMLCanvasElement
@@ -257,7 +259,7 @@ async function calculateColumn(index: number, interval: number) {
   }
 }
 
-let offsetY = -200*MAGIC_NUMBER_F
+let offsetY = -MAGIC_NUMBER_F
 let doneAnimatingCurtain = false
 async function calculateRenderClip(interval: number) {
   if (doneAnimatingCurtain || offsetY > canvas2Element.height*1.5) {
@@ -265,8 +267,28 @@ async function calculateRenderClip(interval: number) {
     return
   }
   offsetY += (interval/20) * MAGIC_NUMBER_E
+
+  canvasBContext.clearRect(0, 0, canvasBElement.width, canvasBElement.height);
+
+  canvasBContext.beginPath()
+  canvasBContext.moveTo(0, 0)
+  canvasBContext.lineTo(canvasBElement.clientWidth, 0)
+  canvasBContext.lineTo(canvasBElement.clientWidth, canvasBElement.clientHeight*0.25)
+  canvasBContext.lineTo(0, canvasBElement.clientHeight*0.25)
+  canvasBContext.closePath()
+  canvasBContext.fillStyle = `#2184DE`
+  canvasBContext.fill()
+
   canvas2Context.clearRect(0, 0, canvas2Element.width, canvas2Element.height);
-  canvas2Context.fillStyle = currentBackground
+
+  canvas2Context.beginPath()
+  canvas2Context.moveTo(0, canvas2Element.clientHeight)
+  canvas2Context.lineTo(canvas2Element.clientWidth, canvas2Element.clientHeight*0.25)
+  canvas2Context.lineTo(canvas2Element.clientWidth, canvas2Element.clientHeight)
+  canvas2Context.lineTo(0, canvas2Element.clientHeight)
+  canvas2Context.closePath()
+  canvas2Context.clip()
+
   canvas2Context.beginPath()
   let index=0
   canvas2Context.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index)+offsetY)
@@ -426,8 +448,8 @@ function gaussianDistributionAt(variance: number, oneOverSqrtTwoPiVariance: numb
   Actual setup code
 */
 //Set and check for dark mode
-let LIGHT_BACKGROUND = `#8888`//`#EFEFEF88`
-let DARK_BACKGROUND = `#8888`//`#1F1F1F88`
+let LIGHT_BACKGROUND = `#EFEFEF`
+let DARK_BACKGROUND = `#1F1F1F`
 
 let currentBackground = window.matchMedia("(prefers-color-scheme: dark)").matches ? DARK_BACKGROUND : LIGHT_BACKGROUND
 
@@ -446,10 +468,13 @@ darkModePreference.addEventListener("change", e => {
 
 onMounted(async () => {
   console.log("Hello, world!")
+  canvasBElement = document.getElementById('background-canvas') as HTMLCanvasElement
+  canvasBContext = canvasBElement.getContext("2d")!
   canvas1Element = document.getElementById('lowres-canvas') as HTMLCanvasElement
   canvas1Context = canvas1Element.getContext("2d")!
   canvas2Element = document.getElementById('highres-canvas') as HTMLCanvasElement
   canvas2Context = canvas2Element.getContext("2d")!
+  
   await resizedWindow()
   //await new Promise(resolve => setTimeout(resolve, 400))
   lastTimestamp = Date.now()
@@ -466,18 +491,30 @@ window.addEventListener("resize", resizedWindow)*/
 <template>
   <div id='canvas-holder'>
     <canvas
-    id='lowres-canvas'
+    id='background-canvas'
     style= 'position: absolute; z-index: 1'
     >NOOOOO!</canvas>
     <canvas
-    id='highres-canvas'
+    id='lowres-canvas'
     style= 'position: absolute; z-index: 2'
+    >NOOOOO!</canvas>
+    <canvas
+    id='highres-canvas'
+    style= 'position: absolute; z-index: 3'
     >NOOOOO!</canvas>
   </div>
 </template>
 
 <style scoped>
 #canvas-holder {
+  position: absolute;
+  left: 0;
+  top: -0;
+  width: 100vw;
+  height: 100vh;
+  overflow: clip;
+}
+#background-canvas {
   position: absolute;
   left: 0;
   top: -0;

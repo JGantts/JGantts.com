@@ -12,7 +12,7 @@ import {
 } from '@radix-ui/colors';
 
 let BOX_SIZE = 8
-let TOP_BUFFER = 4
+let TOP_BUFFER = 34
 let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
 let MAGIC_NUMBER_B = 1.5
@@ -33,7 +33,6 @@ type Color = {
 }
 
 type Box = {
-    position: Position,
     color: Color,
   }
 
@@ -42,10 +41,7 @@ type Box = {
 */
 let lastTimestamp = 0
 let columns: {
-  spawnIncrement: number,
-  spawnCountdown: number,
   boxes: Box[],
-  doneAnimating: boolean,
 }[] = []
 let canvasPixelElement: HTMLCanvasElement
 let canvasPixelContext: CanvasRenderingContext2D
@@ -113,6 +109,7 @@ async function resizedWindow() {
             : scaledToRange < gaussianMin
               ? gaussianMin
               : scaledToRange
+        console.log(localizedToZero)
         return clamppedToRange
       }),
       highres: gaussianSums(highresDistsWithFiller, countToAdd*highresScale, gaussianDistance*highresScale, sum => {
@@ -128,15 +125,14 @@ async function resizedWindow() {
     */
     for (let i=0; i < gaussianResults.lowres.length; i++) {
       columns.push({
-        spawnIncrement: gaussianResults.lowres[i]*(spawnIncrementMax - spawnIncrementMin) + spawnIncrementMin,
-        spawnCountdown: gaussianResults.lowres[i]*(spawnCountdownMax - spawnCountdownMin) + spawnCountdownMin,
-        boxes: [],
-        doneAnimating: false,
+        boxes: new Array(Math.floor(gaussianResults.lowres[i]*30)).fill({ color: randomBlue() }),
       })
     }
     gaussianLowres = gaussianResults.lowres
     //@ts-ignore
     gaussionSmoothed = Smooth(gaussianResults.lowres)
+
+    paintScene()
   }
 
   needsRedraw = true
@@ -151,118 +147,106 @@ async function renderLoop() {
   window.requestAnimationFrame(renderLoop)
 }
 
-async function renderScene(interval: number) {
+async function paintScene() {
   //console.log("wut")
-  for (let key in columns) {
-    calculateColumn(Number(key), interval)
-  }
-  calculateRenderClip(interval)
-  for (let key in columns) {
-    renderColumn(Number(key))
+  while ((columns[0].boxes.length-TOP_BUFFER*2)*BOX_SIZE < window.outerHeight) {
+    console.log("here")
+    for (let key in columns) {
+      calculateColumn(Number(key))
+    }
+    for (let key in columns) {
+      renderColumn(Number(key))
+    }
   }
   needsRedraw = false
 }
 
-async function calculateColumn(index: number, interval: number) { 
+async function renderScene(interval: number) {
+  calculateRenderClip(interval)
+}
+
+async function calculateColumn(index: number) { 
   let column = columns[index]
 
   /*
-    Are we done filling out this column?
+    Add new box
   */
-  if (column.doneAnimating || (column.boxes.length-TOP_BUFFER)*BOX_SIZE > window.outerHeight) {
-    column.doneAnimating = true
-    return
+  /* position */
+  let position = { x: index, y: column.boxes.length }
+
+  /* random color */
+  let color = randomBlue()
+
+  /* smooth out color with existing neighbors */
+  let parent = null
+  let leftCousin = null
+  let rightCousin = null
+
+  parent = column.boxes[column.boxes.length-1]
+  let leftLineage = columns[index - 1]
+  if (leftLineage) {
+    leftCousin = leftLineage.boxes[column.boxes.length - 1]
+  }
+  let rightLineage = columns[index + 1]
+  if (rightLineage) {
+    rightCousin = rightLineage.boxes[column.boxes.length - 1]
+  }
+  let colorToTint = {
+    r: 0,
+    g: 0,
+    b: 0,
+    a: 0
+  }
+  let colorsAdded = 0
+  if (parent) {
+    colorToTint.r += parent.color.r
+    colorToTint.g += parent.color.g
+    colorToTint.b += parent.color.b
+    colorsAdded += 1
+  }
+  if (leftCousin) {
+    colorToTint.r += leftCousin.color.r
+    colorToTint.g += leftCousin.color.g
+    colorToTint.b += leftCousin.color.b
+    colorsAdded += 1
+  }
+  if (rightCousin) {
+    colorToTint.r += rightCousin.color.r
+    colorToTint.g += rightCousin.color.g
+    colorToTint.b += rightCousin.color.b
+    colorsAdded += 1
+  }
+  if(colorsAdded != 0) {
+    colorToTint.r /= colorsAdded
+    colorToTint.g /= colorsAdded
+    colorToTint.b /= colorsAdded
+
+    let randomMultiplier = 1
+    let consistentMultiplier = 10
+    let multiplierSum = randomMultiplier + consistentMultiplier
+
+    let red =
+      randomMultiplier * color.r
+      + consistentMultiplier * colorToTint.r
+    let green =
+      randomMultiplier * color.g
+      + consistentMultiplier * colorToTint.g
+    let blue =
+      randomMultiplier * color.b
+      + consistentMultiplier * colorToTint.b
+
+    red = Math.floor(red/multiplierSum)
+    green = Math.floor(green/multiplierSum)
+    blue = Math.floor(blue/multiplierSum)
+
+    color.r = red
+    color.g = green
+    color.b = blue
   }
 
-  /*
-    Are we ready for the new box? (techincaly dead code atm, was used to make some columns faster than others)
-  */
-  let intervalRatio = interval/100
-  column.spawnCountdown += column.spawnIncrement*intervalRatio
-  if (column.spawnCountdown >= 1) {
-    column.spawnCountdown -= 1
-
-    /*
-      Add new box
-    */
-    /* position */
-    let position = { x: index, y: column.boxes.length }
-
-    /* random color */
-    let color = randomBlue()
-
-    /* smooth out color with existing neighbors */
-    let parent = null
-    let leftCousin = null
-    let rightCousin = null
-
-    parent = column.boxes[column.boxes.length-1]
-    let leftLineage = columns[index - 1]
-    if (leftLineage) {
-      leftCousin = leftLineage.boxes[column.boxes.length - 1]
-    }
-    let rightLineage = columns[index + 1]
-    if (rightLineage) {
-      rightCousin = rightLineage.boxes[column.boxes.length - 1]
-    }
-    let colorToTint = {
-      r: 0,
-      g: 0,
-      b: 0,
-      a: 0
-    }
-    let colorsAdded = 0
-    if (parent) {
-      colorToTint.r += parent.color.r
-      colorToTint.g += parent.color.g
-      colorToTint.b += parent.color.b
-      colorsAdded += 1
-    }
-    if (leftCousin) {
-      colorToTint.r += leftCousin.color.r
-      colorToTint.g += leftCousin.color.g
-      colorToTint.b += leftCousin.color.b
-      colorsAdded += 1
-    }
-    if (rightCousin) {
-      colorToTint.r += rightCousin.color.r
-      colorToTint.g += rightCousin.color.g
-      colorToTint.b += rightCousin.color.b
-      colorsAdded += 1
-    }
-    if(colorsAdded != 0) {
-      colorToTint.r /= colorsAdded
-      colorToTint.g /= colorsAdded
-      colorToTint.b /= colorsAdded
-
-      let randomMultiplier = 1
-      let consistentMultiplier = 10
-      let multiplierSum = randomMultiplier + consistentMultiplier
-
-      let red =
-        randomMultiplier * color.r
-        + consistentMultiplier * colorToTint.r
-      let green =
-        randomMultiplier * color.g
-        + consistentMultiplier * colorToTint.g
-      let blue =
-        randomMultiplier * color.b
-        + consistentMultiplier * colorToTint.b
-
-      red = Math.floor(red/multiplierSum)
-      green = Math.floor(green/multiplierSum)
-      blue = Math.floor(blue/multiplierSum)
-
-      color.r = red
-      color.g = green
-      color.b = blue
-    }
-
-    column.boxes.push({
-      position: position,
-      color: color
-    })
-  }
+  column.boxes.push({
+    color: color
+  })
 }
 
 let offsetY = -MAGIC_NUMBER_F
@@ -305,9 +289,6 @@ async function calculateRenderClip(interval: number) {
 
 async function renderColumn(columnIndex: number) {
   let column = columns[columnIndex]
-  if (column.doneAnimating && !needsRedraw) {
-    return
-  }
   if (needsRedraw) {
     for (let boxIndex=0; boxIndex<column.boxes.length; boxIndex++) {
       tryRenderBox(columnIndex, boxIndex)

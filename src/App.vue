@@ -76,13 +76,7 @@ function checkDarkMode(mediaMatch: any) {
 }
 
 .main {
-  background-color: #EFEFEF;
-}
-
-@media (prefers-color-scheme: dark) {
-  .main {
-    background-color: #1F1F1F;
-  }
+  background-color: var(--backgroundAppBase);
 }
 
 @media (max-width: 736px) {

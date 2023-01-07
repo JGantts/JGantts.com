@@ -1,32 +1,81 @@
 @import "@radix-ui/colors/sky.css";
 @import "@radix-ui/colors/skyDark.css";
+@import "@radix-ui/colors/orange.css";
+@import "@radix-ui/colors/orangeDark.css";
+@import "@radix-ui/colors/slate.css";
+@import "@radix-ui/colors/slateDark.css";
 
-:root {
---baseColor1: var(--sky1);
---baseColor2: var(--sky2);
---baseColor3: var(--sky3);
---baseColor4: var(--sky4);
---baseColor5: var(--sky5);
---baseColor6: var(--sky6);
---baseColor7: var(--sky7);
---baseColor8: var(--sky8);
---baseColor9: var(--sky9);
---baseColor10: var(--sky10);
---baseColor11: var(--sky11);
---baseColor12: var(--sky12);
+body {
+--base1: var(--sky1);
+--base2: var(--sky2);
+--base3: var(--sky3);
+--base4: var(--sky4);
+--base5: var(--sky5);
+--base6: var(--sky6);
+--base7: var(--sky7);
+--base8: var(--sky8);
+--base9: var(--sky9);
+--base10: var(--sky10);
+--base11: var(--sky11);
+--base12: var(--sky12);
 
---accentColor1: var(--orange1);
---accentColor2: var(--orange2);
---accentColor3: var(--orange3);
---accentColor4: var(--orange4);
---accentColor5: var(--orange5);
---accentColor6: var(--orange6);
---accentColor7: var(--orange7);
---accentColor8: var(--orange8);
---accentColor9: var(--orange9);
---accentColor10: var(--orange10);
---accentColor11: var(--orange11);
---accentColor12: var(--orange12);
+--accent1: var(--orange1);
+--accent2: var(--orange2);
+--accent3: var(--orange3);
+--accent4: var(--orange4);
+--accent5: var(--orange5);
+--accent6: var(--orange6);
+--accent7: var(--orange7);
+--accent8: var(--orange8);
+--accent9: var(--orange9);
+--accent10: var(--orange10);
+--accent11: var(--orange11);
+--accent12: var(--orange12);
+
+--gray1: var(--slate1);
+--gray2: var(--slate2);
+--gray3: var(--slate3);
+--gray4: var(--slate4);
+--gray5: var(--slate5);
+--gray6: var(--slate6);
+--gray7: var(--slate7);
+--gray8: var(--slate8);
+--gray9: var(--slate9);
+--gray10: var(--slate10);
+--gray11: var(--slate11);
+--gray12: var(--slate12);
+
+
+--backgroundAppBase: var(--base1);
+--backgroundAppAccent: var(--accent1);
+--backgroundSubtleBase: var(--base2);
+--backgroundSubtleAccent: var(--accent2);
+
+--backgroundUiElementBase: var(--base3);
+--backgroundUiElementAccent: var(--accent3);
+--backgroundUiElementHoveredBase: var(--base4);
+--backgroundUiElementHoveredAccent: var(--accent4);
+--backgroundUiElementActiveBase: var(--base5);
+--backgroundUiElementActiveAccent: var(--accent5);
+
+--borderSubtleBase: var(--base6);
+--borderSubtleAccent: var(--accent6);
+--borderBase: var(--base7);
+--borderAccent: var(--accent7);
+--borderHoveredBase: var(--base8);
+--borderHoveredAccent: var(--accent8);
+
+--backgroundSolidBase: var(--base9);
+--backgroundSolidAccent: var(--accent9);
+--backgroundSolidHoveredBase: var(--base10);
+--backgroundSolidHoveredAccent: var(--accent10);
+
+--textLowGray: var(--gray11);
+--textLowBase: var(--base11);
+--textLowAccent: var(--accent11);
+--textGray: var(--gray12);
+--textBase: var(--base12);
+--textAccent: var(--accent12);
 }
 
 
@@ -107,8 +156,8 @@ button, input[type="submit"], input[type="reset"] {
   font-family: 'Figtree', Arial, sans-serif;
 }
 
-#app {
-  color: var(--baseColor11);
+body {
+  color: var(--textGray);
 }
 
 #backgorund-holder {
@@ -127,7 +176,18 @@ button, input[type="submit"], input[type="reset"] {
 }
 
 #app {
-  background-color: var(--baseColor1)
+  background-image: linear-gradient(343deg, var(--backgroundAppBase) 0%, var(--backgroundSubtleBase) 60%);
+}
+
+@media (prefers-color-scheme: dark) {
+    #app {
+      background-image: linear-gradient(343deg, #082845 25%, #2184DE 100%);
+    }
+}
+
+
+#app {
+  background-color: var(--backgroundAppBase)
 }
 
 html {
@@ -147,6 +207,7 @@ html {
 }
 
 #text03 {
+  color: var(--textLowGray);
   font-size: 0.625em;
   line-height: 1.5;
   font-weight: 300;
@@ -718,7 +779,6 @@ h1 span.p, h2 span.p, h3 span.p, p span.p {
 }
 
 #links01 li a {
-  color: #000000;
   text-decoration: none;
 }
 
@@ -726,14 +786,12 @@ h1 span.p, h2 span.p, h3 span.p, p span.p {
   text-decoration: underline;
 }
 
-@media (prefers-color-scheme: dark) {
-  #links01 li a {
-    color: #FFFFFF;
-  }
-}
-
 #links01 li a:hover {
   text-decoration: none;
+}
+
+#links01 li a:hover .underline-link {
+  color: var(--textLowAccent);
 }
 
 @media (max-width: 1920px) {

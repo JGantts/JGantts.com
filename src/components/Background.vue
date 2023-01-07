@@ -3,8 +3,12 @@ import { ref, onMounted, onUnmounted } from 'vue'
 // @ts-ignore
 import{ Smooth } from '../assets/Smooth'
 import {
-  sky as radixColor,
-  skyDark as radixColorDark,
+  sky,
+  skyDark,
+  orange,
+  orangeDark,
+  slate,
+  slateDark,
 } from '@radix-ui/colors';
 
 let BOX_SIZE = 8
@@ -43,10 +47,6 @@ let columns: {
   boxes: Box[],
   doneAnimating: boolean,
 }[] = []
-let canvasLazerElement: HTMLCanvasElement
-let canvasLazerContext: CanvasRenderingContext2D
-let canvasBElement: HTMLCanvasElement
-let canvasBContext: CanvasRenderingContext2D
 let canvasPixelElement: HTMLCanvasElement
 let canvasPixelContext: CanvasRenderingContext2D
 let canvasSmoothElement: HTMLCanvasElement
@@ -61,14 +61,10 @@ let needsRedraw = false
   Rendering functions
 */
 async function resizedWindow() {
-  canvasLazerElement.width = canvasLazerElement.clientWidth;
-  canvasLazerElement.height = canvasLazerElement.clientHeight;
   canvasPixelElement.width = canvasPixelElement.clientWidth;
   canvasPixelElement.height = canvasPixelElement.clientHeight;
   canvasSmoothElement.width = canvasSmoothElement.clientWidth;
   canvasSmoothElement.height = canvasSmoothElement.clientHeight;
-  canvasBElement.width = canvasBElement.clientWidth;
-  canvasBElement.height = canvasBElement.clientHeight;
 
   /*
     Check if (and how many) new columns to add
@@ -279,15 +275,9 @@ async function calculateRenderClip(interval: number) {
   offsetY += (interval/20) * MAGIC_NUMBER_E
 
 
-  let offsetX = 2*offsetY/canvasBElement.clientHeight*0 + canvasBElement.clientWidth
+  let offsetX = 2*offsetY/canvasSmoothElement.clientHeight*0 + canvasSmoothElement.clientWidth
 
   canvasSmoothContext.clearRect(0, 0, canvasSmoothElement.width, canvasSmoothElement.height);
-  canvasLazerContext.clearRect(0, 0, canvasLazerElement.width, canvasLazerElement.height);
-  //Must ask about this one...
-  //  Moving the "canvasBContext.clear" line below the "canvasLazerContext.fill" line
-  //  causes the lazer to fail to print
-  canvasBContext.clearRect(0, 0, canvasBElement.width, canvasBElement.height);
-
   canvasSmoothContext.save()
   canvasSmoothContext.beginPath()
   canvasSmoothContext.moveTo(canvasSmoothElement.clientWidth*0, canvasSmoothElement.clientHeight*0)
@@ -296,15 +286,6 @@ async function calculateRenderClip(interval: number) {
   canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*0, canvasSmoothElement.clientHeight*1)
   canvasSmoothContext.closePath()
   canvasSmoothContext.clip()
-
-  canvasBContext.beginPath()
-  canvasBContext.moveTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*0)
-  canvasBContext.lineTo(canvasBElement.clientWidth*offsetX, canvasBElement.clientHeight*0)
-  canvasBContext.lineTo(canvasBElement.clientWidth*offsetX, canvasBElement.clientHeight*1)
-  canvasBContext.lineTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*1)
-  canvasBContext.closePath()
-  canvasBContext.fillStyle = `#2184DE`
-  canvasBContext.fill()
 
   canvasSmoothContext.beginPath()
   let index=0
@@ -317,26 +298,9 @@ async function calculateRenderClip(interval: number) {
   canvasSmoothContext.lineTo(0, canvasSmoothElement.clientHeight)
   canvasSmoothContext.closePath()
 
-  canvasSmoothContext.fillStyle = currentBackground
+  canvasSmoothContext.fillStyle = (darkModePreference.matches ? skyDark : sky).sky1
   canvasSmoothContext.fill()
   canvasSmoothContext.restore()
-
-  /*canvasLazerContext.beginPath()
-  canvasLazerContext.moveTo(canvasLazerElement.clientWidth*offsetX, canvasLazerElement.clientHeight*0)
-  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX+2, canvasLazerElement.clientHeight*0)
-  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX+2, canvasLazerElement.clientHeight*1)
-  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX, canvasLazerElement.clientHeight*1)
-  canvasLazerContext.closePath()
-  canvasLazerContext.fillStyle = `#EF1F1FAA`
-  canvasLazerContext.fill()*/
-
-  /*let lazerIntersectX = canvasLazerElement.clientWidth*offsetX+1
-  let lazerIntersectY = gaussionSmoothed((lazerIntersectX+BOX_SIZE*MAGIC_NUMBER_C)/highresScale)*500*MAGIC_NUMBER_D+offsetY
-
-  canvasLazerContext.beginPath()
-  canvasLazerContext.arc(lazerIntersectX, lazerIntersectY, 5, 0, 2*Math.PI)
-  canvasLazerContext.fillStyle = `orange`
-  canvasLazerContext.fill()*/
 }
 
 async function renderColumn(columnIndex: number) {
@@ -397,7 +361,7 @@ function renderGradient(
   let right = left + BOX_SIZE
   let bottom = top + BOX_SIZE
 
-  canvasPixelContext.fillStyle = currentBackground
+  canvasPixelContext.fillStyle = (darkModePreference.matches ? skyDark : sky).sky9
   canvasPixelContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 
   let gradientTLBR = canvasPixelContext.createLinearGradient(left, top, right, bottom)
@@ -417,11 +381,12 @@ function renderGradient(
 /*
   Helper functions
 */
-function randomBlue(): { r: number, g: number, b: number} {
+function randomBlue(): Color {
+  let value = Math.random()*255 + 0
   let color = {
     r: Math.random()*50 + 0,
     g: Math.random()*255 + 0,
-    b: Math.random()*50 + 200,
+    b: Math.random()*50 + 200
   }
   return color
 }
@@ -482,20 +447,7 @@ function gaussianDistributionAt(variance: number, oneOverSqrtTwoPiVariance: numb
 /*
   Actual setup code
 */
-//Set and check for dark mode
-let LIGHT_BACKGROUND = `#EFEFEF`
-let DARK_BACKGROUND = `#1F1F1F`
-
-let currentBackground = window.matchMedia("(prefers-color-scheme: dark)").matches ? DARK_BACKGROUND : LIGHT_BACKGROUND
-
 const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
-darkModePreference.addEventListener("change", e => {
-  if (e.matches){
-    currentBackground = DARK_BACKGROUND
-  } else {
-    currentBackground = LIGHT_BACKGROUND
-  }
-})
 
 /*
   And begin!
@@ -503,10 +455,6 @@ darkModePreference.addEventListener("change", e => {
 
 onMounted(async () => {
   console.log("Hello, world!")
-  canvasLazerElement = document.getElementById('background-canvas') as HTMLCanvasElement
-  canvasLazerContext = canvasLazerElement.getContext("2d")!
-  canvasBElement = document.getElementById('background-canvas') as HTMLCanvasElement
-  canvasBContext = canvasBElement.getContext("2d")!
   canvasPixelElement = document.getElementById('lowres-canvas') as HTMLCanvasElement
   canvasPixelContext = canvasPixelElement.getContext("2d")!
   canvasSmoothElement = document.getElementById('highres-canvas') as HTMLCanvasElement
@@ -528,14 +476,6 @@ window.addEventListener("resize", resizedWindow)*/
 <template>
   <div id='canvas-holder'>
     <canvas
-    id='lazer-canvas'
-    style= 'position: absolute; z-index: 4;'
-    >NOOOOO!</canvas>
-    <canvas
-    id='background-canvas'
-    style= 'position: absolute; z-index: 1;'
-    >NOOOOO!</canvas>
-    <canvas
     id='lowres-canvas'
     style= 'position: absolute; z-index: 2;'
     >NOOOOO!</canvas>
@@ -548,22 +488,6 @@ window.addEventListener("resize", resizedWindow)*/
 
 <style scoped>
 #canvas-holder {
-  position: absolute;
-  left: 0;
-  top: -0;
-  width: 100vw;
-  height: 100vh;
-  overflow: clip;
-}
-#lazer-canvas {
-  position: absolute;
-  left: 0;
-  top: -0;
-  width: 100vw;
-  height: 100vh;
-  overflow: clip;
-}
-#background-canvas {
   position: absolute;
   left: 0;
   top: -0;

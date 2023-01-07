@@ -28,7 +28,6 @@ const props = defineProps({
   display: flex;
   flex-direction: row;
   align-items: center;
-
 }
 
 #container-nav > .wrapper > .inner > ul > li {
@@ -87,6 +86,7 @@ const props = defineProps({
   z-index: 1;
   padding: var(--padding-vertical) var(--padding-horizontal);
   border-width: 10px;
+  border: 0.1rem solid var(--backgroundSolidAccent);
   background-color: var(--uiElementBackgroundBase);
 }
 

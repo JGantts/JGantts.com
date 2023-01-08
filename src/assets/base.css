@@ -176,18 +176,7 @@ body {
 }
 
 #app {
-  background-image: linear-gradient(343deg, var(--backgroundAppBase) 0%, var(--backgroundSubtleBase) 60%);
-}
-
-@media (prefers-color-scheme: dark) {
-    #app {
-      background-image: linear-gradient(343deg, #082845 25%, #2184DE 100%);
-    }
-}
-
-
-#app {
-  background-color: var(--backgroundAppBase)
+  background-color: var(--base8)
 }
 
 html {

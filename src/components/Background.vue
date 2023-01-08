@@ -36,6 +36,13 @@ type Box = {
     color: Color,
   }
 
+type GaussianLowPoint = {
+  position: number,
+  velocity: number,
+  acceleration: number,
+  jolt: number,
+}
+
 /*
   Initialize variables
 */
@@ -47,8 +54,7 @@ let canvasPixelElement: HTMLCanvasElement
 let canvasPixelContext: CanvasRenderingContext2D
 let canvasSmoothElement: HTMLCanvasElement
 let canvasSmoothContext: CanvasRenderingContext2D
-let gaussianLowres: number[] = []
-let gaussionSmoothed: any = null
+let gaussianLowres: GaussianLowPoint[] = []
 
 
 let needsRedraw = false
@@ -109,7 +115,6 @@ async function resizedWindow() {
             : scaledToRange < gaussianMin
               ? gaussianMin
               : scaledToRange
-        console.log(localizedToZero)
         return clamppedToRange
       }),
       highres: gaussianSums(highresDistsWithFiller, countToAdd*highresScale, gaussianDistance*highresScale, sum => {
@@ -128,10 +133,12 @@ async function resizedWindow() {
         boxes: new Array(Math.floor(gaussianResults.lowres[i]*30)).fill({ color: randomBlue() }),
       })
     }
-    gaussianLowres = gaussianResults.lowres
-    //@ts-ignore
-    gaussionSmoothed = Smooth(gaussianResults.lowres)
-
+    gaussianLowres = gaussianResults.lowres.map(sum =>  { return {
+          position: -MAGIC_NUMBER_E,
+          velocity: sum/1000,
+          acceleration: sum/10000,
+          jolt: 1/100,
+        }})
     paintScene()
   }
 
@@ -150,7 +157,6 @@ async function renderLoop() {
 async function paintScene() {
   //console.log("wut")
   while ((columns[0].boxes.length-TOP_BUFFER*2)*BOX_SIZE < window.outerHeight) {
-    console.log("here")
     for (let key in columns) {
       calculateColumn(Number(key))
     }
@@ -249,17 +255,31 @@ async function calculateColumn(index: number) {
   })
 }
 
-let offsetY = -MAGIC_NUMBER_F
+//let offsetY = -MAGIC_NUMBER_F
 let doneAnimatingCurtain = false
 async function calculateRenderClip(interval: number) {
-  if (doneAnimatingCurtain || offsetY > canvasSmoothElement.height*1.5) {
+  if (doneAnimatingCurtain) {
     doneAnimatingCurtain = true
     return
   }
-  offsetY += (interval/20) * MAGIC_NUMBER_E
+  //offsetY += MAGIC_NUMBER_E
+
+  for (let index=0; index < gaussianLowres.length; index++) {
+    //gaussianLowres[index].acceleration += gaussianLowres[index].jolt
+    gaussianLowres[index].velocity += gaussianLowres[index].acceleration
+    gaussianLowres[index].position += gaussianLowres[index].velocity
+  }
+
+  //@ts-ignore
+  let gaussionSmoothed = Smooth(gaussianLowres.map(objct => objct.position))
+  /*if (doneAnimatingCurtain || offsetY > canvasSmoothElement.height*1.5) {
+    doneAnimatingCurtain = true
+    return
+  }*/
 
 
-  let offsetX = 2*offsetY/canvasSmoothElement.clientHeight*0 + canvasSmoothElement.clientWidth
+
+  let offsetX = canvasSmoothElement.clientWidth
 
   canvasSmoothContext.clearRect(0, 0, canvasSmoothElement.width, canvasSmoothElement.height);
   canvasSmoothContext.save()
@@ -273,10 +293,10 @@ async function calculateRenderClip(interval: number) {
 
   canvasSmoothContext.beginPath()
   let index=0
-  canvasSmoothContext.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index)+offsetY)
+  canvasSmoothContext.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index))
   index++
   for (; index < gaussianLowres.length*highresScale; index++) {
-    canvasSmoothContext.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*500*MAGIC_NUMBER_D+offsetY)
+    canvasSmoothContext.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*500*MAGIC_NUMBER_D)
   }
   canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth, canvasSmoothElement.clientHeight)
   canvasSmoothContext.lineTo(0, canvasSmoothElement.clientHeight)

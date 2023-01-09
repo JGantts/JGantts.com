@@ -64,11 +64,31 @@ async function resizedWindow() {
   if(countToAddPixelated > 0) {
     let countToAddSmoothed = countToAddPixelated*PIXELATED_BOX_SIZE/SMOOTHED_BOX_SIZE
 
-    let gaussianSumsBackground: number[] = gaussians(countToAddPixelated, () => {return Math.random()*90 + 10},  0, 1)
-    let gaussianSumsPosition: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  -300, 0)
-    let gaussianSumsVelocity: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0, 0.5)
-    let gaussianSumsAcceleration: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0.005, 0.01)
-    let gaussianSumsJolt: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10}, -0.000005, 0.000005)
+    let gaussianSumsBackground: number[] = gaussians(
+      countToAddPixelated,
+      () => {return Math.random()*90 + 10},
+      0, 1
+    )
+    let gaussianSumsPosition: number[] = gaussians(
+      countToAddSmoothed,
+      () => {return Math.random()*90 + 10},
+      -300, 0
+    )
+    let gaussianSumsVelocity: number[] = gaussians(
+      countToAddSmoothed,
+      () => {return Math.random()*90 + 10},
+      0, 0.5
+    )
+    let gaussianSumsAcceleration: number[] = gaussians(
+      countToAddSmoothed,
+      () => {return Math.random()*90 + 10},
+      0.005, 0.01
+    )
+    let gaussianSumsJolt: number[] = gaussians(
+      countToAddSmoothed,
+      () => {return Math.random()*90 + 10},
+      -0.000005, 0.000005
+    )
 
     /*
       Take the begining offsets and initialize the columns

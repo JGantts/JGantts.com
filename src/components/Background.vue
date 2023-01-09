@@ -60,12 +60,12 @@ async function resizedWindow() {
   canvasSmoothElement.width = canvasSmoothElement.clientWidth;
   canvasSmoothElement.height = canvasSmoothElement.clientHeight;
 
-  let newWidthRawBackground = Math.ceil(canvasPixelElement.width/PIXELATED_BOX_SIZE) + 1
+  let countToAddPixelated = Math.ceil(canvasPixelElement.width/PIXELATED_BOX_SIZE) + 1
 
-  if(newWidthRawBackground > 0) {
-    let countToAddSmoothed = newWidthRawBackground+PIXELATED_BOX_SIZE/SMOOTHED_BOX_SIZE
+  if(countToAddPixelated > 0) {
+    let countToAddSmoothed = countToAddPixelated*PIXELATED_BOX_SIZE/SMOOTHED_BOX_SIZE
 
-    let gaussianSumsBackground: number[] = gaussians(newWidthRawBackground, () => {return Math.random()*90 + 10},  0, 1)
+    let gaussianSumsBackground: number[] = gaussians(countToAddPixelated, () => {return Math.random()*90 + 10},  0, 1)
     let gaussianSumsPosition: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0, 1)
     let gaussianSumsVelocity: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0, 1)
     let gaussianSumsAcceleration: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0.5, 1)
@@ -74,13 +74,13 @@ async function resizedWindow() {
     /*
       Take the begining offsets and initialize the columns
     */
-    for (let i=0; i < gaussianSumsBackground.length; i++) {
+    for (let i=0; i < countToAddPixelated; i++) {
       columns.push({
         boxes: new Array(Math.floor(gaussianSumsBackground[i]*30)).fill({ color: randomBlue() }),
       })
     }
     gaussianObjects = []
-    for (let index=gaussianDistance; index < countToAddSmoothed-gaussianDistance; index++) {
+    for (let index=0; index < countToAddSmoothed; index++) {
       gaussianObjects.push({
           position: gaussianSumsPosition[index] - 1 - 3*(Math.abs(index-0.15*countToAddSmoothed))/countToAddSmoothed,
           velocity: gaussianSumsVelocity[index]/1000,
@@ -223,14 +223,6 @@ async function renderScene(): Promise<Boolean> {
 
   //@ts-ignore
   let gaussionSmoothed = Smooth(gaussianObjects.map(objct => objct.position))
-  /*if (doneAnimatingCurtain || offsetY > canvasSmoothElement.height*1.5) {
-    doneAnimatingCurtain = true
-    return
-  }*/
-
-
-
-  let offsetX = canvasSmoothElement.clientWidth
 
   canvasSmoothContext.clearRect(0, 0, canvasSmoothElement.width, canvasSmoothElement.height);
 
@@ -239,7 +231,7 @@ async function renderScene(): Promise<Boolean> {
   canvasSmoothContext.moveTo(index, gaussionSmoothed(index))
   index++
   for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
-    canvasSmoothContext.lineTo(index*1.5, gaussionSmoothed(index/SMOOTHED_BOX_SIZE)*500*MAGIC_NUMBER_D)
+    canvasSmoothContext.lineTo(index, gaussionSmoothed(index/SMOOTHED_BOX_SIZE)*500*MAGIC_NUMBER_D)
   }
   canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth, canvasSmoothElement.clientHeight)
   canvasSmoothContext.lineTo(0, canvasSmoothElement.clientHeight)

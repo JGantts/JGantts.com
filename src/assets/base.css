@@ -1,3 +1,84 @@
+@import "@radix-ui/colors/sky.css";
+@import "@radix-ui/colors/skyDark.css";
+@import "@radix-ui/colors/orange.css";
+@import "@radix-ui/colors/orangeDark.css";
+@import "@radix-ui/colors/slate.css";
+@import "@radix-ui/colors/slateDark.css";
+
+body {
+--base1: var(--sky1);
+--base2: var(--sky2);
+--base3: var(--sky3);
+--base4: var(--sky4);
+--base5: var(--sky5);
+--base6: var(--sky6);
+--base7: var(--sky7);
+--base8: var(--sky8);
+--base9: var(--sky9);
+--base10: var(--sky10);
+--base11: var(--sky11);
+--base12: var(--sky12);
+
+--accent1: var(--orange1);
+--accent2: var(--orange2);
+--accent3: var(--orange3);
+--accent4: var(--orange4);
+--accent5: var(--orange5);
+--accent6: var(--orange6);
+--accent7: var(--orange7);
+--accent8: var(--orange8);
+--accent9: var(--orange9);
+--accent10: var(--orange10);
+--accent11: var(--orange11);
+--accent12: var(--orange12);
+
+--gray1: var(--slate1);
+--gray2: var(--slate2);
+--gray3: var(--slate3);
+--gray4: var(--slate4);
+--gray5: var(--slate5);
+--gray6: var(--slate6);
+--gray7: var(--slate7);
+--gray8: var(--slate8);
+--gray9: var(--slate9);
+--gray10: var(--slate10);
+--gray11: var(--slate11);
+--gray12: var(--slate12);
+
+
+--backgroundAppBase: var(--base1);
+--backgroundAppAccent: var(--accent1);
+--backgroundSubtleBase: var(--base2);
+--backgroundSubtleAccent: var(--accent2);
+
+--backgroundUiElementBase: var(--base3);
+--backgroundUiElementAccent: var(--accent3);
+--backgroundUiElementHoveredBase: var(--base4);
+--backgroundUiElementHoveredAccent: var(--accent4);
+--backgroundUiElementActiveBase: var(--base5);
+--backgroundUiElementActiveAccent: var(--accent5);
+
+--borderSubtleBase: var(--base6);
+--borderSubtleAccent: var(--accent6);
+--borderBase: var(--base7);
+--borderAccent: var(--accent7);
+--borderHoveredBase: var(--base8);
+--borderHoveredAccent: var(--accent8);
+
+--backgroundSolidBase: var(--base9);
+--backgroundSolidAccent: var(--accent9);
+--backgroundSolidHoveredBase: var(--base10);
+--backgroundSolidHoveredAccent: var(--accent10);
+
+--textLowGray: var(--gray11);
+--textLowBase: var(--base11);
+--textLowAccent: var(--accent11);
+--textGray: var(--gray12);
+--textBase: var(--base12);
+--textAccent: var(--accent12);
+}
+
+
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td,article,aside,canvas,details,embed,figure,figcaption,footer,header,hgroup,menu,nav,output,ruby,section,summary,time,mark,audio,video{margin:0;padding:0;border:0;font-size:100%;font:inherit;vertical-align:baseline;}article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section{display:block;}body{line-height:1;}ol,ul{list-style:none;}blockquote,q{quotes:none;}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none;}table{border-collapse:collapse;border-spacing:0;}body{-webkit-text-size-adjust:none}mark{background-color:transparent;color:inherit}input::-moz-focus-inner{border:0;padding:0}input[type="text"],input[type="email"],select,textarea{-moz-appearance:none;-webkit-appearance:none;-ms-appearance:none;appearance:none}
 
 button, input[type="submit"], input[type="reset"] {
@@ -75,26 +156,8 @@ button, input[type="submit"], input[type="reset"] {
   font-family: 'Figtree', Arial, sans-serif;
 }
 
-#app {
-  color: #000000;
-  background-color: rgba(0,0,0,0);
-}
-
-@media (prefers-color-scheme: dark) {
-    #app {
-      color: #FFFFFF;
-      background-color: rgba(0,0,0,0);
-    }
-}
-
 body {
-  background-color: rgb(255,255,255);
-}
-
-@media (prefers-color-scheme: dark) {
-    body {
-      background-color: rgb(0,0,0);
-    }
+  color: var(--textGray);
 }
 
 #backgorund-holder {
@@ -113,15 +176,7 @@ body {
 }
 
 #app {
-  background-image: linear-gradient(343deg, #2184DE 0%, #74AEE3 60%);
-  background-image: linear-gradient(343deg, #EFEFEF 25%, #EFEFEF 100%);
-}
-
-@media (prefers-color-scheme: dark) {
-    #app {
-      background-image: linear-gradient(343deg, #082845 25%, #2184DE 100%);
-      background-image: linear-gradient(343deg, #1F1F1F 25%, #1F1F1F 100%);
-    }
+  background-color: var(--base8)
 }
 
 html {
@@ -141,6 +196,7 @@ html {
 }
 
 #text03 {
+  color: var(--textLowGray);
   font-size: 0.625em;
   line-height: 1.5;
   font-weight: 300;
@@ -712,7 +768,6 @@ h1 span.p, h2 span.p, h3 span.p, p span.p {
 }
 
 #links01 li a {
-  color: #000000;
   text-decoration: none;
 }
 
@@ -720,14 +775,12 @@ h1 span.p, h2 span.p, h3 span.p, p span.p {
   text-decoration: underline;
 }
 
-@media (prefers-color-scheme: dark) {
-  #links01 li a {
-    color: #FFFFFF;
-  }
-}
-
 #links01 li a:hover {
   text-decoration: none;
+}
+
+#links01 li a:hover .underline-link {
+  color: var(--textLowAccent);
 }
 
 @media (max-width: 1920px) {

@@ -2,6 +2,18 @@
 import { RouterLink, RouterView } from 'vue-router'
 import Background from './components/Background.vue'
 import NavBar from './components/NavBar.vue'
+
+const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
+darkModePreference.addEventListener("change", checkDarkMode)
+checkDarkMode(darkModePreference)
+
+function checkDarkMode(mediaMatch: any) {
+  if (mediaMatch.matches){
+    document.body.classList.add("dark-theme");
+  } else {
+    document.body.classList.remove("dark-theme");
+  }
+}
 </script>
 
 <template>
@@ -64,13 +76,7 @@ import NavBar from './components/NavBar.vue'
 }
 
 .main {
-  background-color: #EFEFEF;
-}
-
-@media (prefers-color-scheme: dark) {
-  .main {
-    background-color: #1F1F1F;
-  }
+  background-color: var(--backgroundAppBase);
 }
 
 @media (max-width: 736px) {

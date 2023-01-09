@@ -2,9 +2,17 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 // @ts-ignore
 import{ Smooth } from '../assets/Smooth'
+import {
+  sky,
+  skyDark,
+  orange,
+  orangeDark,
+  slate,
+  slateDark,
+} from '@radix-ui/colors';
 
 let BOX_SIZE = 8
-let TOP_BUFFER = 4
+let TOP_BUFFER = 34
 let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
 let MAGIC_NUMBER_B = 1.5
@@ -25,30 +33,28 @@ type Color = {
 }
 
 type Box = {
-    position: Position,
     color: Color,
   }
+
+type GaussianObject = {
+  position: number,
+  velocity: number,
+  acceleration: number,
+  jolt: number,
+}
 
 /*
   Initialize variables
 */
 let lastTimestamp = 0
 let columns: {
-  spawnIncrement: number,
-  spawnCountdown: number,
   boxes: Box[],
-  doneAnimating: boolean,
 }[] = []
-let canvasLazerElement: HTMLCanvasElement
-let canvasLazerContext: CanvasRenderingContext2D
-let canvasBElement: HTMLCanvasElement
-let canvasBContext: CanvasRenderingContext2D
 let canvasPixelElement: HTMLCanvasElement
 let canvasPixelContext: CanvasRenderingContext2D
 let canvasSmoothElement: HTMLCanvasElement
 let canvasSmoothContext: CanvasRenderingContext2D
-let gaussianLowres: number[] = []
-let gaussionSmoothed: any = null
+let gaussianObjects: GaussianObject[]
 
 
 let needsRedraw = false
@@ -57,14 +63,10 @@ let needsRedraw = false
   Rendering functions
 */
 async function resizedWindow() {
-  canvasLazerElement.width = canvasLazerElement.clientWidth;
-  canvasLazerElement.height = canvasLazerElement.clientHeight;
   canvasPixelElement.width = canvasPixelElement.clientWidth;
   canvasPixelElement.height = canvasPixelElement.clientHeight;
   canvasSmoothElement.width = canvasSmoothElement.clientWidth;
   canvasSmoothElement.height = canvasSmoothElement.clientHeight;
-  canvasBElement.width = canvasBElement.clientWidth;
-  canvasBElement.height = canvasBElement.clientHeight;
 
   /*
     Check if (and how many) new columns to add
@@ -88,55 +90,34 @@ async function resizedWindow() {
     /*
       Calculate the random begining offsets (for the nice-looking gaussian wave "falling curtain" effect)
     */
-    let gaussianDists: { lowres: number[], highres: number[] }[] = []
-    for (let i=0; i < countToAdd + gaussianDistance*2; i++) {
-      gaussianDists.push(gaussianDistribution(Math.random()*90 + 10))
-    }
-    let lowresDists = gaussianDists.map(dist => dist.lowres)
-    let highresDists = gaussianDists.map(dist => dist.highres)
-    let highresDistsWithFiller: number[][] = []
-    for(let ii=0; ii<highresDists.length*highresScale; ii++) {
-      if (Math.floor(ii/highresScale) == ii/highresScale) {
-        highresDistsWithFiller[ii] = highresDists[ii/highresScale]
-      } else {
-        highresDistsWithFiller[ii] = new Array(gaussianDistance*highresScale*2).fill(0)
-      }
-    }
-    let gaussianResults: { lowres: number[], highres: number[] } = {
-      lowres: gaussianSums(lowresDists, countToAdd, gaussianDistance, sum => {
-        let localizedToZero = sum/e-1
-        let scaledToOne = localizedToZero*MAGIC_NUMBER_A
-        let scaledToRange = (scaledToOne*gaussianRange/2) + gaussianMid
-        let clamppedToRange = 
-          scaledToRange > gaussianMax 
-            ? gaussianMax
-            : scaledToRange < gaussianMin
-              ? gaussianMin
-              : scaledToRange
-        return clamppedToRange
-      }),
-      highres: gaussianSums(highresDistsWithFiller, countToAdd*highresScale, gaussianDistance*highresScale, sum => {
-        let scaledOne = sum-2
-        let scaledTwo = scaledOne*400
-        return scaledTwo
-      })
-    }
-    
+    //background pattern
+
+    let gaussianSumsBackground: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
+    let gaussianSumsPosition: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
+    let gaussianSumsVelocity: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
+    let gaussianSumsAcceleration: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0.5, 1)
+    let gaussianSumsJolt: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10}, 0, 0.5)
+
+
 
     /*
       Take the begining offsets and initialize the columns
     */
-    for (let i=0; i < gaussianResults.lowres.length; i++) {
+    for (let i=0; i < gaussianSumsBackground.length; i++) {
       columns.push({
-        spawnIncrement: gaussianResults.lowres[i]*(spawnIncrementMax - spawnIncrementMin) + spawnIncrementMin,
-        spawnCountdown: gaussianResults.lowres[i]*(spawnCountdownMax - spawnCountdownMin) + spawnCountdownMin,
-        boxes: [],
-        doneAnimating: false,
+        boxes: new Array(Math.floor(gaussianSumsBackground[i]*30)).fill({ color: randomBlue() }),
       })
     }
-    gaussianLowres = gaussianResults.lowres
-    //@ts-ignore
-    gaussionSmoothed = Smooth(gaussianResults.lowres)
+    gaussianObjects = []
+    for (let index=gaussianDistance; index < countToAdd-gaussianDistance; index++) {
+      gaussianObjects.push({
+          position: gaussianSumsPosition[index] - 1 + -1*(Math.abs(index-canvasPixelElement.width*3/100))/10,
+          velocity: gaussianSumsVelocity[index]/1000,
+          acceleration: gaussianSumsAcceleration[index]/10000,
+          jolt: gaussianSumsJolt[index]*-1/10000000,
+        })
+    }
+    paintScene()
   }
 
   needsRedraw = true
@@ -151,139 +132,143 @@ async function renderLoop() {
   window.requestAnimationFrame(renderLoop)
 }
 
-async function renderScene(interval: number) {
+async function paintScene() {
   //console.log("wut")
-  for (let key in columns) {
-    calculateColumn(Number(key), interval)
-  }
-  calculateRenderClip(interval)
-  for (let key in columns) {
-    renderColumn(Number(key))
+  while ((columns[0].boxes.length-TOP_BUFFER*2)*BOX_SIZE < window.outerHeight) {
+    for (let key in columns) {
+      calculateColumn(Number(key))
+    }
+    for (let key in columns) {
+      renderColumn(Number(key))
+    }
   }
   needsRedraw = false
 }
 
-async function calculateColumn(index: number, interval: number) { 
+async function renderScene(interval: number) {
+  calculateRenderClip(interval)
+}
+
+async function calculateColumn(index: number) { 
   let column = columns[index]
 
   /*
-    Are we done filling out this column?
+    Add new box
   */
-  if (column.doneAnimating || (column.boxes.length-TOP_BUFFER)*BOX_SIZE > window.outerHeight) {
-    column.doneAnimating = true
-    return
+  /* position */
+  let position = { x: index, y: column.boxes.length }
+
+  /* random color */
+  let color = randomBlue()
+
+  /* smooth out color with existing neighbors */
+  let parent = null
+  let leftCousin = null
+  let rightCousin = null
+
+  parent = column.boxes[column.boxes.length-1]
+  let leftLineage = columns[index - 1]
+  if (leftLineage) {
+    leftCousin = leftLineage.boxes[column.boxes.length - 1]
+  }
+  let rightLineage = columns[index + 1]
+  if (rightLineage) {
+    rightCousin = rightLineage.boxes[column.boxes.length - 1]
+  }
+  let colorToTint = {
+    r: 0,
+    g: 0,
+    b: 0,
+    a: 0
+  }
+  let colorsAdded = 0
+  if (parent) {
+    colorToTint.r += parent.color.r
+    colorToTint.g += parent.color.g
+    colorToTint.b += parent.color.b
+    colorsAdded += 1
+  }
+  if (leftCousin) {
+    colorToTint.r += leftCousin.color.r
+    colorToTint.g += leftCousin.color.g
+    colorToTint.b += leftCousin.color.b
+    colorsAdded += 1
+  }
+  if (rightCousin) {
+    colorToTint.r += rightCousin.color.r
+    colorToTint.g += rightCousin.color.g
+    colorToTint.b += rightCousin.color.b
+    colorsAdded += 1
+  }
+  if(colorsAdded != 0) {
+    colorToTint.r /= colorsAdded
+    colorToTint.g /= colorsAdded
+    colorToTint.b /= colorsAdded
+
+    let randomMultiplier = 1
+    let consistentMultiplier = 10
+    let multiplierSum = randomMultiplier + consistentMultiplier
+
+    let red =
+      randomMultiplier * color.r
+      + consistentMultiplier * colorToTint.r
+    let green =
+      randomMultiplier * color.g
+      + consistentMultiplier * colorToTint.g
+    let blue =
+      randomMultiplier * color.b
+      + consistentMultiplier * colorToTint.b
+
+    red = Math.floor(red/multiplierSum)
+    green = Math.floor(green/multiplierSum)
+    blue = Math.floor(blue/multiplierSum)
+
+    color.r = red
+    color.g = green
+    color.b = blue
   }
 
-  /*
-    Are we ready for the new box? (techincaly dead code atm, was used to make some columns faster than others)
-  */
-  let intervalRatio = interval/100
-  column.spawnCountdown += column.spawnIncrement*intervalRatio
-  if (column.spawnCountdown >= 1) {
-    column.spawnCountdown -= 1
-
-    /*
-      Add new box
-    */
-    /* position */
-    let position = { x: index, y: column.boxes.length }
-
-    /* random color */
-    let color = randomBlue()
-
-    /* smooth out color with existing neighbors */
-    let parent = null
-    let leftCousin = null
-    let rightCousin = null
-
-    parent = column.boxes[column.boxes.length-1]
-    let leftLineage = columns[index - 1]
-    if (leftLineage) {
-      leftCousin = leftLineage.boxes[column.boxes.length - 1]
-    }
-    let rightLineage = columns[index + 1]
-    if (rightLineage) {
-      rightCousin = rightLineage.boxes[column.boxes.length - 1]
-    }
-    let colorToTint = {
-      r: 0,
-      g: 0,
-      b: 0,
-      a: 0
-    }
-    let colorsAdded = 0
-    if (parent) {
-      colorToTint.r += parent.color.r
-      colorToTint.g += parent.color.g
-      colorToTint.b += parent.color.b
-      colorsAdded += 1
-    }
-    if (leftCousin) {
-      colorToTint.r += leftCousin.color.r
-      colorToTint.g += leftCousin.color.g
-      colorToTint.b += leftCousin.color.b
-      colorsAdded += 1
-    }
-    if (rightCousin) {
-      colorToTint.r += rightCousin.color.r
-      colorToTint.g += rightCousin.color.g
-      colorToTint.b += rightCousin.color.b
-      colorsAdded += 1
-    }
-    if(colorsAdded != 0) {
-      colorToTint.r /= colorsAdded
-      colorToTint.g /= colorsAdded
-      colorToTint.b /= colorsAdded
-
-      let randomMultiplier = 1
-      let consistentMultiplier = 10
-      let multiplierSum = randomMultiplier + consistentMultiplier
-
-      let red =
-        randomMultiplier * color.r
-        + consistentMultiplier * colorToTint.r
-      let green =
-        randomMultiplier * color.g
-        + consistentMultiplier * colorToTint.g
-      let blue =
-        randomMultiplier * color.b
-        + consistentMultiplier * colorToTint.b
-
-      red = Math.floor(red/multiplierSum)
-      green = Math.floor(green/multiplierSum)
-      blue = Math.floor(blue/multiplierSum)
-
-      color.r = red
-      color.g = green
-      color.b = blue
-    }
-
-    column.boxes.push({
-      position: position,
-      color: color
-    })
-  }
+  column.boxes.push({
+    color: color
+  })
 }
 
-let offsetY = -MAGIC_NUMBER_F
+//let offsetY = -MAGIC_NUMBER_F
 let doneAnimatingCurtain = false
 async function calculateRenderClip(interval: number) {
-  if (doneAnimatingCurtain || offsetY > canvasSmoothElement.height*1.5) {
+  if (doneAnimatingCurtain) {
+    return
+  }
+  //offsetY += MAGIC_NUMBER_E
+
+  let eachIsDone = true
+  for (let index=0; index < gaussianObjects.length; index++) {
+    gaussianObjects[index].acceleration += gaussianObjects[index].jolt
+    gaussianObjects[index].velocity += gaussianObjects[index].acceleration
+    //friction
+    gaussianObjects[index].velocity *= 0.999
+    gaussianObjects[index].position += gaussianObjects[index].velocity
+    if (gaussianObjects[index].position*500*MAGIC_NUMBER_D < canvasPixelElement.height ) {
+      eachIsDone = false
+    }
+  }
+  if (eachIsDone) {
     doneAnimatingCurtain = true
     return
   }
-  offsetY += (interval/20) * MAGIC_NUMBER_E
+
+  //@ts-ignore
+  let gaussionSmoothed = Smooth(gaussianObjects.map(objct => objct.position))
+  /*if (doneAnimatingCurtain || offsetY > canvasSmoothElement.height*1.5) {
+    doneAnimatingCurtain = true
+    return
+  }*/
 
 
-  let offsetX = 2*offsetY/canvasBElement.clientHeight*0 + canvasBElement.clientWidth
+
+  let offsetX = canvasSmoothElement.clientWidth
 
   canvasSmoothContext.clearRect(0, 0, canvasSmoothElement.width, canvasSmoothElement.height);
-  canvasLazerContext.clearRect(0, 0, canvasLazerElement.width, canvasLazerElement.height);
-  //Must ask about this one...
-  //  Moving the "canvasBContext.clear" line below the "canvasLazerContext.fill" line
-  //  causes the lazer to fail to print
-  canvasBContext.clearRect(0, 0, canvasBElement.width, canvasBElement.height);
-
   canvasSmoothContext.save()
   canvasSmoothContext.beginPath()
   canvasSmoothContext.moveTo(canvasSmoothElement.clientWidth*0, canvasSmoothElement.clientHeight*0)
@@ -293,53 +278,24 @@ async function calculateRenderClip(interval: number) {
   canvasSmoothContext.closePath()
   canvasSmoothContext.clip()
 
-  canvasBContext.beginPath()
-  canvasBContext.moveTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*0)
-  canvasBContext.lineTo(canvasBElement.clientWidth*offsetX, canvasBElement.clientHeight*0)
-  canvasBContext.lineTo(canvasBElement.clientWidth*offsetX, canvasBElement.clientHeight*1)
-  canvasBContext.lineTo(canvasBElement.clientWidth*0, canvasBElement.clientHeight*1)
-  canvasBContext.closePath()
-  canvasBContext.fillStyle = `#2184DE`
-  canvasBContext.fill()
-
   canvasSmoothContext.beginPath()
   let index=0
-  canvasSmoothContext.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index)+offsetY)
+  canvasSmoothContext.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index))
   index++
-  for (; index < gaussianLowres.length*highresScale; index++) {
-    canvasSmoothContext.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*500*MAGIC_NUMBER_D+offsetY)
+  for (; index < gaussianObjects.length*highresScale; index++) {
+    canvasSmoothContext.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*500*MAGIC_NUMBER_D)
   }
   canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth, canvasSmoothElement.clientHeight)
   canvasSmoothContext.lineTo(0, canvasSmoothElement.clientHeight)
   canvasSmoothContext.closePath()
 
-  canvasSmoothContext.fillStyle = currentBackground
+  canvasSmoothContext.fillStyle = (darkModePreference.matches ? skyDark : sky).sky1
   canvasSmoothContext.fill()
   canvasSmoothContext.restore()
-
-  /*canvasLazerContext.beginPath()
-  canvasLazerContext.moveTo(canvasLazerElement.clientWidth*offsetX, canvasLazerElement.clientHeight*0)
-  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX+2, canvasLazerElement.clientHeight*0)
-  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX+2, canvasLazerElement.clientHeight*1)
-  canvasLazerContext.lineTo(canvasLazerElement.clientWidth*offsetX, canvasLazerElement.clientHeight*1)
-  canvasLazerContext.closePath()
-  canvasLazerContext.fillStyle = `#EF1F1FAA`
-  canvasLazerContext.fill()*/
-
-  /*let lazerIntersectX = canvasLazerElement.clientWidth*offsetX+1
-  let lazerIntersectY = gaussionSmoothed((lazerIntersectX+BOX_SIZE*MAGIC_NUMBER_C)/highresScale)*500*MAGIC_NUMBER_D+offsetY
-
-  canvasLazerContext.beginPath()
-  canvasLazerContext.arc(lazerIntersectX, lazerIntersectY, 5, 0, 2*Math.PI)
-  canvasLazerContext.fillStyle = `orange`
-  canvasLazerContext.fill()*/
 }
 
 async function renderColumn(columnIndex: number) {
   let column = columns[columnIndex]
-  if (column.doneAnimating && !needsRedraw) {
-    return
-  }
   if (needsRedraw) {
     for (let boxIndex=0; boxIndex<column.boxes.length; boxIndex++) {
       tryRenderBox(columnIndex, boxIndex)
@@ -393,7 +349,7 @@ function renderGradient(
   let right = left + BOX_SIZE
   let bottom = top + BOX_SIZE
 
-  canvasPixelContext.fillStyle = currentBackground
+  canvasPixelContext.fillStyle = (darkModePreference.matches ? skyDark : sky).sky9
   canvasPixelContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
 
   let gradientTLBR = canvasPixelContext.createLinearGradient(left, top, right, bottom)
@@ -413,11 +369,12 @@ function renderGradient(
 /*
   Helper functions
 */
-function randomBlue(): { r: number, g: number, b: number} {
+function randomBlue(): Color {
+  let value = Math.random()*255 + 0
   let color = {
     r: Math.random()*50 + 0,
     g: Math.random()*255 + 0,
-    b: Math.random()*50 + 200,
+    b: Math.random()*50 + 200
   }
   return color
 }
@@ -436,12 +393,38 @@ let spawnCountdownMin = -30
 let spawnCountdownMax = 0
 
 let gaussianDistance = 20
-let gaussianMin = 0
-let gaussianMax = 1
-let gaussianRange = gaussianMax - gaussianMin
-let gaussianMid = (gaussianMax + gaussianMin)/2
 
-function gaussianSums(dists: number[][], length: number, distance: number, noramalizer: (x: number) => number): number[] {
+
+function gaussians(count: number, variance: () => number, sumMin: number, sumMax: number) {
+  let sumRange = sumMax - sumMin
+  let sumMid = (sumMax + sumMin)/2
+
+  let gaussianDistsPos: number[][] = []
+  for (let i=0; i < count + gaussianDistance*2; i++) {
+    gaussianDistsPos.push(gaussianDistribution(variance()))
+  }
+  let gaussianSumsPos: number[] = 
+    gaussianSums(gaussianDistsPos, count, gaussianDistance, sum => {
+      let localizedToZero = sum/e-1
+      let scaledToOne = localizedToZero*MAGIC_NUMBER_A
+      let scaledToRange = (scaledToOne*sumRange/2) + sumMid
+      let clamppedToRange = 
+        scaledToRange > sumMax 
+          ? sumMax
+          : scaledToRange < sumMin
+            ? sumMin
+            : scaledToRange
+      return clamppedToRange
+    })
+  return gaussianSumsPos
+}
+
+function gaussianSums(
+  dists: number[][], 
+  length: number,
+  distance: number,
+  noramalizer: (x: number) => number
+): number[] {
   let gaussianSums: number[] = []
   for (let i=distance; i < length; i++) {
     let sum = 0
@@ -455,17 +438,13 @@ function gaussianSums(dists: number[][], length: number, distance: number, noram
 }
 
 let highresScale = BOX_SIZE
-function gaussianDistribution(variance: number): { lowres: number[], highres: number[] } {
+function gaussianDistribution(variance: number): number[] {
   let lowres: number[] = []
-  let highres: number[] = []
   let oneOverSqrtTwoPiVariance: number = 1/Math.sqrt(2*Math.PI*variance)
   for (let i = -gaussianDistance; i <= gaussianDistance; i++) {
     lowres.push(gaussianDistributionAt(variance, oneOverSqrtTwoPiVariance, i))
   }
-  for (let i = -gaussianDistance*highresScale; i <= gaussianDistance*highresScale; i++) {
-    highres.push(gaussianDistributionAt(variance, oneOverSqrtTwoPiVariance, i/highresScale))
-  }
-  return { lowres, highres }
+  return lowres
 }
 
 let e = 2.7182812690734863
@@ -478,20 +457,7 @@ function gaussianDistributionAt(variance: number, oneOverSqrtTwoPiVariance: numb
 /*
   Actual setup code
 */
-//Set and check for dark mode
-let LIGHT_BACKGROUND = `#EFEFEF`
-let DARK_BACKGROUND = `#1F1F1F`
-
-let currentBackground = window.matchMedia("(prefers-color-scheme: dark)").matches ? DARK_BACKGROUND : LIGHT_BACKGROUND
-
 const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
-darkModePreference.addEventListener("change", e => {
-  if (e.matches){
-    currentBackground = DARK_BACKGROUND
-  } else {
-    currentBackground = LIGHT_BACKGROUND
-  }
-})
 
 /*
   And begin!
@@ -499,10 +465,6 @@ darkModePreference.addEventListener("change", e => {
 
 onMounted(async () => {
   console.log("Hello, world!")
-  canvasLazerElement = document.getElementById('background-canvas') as HTMLCanvasElement
-  canvasLazerContext = canvasLazerElement.getContext("2d")!
-  canvasBElement = document.getElementById('background-canvas') as HTMLCanvasElement
-  canvasBContext = canvasBElement.getContext("2d")!
   canvasPixelElement = document.getElementById('lowres-canvas') as HTMLCanvasElement
   canvasPixelContext = canvasPixelElement.getContext("2d")!
   canvasSmoothElement = document.getElementById('highres-canvas') as HTMLCanvasElement
@@ -524,14 +486,6 @@ window.addEventListener("resize", resizedWindow)*/
 <template>
   <div id='canvas-holder'>
     <canvas
-    id='lazer-canvas'
-    style= 'position: absolute; z-index: 4;'
-    >NOOOOO!</canvas>
-    <canvas
-    id='background-canvas'
-    style= 'position: absolute; z-index: 1;'
-    >NOOOOO!</canvas>
-    <canvas
     id='lowres-canvas'
     style= 'position: absolute; z-index: 2;'
     >NOOOOO!</canvas>
@@ -544,22 +498,6 @@ window.addEventListener("resize", resizedWindow)*/
 
 <style scoped>
 #canvas-holder {
-  position: absolute;
-  left: 0;
-  top: -0;
-  width: 100vw;
-  height: 100vh;
-  overflow: clip;
-}
-#lazer-canvas {
-  position: absolute;
-  left: 0;
-  top: -0;
-  width: 100vw;
-  height: 100vh;
-  overflow: clip;
-}
-#background-canvas {
   position: absolute;
   left: 0;
   top: -0;

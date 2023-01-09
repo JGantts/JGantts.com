@@ -27,9 +27,9 @@ type Position = {
 }
 
 type Color = { 
-  r: number, 
-  g: number, 
-  b: number
+  hue: number, 
+  saturation: number, 
+  lightness: number
 }
 
 type Box = {
@@ -183,21 +183,21 @@ async function calculateColumn(index: number) {
   }
   let colorsAdded = 0
   if (parent) {
-    colorToTint.r += parent.color.r
-    colorToTint.g += parent.color.g
-    colorToTint.b += parent.color.b
+    colorToTint.r += parent.color.hue
+    colorToTint.g += parent.color.saturation
+    colorToTint.b += parent.color.lightness
     colorsAdded += 1
   }
   if (leftCousin) {
-    colorToTint.r += leftCousin.color.r
-    colorToTint.g += leftCousin.color.g
-    colorToTint.b += leftCousin.color.b
+    colorToTint.r += leftCousin.color.hue
+    colorToTint.g += leftCousin.color.saturation
+    colorToTint.b += leftCousin.color.lightness
     colorsAdded += 1
   }
   if (rightCousin) {
-    colorToTint.r += rightCousin.color.r
-    colorToTint.g += rightCousin.color.g
-    colorToTint.b += rightCousin.color.b
+    colorToTint.r += rightCousin.color.hue
+    colorToTint.g += rightCousin.color.saturation
+    colorToTint.b += rightCousin.color.lightness
     colorsAdded += 1
   }
   if(colorsAdded != 0) {
@@ -210,22 +210,22 @@ async function calculateColumn(index: number) {
     let multiplierSum = randomMultiplier + consistentMultiplier
 
     let red =
-      randomMultiplier * color.r
+      randomMultiplier * color.hue
       + consistentMultiplier * colorToTint.r
     let green =
-      randomMultiplier * color.g
+      randomMultiplier * color.saturation
       + consistentMultiplier * colorToTint.g
     let blue =
-      randomMultiplier * color.b
+      randomMultiplier * color.lightness
       + consistentMultiplier * colorToTint.b
 
     red = Math.floor(red/multiplierSum)
     green = Math.floor(green/multiplierSum)
     blue = Math.floor(blue/multiplierSum)
 
-    color.r = red
-    color.g = green
-    color.b = blue
+    color.hue = red
+    color.saturation = green
+    color.lightness = blue
   }
 
   column.boxes.push({
@@ -289,7 +289,7 @@ async function calculateRenderClip(interval: number) {
   canvasSmoothContext.lineTo(0, canvasSmoothElement.clientHeight)
   canvasSmoothContext.closePath()
 
-  canvasSmoothContext.fillStyle = (darkModePreference.matches ? skyDark : sky).sky1
+  canvasSmoothContext.fillStyle = (darkModePreference.matches ? skyDark : sky).sky3
   canvasSmoothContext.fill()
   canvasSmoothContext.restore()
 }
@@ -370,17 +370,21 @@ function renderGradient(
   Helper functions
 */
 function randomBlue(): Color {
-  let value = Math.random()*255 + 0
+  let basePrimary = sky.sky9
+  let splitA = basePrimary.split(',')
+  let hue = splitA[0].split('(')[1]
+  let saturation = splitA[1].split('%')[0]
+  let lightness = splitA[2].split('%')[0]
   let color = {
-    r: Math.random()*50 + 0,
-    g: Math.random()*255 + 0,
-    b: Math.random()*50 + 200
+    hue: Number(hue) + Math.random()*80 - 40,
+    saturation: Number(saturation) + Math.random()*80 - 40,
+    lightness: Number(lightness) + Math.random()*100 - 50,
   }
   return color
 }
 
 function boxToHex(box: Box, alphaMultiplier: number) {
-  return `#${decToTwoDigitHex(box.color.r)}${decToTwoDigitHex(box.color.g)}${decToTwoDigitHex(box.color.b)}${decToTwoDigitHex(255*alphaMultiplier)}`
+  return `hsla(${box.color.hue}, ${box.color.saturation}%, ${box.color.lightness}%, ${alphaMultiplier})`
 }
 function decToTwoDigitHex(dec: number) {
   let hexRaw = Math.floor(dec).toString(16)

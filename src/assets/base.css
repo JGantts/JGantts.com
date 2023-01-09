@@ -46,7 +46,7 @@ body {
 --gray12: var(--slate12);
 
 
---backgroundAppBase: var(--base1);
+--backgroundAppBase: var(--base3);
 --backgroundAppAccent: var(--accent1);
 --backgroundSubtleBase: var(--base2);
 --backgroundSubtleAccent: var(--accent2);

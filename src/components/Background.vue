@@ -5,10 +5,6 @@ import{ Smooth } from '../assets/Smooth'
 import {
   sky,
   skyDark,
-  orange,
-  orangeDark,
-  slate,
-  slateDark,
 } from '@radix-ui/colors';
 
 let BOX_SIZE = 8
@@ -16,10 +12,7 @@ let TOP_BUFFER = 34
 let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
 let MAGIC_NUMBER_B = 1.5
-let MAGIC_NUMBER_C = 4
 let MAGIC_NUMBER_D = 0.47
-let MAGIC_NUMBER_E = 1.6
-let MAGIC_NUMBER_F = 285 + 30
 
 type Position = {
   x: number,

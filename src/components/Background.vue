@@ -7,7 +7,7 @@ import {
   skyDark,
 } from '@radix-ui/colors';
 
-let BACKGROUND_BOX_SIZE = 8
+let PIXELATED_BOX_SIZE = 8
 let SMOOTHED_BOX_SIZE = 8
 let TOP_BUFFER = 34
 let MAGIC_NUMBER_A = 5.5
@@ -60,21 +60,16 @@ async function resizedWindow() {
   canvasSmoothElement.width = canvasSmoothElement.clientWidth;
   canvasSmoothElement.height = canvasSmoothElement.clientHeight;
 
-  let newWidthRawBackground = Math.ceil(canvasPixelElement.width/BACKGROUND_BOX_SIZE) + 1
-  console.log(canvasPixelElement.width)
-  console.log(newWidthRawBackground)
+  let newWidthRawBackground = Math.ceil(canvasPixelElement.width/PIXELATED_BOX_SIZE) + 1
 
   if(newWidthRawBackground > 0) {
-    let countToAddSmoothed = newWidthRawBackground+BACKGROUND_BOX_SIZE/SMOOTHED_BOX_SIZE
+    let countToAddSmoothed = newWidthRawBackground+PIXELATED_BOX_SIZE/SMOOTHED_BOX_SIZE
 
     let gaussianSumsBackground: number[] = gaussians(newWidthRawBackground, () => {return Math.random()*90 + 10},  0, 1)
     let gaussianSumsPosition: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0, 1)
     let gaussianSumsVelocity: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0, 1)
     let gaussianSumsAcceleration: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0.5, 1)
     let gaussianSumsJolt: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10}, 0, 0.5)
-    console.log(gaussianSumsBackground)
-
-
 
     /*
       Take the begining offsets and initialize the columns
@@ -109,8 +104,7 @@ async function renderLoop() {
 }
 
 async function paintScene() {
-  //console.log("wut")
-  while ((columns[0].boxes.length-TOP_BUFFER*2)*BACKGROUND_BOX_SIZE < window.outerHeight) {
+  while ((columns[0].boxes.length-TOP_BUFFER*2)*PIXELATED_BOX_SIZE < window.outerHeight) {
     for (let key in columns) {
       calculateColumn(Number(key))
     }
@@ -118,7 +112,6 @@ async function paintScene() {
       renderColumn(Number(key))
     }
   }
-  console.log(columns)
   needsRedraw = false
 }
 
@@ -240,14 +233,6 @@ async function renderScene(): Promise<Boolean> {
   let offsetX = canvasSmoothElement.clientWidth
 
   canvasSmoothContext.clearRect(0, 0, canvasSmoothElement.width, canvasSmoothElement.height);
-  canvasSmoothContext.save()
-  canvasSmoothContext.beginPath()
-  canvasSmoothContext.moveTo(canvasSmoothElement.clientWidth*0, canvasSmoothElement.clientHeight*0)
-  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*offsetX+1, canvasSmoothElement.clientHeight*0)
-  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*offsetX+1, canvasSmoothElement.clientHeight*1)
-  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth*0, canvasSmoothElement.clientHeight*1)
-  canvasSmoothContext.closePath()
-  canvasSmoothContext.clip()
 
   canvasSmoothContext.beginPath()
   let index=0
@@ -316,24 +301,24 @@ function renderGradient(
     boxBR: Box,
     boxBL: Box
 }) {
-  let left = (gradientData.position.x)*BACKGROUND_BOX_SIZE
-  let top = (gradientData.position.y-TOP_BUFFER)*BACKGROUND_BOX_SIZE
-  let right = left + BACKGROUND_BOX_SIZE
-  let bottom = top + BACKGROUND_BOX_SIZE
+  let left = (gradientData.position.x)*PIXELATED_BOX_SIZE
+  let top = (gradientData.position.y-TOP_BUFFER)*PIXELATED_BOX_SIZE
+  let right = left + PIXELATED_BOX_SIZE
+  let bottom = top + PIXELATED_BOX_SIZE
 
-  canvasPixelContext.clearRect(left, top, BACKGROUND_BOX_SIZE, BACKGROUND_BOX_SIZE)
+  canvasPixelContext.clearRect(left, top, PIXELATED_BOX_SIZE, PIXELATED_BOX_SIZE)
 
   let gradientTLBR = canvasPixelContext.createLinearGradient(left, top, right, bottom)
   gradientTLBR.addColorStop(0, boxToHex(gradientData.boxTL, 1))
   gradientTLBR.addColorStop(1, boxToHex(gradientData.boxBR, 1))
   canvasPixelContext.fillStyle = gradientTLBR
-  canvasPixelContext.fillRect(left, top, BACKGROUND_BOX_SIZE, BACKGROUND_BOX_SIZE)
+  canvasPixelContext.fillRect(left, top, PIXELATED_BOX_SIZE, PIXELATED_BOX_SIZE)
 
   let gradientBLTR = canvasPixelContext.createLinearGradient(left, bottom, right, top)
   gradientBLTR.addColorStop(0, boxToHex(gradientData.boxBL, 0.5))
   gradientBLTR.addColorStop(1, boxToHex(gradientData.boxTR, 0.5))
   canvasPixelContext.fillStyle = gradientBLTR
-  canvasPixelContext.fillRect(left, top, BACKGROUND_BOX_SIZE, BACKGROUND_BOX_SIZE)
+  canvasPixelContext.fillRect(left, top, PIXELATED_BOX_SIZE, PIXELATED_BOX_SIZE)
 }
 
 
@@ -368,12 +353,10 @@ function gaussians(count: number, variance: () => number, sumMin: number, sumMax
   let sumRange = sumMax - sumMin
   let sumMid = (sumMax + sumMin)/2
 
-  console.log(count)
   let gaussianDistsPos: number[][] = []
   for (let i=0; i < count + gaussianDistance*2; i++) {
     gaussianDistsPos.push(gaussianDistribution(variance()))
   }
-  console.log(gaussianDistsPos)
   let gaussianSumsPos: number[] = 
     gaussianSums(gaussianDistsPos, count, gaussianDistance, sum => {
       let localizedToZero = sum/e-1
@@ -387,7 +370,6 @@ function gaussians(count: number, variance: () => number, sumMin: number, sumMax
             : scaledToRange
       return clamppedToRange
     })
-  console.log(gaussianSumsPos)
   return gaussianSumsPos
 }
 

@@ -10,7 +10,6 @@ import {
 let BACKGROUND_BOX_SIZE = 8
 let SMOOTHED_BOX_SIZE = 8
 let TOP_BUFFER = 34
-let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
 let MAGIC_NUMBER_B = 1.5
 let MAGIC_NUMBER_D = 0.47
@@ -64,7 +63,7 @@ async function resizedWindow() {
 
   let newWidthRawBackground = window.outerWidth/BACKGROUND_BOX_SIZE*MAGIC_NUMBER_B
   let newWidthPerSideRawBackground = newWidthRawBackground
-  let newPixelsPerSideBackground = Math.ceil(newWidthPerSideRawBackground) + HORIZONTAL_BUFFERS*2
+  let newPixelsPerSideBackground = Math.ceil(newWidthPerSideRawBackground)
   let oldPixelsPerSideBackground = columns.length
   let countToAddBackground = newPixelsPerSideBackground - oldPixelsPerSideBackground
 
@@ -130,8 +129,6 @@ async function calculateColumn(index: number) {
   /*
     Add new box
   */
-  /* position */
-  let position = { x: index, y: column.boxes.length }
 
   /* random color */
   let color = randomBlue()
@@ -320,13 +317,12 @@ function renderGradient(
     boxBR: Box,
     boxBL: Box
 }) {
-  let left = (gradientData.position.x - HORIZONTAL_BUFFERS)*BACKGROUND_BOX_SIZE
+  let left = (gradientData.position.x)*BACKGROUND_BOX_SIZE
   let top = (gradientData.position.y-TOP_BUFFER)*BACKGROUND_BOX_SIZE
   let right = left + BACKGROUND_BOX_SIZE
   let bottom = top + BACKGROUND_BOX_SIZE
 
-  canvasPixelContext.fillStyle = (darkModePreference.matches ? skyDark : sky).sky9
-  canvasPixelContext.fillRect(left, top, BACKGROUND_BOX_SIZE, BACKGROUND_BOX_SIZE)
+  canvasPixelContext.clearRect(left, top, BACKGROUND_BOX_SIZE, BACKGROUND_BOX_SIZE)
 
   let gradientTLBR = canvasPixelContext.createLinearGradient(left, top, right, bottom)
   gradientTLBR.addColorStop(0, boxToHex(gradientData.boxTL, 1))

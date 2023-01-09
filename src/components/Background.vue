@@ -11,7 +11,6 @@ let BACKGROUND_BOX_SIZE = 8
 let SMOOTHED_BOX_SIZE = 8
 let TOP_BUFFER = 34
 let MAGIC_NUMBER_A = 5.5
-let MAGIC_NUMBER_B = 1.5
 let MAGIC_NUMBER_D = 0.47
 
 type Position = {
@@ -61,20 +60,19 @@ async function resizedWindow() {
   canvasSmoothElement.width = canvasSmoothElement.clientWidth;
   canvasSmoothElement.height = canvasSmoothElement.clientHeight;
 
-  let newWidthRawBackground = window.outerWidth/BACKGROUND_BOX_SIZE*MAGIC_NUMBER_B
-  let newWidthPerSideRawBackground = newWidthRawBackground
-  let newPixelsPerSideBackground = Math.ceil(newWidthPerSideRawBackground)
-  let oldPixelsPerSideBackground = columns.length
-  let countToAddBackground = newPixelsPerSideBackground - oldPixelsPerSideBackground
+  let newWidthRawBackground = Math.ceil(canvasPixelElement.width/BACKGROUND_BOX_SIZE) + 1
+  console.log(canvasPixelElement.width)
+  console.log(newWidthRawBackground)
 
-  if(countToAddBackground > 0) {
-    let countToAddSmoothed = countToAddBackground+BACKGROUND_BOX_SIZE/SMOOTHED_BOX_SIZE
+  if(newWidthRawBackground > 0) {
+    let countToAddSmoothed = newWidthRawBackground+BACKGROUND_BOX_SIZE/SMOOTHED_BOX_SIZE
 
-    let gaussianSumsBackground: number[] = gaussians(countToAddBackground, () => {return Math.random()*90 + 10},  0, 1)
+    let gaussianSumsBackground: number[] = gaussians(newWidthRawBackground, () => {return Math.random()*90 + 10},  0, 1)
     let gaussianSumsPosition: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0, 1)
     let gaussianSumsVelocity: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0, 1)
     let gaussianSumsAcceleration: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0.5, 1)
     let gaussianSumsJolt: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10}, 0, 0.5)
+    console.log(gaussianSumsBackground)
 
 
 
@@ -120,6 +118,7 @@ async function paintScene() {
       renderColumn(Number(key))
     }
   }
+  console.log(columns)
   needsRedraw = false
 }
 
@@ -363,22 +362,18 @@ function decToTwoDigitHex(dec: number) {
   return (hexRaw.length==1) ? "0"+hexRaw : hexRaw
 }
 
-let spawnIncrementMin = 1
-let spawnIncrementMax = 1
-let spawnCountdownMin = -30
-let spawnCountdownMax = 0
-
-let gaussianDistance = 20
-
+const gaussianDistance = 20
 
 function gaussians(count: number, variance: () => number, sumMin: number, sumMax: number) {
   let sumRange = sumMax - sumMin
   let sumMid = (sumMax + sumMin)/2
 
+  console.log(count)
   let gaussianDistsPos: number[][] = []
   for (let i=0; i < count + gaussianDistance*2; i++) {
     gaussianDistsPos.push(gaussianDistribution(variance()))
   }
+  console.log(gaussianDistsPos)
   let gaussianSumsPos: number[] = 
     gaussianSums(gaussianDistsPos, count, gaussianDistance, sum => {
       let localizedToZero = sum/e-1
@@ -392,6 +387,7 @@ function gaussians(count: number, variance: () => number, sumMin: number, sumMax
             : scaledToRange
       return clamppedToRange
     })
+  console.log(gaussianSumsPos)
   return gaussianSumsPos
 }
 
@@ -402,7 +398,7 @@ function gaussianSums(
   noramalizer: (x: number) => number
 ): number[] {
   let gaussianSums: number[] = []
-  for (let i=distance; i < length; i++) {
+  for (let i=distance; i < length+distance; i++) {
     let sum = 0
     for (let j=0; j < distance*2; j++) {
       sum += dists[i-(j-distance)][j]

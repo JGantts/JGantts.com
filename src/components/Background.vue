@@ -96,7 +96,7 @@ async function resizedWindow() {
     let gaussianSumsPosition: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
     let gaussianSumsVelocity: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
     let gaussianSumsAcceleration: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0.5, 1)
-    let gaussianSumsJolt: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
+    let gaussianSumsJolt: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10}, 0, 0.5)
 
 
 

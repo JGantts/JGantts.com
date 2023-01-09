@@ -248,7 +248,7 @@ async function calculateRenderClip(interval: number) {
     //friction
     gaussianObjects[index].velocity *= 0.999
     gaussianObjects[index].position += gaussianObjects[index].velocity
-    if (gaussianObjects[index].position*500*MAGIC_NUMBER_D < canvasPixelElement.height ) {
+    if (gaussianObjects[index].position*500*MAGIC_NUMBER_D < canvasPixelElement.height + TOP_BUFFER ) {
       eachIsDone = false
     }
   }

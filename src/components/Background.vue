@@ -237,17 +237,24 @@ async function calculateColumn(index: number) {
 let doneAnimatingCurtain = false
 async function calculateRenderClip(interval: number) {
   if (doneAnimatingCurtain) {
-    doneAnimatingCurtain = true
     return
   }
   //offsetY += MAGIC_NUMBER_E
 
+  let eachIsDone = true
   for (let index=0; index < gaussianObjects.length; index++) {
     gaussianObjects[index].acceleration += gaussianObjects[index].jolt
     gaussianObjects[index].velocity += gaussianObjects[index].acceleration
     //friction
     gaussianObjects[index].velocity *= 0.999
     gaussianObjects[index].position += gaussianObjects[index].velocity
+    if (gaussianObjects[index].position*500*MAGIC_NUMBER_D < canvasPixelElement.height ) {
+      eachIsDone = false
+    }
+  }
+  if (eachIsDone) {
+    doneAnimatingCurtain = true
+    return
   }
 
   //@ts-ignore

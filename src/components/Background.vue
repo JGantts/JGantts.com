@@ -114,7 +114,7 @@ async function resizedWindow() {
           position: gaussianSumsPosition[index] + 1.5 - index/10,
           velocity: gaussianSumsVelocity[index]/1000,
           acceleration: gaussianSumsAcceleration[index]/10000,
-          jolt: gaussianSumsJolt[index]*0,
+          jolt: gaussianSumsJolt[index]*-1/10000000,
         })
     }
     paintScene()
@@ -243,7 +243,7 @@ async function calculateRenderClip(interval: number) {
   //offsetY += MAGIC_NUMBER_E
 
   for (let index=0; index < gaussianObjects.length; index++) {
-    //gaussianLowres[index].acceleration += gaussianLowres[index].jolt
+    gaussianObjects[index].acceleration += gaussianObjects[index].jolt
     gaussianObjects[index].velocity += gaussianObjects[index].acceleration
     gaussianObjects[index].position += gaussianObjects[index].velocity
   }

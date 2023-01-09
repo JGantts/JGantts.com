@@ -283,7 +283,7 @@ async function calculateRenderClip(interval: number) {
   canvasSmoothContext.moveTo(index, gaussionSmoothed(index))
   index++
   for (; index < gaussianObjects.length*highresScale; index++) {
-    canvasSmoothContext.lineTo(index, gaussionSmoothed(index/highresScale)*500*MAGIC_NUMBER_D)
+    canvasSmoothContext.lineTo(index*1.5, gaussionSmoothed(index/highresScale)*500*MAGIC_NUMBER_D)
   }
   canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth, canvasSmoothElement.clientHeight)
   canvasSmoothContext.lineTo(0, canvasSmoothElement.clientHeight)

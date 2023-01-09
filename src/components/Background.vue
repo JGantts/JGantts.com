@@ -245,10 +245,11 @@ async function calculateRenderClip(interval: number) {
   for (let index=0; index < gaussianObjects.length; index++) {
     gaussianObjects[index].acceleration += gaussianObjects[index].jolt
     gaussianObjects[index].velocity += gaussianObjects[index].acceleration
+    //friction
+    gaussianObjects[index].velocity *= 0.999
     gaussianObjects[index].position += gaussianObjects[index].velocity
   }
 
-  console.log(gaussianObjects)
   //@ts-ignore
   let gaussionSmoothed = Smooth(gaussianObjects.map(objct => objct.position))
   /*if (doneAnimatingCurtain || offsetY > canvasSmoothElement.height*1.5) {
@@ -408,7 +409,6 @@ function gaussians(count: number, variance: () => number, sumMin: number, sumMax
             : scaledToRange
       return clamppedToRange
     })
-    console.log(gaussianSumsPos)
   return gaussianSumsPos
 }
 

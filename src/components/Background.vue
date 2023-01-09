@@ -10,7 +10,6 @@ import {
 let PIXELATED_BOX_SIZE = 8
 let SMOOTHED_BOX_SIZE = 8
 let TOP_BUFFER = 34
-let MAGIC_NUMBER_A = 5.5
 
 type Position = {
   x: number,
@@ -216,13 +215,11 @@ async function calculateColumn(index: number) {
   })
 }
 
-//let offsetY = -MAGIC_NUMBER_F
 let doneAnimatingCurtain = false
 async function renderScene(): Promise<Boolean> {
   if (doneAnimatingCurtain) {
     return true
   }
-  //offsetY += MAGIC_NUMBER_E
 
   let eachIsDone = true
   for (let index=0; index < gaussianObjects.length; index++) {
@@ -359,6 +356,7 @@ function decToTwoDigitHex(dec: number) {
 }
 
 const gaussianDistance = 20
+const MAGIC_NUMBER_A = 5.5
 
 function gaussians(count: number, variance: () => number, sumMin: number, sumMax: number) {
   let sumRange = sumMax - sumMin

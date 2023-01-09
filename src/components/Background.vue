@@ -111,7 +111,7 @@ async function resizedWindow() {
     gaussianObjects = []
     for (let index=gaussianDistance; index < countToAdd-gaussianDistance; index++) {
       gaussianObjects.push({
-          position: gaussianSumsPosition[index] - 1 + -1*(Math.abs(index-canvasPixelElement.width*3/100))/10,
+          position: gaussianSumsPosition[index] - 1 - 3*(Math.abs(index-0.15*countToAdd))/countToAdd,
           velocity: gaussianSumsVelocity[index]/1000,
           acceleration: gaussianSumsAcceleration[index]/10000,
           jolt: gaussianSumsJolt[index]*-1/10000000,
@@ -248,7 +248,7 @@ async function calculateRenderClip(interval: number) {
     //friction
     gaussianObjects[index].velocity *= 0.999
     gaussianObjects[index].position += gaussianObjects[index].velocity
-    if (gaussianObjects[index].position*500*MAGIC_NUMBER_D < canvasPixelElement.height ) {
+    if (gaussianObjects[index].position*500*MAGIC_NUMBER_D < canvasPixelElement.height + TOP_BUFFER ) {
       eachIsDone = false
     }
   }
@@ -280,10 +280,10 @@ async function calculateRenderClip(interval: number) {
 
   canvasSmoothContext.beginPath()
   let index=0
-  canvasSmoothContext.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index))
+  canvasSmoothContext.moveTo(index, gaussionSmoothed(index))
   index++
   for (; index < gaussianObjects.length*highresScale; index++) {
-    canvasSmoothContext.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*500*MAGIC_NUMBER_D)
+    canvasSmoothContext.lineTo(index, gaussionSmoothed(index/highresScale)*500*MAGIC_NUMBER_D)
   }
   canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth, canvasSmoothElement.clientHeight)
   canvasSmoothContext.lineTo(0, canvasSmoothElement.clientHeight)

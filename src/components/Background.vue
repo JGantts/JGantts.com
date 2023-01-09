@@ -11,7 +11,6 @@ let PIXELATED_BOX_SIZE = 8
 let SMOOTHED_BOX_SIZE = 8
 let TOP_BUFFER = 34
 let MAGIC_NUMBER_A = 5.5
-let MAGIC_NUMBER_D = 0.47
 
 type Position = {
   x: number,
@@ -66,10 +65,10 @@ async function resizedWindow() {
     let countToAddSmoothed = countToAddPixelated*PIXELATED_BOX_SIZE/SMOOTHED_BOX_SIZE
 
     let gaussianSumsBackground: number[] = gaussians(countToAddPixelated, () => {return Math.random()*90 + 10},  0, 1)
-    let gaussianSumsPosition: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0, 1)
-    let gaussianSumsVelocity: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0, 1)
-    let gaussianSumsAcceleration: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0.5, 1)
-    let gaussianSumsJolt: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10}, 0, 0.5)
+    let gaussianSumsPosition: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  -300, 0)
+    let gaussianSumsVelocity: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0, 0.5)
+    let gaussianSumsAcceleration: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0.005, 0.01)
+    let gaussianSumsJolt: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10}, -0.000005, 0.000005)
 
     /*
       Take the begining offsets and initialize the columns
@@ -82,10 +81,10 @@ async function resizedWindow() {
     gaussianObjects = []
     for (let index=0; index < countToAddSmoothed; index++) {
       gaussianObjects.push({
-          position: gaussianSumsPosition[index] - 1 - 3*(Math.abs(index-0.15*countToAddSmoothed))/countToAddSmoothed,
-          velocity: gaussianSumsVelocity[index]/1000,
-          acceleration: gaussianSumsAcceleration[index]/10000,
-          jolt: gaussianSumsJolt[index]*-1/10000000,
+          position: gaussianSumsPosition[index] - 500*(Math.abs(index-0.15*countToAddSmoothed))/countToAddSmoothed,
+          velocity: gaussianSumsVelocity[index],
+          acceleration: gaussianSumsAcceleration[index],
+          jolt: gaussianSumsJolt[index],
         })
     }
     paintScene()
@@ -212,7 +211,7 @@ async function renderScene(): Promise<Boolean> {
     //friction
     gaussianObjects[index].velocity *= 0.999
     gaussianObjects[index].position += gaussianObjects[index].velocity
-    if (gaussianObjects[index].position*500*MAGIC_NUMBER_D < canvasPixelElement.height + TOP_BUFFER ) {
+    if (gaussianObjects[index].position < canvasPixelElement.height + TOP_BUFFER ) {
       eachIsDone = false
     }
   }
@@ -231,7 +230,7 @@ async function renderScene(): Promise<Boolean> {
   canvasSmoothContext.moveTo(index, gaussionSmoothed(index))
   index++
   for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
-    canvasSmoothContext.lineTo(index, gaussionSmoothed(index/SMOOTHED_BOX_SIZE)*500*MAGIC_NUMBER_D)
+    canvasSmoothContext.lineTo(index, gaussionSmoothed(index/SMOOTHED_BOX_SIZE))
   }
   canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth, canvasSmoothElement.clientHeight)
   canvasSmoothContext.lineTo(0, canvasSmoothElement.clientHeight)

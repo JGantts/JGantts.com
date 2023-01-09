@@ -125,11 +125,11 @@ async function resizedWindow() {
 
 async function renderLoop() {
   let thisTimestamp = Date.now()
-  await renderScene(20)
+  let done = await renderScene()
   lastTimestamp = thisTimestamp
-  //Attempt force framerate
-  //await new Promise(resolve => setTimeout(resolve, 50))
-  window.requestAnimationFrame(renderLoop)
+  if (!done) {
+    window.requestAnimationFrame(renderLoop)
+  }
 }
 
 async function paintScene() {
@@ -143,10 +143,6 @@ async function paintScene() {
     }
   }
   needsRedraw = false
-}
-
-async function renderScene(interval: number) {
-  calculateRenderClip(interval)
 }
 
 async function calculateColumn(index: number) { 
@@ -235,9 +231,9 @@ async function calculateColumn(index: number) {
 
 //let offsetY = -MAGIC_NUMBER_F
 let doneAnimatingCurtain = false
-async function calculateRenderClip(interval: number) {
+async function renderScene(): Promise<Boolean> {
   if (doneAnimatingCurtain) {
-    return
+    return true
   }
   //offsetY += MAGIC_NUMBER_E
 
@@ -254,7 +250,7 @@ async function calculateRenderClip(interval: number) {
   }
   if (eachIsDone) {
     doneAnimatingCurtain = true
-    return
+    return true
   }
 
   //@ts-ignore
@@ -292,6 +288,7 @@ async function calculateRenderClip(interval: number) {
   canvasSmoothContext.fillStyle = (darkModePreference.matches ? skyDark : sky).sky3
   canvasSmoothContext.fill()
   canvasSmoothContext.restore()
+  return false
 }
 
 async function renderColumn(columnIndex: number) {

@@ -7,7 +7,8 @@ import {
   skyDark,
 } from '@radix-ui/colors';
 
-let BOX_SIZE = 8
+let BACKGROUND_BOX_SIZE = 8
+let SMOOTHED_BOX_SIZE = 8
 let TOP_BUFFER = 34
 let HORIZONTAL_BUFFERS = 4
 let MAGIC_NUMBER_A = 5.5
@@ -61,35 +62,20 @@ async function resizedWindow() {
   canvasSmoothElement.width = canvasSmoothElement.clientWidth;
   canvasSmoothElement.height = canvasSmoothElement.clientHeight;
 
-  /*
-    Check if (and how many) new columns to add
-  */
-  let newWidthRaw = (window.outerWidth/BOX_SIZE)*MAGIC_NUMBER_B
-  let newWidthPerSideRaw = newWidthRaw
-  let newPixelsPerSide = Math.ceil(newWidthPerSideRaw) + 1 + HORIZONTAL_BUFFERS*2
-  let oldPixelsPerSide = columns.length
-  let countToAdd = newPixelsPerSide - oldPixelsPerSide
+  let newWidthRawBackground = window.outerWidth/BACKGROUND_BOX_SIZE*MAGIC_NUMBER_B
+  let newWidthPerSideRawBackground = newWidthRawBackground
+  let newPixelsPerSideBackground = Math.ceil(newWidthPerSideRawBackground) + HORIZONTAL_BUFFERS*2
+  let oldPixelsPerSideBackground = columns.length
+  let countToAddBackground = newPixelsPerSideBackground - oldPixelsPerSideBackground
 
-  if (countToAdd === 0) {
-    return
+  if(countToAddBackground > 0) {
+    let countToAddSmoothed = countToAddBackground+BACKGROUND_BOX_SIZE/SMOOTHED_BOX_SIZE
 
-  } else if(countToAdd < 0) {
-    //Subtract columns
-      //or not
-
-  } else if(countToAdd > 0) {
-    //Add columns
-
-    /*
-      Calculate the random begining offsets (for the nice-looking gaussian wave "falling curtain" effect)
-    */
-    //background pattern
-
-    let gaussianSumsBackground: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
-    let gaussianSumsPosition: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
-    let gaussianSumsVelocity: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
-    let gaussianSumsAcceleration: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0.5, 1)
-    let gaussianSumsJolt: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10}, 0, 0.5)
+    let gaussianSumsBackground: number[] = gaussians(countToAddBackground, () => {return Math.random()*90 + 10},  0, 1)
+    let gaussianSumsPosition: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0, 1)
+    let gaussianSumsVelocity: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0, 1)
+    let gaussianSumsAcceleration: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10},  0.5, 1)
+    let gaussianSumsJolt: number[] = gaussians(countToAddSmoothed, () => {return Math.random()*90 + 10}, 0, 0.5)
 
 
 
@@ -102,9 +88,9 @@ async function resizedWindow() {
       })
     }
     gaussianObjects = []
-    for (let index=gaussianDistance; index < countToAdd-gaussianDistance; index++) {
+    for (let index=gaussianDistance; index < countToAddSmoothed-gaussianDistance; index++) {
       gaussianObjects.push({
-          position: gaussianSumsPosition[index] - 1 - 3*(Math.abs(index-0.15*countToAdd))/countToAdd,
+          position: gaussianSumsPosition[index] - 1 - 3*(Math.abs(index-0.15*countToAddSmoothed))/countToAddSmoothed,
           velocity: gaussianSumsVelocity[index]/1000,
           acceleration: gaussianSumsAcceleration[index]/10000,
           jolt: gaussianSumsJolt[index]*-1/10000000,
@@ -127,7 +113,7 @@ async function renderLoop() {
 
 async function paintScene() {
   //console.log("wut")
-  while ((columns[0].boxes.length-TOP_BUFFER*2)*BOX_SIZE < window.outerHeight) {
+  while ((columns[0].boxes.length-TOP_BUFFER*2)*BACKGROUND_BOX_SIZE < window.outerHeight) {
     for (let key in columns) {
       calculateColumn(Number(key))
     }
@@ -271,8 +257,8 @@ async function renderScene(): Promise<Boolean> {
   let index=0
   canvasSmoothContext.moveTo(index, gaussionSmoothed(index))
   index++
-  for (; index < gaussianObjects.length*highresScale; index++) {
-    canvasSmoothContext.lineTo(index*1.5, gaussionSmoothed(index/highresScale)*500*MAGIC_NUMBER_D)
+  for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
+    canvasSmoothContext.lineTo(index*1.5, gaussionSmoothed(index/SMOOTHED_BOX_SIZE)*500*MAGIC_NUMBER_D)
   }
   canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth, canvasSmoothElement.clientHeight)
   canvasSmoothContext.lineTo(0, canvasSmoothElement.clientHeight)
@@ -334,25 +320,25 @@ function renderGradient(
     boxBR: Box,
     boxBL: Box
 }) {
-  let left = (gradientData.position.x - HORIZONTAL_BUFFERS)*BOX_SIZE
-  let top = (gradientData.position.y-TOP_BUFFER)*BOX_SIZE
-  let right = left + BOX_SIZE
-  let bottom = top + BOX_SIZE
+  let left = (gradientData.position.x - HORIZONTAL_BUFFERS)*BACKGROUND_BOX_SIZE
+  let top = (gradientData.position.y-TOP_BUFFER)*BACKGROUND_BOX_SIZE
+  let right = left + BACKGROUND_BOX_SIZE
+  let bottom = top + BACKGROUND_BOX_SIZE
 
   canvasPixelContext.fillStyle = (darkModePreference.matches ? skyDark : sky).sky9
-  canvasPixelContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
+  canvasPixelContext.fillRect(left, top, BACKGROUND_BOX_SIZE, BACKGROUND_BOX_SIZE)
 
   let gradientTLBR = canvasPixelContext.createLinearGradient(left, top, right, bottom)
   gradientTLBR.addColorStop(0, boxToHex(gradientData.boxTL, 1))
   gradientTLBR.addColorStop(1, boxToHex(gradientData.boxBR, 1))
   canvasPixelContext.fillStyle = gradientTLBR
-  canvasPixelContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
+  canvasPixelContext.fillRect(left, top, BACKGROUND_BOX_SIZE, BACKGROUND_BOX_SIZE)
 
   let gradientBLTR = canvasPixelContext.createLinearGradient(left, bottom, right, top)
   gradientBLTR.addColorStop(0, boxToHex(gradientData.boxBL, 0.5))
   gradientBLTR.addColorStop(1, boxToHex(gradientData.boxTR, 0.5))
   canvasPixelContext.fillStyle = gradientBLTR
-  canvasPixelContext.fillRect(left, top, BOX_SIZE, BOX_SIZE)
+  canvasPixelContext.fillRect(left, top, BACKGROUND_BOX_SIZE, BACKGROUND_BOX_SIZE)
 }
 
 
@@ -431,7 +417,6 @@ function gaussianSums(
   return gaussianSums
 }
 
-let highresScale = BOX_SIZE
 function gaussianDistribution(variance: number): number[] {
   let lowres: number[] = []
   let oneOverSqrtTwoPiVariance: number = 1/Math.sqrt(2*Math.PI*variance)

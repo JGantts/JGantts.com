@@ -111,7 +111,7 @@ async function resizedWindow() {
     gaussianObjects = []
     for (let index=gaussianDistance; index < countToAdd-gaussianDistance; index++) {
       gaussianObjects.push({
-          position: gaussianSumsPosition[index] + 1.5 - index/10,
+          position: gaussianSumsPosition[index] - 1 + -1*(Math.abs(index-canvasPixelElement.width*3/100))/10,
           velocity: gaussianSumsVelocity[index]/1000,
           acceleration: gaussianSumsAcceleration[index]/10000,
           jolt: gaussianSumsJolt[index]*-1/10000000,

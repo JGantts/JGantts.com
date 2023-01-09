@@ -36,7 +36,7 @@ type Box = {
     color: Color,
   }
 
-type GaussianLowPoint = {
+type GaussianObject = {
   position: number,
   velocity: number,
   acceleration: number,
@@ -54,7 +54,7 @@ let canvasPixelElement: HTMLCanvasElement
 let canvasPixelContext: CanvasRenderingContext2D
 let canvasSmoothElement: HTMLCanvasElement
 let canvasSmoothContext: CanvasRenderingContext2D
-let gaussianLowres: GaussianLowPoint[] = []
+let gaussianObjects: GaussianObject[]
 
 
 let needsRedraw = false
@@ -90,55 +90,33 @@ async function resizedWindow() {
     /*
       Calculate the random begining offsets (for the nice-looking gaussian wave "falling curtain" effect)
     */
-    let gaussianDists: { lowres: number[], highres: number[] }[] = []
-    for (let i=0; i < countToAdd + gaussianDistance*2; i++) {
-      gaussianDists.push(gaussianDistribution(Math.random()*90 + 10))
-    }
-    let lowresDists = gaussianDists.map(dist => dist.lowres)
-    let highresDists = gaussianDists.map(dist => dist.highres)
-    let highresDistsWithFiller: number[][] = []
-    for(let ii=0; ii<highresDists.length*highresScale; ii++) {
-      if (Math.floor(ii/highresScale) == ii/highresScale) {
-        highresDistsWithFiller[ii] = highresDists[ii/highresScale]
-      } else {
-        highresDistsWithFiller[ii] = new Array(gaussianDistance*highresScale*2).fill(0)
-      }
-    }
-    let gaussianResults: { lowres: number[], highres: number[] } = {
-      lowres: gaussianSums(lowresDists, countToAdd, gaussianDistance, sum => {
-        let localizedToZero = sum/e-1
-        let scaledToOne = localizedToZero*MAGIC_NUMBER_A
-        let scaledToRange = (scaledToOne*gaussianRange/2) + gaussianMid
-        let clamppedToRange = 
-          scaledToRange > gaussianMax 
-            ? gaussianMax
-            : scaledToRange < gaussianMin
-              ? gaussianMin
-              : scaledToRange
-        return clamppedToRange
-      }),
-      highres: gaussianSums(highresDistsWithFiller, countToAdd*highresScale, gaussianDistance*highresScale, sum => {
-        let scaledOne = sum-2
-        let scaledTwo = scaledOne*400
-        return scaledTwo
-      })
-    }
-    
+    //background pattern
+
+    let gaussianSumsBackground: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
+    let gaussianSumsPosition: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
+    let gaussianSumsVelocity: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
+    let gaussianSumsAcceleration: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
+    let gaussianSumsJolt: number[] = gaussians(countToAdd, () => {return Math.random()*90 + 10},  0, 1)
+
+
 
     /*
       Take the begining offsets and initialize the columns
     */
-    for (let i=0; i < gaussianResults.lowres.length; i++) {
+    for (let i=0; i < gaussianSumsBackground.length; i++) {
       columns.push({
-        boxes: new Array(Math.floor(gaussianResults.lowres[i]*30)).fill({ color: randomBlue() }),
+        boxes: new Array(Math.floor(gaussianSumsBackground[i]*30)).fill({ color: randomBlue() }),
       })
     }
-    gaussianLowres = gaussianResults.lowres.map(sum =>  { return {
-          position: -MAGIC_NUMBER_E,
-          velocity: sum/1000,
-          acceleration: sum/10000,
-          jolt: 1/100,
-        }})
+    gaussianObjects = []
+    for (let index=gaussianDistance; index < countToAdd-gaussianDistance; index++) {
+      gaussianObjects.push({
+          position: gaussianSumsPosition[index]-MAGIC_NUMBER_E,
+          velocity: gaussianSumsVelocity[index]/1000,
+          acceleration: gaussianSumsAcceleration[index]/10000,
+          jolt: gaussianSumsJolt[index]*0,
+        })
+    }
     paintScene()
   }
 
@@ -264,14 +242,15 @@ async function calculateRenderClip(interval: number) {
   }
   //offsetY += MAGIC_NUMBER_E
 
-  for (let index=0; index < gaussianLowres.length; index++) {
+  for (let index=0; index < gaussianObjects.length; index++) {
     //gaussianLowres[index].acceleration += gaussianLowres[index].jolt
-    gaussianLowres[index].velocity += gaussianLowres[index].acceleration
-    gaussianLowres[index].position += gaussianLowres[index].velocity
+    gaussianObjects[index].velocity += gaussianObjects[index].acceleration
+    gaussianObjects[index].position += gaussianObjects[index].velocity
   }
 
+  console.log(gaussianObjects)
   //@ts-ignore
-  let gaussionSmoothed = Smooth(gaussianLowres.map(objct => objct.position))
+  let gaussionSmoothed = Smooth(gaussianObjects.map(objct => objct.position))
   /*if (doneAnimatingCurtain || offsetY > canvasSmoothElement.height*1.5) {
     doneAnimatingCurtain = true
     return
@@ -295,7 +274,7 @@ async function calculateRenderClip(interval: number) {
   let index=0
   canvasSmoothContext.moveTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index))
   index++
-  for (; index < gaussianLowres.length*highresScale; index++) {
+  for (; index < gaussianObjects.length*highresScale; index++) {
     canvasSmoothContext.lineTo(index-BOX_SIZE*MAGIC_NUMBER_C, gaussionSmoothed(index/highresScale)*500*MAGIC_NUMBER_D)
   }
   canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth, canvasSmoothElement.clientHeight)
@@ -406,12 +385,39 @@ let spawnCountdownMin = -30
 let spawnCountdownMax = 0
 
 let gaussianDistance = 20
-let gaussianMin = 0
-let gaussianMax = 1
-let gaussianRange = gaussianMax - gaussianMin
-let gaussianMid = (gaussianMax + gaussianMin)/2
 
-function gaussianSums(dists: number[][], length: number, distance: number, noramalizer: (x: number) => number): number[] {
+
+function gaussians(count: number, variance: () => number, sumMin: number, sumMax: number) {
+  let sumRange = sumMax - sumMin
+  let sumMid = (sumMax + sumMin)/2
+
+  let gaussianDistsPos: number[][] = []
+  for (let i=0; i < count + gaussianDistance*2; i++) {
+    gaussianDistsPos.push(gaussianDistribution(variance()))
+  }
+  let gaussianSumsPos: number[] = 
+    gaussianSums(gaussianDistsPos, count, gaussianDistance, sum => {
+      let localizedToZero = sum/e-1
+      let scaledToOne = localizedToZero*MAGIC_NUMBER_A
+      let scaledToRange = (scaledToOne*sumRange/2) + sumMid
+      let clamppedToRange = 
+        scaledToRange > sumMax 
+          ? sumMax
+          : scaledToRange < sumMin
+            ? sumMin
+            : scaledToRange
+      return clamppedToRange
+    })
+    console.log(gaussianSumsPos)
+  return gaussianSumsPos
+}
+
+function gaussianSums(
+  dists: number[][], 
+  length: number,
+  distance: number,
+  noramalizer: (x: number) => number
+): number[] {
   let gaussianSums: number[] = []
   for (let i=distance; i < length; i++) {
     let sum = 0
@@ -425,17 +431,13 @@ function gaussianSums(dists: number[][], length: number, distance: number, noram
 }
 
 let highresScale = BOX_SIZE
-function gaussianDistribution(variance: number): { lowres: number[], highres: number[] } {
+function gaussianDistribution(variance: number): number[] {
   let lowres: number[] = []
-  let highres: number[] = []
   let oneOverSqrtTwoPiVariance: number = 1/Math.sqrt(2*Math.PI*variance)
   for (let i = -gaussianDistance; i <= gaussianDistance; i++) {
     lowres.push(gaussianDistributionAt(variance, oneOverSqrtTwoPiVariance, i))
   }
-  for (let i = -gaussianDistance*highresScale; i <= gaussianDistance*highresScale; i++) {
-    highres.push(gaussianDistributionAt(variance, oneOverSqrtTwoPiVariance, i/highresScale))
-  }
-  return { lowres, highres }
+  return lowres
 }
 
 let e = 2.7182812690734863

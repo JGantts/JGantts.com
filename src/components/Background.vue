@@ -474,73 +474,73 @@ async function initializeScene() {
   canvasSmoothElement.height = canvasSmoothElement.clientHeight;
 
   widthInLargePixels = Math.ceil(canvasPixelElement.width/PIXELATED_LARGE_BOX_SIZE) + 1
+  heightInLargePixels = Math.ceil(canvasPixelElement.height/PIXELATED_LARGE_BOX_SIZE) + 1
+  widthInFinePixels = widthInLargePixels*PIXELATION_RATIO
+  heightInFinePixels = heightInLargePixels*PIXELATION_RATIO
 
-  if(widthInLargePixels > 0) {
-    let countToAddSmoothed = widthInLargePixels*PIXELATED_LARGE_BOX_SIZE/SMOOTHED_BOX_SIZE
-    widthInFinePixels = widthInLargePixels*PIXELATION_RATIO
+  let countToAddSmoothed = widthInLargePixels*PIXELATED_LARGE_BOX_SIZE/SMOOTHED_BOX_SIZE
 
-    let gaussianSumsPixelsLarge: number[] = gaussians(
-      widthInLargePixels,
-      () => {return Math.random()*90 + 10},
-      0, 1
-    )
-    let gaussianSumsPixelsFine: number[] = gaussians(
-      widthInFinePixels,
-      () => {return Math.random()*90 + 10},
-      0, 1
-    )
-    let gaussianSumsPosition: number[] = gaussians(
-      countToAddSmoothed,
-      () => {return Math.random()*90 + 10},
-      -300, 0
-    )
-    let gaussianSumsVelocity: number[] = gaussians(
-      countToAddSmoothed,
-      () => {return Math.random()*90 + 10},
-      0, 0.5
-    )
-    let gaussianSumsAcceleration: number[] = gaussians(
-      countToAddSmoothed,
-      () => {return Math.random()*90 + 10},
-      0.005, 0.01
-    )
-    let gaussianSumsJolt: number[] = gaussians(
-      countToAddSmoothed,
-      () => {return Math.random()*90 + 10},
-      -0.000005, 0.000005
-    )
+  let gaussianSumsPixelsLarge: number[] = gaussians(
+    widthInLargePixels,
+    () => {return Math.random()*90 + 10},
+    0, 1
+  )
+  let gaussianSumsPixelsFine: number[] = gaussians(
+    widthInFinePixels,
+    () => {return Math.random()*90 + 10},
+    0, 1
+  )
+  let gaussianSumsPosition: number[] = gaussians(
+    countToAddSmoothed,
+    () => {return Math.random()*90 + 10},
+    -300, 0
+  )
+  let gaussianSumsVelocity: number[] = gaussians(
+    countToAddSmoothed,
+    () => {return Math.random()*90 + 10},
+    0, 0.5
+  )
+  let gaussianSumsAcceleration: number[] = gaussians(
+    countToAddSmoothed,
+    () => {return Math.random()*90 + 10},
+    0.005, 0.01
+  )
+  let gaussianSumsJolt: number[] = gaussians(
+    countToAddSmoothed,
+    () => {return Math.random()*90 + 10},
+    -0.000005, 0.000005
+  )
 
-    /*
-      Take the begining offsets and initialize the columns
-    */
-    for (let i=0; i < widthInLargePixels; i++) {
-      pixelColumnsLarge.push(
-        new Array(Math.floor(gaussianSumsPixelsLarge[i]*30)).fill(randomBlue()),
-      )
-    }
-    console.log(gaussianSumsPixelsLarge)
-    console.log(pixelColumnsLarge)
-    paintPixelsLarge()
-    for (let i=0; i < widthInFinePixels; i++) {
-      pixelColumnsFine.push(
-        new Array(Math.floor(gaussianSumsPixelsFine[i]*30)).fill(randomBlue()),
-      )
-    }
-    console.log(gaussianSumsPixelsFine)
-    console.log(pixelColumnsFine)
-    console.log("here3")
-    paintPixelsFine()
-    console.log("here4")
+  /*
+    Take the begining offsets and initialize the columns
+  */
+  for (let i=0; i < widthInLargePixels; i++) {
+    pixelColumnsLarge.push(
+      new Array(Math.floor(gaussianSumsPixelsLarge[i]*30)).fill(randomBlue()),
+    )
+  }
+  console.log(gaussianSumsPixelsLarge)
+  console.log(pixelColumnsLarge)
+  paintPixelsLarge()
+  for (let i=0; i < widthInFinePixels; i++) {
+    pixelColumnsFine.push(
+      new Array(Math.floor(gaussianSumsPixelsFine[i]*30)).fill(randomBlue()),
+    )
+  }
+  console.log(gaussianSumsPixelsFine)
+  console.log(pixelColumnsFine)
+  console.log("here3")
+  paintPixelsFine()
+  console.log("here4")
 
-    gaussianObjects = []
-    for (let index=0; index < countToAddSmoothed; index++) {
-      gaussianObjects.push({
-          position: gaussianSumsPosition[index] - 500*(Math.abs(index-0.15*countToAddSmoothed))/countToAddSmoothed,
-          velocity: gaussianSumsVelocity[index],
-          acceleration: gaussianSumsAcceleration[index],
-          jolt: gaussianSumsJolt[index],
-        })
-    }
+  gaussianObjects = []
+  for (let index=0; index < countToAddSmoothed; index++) {
+    gaussianObjects.push({
+        position: gaussianSumsPosition[index] - 500*(Math.abs(index-0.15*countToAddSmoothed))/countToAddSmoothed,
+        velocity: gaussianSumsVelocity[index],
+        acceleration: gaussianSumsAcceleration[index],
+        jolt: gaussianSumsJolt[index],
+      })
   }
 }
 
@@ -552,7 +552,7 @@ async function renderLoop() {
 }
 
 async function paintPixelsLarge() {
-  while ((pixelColumnsLarge[0].length-TOP_BUFFER_PIXEL_LARGE*2)*PIXELATED_LARGE_BOX_SIZE < window.outerHeight) {
+  while ((pixelColumnsLarge[0].length-TOP_BUFFER_PIXEL_LARGE*2) < heightInLargePixels) {
     for (let key in pixelColumnsLarge) {
       calculateColumnLarge(Number(key))
     }
@@ -560,7 +560,7 @@ async function paintPixelsLarge() {
 }
 
 async function paintPixelsFine() {
-  while ((pixelColumnsFine[0].length-TOP_BUFFER_PIXEL_FINE*2)*PIXELATED_FINE_BOX_SIZE < window.outerHeight) {
+  while ((pixelColumnsFine[0].length-TOP_BUFFER_PIXEL_FINE*2) < heightInFinePixels) {
     for (let key in pixelColumnsFine) {
       calculateColumnFine(Number(key))
     }

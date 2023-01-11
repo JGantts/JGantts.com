@@ -80,9 +80,9 @@ type Theme = {
   gray11: Color,
   gray12: Color,
 
-  variationHue: number,
-  variationSaturation: number,
-  variationLightness: number,
+  //variationHue: number,
+  //variationSaturation: number,
+  //variationLightness: number,
 }
 
 let themeSkyDark_Orange: Theme = {
@@ -124,10 +124,6 @@ let themeSkyDark_Orange: Theme = {
   gray10: hslToComponents(slateDark.slate10),
   gray11: hslToComponents(slateDark.slate11),
   gray12: hslToComponents(slateDark.slate12),
-
-  variationHue: 80,
-  variationSaturation: 80,
-  variationLightness: 100,
 }
 
 let themeGrassDark_Tomato: Theme = {
@@ -380,7 +376,7 @@ let themeLime_Blue: Theme = {
 
 let theme = themeSkyDark_Orange
 
-let PIXELATED_BOX_SIZE = 2
+let PIXELATED_BOX_SIZE = 1
 let SMOOTHED_BOX_SIZE = 8
 let TOP_BUFFER = 34
 
@@ -664,7 +660,7 @@ function tryRenderBox(columnIndex: number, boxIndex: number): boolean {
     if (me == null) {
       return false
     }
-    renderGradient({
+    renderPixel({
       position: { x: columnIndex-1, y: boxIndex-1},
       boxTL: leftAunt,
       boxTR: parent,
@@ -672,6 +668,25 @@ function tryRenderBox(columnIndex: number, boxIndex: number): boolean {
       boxBL: leftCousin,
     })
     return true
+}
+
+function renderPixel(
+  gradientData: {
+    position: Position,
+    boxTL: Box,
+    boxTR: Box,
+    boxBR: Box,
+    boxBL: Box
+}) {
+  let left = (gradientData.position.x)*PIXELATED_BOX_SIZE
+  let top = (gradientData.position.y-TOP_BUFFER)*PIXELATED_BOX_SIZE
+  let right = left + PIXELATED_BOX_SIZE
+  let bottom = top + PIXELATED_BOX_SIZE
+
+  canvasPixelContext.clearRect(left, top, PIXELATED_BOX_SIZE, PIXELATED_BOX_SIZE)
+  
+  canvasPixelContext.fillStyle = boxToHex(gradientData.boxTL, 1)
+  canvasPixelContext.fillRect(left, top, PIXELATED_BOX_SIZE, PIXELATED_BOX_SIZE)
 }
 
 function renderGradient(

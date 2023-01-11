@@ -481,6 +481,8 @@ async function initializeScene() {
         new Array(Math.floor(gaussianSumsPixelsFine[i]*30)).fill(randomBlue()),
       )
     }
+    console.log(pixelColumnsLarge)
+    console.log(pixelColumnsFine)
   console.log("here3")
     paintPixelsFine()
   console.log("here4")
@@ -577,8 +579,8 @@ async function calculateColumnLarge(index: number) {
     colorToTint.g /= colorsAdded
     colorToTint.b /= colorsAdded
 
-    let randomMultiplier = 1
-    let consistentMultiplier = 10
+    let randomMultiplier = 100
+    let consistentMultiplier = 1
     let multiplierSum = randomMultiplier + consistentMultiplier
 
     let red =
@@ -615,7 +617,8 @@ async function calculateColumnFine(index: number) {
   /* random color */
   let transdimensionalAncestorColumn = pixelColumnsLarge[Math.floor(index/PIXELATION_RATIO)]
 
-  let color: Color = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO)]
+  let  transdimensionalAncestorColor: Color = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO)]
+  let color = transdimensionalAncestorColor//randomBlue()
 
   /* smooth out color with existing neighbors */
   let parent = null
@@ -623,11 +626,11 @@ async function calculateColumnFine(index: number) {
   let rightCousin = null
 
   parent = column[column.length-1]
-  let leftLineage = pixelColumnsLarge[index - 1]
+  let leftLineage = pixelColumnsFine[index - 1]
   if (leftLineage) {
     leftCousin = leftLineage[column.length - 1]
   }
-  let rightLineage = pixelColumnsLarge[index + 1]
+  let rightLineage = pixelColumnsFine[index + 1]
   if (rightLineage) {
     rightCousin = rightLineage[column.length - 1]
   }
@@ -661,8 +664,8 @@ async function calculateColumnFine(index: number) {
     colorToTint.g /= colorsAdded
     colorToTint.b /= colorsAdded
 
-    let randomMultiplier = 1
-    let consistentMultiplier = 10
+    let randomMultiplier = 100
+    let consistentMultiplier = 1
     let multiplierSum = randomMultiplier + consistentMultiplier
 
     let red =
@@ -760,7 +763,7 @@ function renderPixel(
     color: Color
 }) {
   let left = (pixelData.position.x)*PIXELATED_FINE_BOX_SIZE
-  let top = (pixelData.position.y-TOP_BUFFER_PIXEL_LARGE)*PIXELATED_FINE_BOX_SIZE
+  let top = (pixelData.position.y)*PIXELATED_FINE_BOX_SIZE
   let right = left + PIXELATED_FINE_BOX_SIZE
   let bottom = top + PIXELATED_FINE_BOX_SIZE
 

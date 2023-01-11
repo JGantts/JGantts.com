@@ -743,47 +743,30 @@ async function renderColumn(columnIndex: number) {
 
 function tryRenderBox(columnIndex: number, boxIndex: number): boolean {
     let column = pixelColumnsFine[columnIndex]
-    let leftCousin = null
-    let leftLineage = pixelColumnsFine[columnIndex - 1]
-    if (leftLineage == null) {
-      return false
-    }
-    leftCousin = leftLineage[boxIndex]
-    let parent = column[boxIndex-1]
-    let leftAunt = leftLineage[boxIndex - 1]
-    if (leftCousin == null || leftAunt == null || parent == null) {
-      return false
-    }
     let me = column[boxIndex]
     if (me == null) {
       return false
     }
     renderPixel({
       position: { x: columnIndex-1, y: boxIndex-1},
-      boxTL: leftAunt,
-      boxTR: parent,
-      boxBR: me,
-      boxBL: leftCousin,
+      color: me,
     })
     return true
 }
 
 function renderPixel(
-  gradientData: {
+  pixelData: {
     position: Position,
-    boxTL: Color,
-    boxTR: Color,
-    boxBR: Color,
-    boxBL: Color
+    color: Color
 }) {
-  let left = (gradientData.position.x)*PIXELATED_FINE_BOX_SIZE
-  let top = (gradientData.position.y-TOP_BUFFER_PIXEL_LARGE)*PIXELATED_FINE_BOX_SIZE
+  let left = (pixelData.position.x)*PIXELATED_FINE_BOX_SIZE
+  let top = (pixelData.position.y-TOP_BUFFER_PIXEL_LARGE)*PIXELATED_FINE_BOX_SIZE
   let right = left + PIXELATED_FINE_BOX_SIZE
   let bottom = top + PIXELATED_FINE_BOX_SIZE
 
   canvasPixelContext.clearRect(left, top, PIXELATED_FINE_BOX_SIZE, PIXELATED_FINE_BOX_SIZE)
 
-  canvasPixelContext.fillStyle = boxToHex(gradientData.boxTL, 1)
+  canvasPixelContext.fillStyle = componentsTohsl(pixelData.color)
   canvasPixelContext.fillRect(left, top, PIXELATED_FINE_BOX_SIZE, PIXELATED_FINE_BOX_SIZE)
 }
 

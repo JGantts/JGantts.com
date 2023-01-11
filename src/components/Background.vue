@@ -79,6 +79,10 @@ type Theme = {
   gray10: Color,
   gray11: Color,
   gray12: Color,
+
+  variationHue: number,
+  variationSaturation: number,
+  variationLightness: number,
 }
 
 let themeSkyDark_Orange: Theme = {
@@ -120,6 +124,10 @@ let themeSkyDark_Orange: Theme = {
   gray10: hslToComponents(slateDark.slate10),
   gray11: hslToComponents(slateDark.slate11),
   gray12: hslToComponents(slateDark.slate12),
+
+  variationHue: 80,
+  variationSaturation: 80,
+  variationLightness: 100,
 }
 
 let themeGrassDark_Tomato: Theme = {
@@ -372,7 +380,7 @@ let themeLime_Blue: Theme = {
 
 let theme = themeSkyDark_Orange
 
-let PIXELATED_BOX_SIZE = 4
+let PIXELATED_BOX_SIZE = 2
 let SMOOTHED_BOX_SIZE = 8
 let TOP_BUFFER = 34
 

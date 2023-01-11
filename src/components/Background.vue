@@ -80,176 +80,10 @@ type Theme = {
   gray11: Color,
   gray12: Color,
 
-  //variationHue: number,
-  //variationSaturation: number,
-  //variationLightness: number,
+  base9Gradient: () => Color,
 }
 
-let themeSkyDark_Orange: Theme = {
-  base1: hslToComponents(skyDark.sky1),
-  base2: hslToComponents(skyDark.sky2),
-  base3: hslToComponents(skyDark.sky3),
-  base4: hslToComponents(skyDark.sky4),
-  base5: hslToComponents(skyDark.sky5),
-  base6: hslToComponents(skyDark.sky6),
-  base7: hslToComponents(skyDark.sky7),
-  base8: hslToComponents(skyDark.sky8),
-  base9: hslToComponents(skyDark.sky9),
-  base10: hslToComponents(skyDark.sky10),
-  base11: hslToComponents(skyDark.sky11),
-  base12: hslToComponents(skyDark.sky12),
-
-  accent1: hslToComponents(orange.orange1),
-  accent2: hslToComponents(orange.orange2),
-  accent3: hslToComponents(orange.orange3),
-  accent4: hslToComponents(orange.orange4),
-  accent5: hslToComponents(orange.orange5),
-  accent6: hslToComponents(orange.orange6),
-  accent7: hslToComponents(orange.orange7),
-  accent8: hslToComponents(orange.orange8),
-  accent9: hslToComponents(orange.orange9),
-  accent10: hslToComponents(orange.orange10),
-  accent11: hslToComponents(orange.orange11),
-  accent12: hslToComponents(orange.orange12),
-
-  gray1: hslToComponents(slateDark.slate1),
-  gray2: hslToComponents(slateDark.slate2),
-  gray3: hslToComponents(slateDark.slate3),
-  gray4: hslToComponents(slateDark.slate4),
-  gray5: hslToComponents(slateDark.slate5),
-  gray6: hslToComponents(slateDark.slate6),
-  gray7: hslToComponents(slateDark.slate7),
-  gray8: hslToComponents(slateDark.slate8),
-  gray9: hslToComponents(slateDark.slate9),
-  gray10: hslToComponents(slateDark.slate10),
-  gray11: hslToComponents(slateDark.slate11),
-  gray12: hslToComponents(slateDark.slate12),
-}
-
-let themeGrassDark_Tomato: Theme = {
-  base1: hslToComponents(grassDark.grass1),
-  base2: hslToComponents(grassDark.grass2),
-  base3: hslToComponents(grassDark.grass3),
-  base4: hslToComponents(grassDark.grass4),
-  base5: hslToComponents(grassDark.grass5),
-  base6: hslToComponents(grassDark.grass6),
-  base7: hslToComponents(grassDark.grass7),
-  base8: hslToComponents(grassDark.grass8),
-  base9: hslToComponents(grassDark.grass9),
-  base10: hslToComponents(grassDark.grass10),
-  base11: hslToComponents(grassDark.grass11),
-  base12: hslToComponents(grassDark.grass12),
-
-  accent1: hslToComponents(tomato.tomato1),
-  accent2: hslToComponents(tomato.tomato2),
-  accent3: hslToComponents(tomato.tomato3),
-  accent4: hslToComponents(tomato.tomato4),
-  accent5: hslToComponents(tomato.tomato5),
-  accent6: hslToComponents(tomato.tomato6),
-  accent7: hslToComponents(tomato.tomato7),
-  accent8: hslToComponents(tomato.tomato8),
-  accent9: hslToComponents(tomato.tomato9),
-  accent10: hslToComponents(tomato.tomato10),
-  accent11: hslToComponents(tomato.tomato11),
-  accent12: hslToComponents(tomato.tomato12),
-
-  gray1: hslToComponents(oliveDark.olive1),
-  gray2: hslToComponents(oliveDark.olive2),
-  gray3: hslToComponents(oliveDark.olive3),
-  gray4: hslToComponents(oliveDark.olive4),
-  gray5: hslToComponents(oliveDark.olive5),
-  gray6: hslToComponents(oliveDark.olive6),
-  gray7: hslToComponents(oliveDark.olive7),
-  gray8: hslToComponents(oliveDark.olive8),
-  gray9: hslToComponents(oliveDark.olive9),
-  gray10: hslToComponents(oliveDark.olive10),
-  gray11: hslToComponents(oliveDark.olive11),
-  gray12: hslToComponents(oliveDark.olive12),
-}
-
-let themeAmberDark_Violet: Theme = {
-  base1: hslToComponents(amberDark.amber1),
-  base2: hslToComponents(amberDark.amber2),
-  base3: hslToComponents(amberDark.amber3),
-  base4: hslToComponents(amberDark.amber4),
-  base5: hslToComponents(amberDark.amber5),
-  base6: hslToComponents(amberDark.amber6),
-  base7: hslToComponents(amberDark.amber7),
-  base8: hslToComponents(amberDark.amber8),
-  base9: hslToComponents(amberDark.amber9),
-  base10: hslToComponents(amberDark.amber10),
-  base11: hslToComponents(amberDark.amber11),
-  base12: hslToComponents(amberDark.amber12),
-
-  accent1: hslToComponents(violet.violet1),
-  accent2: hslToComponents(violet.violet2),
-  accent3: hslToComponents(violet.violet3),
-  accent4: hslToComponents(violet.violet4),
-  accent5: hslToComponents(violet.violet5),
-  accent6: hslToComponents(violet.violet6),
-  accent7: hslToComponents(violet.violet7),
-  accent8: hslToComponents(violet.violet8),
-  accent9: hslToComponents(violet.violet9),
-  accent10: hslToComponents(violet.violet10),
-  accent11: hslToComponents(violet.violet11),
-  accent12: hslToComponents(violet.violet12),
-
-  gray1: hslToComponents(sandDark.sand1),
-  gray2: hslToComponents(sandDark.sand2),
-  gray3: hslToComponents(sandDark.sand3),
-  gray4: hslToComponents(sandDark.sand4),
-  gray5: hslToComponents(sandDark.sand5),
-  gray6: hslToComponents(sandDark.sand6),
-  gray7: hslToComponents(sandDark.sand7),
-  gray8: hslToComponents(sandDark.sand8),
-  gray9: hslToComponents(sandDark.sand9),
-  gray10: hslToComponents(sandDark.sand10),
-  gray11: hslToComponents(sandDark.sand11),
-  gray12: hslToComponents(sandDark.sand12),
-}
-
-let themeCrimsonDark_Green: Theme = {
-  base1: hslToComponents(crimsonDark.crimson1),
-  base2: hslToComponents(crimsonDark.crimson2),
-  base3: hslToComponents(crimsonDark.crimson3),
-  base4: hslToComponents(crimsonDark.crimson4),
-  base5: hslToComponents(crimsonDark.crimson5),
-  base6: hslToComponents(crimsonDark.crimson6),
-  base7: hslToComponents(crimsonDark.crimson7),
-  base8: hslToComponents(crimsonDark.crimson8),
-  base9: hslToComponents(crimsonDark.crimson9),
-  base10: hslToComponents(crimsonDark.crimson10),
-  base11: hslToComponents(crimsonDark.crimson11),
-  base12: hslToComponents(crimsonDark.crimson12),
-
-  accent1: hslToComponents(green.green1),
-  accent2: hslToComponents(green.green2),
-  accent3: hslToComponents(green.green3),
-  accent4: hslToComponents(green.green4),
-  accent5: hslToComponents(green.green5),
-  accent6: hslToComponents(green.green6),
-  accent7: hslToComponents(green.green7),
-  accent8: hslToComponents(green.green8),
-  accent9: hslToComponents(green.green9),
-  accent10: hslToComponents(green.green10),
-  accent11: hslToComponents(green.green11),
-  accent12: hslToComponents(green.green12),
-
-  gray1: hslToComponents(mauveDark.mauve1),
-  gray2: hslToComponents(mauveDark.mauve2),
-  gray3: hslToComponents(mauveDark.mauve3),
-  gray4: hslToComponents(mauveDark.mauve4),
-  gray5: hslToComponents(mauveDark.mauve5),
-  gray6: hslToComponents(mauveDark.mauve6),
-  gray7: hslToComponents(mauveDark.mauve7),
-  gray8: hslToComponents(mauveDark.mauve8),
-  gray9: hslToComponents(mauveDark.mauve9),
-  gray10: hslToComponents(mauveDark.mauve10),
-  gray11: hslToComponents(mauveDark.mauve11),
-  gray12: hslToComponents(mauveDark.mauve12),
-}
-
-let themeRed_Cyan: Theme = {
+let theme_Red_Cyan_mauve: Theme = {
   base1: hslToComponents(red.red1),
   base2: hslToComponents(red.red2),
   base3: hslToComponents(red.red3),
@@ -288,9 +122,68 @@ let themeRed_Cyan: Theme = {
   gray10: hslToComponents(mauve.mauve10),
   gray11: hslToComponents(mauve.mauve11),
   gray12: hslToComponents(mauve.mauve12),
+
+  base9Gradient: () => {
+    let base = hslToComponents(red.red9)
+    return {
+      hue: base.hue,// + Math.random()*80 - 40,
+      saturation: base.saturation + Math.random()*80 - 40,
+      lightness: base.lightness + Math.random()*100 - 50,
+    }
+  },
 }
 
-let themeCyan_Red: Theme = {
+let theme_CrimsonDark_Green_mauve: Theme = {
+  base1: hslToComponents(crimsonDark.crimson1),
+  base2: hslToComponents(crimsonDark.crimson2),
+  base3: hslToComponents(crimsonDark.crimson3),
+  base4: hslToComponents(crimsonDark.crimson4),
+  base5: hslToComponents(crimsonDark.crimson5),
+  base6: hslToComponents(crimsonDark.crimson6),
+  base7: hslToComponents(crimsonDark.crimson7),
+  base8: hslToComponents(crimsonDark.crimson8),
+  base9: hslToComponents(crimsonDark.crimson9),
+  base10: hslToComponents(crimsonDark.crimson10),
+  base11: hslToComponents(crimsonDark.crimson11),
+  base12: hslToComponents(crimsonDark.crimson12),
+
+  accent1: hslToComponents(green.green1),
+  accent2: hslToComponents(green.green2),
+  accent3: hslToComponents(green.green3),
+  accent4: hslToComponents(green.green4),
+  accent5: hslToComponents(green.green5),
+  accent6: hslToComponents(green.green6),
+  accent7: hslToComponents(green.green7),
+  accent8: hslToComponents(green.green8),
+  accent9: hslToComponents(green.green9),
+  accent10: hslToComponents(green.green10),
+  accent11: hslToComponents(green.green11),
+  accent12: hslToComponents(green.green12),
+
+  gray1: hslToComponents(mauveDark.mauve1),
+  gray2: hslToComponents(mauveDark.mauve2),
+  gray3: hslToComponents(mauveDark.mauve3),
+  gray4: hslToComponents(mauveDark.mauve4),
+  gray5: hslToComponents(mauveDark.mauve5),
+  gray6: hslToComponents(mauveDark.mauve6),
+  gray7: hslToComponents(mauveDark.mauve7),
+  gray8: hslToComponents(mauveDark.mauve8),
+  gray9: hslToComponents(mauveDark.mauve9),
+  gray10: hslToComponents(mauveDark.mauve10),
+  gray11: hslToComponents(mauveDark.mauve11),
+  gray12: hslToComponents(mauveDark.mauve12),
+
+  base9Gradient: () => {
+    let base = hslToComponents(crimsonDark.crimson9)
+    return {
+      hue: base.hue,// + Math.random()*80 - 40,
+      saturation: base.saturation + Math.random()*80 - 40,
+      lightness: base.lightness + Math.random()*100 - 50,
+    }
+  },
+}
+
+let theme_Cyan_Red_slate: Theme = {
   base1: hslToComponents(cyan.cyan1),
   base2: hslToComponents(cyan.cyan2),
   base3: hslToComponents(cyan.cyan3),
@@ -329,9 +222,168 @@ let themeCyan_Red: Theme = {
   gray10: hslToComponents(slate.slate10),
   gray11: hslToComponents(slate.slate11),
   gray12: hslToComponents(slate.slate12),
+
+  base9Gradient: () => {
+    let base = hslToComponents(cyan.cyan9)
+    return {
+      hue: base.hue,// + Math.random()*80 - 40,
+      saturation: base.saturation + Math.random()*80 - 40,
+      lightness: base.lightness + Math.random()*100 - 50,
+    }
+  },
 }
 
-let themeLime_Blue: Theme = {
+let theme_GrassDark_Tomato_olive: Theme = {
+  base1: hslToComponents(grassDark.grass1),
+  base2: hslToComponents(grassDark.grass2),
+  base3: hslToComponents(grassDark.grass3),
+  base4: hslToComponents(grassDark.grass4),
+  base5: hslToComponents(grassDark.grass5),
+  base6: hslToComponents(grassDark.grass6),
+  base7: hslToComponents(grassDark.grass7),
+  base8: hslToComponents(grassDark.grass8),
+  base9: hslToComponents(grassDark.grass9),
+  base10: hslToComponents(grassDark.grass10),
+  base11: hslToComponents(grassDark.grass11),
+  base12: hslToComponents(grassDark.grass12),
+
+  accent1: hslToComponents(tomato.tomato1),
+  accent2: hslToComponents(tomato.tomato2),
+  accent3: hslToComponents(tomato.tomato3),
+  accent4: hslToComponents(tomato.tomato4),
+  accent5: hslToComponents(tomato.tomato5),
+  accent6: hslToComponents(tomato.tomato6),
+  accent7: hslToComponents(tomato.tomato7),
+  accent8: hslToComponents(tomato.tomato8),
+  accent9: hslToComponents(tomato.tomato9),
+  accent10: hslToComponents(tomato.tomato10),
+  accent11: hslToComponents(tomato.tomato11),
+  accent12: hslToComponents(tomato.tomato12),
+
+  gray1: hslToComponents(oliveDark.olive1),
+  gray2: hslToComponents(oliveDark.olive2),
+  gray3: hslToComponents(oliveDark.olive3),
+  gray4: hslToComponents(oliveDark.olive4),
+  gray5: hslToComponents(oliveDark.olive5),
+  gray6: hslToComponents(oliveDark.olive6),
+  gray7: hslToComponents(oliveDark.olive7),
+  gray8: hslToComponents(oliveDark.olive8),
+  gray9: hslToComponents(oliveDark.olive9),
+  gray10: hslToComponents(oliveDark.olive10),
+  gray11: hslToComponents(oliveDark.olive11),
+  gray12: hslToComponents(oliveDark.olive12),
+
+  base9Gradient: () => {
+    let base = hslToComponents(grassDark.grass9)
+    return {
+      hue: base.hue,// + Math.random()*80 - 40,
+      saturation: base.saturation + Math.random()*80 - 40,
+      lightness: base.lightness + Math.random()*100 - 50,
+    }
+  },
+}
+
+let theme_Sky_Orange_slate: Theme = {
+  base1: hslToComponents(sky.sky1),
+  base2: hslToComponents(sky.sky2),
+  base3: hslToComponents(sky.sky3),
+  base4: hslToComponents(sky.sky4),
+  base5: hslToComponents(sky.sky5),
+  base6: hslToComponents(sky.sky6),
+  base7: hslToComponents(sky.sky7),
+  base8: hslToComponents(sky.sky8),
+  base9: hslToComponents(sky.sky9),
+  base10: hslToComponents(sky.sky10),
+  base11: hslToComponents(sky.sky11),
+  base12: hslToComponents(sky.sky12),
+
+  accent1: hslToComponents(orange.orange1),
+  accent2: hslToComponents(orange.orange2),
+  accent3: hslToComponents(orange.orange3),
+  accent4: hslToComponents(orange.orange4),
+  accent5: hslToComponents(orange.orange5),
+  accent6: hslToComponents(orange.orange6),
+  accent7: hslToComponents(orange.orange7),
+  accent8: hslToComponents(orange.orange8),
+  accent9: hslToComponents(orange.orange9),
+  accent10: hslToComponents(orange.orange10),
+  accent11: hslToComponents(orange.orange11),
+  accent12: hslToComponents(orange.orange12),
+
+  gray1: hslToComponents(slate.slate1),
+  gray2: hslToComponents(slate.slate2),
+  gray3: hslToComponents(slate.slate3),
+  gray4: hslToComponents(slate.slate4),
+  gray5: hslToComponents(slate.slate5),
+  gray6: hslToComponents(slate.slate6),
+  gray7: hslToComponents(slate.slate7),
+  gray8: hslToComponents(slate.slate8),
+  gray9: hslToComponents(slate.slate9),
+  gray10: hslToComponents(slate.slate10),
+  gray11: hslToComponents(slate.slate11),
+  gray12: hslToComponents(slate.slate12),
+
+  base9Gradient: () => {
+    let base = hslToComponents(sky.sky9)
+    return {
+      hue: base.hue,// + Math.random()*80 - 40,
+      saturation: base.saturation + Math.random()*80 - 40,
+      lightness: base.lightness + Math.random()*100 - 50,
+    }
+  },
+}
+
+let theme_SkyDark_Orange_slate: Theme = {
+  base1: hslToComponents(skyDark.sky1),
+  base2: hslToComponents(skyDark.sky2),
+  base3: hslToComponents(skyDark.sky3),
+  base4: hslToComponents(skyDark.sky4),
+  base5: hslToComponents(skyDark.sky5),
+  base6: hslToComponents(skyDark.sky6),
+  base7: hslToComponents(skyDark.sky7),
+  base8: hslToComponents(skyDark.sky8),
+  base9: hslToComponents(skyDark.sky9),
+  base10: hslToComponents(skyDark.sky10),
+  base11: hslToComponents(skyDark.sky11),
+  base12: hslToComponents(skyDark.sky12),
+
+  accent1: hslToComponents(orange.orange1),
+  accent2: hslToComponents(orange.orange2),
+  accent3: hslToComponents(orange.orange3),
+  accent4: hslToComponents(orange.orange4),
+  accent5: hslToComponents(orange.orange5),
+  accent6: hslToComponents(orange.orange6),
+  accent7: hslToComponents(orange.orange7),
+  accent8: hslToComponents(orange.orange8),
+  accent9: hslToComponents(orange.orange9),
+  accent10: hslToComponents(orange.orange10),
+  accent11: hslToComponents(orange.orange11),
+  accent12: hslToComponents(orange.orange12),
+
+  gray1: hslToComponents(slateDark.slate1),
+  gray2: hslToComponents(slateDark.slate2),
+  gray3: hslToComponents(slateDark.slate3),
+  gray4: hslToComponents(slateDark.slate4),
+  gray5: hslToComponents(slateDark.slate5),
+  gray6: hslToComponents(slateDark.slate6),
+  gray7: hslToComponents(slateDark.slate7),
+  gray8: hslToComponents(slateDark.slate8),
+  gray9: hslToComponents(slateDark.slate9),
+  gray10: hslToComponents(slateDark.slate10),
+  gray11: hslToComponents(slateDark.slate11),
+  gray12: hslToComponents(slateDark.slate12),
+
+  base9Gradient: () => {
+    let base = hslToComponents(skyDark.sky9)
+    return {
+      hue: base.hue,// + Math.random()*80 - 40,
+      saturation: base.saturation + Math.random()*80 - 40,
+      lightness: base.lightness + Math.random()*100 - 50,
+    }
+  },
+}
+
+let theme_Lime_Blue_olive: Theme = {
   base1: hslToComponents(lime.lime1),
   base2: hslToComponents(lime.lime2),
   base3: hslToComponents(lime.lime3),
@@ -370,19 +422,79 @@ let themeLime_Blue: Theme = {
   gray10: hslToComponents(olive.olive10),
   gray11: hslToComponents(olive.olive11),
   gray12: hslToComponents(olive.olive12),
+
+  backgroundHue: 0,
+  backgroundSaturation: 0,
+  backgroundLightness: 0,
 }
 
-//let theme = themeSkyDark_Orange
+let theme_AmberDark_Violet_sand: Theme = {
+  base1: hslToComponents(amberDark.amber1),
+  base2: hslToComponents(amberDark.amber2),
+  base3: hslToComponents(amberDark.amber3),
+  base4: hslToComponents(amberDark.amber4),
+  base5: hslToComponents(amberDark.amber5),
+  base6: hslToComponents(amberDark.amber6),
+  base7: hslToComponents(amberDark.amber7),
+  base8: hslToComponents(amberDark.amber8),
+  base9: hslToComponents(amberDark.amber9),
+  base10: hslToComponents(amberDark.amber10),
+  base11: hslToComponents(amberDark.amber11),
+  base12: hslToComponents(amberDark.amber12),
 
-let theme = themeSkyDark_Orange
+  accent1: hslToComponents(violet.violet1),
+  accent2: hslToComponents(violet.violet2),
+  accent3: hslToComponents(violet.violet3),
+  accent4: hslToComponents(violet.violet4),
+  accent5: hslToComponents(violet.violet5),
+  accent6: hslToComponents(violet.violet6),
+  accent7: hslToComponents(violet.violet7),
+  accent8: hslToComponents(violet.violet8),
+  accent9: hslToComponents(violet.violet9),
+  accent10: hslToComponents(violet.violet10),
+  accent11: hslToComponents(violet.violet11),
+  accent12: hslToComponents(violet.violet12),
+
+  gray1: hslToComponents(sandDark.sand1),
+  gray2: hslToComponents(sandDark.sand2),
+  gray3: hslToComponents(sandDark.sand3),
+  gray4: hslToComponents(sandDark.sand4),
+  gray5: hslToComponents(sandDark.sand5),
+  gray6: hslToComponents(sandDark.sand6),
+  gray7: hslToComponents(sandDark.sand7),
+  gray8: hslToComponents(sandDark.sand8),
+  gray9: hslToComponents(sandDark.sand9),
+  gray10: hslToComponents(sandDark.sand10),
+  gray11: hslToComponents(sandDark.sand11),
+  gray12: hslToComponents(sandDark.sand12),
+
+  base9Gradient: () => {
+    let base = hslToComponents(amberDark.amber9)
+    return {
+      hue: base.hue,// + Math.random()*80 - 40,
+      saturation: base.saturation + Math.random()*80 - 40,
+      lightness: base.lightness + Math.random()*100 - 50,
+    }
+  },
+}
+
+//let theme = theme_SkyDark_Orange_slate
+
+let theme = theme_Sky_Orange_slate
 
 let PIXELATED_FINE_BOX_SIZE = 1
 let PIXELATED_LARGE_BOX_SIZE = 8
-let PIXELATION_RATIO = Math.floor(PIXELATED_LARGE_BOX_SIZE/PIXELATED_FINE_BOX_SIZE)
-let SMOOTHED_BOX_SIZE = 16
+let PIXELATED_SUPER_BOX_SIZE = 32
+let PIXELATION_RATIO_SUPER_LARGE = Math.floor(PIXELATED_SUPER_BOX_SIZE/PIXELATED_LARGE_BOX_SIZE)
+let PIXELATION_RATIO_LARGE_FINE = Math.floor(PIXELATED_LARGE_BOX_SIZE/PIXELATED_FINE_BOX_SIZE)
+let PIXELATION_RATIO_LARGE_SUPER = Math.ceil(PIXELATED_LARGE_BOX_SIZE/PIXELATED_LARGE_BOX_SIZE)
 
-let TOP_BUFFER_PIXEL_LARGE = 34
-let TOP_BUFFER_PIXEL_FINE = TOP_BUFFER_PIXEL_LARGE * PIXELATION_RATIO
+let SMOOTHED_BOX_SIZE = 10
+
+let TOP_BUFFER_PIXEL = 34
+
+let widthInSuperPixels = 0
+let heightInSuperPixels = 0
 
 let widthInLargePixels = 0
 let heightInLargePixels = 0
@@ -411,17 +523,16 @@ type GaussianObject = {
 /*
   Initialize variables
 */
-let pixelColumnsLarge: 
-   Color[][]
- = []
-let pixelColumnsFine: 
-   Color[][]
- = []
+let pixelColumnsSuper: Color[][] = []
+let pixelColumnsLarge: Color[][] = []
+let pixelColumnsFine: Color[][] = []
+
+let gaussianObjects: GaussianObject[]
+
 let canvasPixelElement: HTMLCanvasElement
 let canvasPixelContext: CanvasRenderingContext2D
 let canvasSmoothElement: HTMLCanvasElement
 let canvasSmoothContext: CanvasRenderingContext2D
-let gaussianObjects: GaussianObject[]
 
 /*
   Rendering functions
@@ -433,73 +544,81 @@ async function initializeScene() {
   canvasSmoothElement.height = canvasSmoothElement.clientHeight;
 
   widthInLargePixels = Math.ceil(canvasPixelElement.width/PIXELATED_LARGE_BOX_SIZE) + 1
+  heightInLargePixels = Math.ceil(canvasPixelElement.height/PIXELATED_LARGE_BOX_SIZE) + 1
+  widthInSuperPixels = widthInLargePixels*PIXELATION_RATIO_LARGE_SUPER
+  heightInSuperPixels = heightInLargePixels*PIXELATION_RATIO_LARGE_SUPER
+  widthInFinePixels = widthInLargePixels*PIXELATION_RATIO_LARGE_FINE
+  heightInFinePixels = heightInLargePixels*PIXELATION_RATIO_LARGE_FINE
 
-  if(widthInLargePixels > 0) {
-    let countToAddSmoothed = widthInLargePixels*PIXELATED_LARGE_BOX_SIZE/SMOOTHED_BOX_SIZE
-    widthInFinePixels = widthInLargePixels*PIXELATION_RATIO
+  let countToAddSmoothed = widthInLargePixels*PIXELATED_LARGE_BOX_SIZE/SMOOTHED_BOX_SIZE
 
-    let gaussianSumsPixelsLarge: number[] = gaussians(
-      widthInLargePixels,
-      () => {return Math.random()*90 + 10},
-      0, 1
-    )
-    let gaussianSumsPixelsFine: number[] = gaussians(
-      widthInFinePixels,
-      () => {return Math.random()*90 + 10},
-      0, 1
-    )
-    let gaussianSumsPosition: number[] = gaussians(
-      countToAddSmoothed,
-      () => {return Math.random()*90 + 10},
-      -300, 0
-    )
-    let gaussianSumsVelocity: number[] = gaussians(
-      countToAddSmoothed,
-      () => {return Math.random()*90 + 10},
-      0, 0.5
-    )
-    let gaussianSumsAcceleration: number[] = gaussians(
-      countToAddSmoothed,
-      () => {return Math.random()*90 + 10},
-      0.005, 0.01
-    )
-    let gaussianSumsJolt: number[] = gaussians(
-      countToAddSmoothed,
-      () => {return Math.random()*90 + 10},
-      -0.000005, 0.000005
-    )
+  let gaussianSumsPixelsSuper: number[] = gaussians(
+    widthInSuperPixels,
+    () => {return Math.random()*90 + 10},
+    0, 1
+  )
+  let gaussianSumsPixelsLarge: number[] = gaussians(
+    widthInLargePixels,
+    () => {return Math.random()*90 + 10},
+    0, 1
+  )
+  let gaussianSumsPixelsFine: number[] = gaussians(
+    widthInFinePixels,
+    () => {return Math.random()*90 + 10},
+    0, 1
+  )
 
-    /*
-      Take the begining offsets and initialize the columns
-    */
-    for (let i=0; i < widthInLargePixels; i++) {
-      pixelColumnsLarge.push(
-        new Array(Math.floor(gaussianSumsPixelsLarge[i]*30)).fill(randomBlue()),
-      )
-    }
-    console.log(gaussianSumsPixelsLarge)
-    console.log(pixelColumnsLarge)
-    paintPixelsLarge()
-    for (let i=0; i < widthInFinePixels; i++) {
-      pixelColumnsFine.push(
-        new Array(Math.floor(gaussianSumsPixelsFine[i]*30)).fill(randomBlue()),
-      )
-    }
-    console.log(gaussianSumsPixelsFine)
-    console.log(pixelColumnsFine)
-    console.log("here3")
-    paintPixelsFine()
-    console.log("here4")
+  let gaussianSumsPosition: number[] = gaussians(
+    countToAddSmoothed,
+    () => {return Math.random()*90 + 10},
+    -300, 0
+  )
+  let gaussianSumsVelocity: number[] = gaussians(
+    countToAddSmoothed,
+    () => {return Math.random()*90 + 10},
+    0, 0.5
+  )
+  let gaussianSumsAcceleration: number[] = gaussians(
+    countToAddSmoothed,
+    () => {return Math.random()*90 + 10},
+    0.005, 0.01
+  )
+  let gaussianSumsJolt: number[] = gaussians(
+    countToAddSmoothed,
+    () => {return Math.random()*90 + 10},
+    -0.000005, 0.000005
+  )
 
-    gaussianObjects = []
-    for (let index=0; index < countToAddSmoothed; index++) {
-      gaussianObjects.push({
-          position: gaussianSumsPosition[index] - 500*(Math.abs(index-0.15*countToAddSmoothed))/countToAddSmoothed,
-          velocity: gaussianSumsVelocity[index],
-          acceleration: gaussianSumsAcceleration[index],
-          jolt: gaussianSumsJolt[index],
-        })
-    }
+  /*
+    Take the begining offsets and initialize the columns
+  */
+  for (let i=0; i < widthInSuperPixels; i++) {
+    pixelColumnsSuper.push(
+      new Array(Math.floor(gaussianSumsPixelsSuper[i]*30)).fill(theme.base9Gradient()),
+    )
+  }
+  await paintPixelsSuper()
+  for (let i=0; i < widthInLargePixels; i++) {
+    pixelColumnsLarge.push(
+      new Array(Math.floor(gaussianSumsPixelsLarge[i]*30)).fill(theme.base9Gradient()),
+    )
+  }
+  await paintPixelsLarge()
+  for (let i=0; i < widthInFinePixels; i++) {
+    pixelColumnsFine.push(
+      new Array(Math.floor(gaussianSumsPixelsFine[i]*30)).fill(theme.base9Gradient()),
+    )
+  }
+  await paintPixelsFine()
+
+  gaussianObjects = []
+  for (let index=0; index < countToAddSmoothed; index++) {
+    gaussianObjects.push({
+        position: gaussianSumsPosition[index] - 500*(Math.abs(index-0.15*countToAddSmoothed))/countToAddSmoothed,
+        velocity: gaussianSumsVelocity[index],
+        acceleration: gaussianSumsAcceleration[index],
+        jolt: gaussianSumsJolt[index],
+      })
   }
 }
 
@@ -510,8 +629,17 @@ async function renderLoop() {
   }
 }
 
+
+async function paintPixelsSuper() {
+  while ((pixelColumnsSuper[0].length-TOP_BUFFER_PIXEL*2) < heightInSuperPixels) {
+    for (let key in pixelColumnsSuper) {
+      calculateColumnSuper(Number(key))
+    }
+  }
+}
+
 async function paintPixelsLarge() {
-  while ((pixelColumnsLarge[0].length-TOP_BUFFER_PIXEL_LARGE*2)*PIXELATED_LARGE_BOX_SIZE < window.outerHeight) {
+  while ((pixelColumnsLarge[0].length-TOP_BUFFER_PIXEL*2) < heightInLargePixels) {
     for (let key in pixelColumnsLarge) {
       calculateColumnLarge(Number(key))
     }
@@ -519,7 +647,7 @@ async function paintPixelsLarge() {
 }
 
 async function paintPixelsFine() {
-  while ((pixelColumnsFine[0].length-TOP_BUFFER_PIXEL_FINE*2)*PIXELATED_FINE_BOX_SIZE < window.outerHeight) {
+  while ((pixelColumnsFine[0].length-TOP_BUFFER_PIXEL*2) < heightInFinePixels) {
     for (let key in pixelColumnsFine) {
       calculateColumnFine(Number(key))
     }
@@ -529,15 +657,15 @@ async function paintPixelsFine() {
   }
 }
 
-async function calculateColumnLarge(index: number) { 
-  let column = pixelColumnsLarge[index]
+async function calculateColumnSuper(index: number) { 
+  let column = pixelColumnsSuper[index]
 
   /*
     Add new box
   */
 
   /* random color */
-  let color = randomBlue()
+  let color = theme.base9Gradient()
 
   /* smooth out color with existing neighbors */
   let parent = null
@@ -545,11 +673,11 @@ async function calculateColumnLarge(index: number) {
   let rightCousin = null
 
   parent = column[column.length-1]
-  let leftLineage = pixelColumnsLarge[index - 1]
+  let leftLineage = pixelColumnsSuper[index - 1]
   if (leftLineage) {
     leftCousin = leftLineage[column.length - 1]
   }
-  let rightLineage = pixelColumnsLarge[index + 1]
+  let rightLineage = pixelColumnsSuper[index + 1]
   if (rightLineage) {
     rightCousin = rightLineage[column.length - 1]
   }
@@ -611,6 +739,95 @@ async function calculateColumnLarge(index: number) {
   )
 }
 
+async function calculateColumnLarge(index: number) {
+  let column = pixelColumnsLarge[index]
+
+  /*
+    Add new box
+  */
+
+  /* random color */
+  let transdimensionalAncestorColumn = pixelColumnsSuper[Math.floor(index/PIXELATION_RATIO_SUPER_LARGE)]
+
+  let transdimensionalAncestorColor: Color = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO_SUPER_LARGE)+TOP_BUFFER_PIXEL]
+  let color = theme.base9Gradient()
+
+  /* smooth out color with existing neighbors */
+  let parent = null
+  let leftCousin = null
+  let rightCousin = null
+
+  parent = column[column.length-1]
+  let leftLineage = pixelColumnsLarge[index - 1]
+  if (leftLineage) {
+    leftCousin = leftLineage[column.length - 1]
+  }
+  let rightLineage = pixelColumnsLarge[index + 1]
+  if (rightLineage) {
+    rightCousin = rightLineage[column.length - 1]
+  }
+  let colorToTint = {
+    r: 0,
+    g: 0,
+    b: 0,
+    a: 0
+  }
+  let colorsAdded = 0
+  if (parent) {
+    colorToTint.r += parent.hue
+    colorToTint.g += parent.saturation
+    colorToTint.b += parent.lightness
+    colorsAdded += 1
+  }
+  if (leftCousin) {
+    colorToTint.r += leftCousin.hue
+    colorToTint.g += leftCousin.saturation
+    colorToTint.b += leftCousin.lightness
+    colorsAdded += 1
+  }
+  if (rightCousin) {
+    colorToTint.r += rightCousin.hue
+    colorToTint.g += rightCousin.saturation
+    colorToTint.b += rightCousin.lightness
+    colorsAdded += 1
+  }
+  if(colorsAdded != 0) {
+    colorToTint.r /= colorsAdded
+    colorToTint.g /= colorsAdded
+    colorToTint.b /= colorsAdded
+
+    let transdimensionalMultiplier = 2
+    let randomMultiplier = 1
+    let consistentMultiplier = 5
+    let multiplierSum = transdimensionalMultiplier + randomMultiplier + consistentMultiplier
+
+    let red =
+      transdimensionalMultiplier * transdimensionalAncestorColor.hue
+      + randomMultiplier * color.hue
+      + consistentMultiplier * colorToTint.r
+    let green =
+      transdimensionalMultiplier * transdimensionalAncestorColor.saturation
+      + randomMultiplier * color.saturation
+      + consistentMultiplier * colorToTint.g
+    let blue =
+      transdimensionalMultiplier * transdimensionalAncestorColor.lightness
+      + randomMultiplier * color.lightness
+      + consistentMultiplier * colorToTint.b
+
+    red = Math.floor(red/multiplierSum)
+    green = Math.floor(green/multiplierSum)
+    blue = Math.floor(blue/multiplierSum)
+
+    color.hue = red
+    color.saturation = green
+    color.lightness = blue
+  }
+
+  column.push(
+    color
+  )
+}
+
 async function calculateColumnFine(index: number) {
   let column = pixelColumnsFine[index]
 
@@ -619,10 +836,18 @@ async function calculateColumnFine(index: number) {
   */
 
   /* random color */
-  let transdimensionalAncestorColumn = pixelColumnsLarge[Math.floor(index/PIXELATION_RATIO)]
+  let transdimensionalAncestorColumn = pixelColumnsLarge[Math.floor(index/PIXELATION_RATIO_LARGE_FINE)]
 
-  let transdimensionalAncestorColor: Color = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO)]
-  let color = randomBlue()
+  let transdimensionalAncestorColor: Color = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO_LARGE_FINE)+TOP_BUFFER_PIXEL]
+  let color = theme.base9Gradient()
+
+  if (!transdimensionalAncestorColor) {
+    transdimensionalAncestorColor = {
+      hue: 12,
+      saturation: 50,
+      lightness: 80,
+    }
+  }
 
   /* smooth out color with existing neighbors */
   let parent = null
@@ -668,7 +893,7 @@ async function calculateColumnFine(index: number) {
     colorToTint.g /= colorsAdded
     colorToTint.b /= colorsAdded
 
-    let transdimensionalMultiplier = 2
+    let transdimensionalMultiplier = 3
     let randomMultiplier = 1
     let consistentMultiplier = 10
     let multiplierSum = transdimensionalMultiplier + randomMultiplier + consistentMultiplier
@@ -714,7 +939,7 @@ async function renderScene(): Promise<Boolean> {
     //friction
     gaussianObjects[index].velocity *= 0.999
     gaussianObjects[index].position += gaussianObjects[index].velocity
-    if (gaussianObjects[index].position < canvasPixelElement.height + TOP_BUFFER_PIXEL_FINE ) {
+    if (gaussianObjects[index].position < canvasPixelElement.height + 2 ) {
       eachIsDone = false
     }
   }
@@ -747,7 +972,7 @@ async function renderScene(): Promise<Boolean> {
 
 async function renderColumn(columnIndex: number) {
   let column = pixelColumnsFine[columnIndex]
-  for (let boxIndex=0; boxIndex<column.length; boxIndex++) {
+  for (let boxIndex=TOP_BUFFER_PIXEL; boxIndex<column.length; boxIndex++) {
     tryRenderBox(columnIndex, boxIndex)
   }
 }
@@ -759,7 +984,7 @@ function tryRenderBox(columnIndex: number, boxIndex: number): boolean {
       return false
     }
     renderPixel({
-      position: { x: columnIndex-1, y: boxIndex-1},
+      position: { x: columnIndex-1, y: boxIndex-1-TOP_BUFFER_PIXEL},
       color: me,
     })
     return true
@@ -771,7 +996,7 @@ function renderPixel(
     color: Color
 }) {
   let left = (pixelData.position.x)*PIXELATED_FINE_BOX_SIZE
-  let top = (pixelData.position.y-TOP_BUFFER_PIXEL_FINE)*PIXELATED_FINE_BOX_SIZE
+  let top = (pixelData.position.y)*PIXELATED_FINE_BOX_SIZE
   let right = left + PIXELATED_FINE_BOX_SIZE
   let bottom = top + PIXELATED_FINE_BOX_SIZE
 
@@ -784,16 +1009,6 @@ function renderPixel(
 /*
   Helper functions
 */
-function randomBlue(): Color {
-  let basePrimary = theme.base9
-  let color = {
-    hue: basePrimary.hue,// + Math.random()*80 - 40,
-    saturation: basePrimary.saturation + Math.random()*80 - 40,
-    lightness: basePrimary.lightness + Math.random()*100 - 50,
-  }
-  return color
-}
-
 function hslToComponents(hsl: string): Color {
   let splitA = hsl.split(',')
   let hue = splitA[0].split('(')[1]

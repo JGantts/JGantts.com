@@ -380,7 +380,9 @@ let PIXELATED_FINE_BOX_SIZE = 1
 let PIXELATED_LARGE_BOX_SIZE = 8
 let PIXELATION_RATIO = Math.floor(PIXELATED_LARGE_BOX_SIZE/PIXELATED_FINE_BOX_SIZE)
 let SMOOTHED_BOX_SIZE = 16
+
 let TOP_BUFFER_PIXEL_LARGE = 34
+let TOP_BUFFER_PIXEL_FINE = TOP_BUFFER_PIXEL_LARGE * PIXELATION_RATIO
 
 let widthInLargePixels = 0
 let heightInLargePixels = 0
@@ -475,17 +477,19 @@ async function initializeScene() {
         new Array(Math.floor(gaussianSumsPixelsLarge[i]*30)).fill(randomBlue()),
       )
     }
+    console.log(gaussianSumsPixelsLarge)
+    console.log(pixelColumnsLarge)
     paintPixelsLarge()
     for (let i=0; i < widthInFinePixels; i++) {
       pixelColumnsFine.push(
         new Array(Math.floor(gaussianSumsPixelsFine[i]*30)).fill(randomBlue()),
       )
     }
-    console.log(pixelColumnsLarge)
+    console.log(gaussianSumsPixelsFine)
     console.log(pixelColumnsFine)
-  console.log("here3")
+    console.log("here3")
     paintPixelsFine()
-  console.log("here4")
+    console.log("here4")
 
     gaussianObjects = []
     for (let index=0; index < countToAddSmoothed; index++) {
@@ -515,7 +519,7 @@ async function paintPixelsLarge() {
 }
 
 async function paintPixelsFine() {
-  while ((pixelColumnsFine[0].length-TOP_BUFFER_PIXEL_LARGE*2)*PIXELATED_FINE_BOX_SIZE < window.outerHeight) {
+  while ((pixelColumnsFine[0].length-TOP_BUFFER_PIXEL_FINE*2)*PIXELATED_FINE_BOX_SIZE < window.outerHeight) {
     for (let key in pixelColumnsFine) {
       calculateColumnFine(Number(key))
     }
@@ -579,8 +583,8 @@ async function calculateColumnLarge(index: number) {
     colorToTint.g /= colorsAdded
     colorToTint.b /= colorsAdded
 
-    let randomMultiplier = 100
-    let consistentMultiplier = 1
+    let randomMultiplier = 1
+    let consistentMultiplier = 4
     let multiplierSum = randomMultiplier + consistentMultiplier
 
     let red =
@@ -607,7 +611,7 @@ async function calculateColumnLarge(index: number) {
   )
 }
 
-async function calculateColumnFine(index: number) { 
+async function calculateColumnFine(index: number) {
   let column = pixelColumnsFine[index]
 
   /*
@@ -617,8 +621,8 @@ async function calculateColumnFine(index: number) {
   /* random color */
   let transdimensionalAncestorColumn = pixelColumnsLarge[Math.floor(index/PIXELATION_RATIO)]
 
-  let  transdimensionalAncestorColor: Color = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO)]
-  let color = transdimensionalAncestorColor//randomBlue()
+  let transdimensionalAncestorColor: Color = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO)]
+  let color = randomBlue()
 
   /* smooth out color with existing neighbors */
   let parent = null
@@ -664,18 +668,22 @@ async function calculateColumnFine(index: number) {
     colorToTint.g /= colorsAdded
     colorToTint.b /= colorsAdded
 
-    let randomMultiplier = 100
-    let consistentMultiplier = 1
-    let multiplierSum = randomMultiplier + consistentMultiplier
+    let transdimensionalMultiplier = 2
+    let randomMultiplier = 1
+    let consistentMultiplier = 10
+    let multiplierSum = transdimensionalMultiplier + randomMultiplier + consistentMultiplier
 
     let red =
-      randomMultiplier * color.hue
+      transdimensionalMultiplier * transdimensionalAncestorColor.hue
+      + randomMultiplier * color.hue
       + consistentMultiplier * colorToTint.r
     let green =
-      randomMultiplier * color.saturation
+      transdimensionalMultiplier * transdimensionalAncestorColor.saturation
+      + randomMultiplier * color.saturation
       + consistentMultiplier * colorToTint.g
     let blue =
-      randomMultiplier * color.lightness
+      transdimensionalMultiplier * transdimensionalAncestorColor.lightness
+      + randomMultiplier * color.lightness
       + consistentMultiplier * colorToTint.b
 
     red = Math.floor(red/multiplierSum)
@@ -706,7 +714,7 @@ async function renderScene(): Promise<Boolean> {
     //friction
     gaussianObjects[index].velocity *= 0.999
     gaussianObjects[index].position += gaussianObjects[index].velocity
-    if (gaussianObjects[index].position < canvasPixelElement.height + TOP_BUFFER_PIXEL_LARGE ) {
+    if (gaussianObjects[index].position < canvasPixelElement.height + TOP_BUFFER_PIXEL_FINE ) {
       eachIsDone = false
     }
   }
@@ -763,7 +771,7 @@ function renderPixel(
     color: Color
 }) {
   let left = (pixelData.position.x)*PIXELATED_FINE_BOX_SIZE
-  let top = (pixelData.position.y)*PIXELATED_FINE_BOX_SIZE
+  let top = (pixelData.position.y-TOP_BUFFER_PIXEL_FINE)*PIXELATED_FINE_BOX_SIZE
   let right = left + PIXELATED_FINE_BOX_SIZE
   let bottom = top + PIXELATED_FINE_BOX_SIZE
 

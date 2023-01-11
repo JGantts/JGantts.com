@@ -787,7 +787,7 @@ function renderPixel(
 function randomBlue(): Color {
   let basePrimary = theme.base9
   let color = {
-    hue: basePrimary.hue + Math.random()*80 - 40,
+    hue: basePrimary.hue,// + Math.random()*80 - 40,
     saturation: basePrimary.saturation + Math.random()*80 - 40,
     lightness: basePrimary.lightness + Math.random()*100 - 50,
   }

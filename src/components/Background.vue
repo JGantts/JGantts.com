@@ -415,7 +415,7 @@ let theme_AmberDark_Violet_sand: Theme = {
 
 //let theme = theme_SkyDark_Orange_slate
 
-let theme = theme_SkyDark_Orange_slate
+let theme = theme_Sky_Orange_slate
 
 let PIXELATED_FINE_BOX_SIZE = 1
 let PIXELATED_LARGE_BOX_SIZE = 8

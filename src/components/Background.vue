@@ -377,7 +377,7 @@ let themeLime_Blue: Theme = {
 let theme = themeSkyDark_Orange
 
 let PIXELATED_FINE_BOX_SIZE = 1
-let PIXELATED_LARGE_BOX_SIZE = 8
+let PIXELATED_LARGE_BOX_SIZE = 16
 let PIXELATION_RATIO = Math.floor(PIXELATED_LARGE_BOX_SIZE/PIXELATED_FINE_BOX_SIZE)
 let SMOOTHED_BOX_SIZE = 16
 
@@ -584,7 +584,7 @@ async function calculateColumnLarge(index: number) {
     colorToTint.b /= colorsAdded
 
     let randomMultiplier = 1
-    let consistentMultiplier = 4
+    let consistentMultiplier = 10
     let multiplierSum = randomMultiplier + consistentMultiplier
 
     let red =

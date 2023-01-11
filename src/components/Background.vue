@@ -85,7 +85,7 @@ type Theme = {
   //variationLightness: number,
 }
 
-let themeSkyDark_Orange: Theme = {
+let theme_SkyDark_Orange_slate: Theme = {
   base1: hslToComponents(skyDark.sky1),
   base2: hslToComponents(skyDark.sky2),
   base3: hslToComponents(skyDark.sky3),
@@ -126,7 +126,7 @@ let themeSkyDark_Orange: Theme = {
   gray12: hslToComponents(slateDark.slate12),
 }
 
-let themeGrassDark_Tomato: Theme = {
+let theme_GrassDark_Tomato_olive: Theme = {
   base1: hslToComponents(grassDark.grass1),
   base2: hslToComponents(grassDark.grass2),
   base3: hslToComponents(grassDark.grass3),
@@ -167,7 +167,7 @@ let themeGrassDark_Tomato: Theme = {
   gray12: hslToComponents(oliveDark.olive12),
 }
 
-let themeAmberDark_Violet: Theme = {
+let theme_AmberDark_Violet_sand: Theme = {
   base1: hslToComponents(amberDark.amber1),
   base2: hslToComponents(amberDark.amber2),
   base3: hslToComponents(amberDark.amber3),
@@ -208,7 +208,7 @@ let themeAmberDark_Violet: Theme = {
   gray12: hslToComponents(sandDark.sand12),
 }
 
-let themeCrimsonDark_Green: Theme = {
+let theme_CrimsonDark_Green_mauve: Theme = {
   base1: hslToComponents(crimsonDark.crimson1),
   base2: hslToComponents(crimsonDark.crimson2),
   base3: hslToComponents(crimsonDark.crimson3),
@@ -249,7 +249,7 @@ let themeCrimsonDark_Green: Theme = {
   gray12: hslToComponents(mauveDark.mauve12),
 }
 
-let themeRed_Cyan: Theme = {
+let theme_Red_Cyan_mauve: Theme = {
   base1: hslToComponents(red.red1),
   base2: hslToComponents(red.red2),
   base3: hslToComponents(red.red3),
@@ -290,7 +290,7 @@ let themeRed_Cyan: Theme = {
   gray12: hslToComponents(mauve.mauve12),
 }
 
-let themeCyan_Red: Theme = {
+let theme_Cyan_Red_slate: Theme = {
   base1: hslToComponents(cyan.cyan1),
   base2: hslToComponents(cyan.cyan2),
   base3: hslToComponents(cyan.cyan3),
@@ -331,7 +331,7 @@ let themeCyan_Red: Theme = {
   gray12: hslToComponents(slate.slate12),
 }
 
-let themeLime_Blue: Theme = {
+let themeLime_Blue_olive: Theme = {
   base1: hslToComponents(lime.lime1),
   base2: hslToComponents(lime.lime2),
   base3: hslToComponents(lime.lime3),
@@ -372,9 +372,9 @@ let themeLime_Blue: Theme = {
   gray12: hslToComponents(olive.olive12),
 }
 
-//let theme = themeSkyDark_Orange
+//let theme = theme_SkyDark_Orange_slate
 
-let theme = themeSkyDark_Orange
+let theme = theme_SkyDark_Orange_slate
 
 let PIXELATED_FINE_BOX_SIZE = 1
 let PIXELATED_LARGE_BOX_SIZE = 8

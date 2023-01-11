@@ -419,11 +419,17 @@ let theme = theme_Sky_Orange_slate
 
 let PIXELATED_FINE_BOX_SIZE = 1
 let PIXELATED_LARGE_BOX_SIZE = 8
-let PIXELATION_RATIO = Math.floor(PIXELATED_LARGE_BOX_SIZE/PIXELATED_FINE_BOX_SIZE)
+let PIXELATED_SUPER_BOX_SIZE = 32
+let PIXELATION_RATIO_SUPER_LARGE = Math.floor(PIXELATED_SUPER_BOX_SIZE/PIXELATED_LARGE_BOX_SIZE)
+let PIXELATION_RATIO_LARGE_FINE = Math.floor(PIXELATED_LARGE_BOX_SIZE/PIXELATED_FINE_BOX_SIZE)
+let PIXELATION_RATIO_LARGE_SUPER = Math.ceil(PIXELATED_LARGE_BOX_SIZE/PIXELATED_LARGE_BOX_SIZE)
+
 let SMOOTHED_BOX_SIZE = 16
 
-let TOP_BUFFER_PIXEL_LARGE = 34
-let TOP_BUFFER_PIXEL_FINE = TOP_BUFFER_PIXEL_LARGE * PIXELATION_RATIO
+let TOP_BUFFER_PIXEL = 34
+
+let widthInSuperPixels = 0
+let heightInSuperPixels = 0
 
 let widthInLargePixels = 0
 let heightInLargePixels = 0
@@ -452,17 +458,16 @@ type GaussianObject = {
 /*
   Initialize variables
 */
-let pixelColumnsLarge: 
-   Color[][]
- = []
-let pixelColumnsFine: 
-   Color[][]
- = []
+let pixelColumnsSuper: Color[][] = []
+let pixelColumnsLarge: Color[][] = []
+let pixelColumnsFine: Color[][] = []
+
+let gaussianObjects: GaussianObject[]
+
 let canvasPixelElement: HTMLCanvasElement
 let canvasPixelContext: CanvasRenderingContext2D
 let canvasSmoothElement: HTMLCanvasElement
 let canvasSmoothContext: CanvasRenderingContext2D
-let gaussianObjects: GaussianObject[]
 
 /*
   Rendering functions
@@ -475,11 +480,18 @@ async function initializeScene() {
 
   widthInLargePixels = Math.ceil(canvasPixelElement.width/PIXELATED_LARGE_BOX_SIZE) + 1
   heightInLargePixels = Math.ceil(canvasPixelElement.height/PIXELATED_LARGE_BOX_SIZE) + 1
-  widthInFinePixels = widthInLargePixels*PIXELATION_RATIO
-  heightInFinePixels = heightInLargePixels*PIXELATION_RATIO
+  widthInSuperPixels = widthInLargePixels*PIXELATION_RATIO_LARGE_SUPER
+  heightInSuperPixels = heightInLargePixels*PIXELATION_RATIO_LARGE_SUPER
+  widthInFinePixels = widthInLargePixels*PIXELATION_RATIO_LARGE_FINE
+  heightInFinePixels = heightInLargePixels*PIXELATION_RATIO_LARGE_FINE
 
   let countToAddSmoothed = widthInLargePixels*PIXELATED_LARGE_BOX_SIZE/SMOOTHED_BOX_SIZE
 
+  let gaussianSumsPixelsSuper: number[] = gaussians(
+    widthInSuperPixels,
+    () => {return Math.random()*90 + 10},
+    0, 1
+  )
   let gaussianSumsPixelsLarge: number[] = gaussians(
     widthInLargePixels,
     () => {return Math.random()*90 + 10},
@@ -490,6 +502,7 @@ async function initializeScene() {
     () => {return Math.random()*90 + 10},
     0, 1
   )
+
   let gaussianSumsPosition: number[] = gaussians(
     countToAddSmoothed,
     () => {return Math.random()*90 + 10},
@@ -514,24 +527,24 @@ async function initializeScene() {
   /*
     Take the begining offsets and initialize the columns
   */
+  for (let i=0; i < widthInSuperPixels; i++) {
+    pixelColumnsSuper.push(
+      new Array(Math.floor(gaussianSumsPixelsSuper[i]*30)).fill(randomBlue()),
+    )
+  }
+  await paintPixelsSuper()
   for (let i=0; i < widthInLargePixels; i++) {
     pixelColumnsLarge.push(
       new Array(Math.floor(gaussianSumsPixelsLarge[i]*30)).fill(randomBlue()),
     )
   }
-  console.log(gaussianSumsPixelsLarge)
-  console.log(pixelColumnsLarge)
-  paintPixelsLarge()
+  await paintPixelsLarge()
   for (let i=0; i < widthInFinePixels; i++) {
     pixelColumnsFine.push(
       new Array(Math.floor(gaussianSumsPixelsFine[i]*30)).fill(randomBlue()),
     )
   }
-  console.log(gaussianSumsPixelsFine)
-  console.log(pixelColumnsFine)
-  console.log("here3")
-  paintPixelsFine()
-  console.log("here4")
+  await paintPixelsFine()
 
   gaussianObjects = []
   for (let index=0; index < countToAddSmoothed; index++) {
@@ -551,8 +564,17 @@ async function renderLoop() {
   }
 }
 
+
+async function paintPixelsSuper() {
+  while ((pixelColumnsSuper[0].length-TOP_BUFFER_PIXEL*2) < heightInSuperPixels) {
+    for (let key in pixelColumnsSuper) {
+      calculateColumnSuper(Number(key))
+    }
+  }
+}
+
 async function paintPixelsLarge() {
-  while ((pixelColumnsLarge[0].length-TOP_BUFFER_PIXEL_LARGE*2) < heightInLargePixels) {
+  while ((pixelColumnsLarge[0].length-TOP_BUFFER_PIXEL*2) < heightInLargePixels) {
     for (let key in pixelColumnsLarge) {
       calculateColumnLarge(Number(key))
     }
@@ -560,7 +582,7 @@ async function paintPixelsLarge() {
 }
 
 async function paintPixelsFine() {
-  while ((pixelColumnsFine[0].length-TOP_BUFFER_PIXEL_FINE*2) < heightInFinePixels) {
+  while ((pixelColumnsFine[0].length-TOP_BUFFER_PIXEL*2) < heightInFinePixels) {
     for (let key in pixelColumnsFine) {
       calculateColumnFine(Number(key))
     }
@@ -570,8 +592,8 @@ async function paintPixelsFine() {
   }
 }
 
-async function calculateColumnLarge(index: number) { 
-  let column = pixelColumnsLarge[index]
+async function calculateColumnSuper(index: number) { 
+  let column = pixelColumnsSuper[index]
 
   /*
     Add new box
@@ -586,11 +608,11 @@ async function calculateColumnLarge(index: number) {
   let rightCousin = null
 
   parent = column[column.length-1]
-  let leftLineage = pixelColumnsLarge[index - 1]
+  let leftLineage = pixelColumnsSuper[index - 1]
   if (leftLineage) {
     leftCousin = leftLineage[column.length - 1]
   }
-  let rightLineage = pixelColumnsLarge[index + 1]
+  let rightLineage = pixelColumnsSuper[index + 1]
   if (rightLineage) {
     rightCousin = rightLineage[column.length - 1]
   }
@@ -652,6 +674,95 @@ async function calculateColumnLarge(index: number) {
   )
 }
 
+async function calculateColumnLarge(index: number) {
+  let column = pixelColumnsLarge[index]
+
+  /*
+    Add new box
+  */
+
+  /* random color */
+  let transdimensionalAncestorColumn = pixelColumnsSuper[Math.floor(index/PIXELATION_RATIO_SUPER_LARGE)]
+
+  let transdimensionalAncestorColor: Color = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO_SUPER_LARGE)+TOP_BUFFER_PIXEL]
+  let color = randomBlueDeep()
+
+  /* smooth out color with existing neighbors */
+  let parent = null
+  let leftCousin = null
+  let rightCousin = null
+
+  parent = column[column.length-1]
+  let leftLineage = pixelColumnsLarge[index - 1]
+  if (leftLineage) {
+    leftCousin = leftLineage[column.length - 1]
+  }
+  let rightLineage = pixelColumnsLarge[index + 1]
+  if (rightLineage) {
+    rightCousin = rightLineage[column.length - 1]
+  }
+  let colorToTint = {
+    r: 0,
+    g: 0,
+    b: 0,
+    a: 0
+  }
+  let colorsAdded = 0
+  if (parent) {
+    colorToTint.r += parent.hue
+    colorToTint.g += parent.saturation
+    colorToTint.b += parent.lightness
+    colorsAdded += 1
+  }
+  if (leftCousin) {
+    colorToTint.r += leftCousin.hue
+    colorToTint.g += leftCousin.saturation
+    colorToTint.b += leftCousin.lightness
+    colorsAdded += 1
+  }
+  if (rightCousin) {
+    colorToTint.r += rightCousin.hue
+    colorToTint.g += rightCousin.saturation
+    colorToTint.b += rightCousin.lightness
+    colorsAdded += 1
+  }
+  if(colorsAdded != 0) {
+    colorToTint.r /= colorsAdded
+    colorToTint.g /= colorsAdded
+    colorToTint.b /= colorsAdded
+
+    let transdimensionalMultiplier = 2
+    let randomMultiplier = 1
+    let consistentMultiplier = 5
+    let multiplierSum = transdimensionalMultiplier + randomMultiplier + consistentMultiplier
+
+    let red =
+      transdimensionalMultiplier * transdimensionalAncestorColor.hue
+      + randomMultiplier * color.hue
+      + consistentMultiplier * colorToTint.r
+    let green =
+      transdimensionalMultiplier * transdimensionalAncestorColor.saturation
+      + randomMultiplier * color.saturation
+      + consistentMultiplier * colorToTint.g
+    let blue =
+      transdimensionalMultiplier * transdimensionalAncestorColor.lightness
+      + randomMultiplier * color.lightness
+      + consistentMultiplier * colorToTint.b
+
+    red = Math.floor(red/multiplierSum)
+    green = Math.floor(green/multiplierSum)
+    blue = Math.floor(blue/multiplierSum)
+
+    color.hue = red
+    color.saturation = green
+    color.lightness = blue
+  }
+
+  column.push(
+    color
+  )
+}
+
 async function calculateColumnFine(index: number) {
   let column = pixelColumnsFine[index]
 
@@ -660,10 +771,18 @@ async function calculateColumnFine(index: number) {
   */
 
   /* random color */
-  let transdimensionalAncestorColumn = pixelColumnsLarge[Math.floor(index/PIXELATION_RATIO)]
+  let transdimensionalAncestorColumn = pixelColumnsLarge[Math.floor(index/PIXELATION_RATIO_LARGE_FINE)]
 
-  let transdimensionalAncestorColor: Color = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO)]
+  let transdimensionalAncestorColor: Color = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO_LARGE_FINE)+TOP_BUFFER_PIXEL]
   let color = randomBlue()
+
+  if (!transdimensionalAncestorColor) {
+    transdimensionalAncestorColor = {
+      hue: 12,
+      saturation: 50,
+      lightness: 80,
+    }
+  }
 
   /* smooth out color with existing neighbors */
   let parent = null
@@ -709,7 +828,7 @@ async function calculateColumnFine(index: number) {
     colorToTint.g /= colorsAdded
     colorToTint.b /= colorsAdded
 
-    let transdimensionalMultiplier = 2
+    let transdimensionalMultiplier = 3
     let randomMultiplier = 1
     let consistentMultiplier = 10
     let multiplierSum = transdimensionalMultiplier + randomMultiplier + consistentMultiplier
@@ -755,7 +874,7 @@ async function renderScene(): Promise<Boolean> {
     //friction
     gaussianObjects[index].velocity *= 0.999
     gaussianObjects[index].position += gaussianObjects[index].velocity
-    if (gaussianObjects[index].position < canvasPixelElement.height + TOP_BUFFER_PIXEL_FINE ) {
+    if (gaussianObjects[index].position < canvasPixelElement.height + 2 ) {
       eachIsDone = false
     }
   }
@@ -788,7 +907,7 @@ async function renderScene(): Promise<Boolean> {
 
 async function renderColumn(columnIndex: number) {
   let column = pixelColumnsFine[columnIndex]
-  for (let boxIndex=0; boxIndex<column.length; boxIndex++) {
+  for (let boxIndex=TOP_BUFFER_PIXEL; boxIndex<column.length; boxIndex++) {
     tryRenderBox(columnIndex, boxIndex)
   }
 }
@@ -800,7 +919,7 @@ function tryRenderBox(columnIndex: number, boxIndex: number): boolean {
       return false
     }
     renderPixel({
-      position: { x: columnIndex-1, y: boxIndex-1},
+      position: { x: columnIndex-1, y: boxIndex-1-TOP_BUFFER_PIXEL},
       color: me,
     })
     return true
@@ -812,7 +931,7 @@ function renderPixel(
     color: Color
 }) {
   let left = (pixelData.position.x)*PIXELATED_FINE_BOX_SIZE
-  let top = (pixelData.position.y-TOP_BUFFER_PIXEL_FINE)*PIXELATED_FINE_BOX_SIZE
+  let top = (pixelData.position.y)*PIXELATED_FINE_BOX_SIZE
   let right = left + PIXELATED_FINE_BOX_SIZE
   let bottom = top + PIXELATED_FINE_BOX_SIZE
 
@@ -825,7 +944,25 @@ function renderPixel(
 /*
   Helper functions
 */
+function randomColor(): Color {
+  let basePrimary = theme.base9
+  let color = {
+    hue: Math.random()*360,
+    saturation: basePrimary.saturation + Math.random()*80 - 40,
+    lightness: basePrimary.lightness + Math.random()*100 - 50,
+  }
+  return color
+}
 function randomBlue(): Color {
+  let basePrimary = theme.base9
+  let color = {
+    hue: basePrimary.hue,// + Math.random()*80 - 40,
+    saturation: basePrimary.saturation + Math.random()*80 - 40,
+    lightness: basePrimary.lightness + Math.random()*100 - 50,
+  }
+  return color
+}
+function randomBlueDeep(): Color {
   let basePrimary = theme.base9
   let color = {
     hue: basePrimary.hue,// + Math.random()*80 - 40,

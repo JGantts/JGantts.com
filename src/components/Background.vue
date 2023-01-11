@@ -9,12 +9,20 @@ import {
   redDark,
   crimson,
   crimsonDark,
+  blue,
+  blueDark,
+  lime,
+  limeDark,
   green,
   greenDark,
   sky,
   skyDark,
   orange,
   orangeDark,
+  cyan,
+  cyanDark,
+  teal,
+  tealDark,
   violet,
   violetDark,
   amber,
@@ -71,6 +79,10 @@ type Theme = {
   gray10: Color,
   gray11: Color,
   gray12: Color,
+
+  variationHue: number,
+  variationSaturation: number,
+  variationLightness: number,
 }
 
 let themeSkyDark_Orange: Theme = {
@@ -112,6 +124,10 @@ let themeSkyDark_Orange: Theme = {
   gray10: hslToComponents(slateDark.slate10),
   gray11: hslToComponents(slateDark.slate11),
   gray12: hslToComponents(slateDark.slate12),
+
+  variationHue: 80,
+  variationSaturation: 80,
+  variationLightness: 100,
 }
 
 let themeGrassDark_Tomato: Theme = {
@@ -237,12 +253,134 @@ let themeCrimsonDark_Green: Theme = {
   gray12: hslToComponents(mauveDark.mauve12),
 }
 
-let theme = themeSkyDark_Orange
-//let theme = themeGrassDark_Tomato
-//let theme = themeAmberDark_Violet
-//let theme = themeCrimsonDark_Green
+let themeRed_Cyan: Theme = {
+  base1: hslToComponents(red.red1),
+  base2: hslToComponents(red.red2),
+  base3: hslToComponents(red.red3),
+  base4: hslToComponents(red.red4),
+  base5: hslToComponents(red.red5),
+  base6: hslToComponents(red.red6),
+  base7: hslToComponents(red.red7),
+  base8: hslToComponents(red.red8),
+  base9: hslToComponents(red.red9),
+  base10: hslToComponents(red.red10),
+  base11: hslToComponents(red.red11),
+  base12: hslToComponents(red.red12),
 
-let PIXELATED_BOX_SIZE = 8
+  accent1: hslToComponents(cyan.cyan1),
+  accent2: hslToComponents(cyan.cyan2),
+  accent3: hslToComponents(cyan.cyan3),
+  accent4: hslToComponents(cyan.cyan4),
+  accent5: hslToComponents(cyan.cyan5),
+  accent6: hslToComponents(cyan.cyan6),
+  accent7: hslToComponents(cyan.cyan7),
+  accent8: hslToComponents(cyan.cyan8),
+  accent9: hslToComponents(cyan.cyan9),
+  accent10: hslToComponents(cyan.cyan10),
+  accent11: hslToComponents(cyan.cyan11),
+  accent12: hslToComponents(cyan.cyan12),
+
+  gray1: hslToComponents(mauve.mauve1),
+  gray2: hslToComponents(mauve.mauve2),
+  gray3: hslToComponents(mauve.mauve3),
+  gray4: hslToComponents(mauve.mauve4),
+  gray5: hslToComponents(mauve.mauve5),
+  gray6: hslToComponents(mauve.mauve6),
+  gray7: hslToComponents(mauve.mauve7),
+  gray8: hslToComponents(mauve.mauve8),
+  gray9: hslToComponents(mauve.mauve9),
+  gray10: hslToComponents(mauve.mauve10),
+  gray11: hslToComponents(mauve.mauve11),
+  gray12: hslToComponents(mauve.mauve12),
+}
+
+let themeCyan_Red: Theme = {
+  base1: hslToComponents(cyan.cyan1),
+  base2: hslToComponents(cyan.cyan2),
+  base3: hslToComponents(cyan.cyan3),
+  base4: hslToComponents(cyan.cyan4),
+  base5: hslToComponents(cyan.cyan5),
+  base6: hslToComponents(cyan.cyan6),
+  base7: hslToComponents(cyan.cyan7),
+  base8: hslToComponents(cyan.cyan8),
+  base9: hslToComponents(cyan.cyan9),
+  base10: hslToComponents(cyan.cyan10),
+  base11: hslToComponents(cyan.cyan11),
+  base12: hslToComponents(cyan.cyan12),
+
+  accent1: hslToComponents(red.red1),
+  accent2: hslToComponents(red.red2),
+  accent3: hslToComponents(red.red3),
+  accent4: hslToComponents(red.red4),
+  accent5: hslToComponents(red.red5),
+  accent6: hslToComponents(red.red6),
+  accent7: hslToComponents(red.red7),
+  accent8: hslToComponents(red.red8),
+  accent9: hslToComponents(red.red9),
+  accent10: hslToComponents(red.red10),
+  accent11: hslToComponents(red.red11),
+  accent12: hslToComponents(red.red12),
+
+  gray1: hslToComponents(slate.slate1),
+  gray2: hslToComponents(slate.slate2),
+  gray3: hslToComponents(slate.slate3),
+  gray4: hslToComponents(slate.slate4),
+  gray5: hslToComponents(slate.slate5),
+  gray6: hslToComponents(slate.slate6),
+  gray7: hslToComponents(slate.slate7),
+  gray8: hslToComponents(slate.slate8),
+  gray9: hslToComponents(slate.slate9),
+  gray10: hslToComponents(slate.slate10),
+  gray11: hslToComponents(slate.slate11),
+  gray12: hslToComponents(slate.slate12),
+}
+
+let themeLime_Blue: Theme = {
+  base1: hslToComponents(lime.lime1),
+  base2: hslToComponents(lime.lime2),
+  base3: hslToComponents(lime.lime3),
+  base4: hslToComponents(lime.lime4),
+  base5: hslToComponents(lime.lime5),
+  base6: hslToComponents(lime.lime6),
+  base7: hslToComponents(lime.lime7),
+  base8: hslToComponents(lime.lime8),
+  base9: hslToComponents(lime.lime9),
+  base10: hslToComponents(lime.lime10),
+  base11: hslToComponents(lime.lime11),
+  base12: hslToComponents(lime.lime12),
+
+  accent1: hslToComponents(blue.blue1),
+  accent2: hslToComponents(blue.blue2),
+  accent3: hslToComponents(blue.blue3),
+  accent4: hslToComponents(blue.blue4),
+  accent5: hslToComponents(blue.blue5),
+  accent6: hslToComponents(blue.blue6),
+  accent7: hslToComponents(blue.blue7),
+  accent8: hslToComponents(blue.blue8),
+  accent9: hslToComponents(blue.blue9),
+  accent10: hslToComponents(blue.blue10),
+  accent11: hslToComponents(blue.blue11),
+  accent12: hslToComponents(blue.blue12),
+
+  gray1: hslToComponents(olive.olive1),
+  gray2: hslToComponents(olive.olive2),
+  gray3: hslToComponents(olive.olive3),
+  gray4: hslToComponents(olive.olive4),
+  gray5: hslToComponents(olive.olive5),
+  gray6: hslToComponents(olive.olive6),
+  gray7: hslToComponents(olive.olive7),
+  gray8: hslToComponents(olive.olive8),
+  gray9: hslToComponents(olive.olive9),
+  gray10: hslToComponents(olive.olive10),
+  gray11: hslToComponents(olive.olive11),
+  gray12: hslToComponents(olive.olive12),
+}
+
+//let theme = themeSkyDark_Orange
+
+let theme = themeSkyDark_Orange
+
+let PIXELATED_BOX_SIZE = 4
 let SMOOTHED_BOX_SIZE = 8
 let TOP_BUFFER = 34
 

@@ -423,9 +423,14 @@ let theme_Lime_Blue_olive: Theme = {
   gray11: hslToComponents(olive.olive11),
   gray12: hslToComponents(olive.olive12),
 
-  backgroundHue: 0,
-  backgroundSaturation: 0,
-  backgroundLightness: 0,
+  base9Gradient: () => {
+    let base = hslToComponents(lime.lime9)
+    return {
+      hue: base.hue,// + Math.random()*80 - 40,
+      saturation: base.saturation + Math.random()*80 - 40,
+      lightness: base.lightness + Math.random()*100 - 50,
+    }
+  },
 }
 
 let theme_AmberDark_Violet_sand: Theme = {

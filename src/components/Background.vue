@@ -84,8 +84,6 @@ type Theme = {
 
   textAccentOnAccentLowContrast: Color,
   textAccentOnAccent: Color,
-
-  base9Gradient: () => Color,
 }
 
 let theme_GrassDark_Tomato_olive: Theme = {
@@ -132,15 +130,6 @@ let theme_GrassDark_Tomato_olive: Theme = {
 
   textAccentOnAccentLowContrast: hslToComponents(tomatoDark.tomato11),
   textAccentOnAccent: hslToComponents(tomatoDark.tomato12),
-
-  base9Gradient: () => {
-    let base = hslToComponents(grassDark.grass9)
-    return {
-      hue: base.hue,// + Math.random()*80 - 40,
-      saturation: base.saturation + Math.random()*80 - 40,
-      lightness: base.lightness + Math.random()*100 - 50,
-    }
-  },
 }
 
 let theme_Sky_Orange_slate: Theme = {
@@ -187,18 +176,7 @@ let theme_Sky_Orange_slate: Theme = {
 
   textAccentOnAccentLowContrast: hslToComponents(orangeDark.orange11),
   textAccentOnAccent: hslToComponents(orangeDark.orange12),
-
-  base9Gradient: () => {
-    let base = hslToComponents(sky.sky9)
-    let accent = hslToComponents(orange.orange9)
-    return {
-      hue: base.hue,
-      saturation: base.saturation + Math.random()*80 - 40,
-      lightness: base.lightness + Math.random()*100 - 50,
-    }
-  },
 }
-
 
 const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
 
@@ -209,7 +187,7 @@ let theme = darkModePreference.matches ? themeDark : themeLight
 darkModePreference.addEventListener('change', event => {
   theme = event.matches ? themeDark : themeLight
   setCSSColors()
-  initializeBackground()
+  paintPixelsFine()
 })
 
 let PIXELATED_FINE_BOX_SIZE = 1
@@ -248,8 +226,13 @@ type Position = {
   y: number 
 }
 
-type Color = { 
+type Color = {
   hue: number, 
+  saturation: number, 
+  lightness: number
+}
+
+type ColorOffset = {
   saturation: number, 
   lightness: number
 }
@@ -264,9 +247,9 @@ type GaussianObject = {
 /*
   Initialize variables
 */
-let pixelColumnsSuper: Color[][] = []
-let pixelColumnsLarge: Color[][] = []
-let pixelColumnsFine: Color[][] = []
+let pixelColumnsSuper: ColorOffset[][] = []
+let pixelColumnsLarge: ColorOffset[][] = []
+let pixelColumnsFine: ColorOffset[][] = []
 
 let gaussianObjects: GaussianObject[]
 
@@ -321,23 +304,24 @@ async function initializeBackground() {
   */
   for (let i=0; i < widthInSuperPixels; i++) {
     pixelColumnsSuper.push(
-      new Array(Math.floor(gaussianSumsPixelsSuper[i]*30)).fill(theme.base9Gradient()),
+      new Array(Math.floor(gaussianSumsPixelsSuper[i]*30)).fill(base9Gradient()),
     )
   }
-  await paintPixelsSuper()
+  await reconPixelsSuper()
   for (let i=0; i < widthInLargePixels; i++) {
     pixelColumnsLarge.push(
-      new Array(Math.floor(gaussianSumsPixelsLarge[i]*30)).fill(theme.base9Gradient()),
+      new Array(Math.floor(gaussianSumsPixelsLarge[i]*30)).fill(base9Gradient()),
     )
   }
-  await paintPixelsLarge()
+  await reconPixelsLarge()
   for (let i=0; i < widthInFinePixels; i++) {
     pixelColumnsFine.push(
-      new Array(Math.floor(gaussianSumsPixelsFine[i]*30)).fill(theme.base9Gradient()),
+      new Array(Math.floor(gaussianSumsPixelsFine[i]*30)).fill(base9Gradient()),
     )
   }
-  await paintPixelsFine()
+  await reconPixelsFine()
 
+  await paintPixelsFine()
 }
 
 
@@ -389,7 +373,7 @@ async function renderLoop() {
 }
 
 
-async function paintPixelsSuper() {
+async function reconPixelsSuper() {
   while ((pixelColumnsSuper[0].length-TOP_BUFFER_PIXEL*2) < heightInSuperPixels) {
     for (let key in pixelColumnsSuper) {
       calculateColumnSuper(Number(key))
@@ -397,7 +381,7 @@ async function paintPixelsSuper() {
   }
 }
 
-async function paintPixelsLarge() {
+async function reconPixelsLarge() {
   while ((pixelColumnsLarge[0].length-TOP_BUFFER_PIXEL*2) < heightInLargePixels) {
     for (let key in pixelColumnsLarge) {
       calculateColumnLarge(Number(key))
@@ -405,12 +389,15 @@ async function paintPixelsLarge() {
   }
 }
 
-async function paintPixelsFine() {
+async function reconPixelsFine() {
   while ((pixelColumnsFine[0].length-TOP_BUFFER_PIXEL*2) < heightInFinePixels) {
     for (let key in pixelColumnsFine) {
       calculateColumnFine(Number(key))
     }
   }
+}
+
+async function paintPixelsFine() {
   for (let key in pixelColumnsFine) {
     renderColumn(Number(key))
   }
@@ -424,7 +411,7 @@ async function calculateColumnSuper(index: number) {
   */
 
   /* random color */
-  let color = theme.base9Gradient()
+  let color = base9Gradient()
 
   /* smooth out color with existing neighbors */
   let parent = null
@@ -440,55 +427,44 @@ async function calculateColumnSuper(index: number) {
   if (rightLineage) {
     rightCousin = rightLineage[column.length - 1]
   }
-  let colorToTint = {
-    r: 0,
-    g: 0,
-    b: 0,
-    a: 0
+  let colorToTint: ColorOffset = {
+    saturation: 0,
+    lightness: 0
   }
   let colorsAdded = 0
   if (parent) {
-    colorToTint.r += parent.hue
-    colorToTint.g += parent.saturation
-    colorToTint.b += parent.lightness
+    colorToTint.saturation += parent.saturation
+    colorToTint.lightness += parent.lightness
     colorsAdded += 1
   }
   if (leftCousin) {
-    colorToTint.r += leftCousin.hue
-    colorToTint.g += leftCousin.saturation
-    colorToTint.b += leftCousin.lightness
+    colorToTint.saturation += leftCousin.saturation
+    colorToTint.lightness += leftCousin.lightness
     colorsAdded += 1
   }
   if (rightCousin) {
-    colorToTint.r += rightCousin.hue
-    colorToTint.g += rightCousin.saturation
-    colorToTint.b += rightCousin.lightness
+    colorToTint.saturation += rightCousin.saturation
+    colorToTint.lightness += rightCousin.lightness
     colorsAdded += 1
   }
   if(colorsAdded != 0) {
-    colorToTint.r /= colorsAdded
-    colorToTint.g /= colorsAdded
-    colorToTint.b /= colorsAdded
+    colorToTint.saturation /= colorsAdded
+    colorToTint.lightness /= colorsAdded
 
     let multiplierSum = MULT_SUPER_SELF + MULT_SUPER_FAMILY
 
-    let red =
-      MULT_SUPER_SELF * color.hue
-      + MULT_SUPER_FAMILY * colorToTint.r
-    let green =
+    let saturation =
       MULT_SUPER_SELF * color.saturation
-      + MULT_SUPER_FAMILY * colorToTint.g
-    let blue =
+      + MULT_SUPER_FAMILY * colorToTint.saturation
+    let lightness =
       MULT_SUPER_SELF * color.lightness
-      + MULT_SUPER_FAMILY * colorToTint.b
+      + MULT_SUPER_FAMILY * colorToTint.lightness
 
-    red = Math.floor(red/multiplierSum)
-    green = Math.floor(green/multiplierSum)
-    blue = Math.floor(blue/multiplierSum)
+    saturation = Math.floor(saturation/multiplierSum)
+    lightness = Math.floor(lightness/multiplierSum)
 
-    color.hue = red
-    color.saturation = green
-    color.lightness = blue
+    color.saturation = saturation
+    color.lightness = lightness
   }
 
   column.push(
@@ -506,8 +482,8 @@ async function calculateColumnLarge(index: number) {
   /* random color */
   let transdimensionalAncestorColumn = pixelColumnsSuper[Math.floor(index/PIXELATION_RATIO_SUPER_LARGE)]
 
-  let transdimensionalAncestorColor: Color = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO_SUPER_LARGE)+TOP_BUFFER_PIXEL]
-  let color = theme.base9Gradient()
+  let transdimensionalAncestorColor: ColorOffset = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO_SUPER_LARGE)+TOP_BUFFER_PIXEL]
+  let color = base9Gradient()
 
   /* smooth out color with existing neighbors */
   let parent = null
@@ -523,58 +499,46 @@ async function calculateColumnLarge(index: number) {
   if (rightLineage) {
     rightCousin = rightLineage[column.length - 1]
   }
-  let colorToTint = {
-    r: 0,
-    g: 0,
-    b: 0,
-    a: 0
+  let colorToTint: ColorOffset = {
+    saturation: 0,
+    lightness: 0
   }
   let colorsAdded = 0
   if (parent) {
-    colorToTint.r += parent.hue
-    colorToTint.g += parent.saturation
-    colorToTint.b += parent.lightness
+    colorToTint.saturation += parent.saturation
+    colorToTint.lightness += parent.lightness
     colorsAdded += 1
   }
   if (leftCousin) {
-    colorToTint.r += leftCousin.hue
-    colorToTint.g += leftCousin.saturation
-    colorToTint.b += leftCousin.lightness
+    colorToTint.saturation += leftCousin.saturation
+    colorToTint.lightness += leftCousin.lightness
     colorsAdded += 1
   }
   if (rightCousin) {
-    colorToTint.r += rightCousin.hue
-    colorToTint.g += rightCousin.saturation
-    colorToTint.b += rightCousin.lightness
+    colorToTint.saturation += rightCousin.saturation
+    colorToTint.lightness += rightCousin.lightness
     colorsAdded += 1
   }
   if(colorsAdded != 0) {
-    colorToTint.r /= colorsAdded
-    colorToTint.g /= colorsAdded
-    colorToTint.b /= colorsAdded
+    colorToTint.saturation /= colorsAdded
+    colorToTint.lightness /= colorsAdded
 
     let multiplierSum = MULT_LARGE_TRANSDIM + MULT_LARGE_SELF + MULT_LARGE_FAMILY
 
-    let red =
-      MULT_LARGE_TRANSDIM * transdimensionalAncestorColor.hue
-      + MULT_LARGE_SELF * color.hue
-      + MULT_LARGE_FAMILY * colorToTint.r
-    let green =
+    let saturation =
       MULT_LARGE_TRANSDIM * transdimensionalAncestorColor.saturation
       + MULT_LARGE_SELF * color.saturation
-      + MULT_LARGE_FAMILY * colorToTint.g
-    let blue =
+      + MULT_LARGE_FAMILY * colorToTint.saturation
+    let lightness =
       MULT_LARGE_TRANSDIM * transdimensionalAncestorColor.lightness
       + MULT_LARGE_SELF * color.lightness
-      + MULT_LARGE_FAMILY * colorToTint.b
+      + MULT_LARGE_FAMILY * colorToTint.lightness
 
-    red = Math.floor(red/multiplierSum)
-    green = Math.floor(green/multiplierSum)
-    blue = Math.floor(blue/multiplierSum)
+    saturation = Math.floor(saturation/multiplierSum)
+    lightness = Math.floor(lightness/multiplierSum)
 
-    color.hue = red
-    color.saturation = green
-    color.lightness = blue
+    color.saturation = saturation
+    color.lightness = lightness
   }
 
   column.push(
@@ -592,12 +556,11 @@ async function calculateColumnFine(index: number) {
   /* random color */
   let transdimensionalAncestorColumn = pixelColumnsLarge[Math.floor(index/PIXELATION_RATIO_LARGE_FINE)]
 
-  let transdimensionalAncestorColor: Color = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO_LARGE_FINE)+TOP_BUFFER_PIXEL]
-  let color = theme.base9Gradient()
+  let transdimensionalAncestorColor: ColorOffset = transdimensionalAncestorColumn[Math.floor(column.length/PIXELATION_RATIO_LARGE_FINE)+TOP_BUFFER_PIXEL]
+  let color = base9Gradient()
 
   if (!transdimensionalAncestorColor) {
     transdimensionalAncestorColor = {
-      hue: 12,
       saturation: 50,
       lightness: 80,
     }
@@ -617,58 +580,46 @@ async function calculateColumnFine(index: number) {
   if (rightLineage) {
     rightCousin = rightLineage[column.length - 1]
   }
-  let colorToTint = {
-    r: 0,
-    g: 0,
-    b: 0,
-    a: 0
+  let colorToTint: ColorOffset = {
+    saturation: 0,
+    lightness: 0
   }
   let colorsAdded = 0
   if (parent) {
-    colorToTint.r += parent.hue
-    colorToTint.g += parent.saturation
-    colorToTint.b += parent.lightness
+    colorToTint.saturation += parent.saturation
+    colorToTint.lightness += parent.lightness
     colorsAdded += 1
   }
   if (leftCousin) {
-    colorToTint.r += leftCousin.hue
-    colorToTint.g += leftCousin.saturation
-    colorToTint.b += leftCousin.lightness
+    colorToTint.saturation += leftCousin.saturation
+    colorToTint.lightness += leftCousin.lightness
     colorsAdded += 1
   }
   if (rightCousin) {
-    colorToTint.r += rightCousin.hue
-    colorToTint.g += rightCousin.saturation
-    colorToTint.b += rightCousin.lightness
+    colorToTint.saturation += rightCousin.saturation
+    colorToTint.lightness += rightCousin.lightness
     colorsAdded += 1
   }
   if(colorsAdded != 0) {
-    colorToTint.r /= colorsAdded
-    colorToTint.g /= colorsAdded
-    colorToTint.b /= colorsAdded
+    colorToTint.saturation /= colorsAdded
+    colorToTint.lightness /= colorsAdded
 
     let multiplierSum = MULT_PIXEL_TANSDIM + MULT_PIXEL_SELF + MULT_PIXEL_FAMILY
 
-    let red =
-      MULT_PIXEL_TANSDIM * transdimensionalAncestorColor.hue
-      + MULT_PIXEL_SELF * color.hue
-      + MULT_PIXEL_FAMILY * colorToTint.r
-    let green =
+    let saturation =
       MULT_PIXEL_TANSDIM * transdimensionalAncestorColor.saturation
       + MULT_PIXEL_SELF * color.saturation
-      + MULT_PIXEL_FAMILY * colorToTint.g
-    let blue =
+      + MULT_PIXEL_FAMILY * colorToTint.saturation
+    let lightness =
       MULT_PIXEL_TANSDIM * transdimensionalAncestorColor.lightness
       + MULT_PIXEL_SELF * color.lightness
-      + MULT_PIXEL_FAMILY * colorToTint.b
+      + MULT_PIXEL_FAMILY * colorToTint.lightness
 
-    red = Math.floor(red/multiplierSum)
-    green = Math.floor(green/multiplierSum)
-    blue = Math.floor(blue/multiplierSum)
+    saturation = Math.floor(saturation/multiplierSum)
+    lightness = Math.floor(lightness/multiplierSum)
 
-    color.hue = red
-    color.saturation = green
-    color.lightness = blue
+    color.saturation = saturation
+    color.lightness = lightness
   }
 
   column.push(
@@ -744,7 +695,7 @@ function tryRenderBox(columnIndex: number, boxIndex: number): boolean {
 function renderPixel(
   pixelData: {
     position: Position,
-    color: Color
+    color: ColorOffset
 }) {
   let left = (pixelData.position.x)*PIXELATED_FINE_BOX_SIZE
   let top = (pixelData.position.y)*PIXELATED_FINE_BOX_SIZE
@@ -753,13 +704,20 @@ function renderPixel(
 
   canvasPixelContext.clearRect(left, top, PIXELATED_FINE_BOX_SIZE, PIXELATED_FINE_BOX_SIZE)
 
-  canvasPixelContext.fillStyle = componentsTohsl(pixelData.color)
+  canvasPixelContext.fillStyle = componentsPlusThemeTohsl(pixelData.color)
   canvasPixelContext.fillRect(left, top, PIXELATED_FINE_BOX_SIZE, PIXELATED_FINE_BOX_SIZE)
 }
 
 /*
   Helper functions
 */
+function base9Gradient(): ColorOffset {
+    return {
+      saturation: Math.random()*80 - 40,
+      lightness: Math.random()*100 - 50,
+    }
+  }
+
 function hslToComponents(hsl: string): Color {
   let splitA = hsl.split(',')
   let hue = splitA[0].split('(')[1]
@@ -775,6 +733,10 @@ function hslToComponents(hsl: string): Color {
 
 function componentsTohsl(color: Color): string {
   return `hsl(${color.hue}, ${color.saturation}%, ${color.lightness}%)`
+}
+
+function componentsPlusThemeTohsl(color: ColorOffset): string {
+  return `hsl(${theme.base9.hue}, ${theme.base9.saturation + color.saturation}%, ${theme.base9.lightness + color.lightness}%)`
 }
 
 function boxToHex(color: Color, alphaMultiplier: number) {

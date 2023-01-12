@@ -625,6 +625,8 @@ async function initializeScene() {
         jolt: gaussianSumsJolt[index],
       })
   }
+
+  window.requestAnimationFrame(renderLoop)
 }
 
 async function renderLoop() {
@@ -1158,9 +1160,8 @@ onMounted(async () => {
   canvasSmoothElement = document.getElementById('highres-canvas') as HTMLCanvasElement
   canvasSmoothContext = canvasSmoothElement.getContext("2d")!
   
-  await initializeScene()
+  initializeScene()
   //await new Promise(resolve => setTimeout(resolve, 400))
-  window.requestAnimationFrame(renderLoop)
 })
 
 /*onUnmounted(() => {

@@ -21,6 +21,7 @@ const props = defineProps({
 
 <style>
 .router-link-active > .main > .inner {
+  color: var(--textGrayOnAccent);
   background-color: var(--backgroundSolidAccent);
 }
 

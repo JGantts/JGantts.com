@@ -67,18 +67,31 @@ type Theme = {
   accent11: Color,
   accent12: Color,
 
-  gray1: Color,
-  gray2: Color,
-  gray3: Color,
-  gray4: Color,
-  gray5: Color,
-  gray6: Color,
-  gray7: Color,
-  gray8: Color,
-  gray9: Color,
-  gray10: Color,
-  gray11: Color,
-  gray12: Color,
+  baseGray1: Color,
+  baseGray2: Color,
+  baseGray3: Color,
+  baseGray4: Color,
+  baseGray5: Color,
+  baseGray6: Color,
+  baseGray7: Color,
+  baseGray8: Color,
+  baseGray9: Color,
+  baseGray10: Color,
+  baseGray11: Color,
+  baseGray12: Color,
+
+  accentGray1: Color,
+  accentGray2: Color,
+  accentGray3: Color,
+  accentGray4: Color,
+  accentGray5: Color,
+  accentGray6: Color,
+  accentGray7: Color,
+  accentGray8: Color,
+  accentGray9: Color,
+  accentGray10: Color,
+  accentGray11: Color,
+  accentGray12: Color,
 
   base9Gradient: () => Color,
 }
@@ -260,18 +273,31 @@ let theme_GrassDark_Tomato_olive: Theme = {
   accent11: hslToComponents(tomato.tomato11),
   accent12: hslToComponents(tomato.tomato12),
 
-  gray1: hslToComponents(oliveDark.olive1),
-  gray2: hslToComponents(oliveDark.olive2),
-  gray3: hslToComponents(oliveDark.olive3),
-  gray4: hslToComponents(oliveDark.olive4),
-  gray5: hslToComponents(oliveDark.olive5),
-  gray6: hslToComponents(oliveDark.olive6),
-  gray7: hslToComponents(oliveDark.olive7),
-  gray8: hslToComponents(oliveDark.olive8),
-  gray9: hslToComponents(oliveDark.olive9),
-  gray10: hslToComponents(oliveDark.olive10),
-  gray11: hslToComponents(oliveDark.olive11),
-  gray12: hslToComponents(oliveDark.olive12),
+  baseGray1: hslToComponents(oliveDark.olive1),
+  baseGray2: hslToComponents(oliveDark.olive2),
+  baseGray3: hslToComponents(oliveDark.olive3),
+  baseGray4: hslToComponents(oliveDark.olive4),
+  baseGray5: hslToComponents(oliveDark.olive5),
+  baseGray6: hslToComponents(oliveDark.olive6),
+  baseGray7: hslToComponents(oliveDark.olive7),
+  baseGray8: hslToComponents(oliveDark.olive8),
+  baseGray9: hslToComponents(oliveDark.olive9),
+  baseGray10: hslToComponents(oliveDark.olive10),
+  baseGray11: hslToComponents(oliveDark.olive11),
+  baseGray12: hslToComponents(oliveDark.olive12),
+
+  accentGray1: hslToComponents(mauveDark.mauve1),
+  accentGray2: hslToComponents(mauveDark.mauve2),
+  accentGray3: hslToComponents(mauveDark.mauve3),
+  accentGray4: hslToComponents(mauveDark.mauve4),
+  accentGray5: hslToComponents(mauveDark.mauve5),
+  accentGray6: hslToComponents(mauveDark.mauve6),
+  accentGray7: hslToComponents(mauveDark.mauve7),
+  accentGray8: hslToComponents(mauveDark.mauve8),
+  accentGray9: hslToComponents(mauveDark.mauve9),
+  accentGray10: hslToComponents(mauveDark.mauve10),
+  accentGray11: hslToComponents(mauveDark.mauve11),
+  accentGray12: hslToComponents(mauveDark.mauve12),
 
   base9Gradient: () => {
     let base = hslToComponents(grassDark.grass9)
@@ -310,18 +336,31 @@ let theme_Sky_Orange_slate: Theme = {
   accent11: hslToComponents(orange.orange11),
   accent12: hslToComponents(orange.orange12),
 
-  gray1: hslToComponents(slate.slate1),
-  gray2: hslToComponents(slate.slate2),
-  gray3: hslToComponents(slate.slate3),
-  gray4: hslToComponents(slate.slate4),
-  gray5: hslToComponents(slate.slate5),
-  gray6: hslToComponents(slate.slate6),
-  gray7: hslToComponents(slate.slate7),
-  gray8: hslToComponents(slate.slate8),
-  gray9: hslToComponents(slate.slate9),
-  gray10: hslToComponents(slate.slate10),
-  gray11: hslToComponents(slate.slate11),
-  gray12: hslToComponents(slate.slate12),
+  baseGray1: hslToComponents(slate.slate1),
+  baseGray2: hslToComponents(slate.slate2),
+  baseGray3: hslToComponents(slate.slate3),
+  baseGray4: hslToComponents(slate.slate4),
+  baseGray5: hslToComponents(slate.slate5),
+  baseGray6: hslToComponents(slate.slate6),
+  baseGray7: hslToComponents(slate.slate7),
+  baseGray8: hslToComponents(slate.slate8),
+  baseGray9: hslToComponents(slate.slate9),
+  baseGray10: hslToComponents(slate.slate10),
+  baseGray11: hslToComponents(slate.slate11),
+  baseGray12: hslToComponents(slate.slate12),
+
+  accentGray1: hslToComponents(mauveDark.mauve1),
+  accentGray2: hslToComponents(mauveDark.mauve2),
+  accentGray3: hslToComponents(mauveDark.mauve3),
+  accentGray4: hslToComponents(mauveDark.mauve4),
+  accentGray5: hslToComponents(mauveDark.mauve5),
+  accentGray6: hslToComponents(mauveDark.mauve6),
+  accentGray7: hslToComponents(mauveDark.mauve7),
+  accentGray8: hslToComponents(mauveDark.mauve8),
+  accentGray9: hslToComponents(mauveDark.mauve9),
+  accentGray10: hslToComponents(mauveDark.mauve10),
+  accentGray11: hslToComponents(mauveDark.mauve11),
+  accentGray12: hslToComponents(mauveDark.mauve12),
 
   base9Gradient: () => {
     let base = hslToComponents(sky.sky9)
@@ -361,18 +400,18 @@ let theme_SkyDark_Orange_slate: Theme = {
   accent11: hslToComponents(orange.orange11),
   accent12: hslToComponents(orange.orange12),
 
-  gray1: hslToComponents(slateDark.slate1),
-  gray2: hslToComponents(slateDark.slate2),
-  gray3: hslToComponents(slateDark.slate3),
-  gray4: hslToComponents(slateDark.slate4),
-  gray5: hslToComponents(slateDark.slate5),
-  gray6: hslToComponents(slateDark.slate6),
-  gray7: hslToComponents(slateDark.slate7),
-  gray8: hslToComponents(slateDark.slate8),
-  gray9: hslToComponents(slateDark.slate9),
-  gray10: hslToComponents(slateDark.slate10),
-  gray11: hslToComponents(slateDark.slate11),
-  gray12: hslToComponents(slateDark.slate12),
+  baseGray1: hslToComponents(slateDark.slate1),
+  baseGray2: hslToComponents(slateDark.slate2),
+  baseGray3: hslToComponents(slateDark.slate3),
+  baseGray4: hslToComponents(slateDark.slate4),
+  baseGray5: hslToComponents(slateDark.slate5),
+  baseGray6: hslToComponents(slateDark.slate6),
+  baseGray7: hslToComponents(slateDark.slate7),
+  baseGray8: hslToComponents(slateDark.slate8),
+  baseGray9: hslToComponents(slateDark.slate9),
+  baseGray10: hslToComponents(slateDark.slate10),
+  baseGray11: hslToComponents(slateDark.slate11),
+  baseGray12: hslToComponents(slateDark.slate12),
 
   base9Gradient: () => {
     let base = hslToComponents(skyDark.sky9)
@@ -411,18 +450,18 @@ let theme_Lime_Blue_olive: Theme = {
   accent11: hslToComponents(blue.blue11),
   accent12: hslToComponents(blue.blue12),
 
-  gray1: hslToComponents(olive.olive1),
-  gray2: hslToComponents(olive.olive2),
-  gray3: hslToComponents(olive.olive3),
-  gray4: hslToComponents(olive.olive4),
-  gray5: hslToComponents(olive.olive5),
-  gray6: hslToComponents(olive.olive6),
-  gray7: hslToComponents(olive.olive7),
-  gray8: hslToComponents(olive.olive8),
-  gray9: hslToComponents(olive.olive9),
-  gray10: hslToComponents(olive.olive10),
-  gray11: hslToComponents(olive.olive11),
-  gray12: hslToComponents(olive.olive12),
+  baseGray1: hslToComponents(olive.olive1),
+  baseGray2: hslToComponents(olive.olive2),
+  baseGray3: hslToComponents(olive.olive3),
+  baseGray4: hslToComponents(olive.olive4),
+  baseGray5: hslToComponents(olive.olive5),
+  baseGray6: hslToComponents(olive.olive6),
+  baseGray7: hslToComponents(olive.olive7),
+  baseGray8: hslToComponents(olive.olive8),
+  baseGray9: hslToComponents(olive.olive9),
+  baseGray10: hslToComponents(olive.olive10),
+  baseGray11: hslToComponents(olive.olive11),
+  baseGray12: hslToComponents(olive.olive12),
 
   base9Gradient: () => {
     let base = hslToComponents(lime.lime9)
@@ -461,18 +500,18 @@ let theme_AmberDark_Violet_sand: Theme = {
   accent11: hslToComponents(violet.violet11),
   accent12: hslToComponents(violet.violet12),
 
-  gray1: hslToComponents(sandDark.sand1),
-  gray2: hslToComponents(sandDark.sand2),
-  gray3: hslToComponents(sandDark.sand3),
-  gray4: hslToComponents(sandDark.sand4),
-  gray5: hslToComponents(sandDark.sand5),
-  gray6: hslToComponents(sandDark.sand6),
-  gray7: hslToComponents(sandDark.sand7),
-  gray8: hslToComponents(sandDark.sand8),
-  gray9: hslToComponents(sandDark.sand9),
-  gray10: hslToComponents(sandDark.sand10),
-  gray11: hslToComponents(sandDark.sand11),
-  gray12: hslToComponents(sandDark.sand12),
+  baseGray1: hslToComponents(sandDark.sand1),
+  baseGray2: hslToComponents(sandDark.sand2),
+  baseGray3: hslToComponents(sandDark.sand3),
+  baseGray4: hslToComponents(sandDark.sand4),
+  baseGray5: hslToComponents(sandDark.sand5),
+  baseGray6: hslToComponents(sandDark.sand6),
+  baseGray7: hslToComponents(sandDark.sand7),
+  baseGray8: hslToComponents(sandDark.sand8),
+  baseGray9: hslToComponents(sandDark.sand9),
+  baseGray10: hslToComponents(sandDark.sand10),
+  baseGray11: hslToComponents(sandDark.sand11),
+  baseGray12: hslToComponents(sandDark.sand12),
 
   base9Gradient: () => {
     let base = hslToComponents(amberDark.amber9)
@@ -484,7 +523,7 @@ let theme_AmberDark_Violet_sand: Theme = {
   },
 }
 */
-//let theme = theme_SkyDark_Orange_slate
+//let theme = theme_Sky_Orange_slate
 
 let theme = theme_Sky_Orange_slate
 
@@ -1146,18 +1185,31 @@ onMounted(async () => {
   bs.setProperty("--accent11", componentsTohsl(theme.accent11))
   bs.setProperty("--accent12", componentsTohsl(theme.accent12))
 
-  bs.setProperty("--gray1", componentsTohsl(theme.gray1))
-  bs.setProperty("--gray2", componentsTohsl(theme.gray2))
-  bs.setProperty("--gray3", componentsTohsl(theme.gray3))
-  bs.setProperty("--gray4", componentsTohsl(theme.gray4))
-  bs.setProperty("--gray5", componentsTohsl(theme.gray5))
-  bs.setProperty("--gray6", componentsTohsl(theme.gray6))
-  bs.setProperty("--gray7", componentsTohsl(theme.gray7))
-  bs.setProperty("--gray8", componentsTohsl(theme.gray8))
-  bs.setProperty("--gray9", componentsTohsl(theme.gray9))
-  bs.setProperty("--gray10", componentsTohsl(theme.gray10))
-  bs.setProperty("--gray11", componentsTohsl(theme.gray11))
-  bs.setProperty("--gray12", componentsTohsl(theme.gray12))
+  bs.setProperty("--baseGray1", componentsTohsl(theme.baseGray1))
+  bs.setProperty("--baseGray2", componentsTohsl(theme.baseGray2))
+  bs.setProperty("--baseGray3", componentsTohsl(theme.baseGray3))
+  bs.setProperty("--baseGray4", componentsTohsl(theme.baseGray4))
+  bs.setProperty("--baseGray5", componentsTohsl(theme.baseGray5))
+  bs.setProperty("--baseGray6", componentsTohsl(theme.baseGray6))
+  bs.setProperty("--baseGray7", componentsTohsl(theme.baseGray7))
+  bs.setProperty("--baseGray8", componentsTohsl(theme.baseGray8))
+  bs.setProperty("--baseGray9", componentsTohsl(theme.baseGray9))
+  bs.setProperty("--baseGray10", componentsTohsl(theme.baseGray10))
+  bs.setProperty("--baseGray11", componentsTohsl(theme.baseGray11))
+  bs.setProperty("--baseGray12", componentsTohsl(theme.baseGray12))
+
+  bs.setProperty("--accentGray1", componentsTohsl(theme.accentGray1))
+  bs.setProperty("--accentGray2", componentsTohsl(theme.accentGray2))
+  bs.setProperty("--accentGray3", componentsTohsl(theme.accentGray3))
+  bs.setProperty("--accentGray4", componentsTohsl(theme.accentGray4))
+  bs.setProperty("--accentGray5", componentsTohsl(theme.accentGray5))
+  bs.setProperty("--accentGray6", componentsTohsl(theme.accentGray6))
+  bs.setProperty("--accentGray7", componentsTohsl(theme.accentGray7))
+  bs.setProperty("--accentGray8", componentsTohsl(theme.accentGray8))
+  bs.setProperty("--accentGray9", componentsTohsl(theme.accentGray9))
+  bs.setProperty("--accentGray10", componentsTohsl(theme.accentGray10))
+  bs.setProperty("--accentGray11", componentsTohsl(theme.accentGray11))
+  bs.setProperty("--accentGray12", componentsTohsl(theme.accentGray12))
 
   canvasPixelElement = document.getElementById('lowres-canvas') as HTMLCanvasElement
   canvasPixelContext = canvasPixelElement.getContext("2d")!

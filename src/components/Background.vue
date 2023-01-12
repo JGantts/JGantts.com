@@ -325,8 +325,9 @@ let theme_Sky_Orange_slate: Theme = {
 
   base9Gradient: () => {
     let base = hslToComponents(sky.sky9)
+    let accent = hslToComponents(orange.orange9)
     return {
-      hue: base.hue,// + Math.random()*80 - 40,
+      hue: base.hue,
       saturation: base.saturation + Math.random()*80 - 40,
       lightness: base.lightness + Math.random()*100 - 50,
     }
@@ -489,10 +490,21 @@ let theme = theme_Sky_Orange_slate
 
 let PIXELATED_FINE_BOX_SIZE = 1
 let PIXELATED_LARGE_BOX_SIZE = 8
-let PIXELATED_SUPER_BOX_SIZE = 32
+let PIXELATED_SUPER_BOX_SIZE = 64
 let PIXELATION_RATIO_SUPER_LARGE = Math.floor(PIXELATED_SUPER_BOX_SIZE/PIXELATED_LARGE_BOX_SIZE)
 let PIXELATION_RATIO_LARGE_FINE = Math.floor(PIXELATED_LARGE_BOX_SIZE/PIXELATED_FINE_BOX_SIZE)
 let PIXELATION_RATIO_LARGE_SUPER = Math.ceil(PIXELATED_LARGE_BOX_SIZE/PIXELATED_LARGE_BOX_SIZE)
+
+let MULT_SUPER_SELF = 1
+let MULT_SUPER_FAMILY = 10
+
+let MULT_LARGE_TRANSDIM = 4
+let MULT_LARGE_SELF = 1
+let MULT_LARGE_FAMILY = 10
+
+let MULT_PIXEL_TANSDIM = 2
+let MULT_PIXEL_SELF = 1
+let MULT_PIXEL_FAMILY = 10
 
 let SMOOTHED_BOX_SIZE = 10
 
@@ -718,19 +730,17 @@ async function calculateColumnSuper(index: number) {
     colorToTint.g /= colorsAdded
     colorToTint.b /= colorsAdded
 
-    let randomMultiplier = 1
-    let consistentMultiplier = 10
-    let multiplierSum = randomMultiplier + consistentMultiplier
+    let multiplierSum = MULT_SUPER_SELF + MULT_SUPER_FAMILY
 
     let red =
-      randomMultiplier * color.hue
-      + consistentMultiplier * colorToTint.r
+      MULT_SUPER_SELF * color.hue
+      + MULT_SUPER_FAMILY * colorToTint.r
     let green =
-      randomMultiplier * color.saturation
-      + consistentMultiplier * colorToTint.g
+      MULT_SUPER_SELF * color.saturation
+      + MULT_SUPER_FAMILY * colorToTint.g
     let blue =
-      randomMultiplier * color.lightness
-      + consistentMultiplier * colorToTint.b
+      MULT_SUPER_SELF * color.lightness
+      + MULT_SUPER_FAMILY * colorToTint.b
 
     red = Math.floor(red/multiplierSum)
     green = Math.floor(green/multiplierSum)
@@ -803,23 +813,20 @@ async function calculateColumnLarge(index: number) {
     colorToTint.g /= colorsAdded
     colorToTint.b /= colorsAdded
 
-    let transdimensionalMultiplier = 2
-    let randomMultiplier = 1
-    let consistentMultiplier = 5
-    let multiplierSum = transdimensionalMultiplier + randomMultiplier + consistentMultiplier
+    let multiplierSum = MULT_LARGE_TRANSDIM + MULT_LARGE_SELF + MULT_LARGE_FAMILY
 
     let red =
-      transdimensionalMultiplier * transdimensionalAncestorColor.hue
-      + randomMultiplier * color.hue
-      + consistentMultiplier * colorToTint.r
+      MULT_LARGE_TRANSDIM * transdimensionalAncestorColor.hue
+      + MULT_LARGE_SELF * color.hue
+      + MULT_LARGE_FAMILY * colorToTint.r
     let green =
-      transdimensionalMultiplier * transdimensionalAncestorColor.saturation
-      + randomMultiplier * color.saturation
-      + consistentMultiplier * colorToTint.g
+      MULT_LARGE_TRANSDIM * transdimensionalAncestorColor.saturation
+      + MULT_LARGE_SELF * color.saturation
+      + MULT_LARGE_FAMILY * colorToTint.g
     let blue =
-      transdimensionalMultiplier * transdimensionalAncestorColor.lightness
-      + randomMultiplier * color.lightness
-      + consistentMultiplier * colorToTint.b
+      MULT_LARGE_TRANSDIM * transdimensionalAncestorColor.lightness
+      + MULT_LARGE_SELF * color.lightness
+      + MULT_LARGE_FAMILY * colorToTint.b
 
     red = Math.floor(red/multiplierSum)
     green = Math.floor(green/multiplierSum)
@@ -900,23 +907,20 @@ async function calculateColumnFine(index: number) {
     colorToTint.g /= colorsAdded
     colorToTint.b /= colorsAdded
 
-    let transdimensionalMultiplier = 3
-    let randomMultiplier = 1
-    let consistentMultiplier = 10
-    let multiplierSum = transdimensionalMultiplier + randomMultiplier + consistentMultiplier
+    let multiplierSum = MULT_PIXEL_TANSDIM + MULT_PIXEL_SELF + MULT_PIXEL_FAMILY
 
     let red =
-      transdimensionalMultiplier * transdimensionalAncestorColor.hue
-      + randomMultiplier * color.hue
-      + consistentMultiplier * colorToTint.r
+      MULT_PIXEL_TANSDIM * transdimensionalAncestorColor.hue
+      + MULT_PIXEL_SELF * color.hue
+      + MULT_PIXEL_FAMILY * colorToTint.r
     let green =
-      transdimensionalMultiplier * transdimensionalAncestorColor.saturation
-      + randomMultiplier * color.saturation
-      + consistentMultiplier * colorToTint.g
+      MULT_PIXEL_TANSDIM * transdimensionalAncestorColor.saturation
+      + MULT_PIXEL_SELF * color.saturation
+      + MULT_PIXEL_FAMILY * colorToTint.g
     let blue =
-      transdimensionalMultiplier * transdimensionalAncestorColor.lightness
-      + randomMultiplier * color.lightness
-      + consistentMultiplier * colorToTint.b
+      MULT_PIXEL_TANSDIM * transdimensionalAncestorColor.lightness
+      + MULT_PIXEL_SELF * color.lightness
+      + MULT_PIXEL_FAMILY * colorToTint.b
 
     red = Math.floor(red/multiplierSum)
     green = Math.floor(green/multiplierSum)

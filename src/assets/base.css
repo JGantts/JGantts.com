@@ -22,13 +22,6 @@ body {
 --backgroundSolidAccent: var(--accent9);
 --backgroundSolidHoveredBase: var(--base10);
 --backgroundSolidHoveredAccent: var(--accent10);
-
---textLowGray: var(--gray11);
---textLowBase: var(--base11);
---textLowAccent: var(--accent11);
---textGray: var(--gray12);
---textBase: var(--base12);
---textAccent: var(--accent12);
 }
 
 
@@ -110,7 +103,7 @@ button, input[type="submit"], input[type="reset"] {
 }
 
 body {
-  color: var(--textGray);
+  color: var(--textGrayOnBase);
 }
 
 #backgorund-holder {
@@ -149,7 +142,7 @@ html {
 }
 
 #text03 {
-  color: var(--textLowGray);
+  color: var(--textGrayOnBaseLowContrast);
   font-size: 0.625em;
   line-height: 1.5;
   font-weight: 300;
@@ -733,7 +726,7 @@ h1 span.p, h2 span.p, h3 span.p, p span.p {
 }
 
 #links01 li a:hover .underline-link {
-  color: var(--textLowAccent);
+  color: var(--textAccentOnBaseLowContrast);
 }
 
 @media (max-width: 1920px) {

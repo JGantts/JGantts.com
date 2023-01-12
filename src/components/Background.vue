@@ -82,7 +82,7 @@ type Theme = {
 
   base9Gradient: () => Color,
 }
-
+/*
 let theme_Red_Cyan_mauve: Theme = {
   base1: hslToComponents(red.red1),
   base2: hslToComponents(red.red2),
@@ -232,7 +232,7 @@ let theme_Cyan_Red_slate: Theme = {
     }
   },
 }
-
+*/
 let theme_GrassDark_Tomato_olive: Theme = {
   base1: hslToComponents(grassDark.grass1),
   base2: hslToComponents(grassDark.grass2),
@@ -333,7 +333,7 @@ let theme_Sky_Orange_slate: Theme = {
     }
   },
 }
-
+/*
 let theme_SkyDark_Orange_slate: Theme = {
   base1: hslToComponents(skyDark.sky1),
   base2: hslToComponents(skyDark.sky2),
@@ -483,7 +483,7 @@ let theme_AmberDark_Violet_sand: Theme = {
     }
   },
 }
-
+*/
 //let theme = theme_SkyDark_Orange_slate
 
 let theme = theme_Sky_Orange_slate

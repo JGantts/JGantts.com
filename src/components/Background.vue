@@ -812,6 +812,7 @@ function colorOffsetPlusThemePositionToHsl(offset: ColorOffset, position: Positi
   return componentsToHsl(color)
 }
 
+//Function only works when hues differentials don't cross 0/360
 function gradientAtPercentage(percentage: number): Color {
   let colorA: Color|null = null
   let colorB: Color|null = null
@@ -819,10 +820,6 @@ function gradientAtPercentage(percentage: number): Color {
 
   for (let index=0; index < theme.backgroundColors.length; index++) {
     if (theme.backgroundColors[index].stop > percentage) {
-      /*console.log(index)
-      console.log(theme.backgroundColors[index].stop)
-      console.log(percentage)
-      console.log("\n")*/
       let stopA = theme.backgroundColors[index-1]
       let stopB = theme.backgroundColors[index]
 

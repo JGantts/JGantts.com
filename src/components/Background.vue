@@ -49,6 +49,8 @@ import {
   sand,
   sandDark,
 
+  yellow,
+  yellowDark,
   amber,
   amberDark,
   orange,
@@ -100,6 +102,8 @@ type Theme = {
 
   textAccentOnAccentLowContrast: Color,
   textAccentOnAccent: Color,
+
+  backgroundColors: { stop: number, color: Color}[]
 }
 
 let theme_GrassDark_olive__Tomato_mauve: Theme = {
@@ -146,53 +150,16 @@ let theme_GrassDark_olive__Tomato_mauve: Theme = {
 
   textAccentOnAccentLowContrast: hslToComponents(tomatoDark.tomato11),
   textAccentOnAccent: hslToComponents(tomatoDark.tomato12),
+
+  backgroundColors: [
+    { stop: 0, color: hslToComponents(sky.sky9) },
+    { stop: 0.3, color: hslToComponents(blue.blue9) },
+    { stop: 0.5, color: hslToComponents(green.green9) },
+    { stop: 0.6, color: hslToComponents(grass.grass9) },
+    { stop: 1, color: hslToComponents(green.green9) },
+  ],
 }
 
-let theme_Sky_slate__Orange_sand: Theme = {
-  base1: hslToComponents(sky.sky1),
-  base2: hslToComponents(sky.sky2),
-  base3: hslToComponents(sky.sky3),
-  base4: hslToComponents(sky.sky4),
-  base5: hslToComponents(sky.sky5),
-  base6: hslToComponents(sky.sky6),
-  base7: hslToComponents(sky.sky7),
-  base8: hslToComponents(sky.sky8),
-  base9: hslToComponents(sky.sky9),
-  base10: hslToComponents(sky.sky10),
-  base11: hslToComponents(sky.sky11),
-  base12: hslToComponents(sky.sky12),
-
-  accent1: hslToComponents(orange.orange1),
-  accent2: hslToComponents(orange.orange2),
-  accent3: hslToComponents(orange.orange3),
-  accent4: hslToComponents(orange.orange4),
-  accent5: hslToComponents(orange.orange5),
-  accent6: hslToComponents(orange.orange6),
-  accent7: hslToComponents(orange.orange7),
-  accent8: hslToComponents(orange.orange8),
-  accent9: hslToComponents(orange.orange9),
-  accent10: hslToComponents(orange.orange10),
-  accent11: hslToComponents(orange.orange11),
-  accent12: hslToComponents(orange.orange12),
-
-  textGrayOnBaseLowContrast: hslToComponents(slate.slate11),
-  textGrayOnBase: hslToComponents(slate.slate12),
-
-  textGrayOnAccentLowContrast: hslToComponents(sandDark.sand11),
-  textGrayOnAccent: hslToComponents(sandDark.sand12),
-
-  textBaseOnBaseLowContrast: hslToComponents(skyDark.sky11),
-  textBaseOnBase: hslToComponents(skyDark.sky12),
-
-  textBaseOnAccentLowContrast: hslToComponents(sky.sky11),
-  textBaseOnAccent: hslToComponents(sky.sky12),
-
-  textAccentOnBaseLowContrast: hslToComponents(orange.orange11),
-  textAccentOnBase: hslToComponents(orange.orange12),
-
-  textAccentOnAccentLowContrast: hslToComponents(orangeDark.orange11),
-  textAccentOnAccent: hslToComponents(orangeDark.orange12),
-}
 let theme_Blue_slate__Orange_sand: Theme = {
   base1: hslToComponents(blue.blue1),
   base2: hslToComponents(blue.blue2),
@@ -237,6 +204,14 @@ let theme_Blue_slate__Orange_sand: Theme = {
 
   textAccentOnAccentLowContrast: hslToComponents(orangeDark.orange11),
   textAccentOnAccent: hslToComponents(orangeDark.orange12),
+
+  backgroundColors: [
+    { stop: 0, color: hslToComponents(sky.sky9) },
+    { stop: 0.3, color: hslToComponents(sky.sky9) },
+    { stop: 0.5, color: hslToComponents(blue.blue9) },
+    { stop: 0.6, color: hslToComponents(blue.blue9) },
+    { stop: 1, color: hslToComponents(green.green9) },
+  ],
 }
 
 const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
@@ -803,23 +778,60 @@ function componentsToHsl(color: Color): string {
 
 function colorOffsetPlusThemePositionToHsl(offset: ColorOffset, position: Position): string {
   let positionalPercentage = (position.x + position.y)/2
+  if (positionalPercentage < 0) {
+    positionalPercentage = 0
+  }
+  let colorBase = gradientAtPercentage(positionalPercentage)
   let color: Color = {
-    hue: jganttsHue(offset.lightness, positionalPercentage, theme),
-    saturation: jganttsSaturation(offset.lightness, positionalPercentage, theme),
-    lightness: jganttsLightness(offset.lightness, positionalPercentage, theme)
+    hue: jganttsHue(offset.lightness, positionalPercentage, colorBase),
+    saturation: jganttsSaturation(offset.lightness, positionalPercentage, colorBase),
+    lightness: jganttsLightness(offset.lightness, positionalPercentage, colorBase)
   }
   return componentsToHsl(color)
 }
 
-function jganttsHue(offset: number, positionalPercentage: number, theme: Theme): number {
-  return theme.base9.hue 
+function gradientAtPercentage(percentage: number): Color {
+  let colorA: Color|null = null
+  let colorB: Color|null = null
+  let percentageAlongSection: number
+
+  for (let index=0; index < theme.backgroundColors.length; index++) {
+    if (theme.backgroundColors[index].stop > percentage) {
+      let stopA = theme.backgroundColors[index-1]
+      let stopB = theme.backgroundColors[index]
+
+      let lengthBetweenStops = stopB.stop-stopA.stop
+      let lengthSinceStopA = percentage - stopA.stop
+      percentageAlongSection = lengthSinceStopA/lengthBetweenStops
+      colorA = stopA.color
+      colorB = stopB.color
+      break
+    }
+  }
+  if (!colorA || !colorB) { 
+    return theme.backgroundColors[0].color
+  }
+  let hue = colorA!.hue*(1-percentageAlongSection!) + colorB!.hue*percentageAlongSection!
+  let saturation = colorA!.saturation*(1-percentageAlongSection!) + colorB!.saturation*percentageAlongSection!
+  let lightness = colorA!.lightness*(1-percentageAlongSection!) + colorB!.lightness*percentageAlongSection!
+
+  return {
+    hue,
+    saturation,
+    lightness
+  }
 }
-function jganttsSaturation(offset: number, positionalPercentage: number, theme: Theme): number {
-  return theme.base9.saturation/1.2 + offset
+
+function jganttsHue(offset: number, positionalPercentage: number, colorBase: Color): number {
+  let hue = colorBase.hue
+  return hue
 }
-function jganttsLightness(offset: number, positionalPercentage: number, theme: Theme): number {
+function jganttsSaturation(offset: number, positionalPercentage: number, colorBase: Color): number {
+  return colorBase.saturation/1.2 + offset
+}
+function jganttsLightness(offset: number, positionalPercentage: number, colorBase: Color): number {
   let positionalLightness = (1-positionalPercentage)*0.2 + 0.8
-  return (theme.base9.lightness + offset) * positionalLightness
+  return (colorBase.lightness + offset)// * positionalLightness
 }
 
 function boxToHex(color: Color, alphaMultiplier: number) {

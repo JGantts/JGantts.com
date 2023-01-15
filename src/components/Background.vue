@@ -3,40 +3,62 @@ import { ref, onMounted, onUnmounted } from 'vue'
 // @ts-ignore
 import{ Smooth } from '../assets/Smooth'
 import {
+  // Mauve
+  mauve,
+  mauveDark,
+
   tomato,
   tomatoDark,
   red,
   redDark,
   crimson,
   crimsonDark,
-  blue,
-  blueDark,
-  lime,
-  limeDark,
-  green,
-  greenDark,
-  sky,
-  skyDark,
-  orange,
-  orangeDark,
-  cyan,
-  cyanDark,
-  teal,
-  tealDark,
+  plum,
+  plumDark,
   violet,
   violetDark,
-  amber,
-  amberDark,
-  grass,
-  grassDark,
+
+  // Slate
   slate,
   slateDark,
+
+  indigo,
+  indigoDark,
+  blue,
+  blueDark,
+  sky,
+  skyDark,
+  cyan,
+  cyanDark,
+
+  // Sage
+  sage,
+  sageDark,
+
+  teal,
+  tealDark,
+  green,
+  greenDark,
+
+  // Olive
   olive,
   oliveDark,
+
+  grass,
+  grassDark,
+  lime,
+  limeDark,
+
+  // Sand
   sand,
   sandDark,
-  mauve,
-  mauveDark,
+
+  yellow,
+  yellowDark,
+  amber,
+  amberDark,
+  orange,
+  orangeDark,
 
 } from '@radix-ui/colors';
 
@@ -84,21 +106,23 @@ type Theme = {
 
   textAccentOnAccentLowContrast: Color,
   textAccentOnAccent: Color,
+
+  backgroundColors: { stop: number, color: Color}[]
 }
 
-let theme_GrassDark_Tomato_olive: Theme = {
-  base1: hslToComponents(grassDark.grass1),
-  base2: hslToComponents(grassDark.grass2),
-  base3: hslToComponents(grassDark.grass3),
-  base4: hslToComponents(grassDark.grass4),
-  base5: hslToComponents(grassDark.grass5),
-  base6: hslToComponents(grassDark.grass6),
-  base7: hslToComponents(grassDark.grass7),
-  base8: hslToComponents(grassDark.grass8),
-  base9: hslToComponents(grassDark.grass9),
-  base10: hslToComponents(grassDark.grass10),
-  base11: hslToComponents(grassDark.grass11),
-  base12: hslToComponents(grassDark.grass12),
+let theme_BlueDark_slate__Tomato_mauve: Theme = {
+  base1: hslToComponents(blueDark.blue1),
+  base2: hslToComponents(blueDark.blue2),
+  base3: hslToComponents(blueDark.blue3),
+  base4: hslToComponents(blueDark.blue4),
+  base5: hslToComponents(blueDark.blue5),
+  base6: hslToComponents(blueDark.blue6),
+  base7: hslToComponents(blueDark.blue7),
+  base8: hslToComponents(blueDark.blue8),
+  base9: hslToComponents(blueDark.blue9),
+  base10: hslToComponents(blueDark.blue10),
+  base11: hslToComponents(blueDark.blue11),
+  base12: hslToComponents(blueDark.blue12),
 
   accent1: hslToComponents(tomatoDark.tomato1),
   accent2: hslToComponents(tomatoDark.tomato2),
@@ -113,8 +137,8 @@ let theme_GrassDark_Tomato_olive: Theme = {
   accent11: hslToComponents(tomatoDark.tomato11),
   accent12: hslToComponents(tomatoDark.tomato12),
 
-  textGrayOnBaseLowContrast: hslToComponents(oliveDark.olive11),
-  textGrayOnBase: hslToComponents(oliveDark.olive12),
+  textGrayOnBaseLowContrast: hslToComponents(slateDark.slate11),
+  textGrayOnBase: hslToComponents(slateDark.slate12),
 
   textGrayOnAccentLowContrast: hslToComponents(mauveDark.mauve11),
   textGrayOnAccent: hslToComponents(mauveDark.mauve12),
@@ -130,21 +154,38 @@ let theme_GrassDark_Tomato_olive: Theme = {
 
   textAccentOnAccentLowContrast: hslToComponents(tomatoDark.tomato11),
   textAccentOnAccent: hslToComponents(tomatoDark.tomato12),
+
+  /*backgroundColors: [
+    { stop: 0/6, color: hslToComponents(red.red9) },
+    { stop: 1/6, color: hslToComponents(orange.orange9) },
+    { stop: 2/6, color: hslToComponents(yellow.yellow9) },
+    { stop: 3/6, color: hslToComponents(green.green9) },
+    { stop: 4/6, color: hslToComponents(blue.blue9) },
+    { stop: 5/6, color: hslToComponents(indigo.indigo9) },
+    { stop: 6/6, color: hslToComponents(violet.violet9) },
+  ],*/
+  backgroundColors: [
+    { stop: 0, color: hslToComponents(sky.sky9) },
+    { stop: 0.3, color: hslToComponents(blue.blue9) },
+    { stop: 0.5, color: hslToComponents(green.green9) },
+    { stop: 0.6, color: hslToComponents(grass.grass9) },
+    { stop: 1, color: hslToComponents(green.green9) },
+  ]
 }
 
-let theme_Sky_Orange_slate: Theme = {
-  base1: hslToComponents(sky.sky1),
-  base2: hslToComponents(sky.sky2),
-  base3: hslToComponents(sky.sky3),
-  base4: hslToComponents(sky.sky4),
-  base5: hslToComponents(sky.sky5),
-  base6: hslToComponents(sky.sky6),
-  base7: hslToComponents(sky.sky7),
-  base8: hslToComponents(sky.sky8),
-  base9: hslToComponents(sky.sky9),
-  base10: hslToComponents(sky.sky10),
-  base11: hslToComponents(sky.sky11),
-  base12: hslToComponents(sky.sky12),
+let theme_Blue_slate__Orange_sand: Theme = {
+  base1: hslToComponents(blue.blue1),
+  base2: hslToComponents(blue.blue2),
+  base3: hslToComponents(blue.blue3),
+  base4: hslToComponents(blue.blue4),
+  base5: hslToComponents(blue.blue5),
+  base6: hslToComponents(blue.blue6),
+  base7: hslToComponents(blue.blue7),
+  base8: hslToComponents(blue.blue8),
+  base9: hslToComponents(blue.blue9),
+  base10: hslToComponents(blue.blue10),
+  base11: hslToComponents(blue.blue11),
+  base12: hslToComponents(blue.blue12),
 
   accent1: hslToComponents(orange.orange1),
   accent2: hslToComponents(orange.orange2),
@@ -162,26 +203,43 @@ let theme_Sky_Orange_slate: Theme = {
   textGrayOnBaseLowContrast: hslToComponents(slate.slate11),
   textGrayOnBase: hslToComponents(slate.slate12),
 
-  textGrayOnAccentLowContrast: hslToComponents(mauveDark.mauve11),
-  textGrayOnAccent: hslToComponents(mauveDark.mauve12),
+  textGrayOnAccentLowContrast: hslToComponents(sandDark.sand11),
+  textGrayOnAccent: hslToComponents(sandDark.sand12),
 
-  textBaseOnBaseLowContrast: hslToComponents(skyDark.sky11),
-  textBaseOnBase: hslToComponents(skyDark.sky12),
+  textBaseOnBaseLowContrast: hslToComponents(blueDark.blue11),
+  textBaseOnBase: hslToComponents(blueDark.blue12),
 
-  textBaseOnAccentLowContrast: hslToComponents(sky.sky11),
-  textBaseOnAccent: hslToComponents(sky.sky12),
+  textBaseOnAccentLowContrast: hslToComponents(blue.blue11),
+  textBaseOnAccent: hslToComponents(blue.blue12),
 
   textAccentOnBaseLowContrast: hslToComponents(orange.orange11),
   textAccentOnBase: hslToComponents(orange.orange12),
 
   textAccentOnAccentLowContrast: hslToComponents(orangeDark.orange11),
   textAccentOnAccent: hslToComponents(orangeDark.orange12),
+
+  /*backgroundColors: [
+    { stop: 0/6, color: hslToComponents(red.red9) },
+    { stop: 1/6, color: hslToComponents(orange.orange9) },
+    { stop: 2/6, color: hslToComponents(yellow.yellow9) },
+    { stop: 3/6, color: hslToComponents(green.green9) },
+    { stop: 4/6, color: hslToComponents(blue.blue9) },
+    { stop: 5/6, color: hslToComponents(indigo.indigo9) },
+    { stop: 6/6, color: hslToComponents(violet.violet9) },
+  ],*/
+  backgroundColors: [
+    { stop: 0, color: hslToComponents(sky.sky9) },
+    { stop: 0.3, color: hslToComponents(sky.sky9) },
+    { stop: 0.5, color: hslToComponents(blue.blue9) },
+    { stop: 0.6, color: hslToComponents(blue.blue9) },
+    { stop: 1, color: hslToComponents(green.green9) },
+  ],
 }
 
 const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
 
-let themeLight = theme_Sky_Orange_slate
-let themeDark = theme_GrassDark_Tomato_olive
+let themeLight = theme_Blue_slate__Orange_sand
+let themeDark = theme_BlueDark_slate__Tomato_mauve
 let theme = darkModePreference.matches ? themeDark : themeLight
 
 darkModePreference.addEventListener('change', event => {
@@ -208,7 +266,7 @@ let MULT_PIXEL_TANSDIM = 4
 let MULT_PIXEL_SELF = 1
 let MULT_PIXEL_FAMILY = 20
 
-let SMOOTHED_BOX_SIZE = 10
+let SMOOTHED_BOX_SIZE = 6
 
 let TOP_BUFFER_PIXEL = 34
 
@@ -666,7 +724,7 @@ async function renderScene(): Promise<Boolean> {
   canvasSmoothContext.lineTo(0, canvasSmoothElement.clientHeight)
   canvasSmoothContext.closePath()
 
-  canvasSmoothContext.fillStyle = componentsTohsl(theme.base3)
+  canvasSmoothContext.fillStyle = componentsToHsl(theme.base3)
   canvasSmoothContext.fill()
   //canvasSmoothContext.restore()
   return false
@@ -704,7 +762,12 @@ function renderPixel(
 
   canvasPixelContext.clearRect(left, top, PIXELATED_FINE_BOX_SIZE, PIXELATED_FINE_BOX_SIZE)
 
-  canvasPixelContext.fillStyle = componentsPlusThemeTohsl(pixelData.color)
+  canvasPixelContext.fillStyle = colorOffsetPlusThemePositionToHsl(
+    pixelData.color, 
+    {
+      x: pixelData.position.x/canvasPixelElement.width,
+      y: pixelData.position.y/canvasPixelElement.height
+    })
   canvasPixelContext.fillRect(left, top, PIXELATED_FINE_BOX_SIZE, PIXELATED_FINE_BOX_SIZE)
 }
 
@@ -731,12 +794,70 @@ function hslToComponents(hsl: string): Color {
   return color
 }
 
-function componentsTohsl(color: Color): string {
+function componentsToHsl(color: Color): string {
   return `hsl(${color.hue}, ${color.saturation}%, ${color.lightness}%)`
 }
 
-function componentsPlusThemeTohsl(color: ColorOffset): string {
-  return `hsl(${theme.base9.hue}, ${theme.base9.saturation + color.saturation}%, ${theme.base9.lightness + color.lightness}%)`
+function colorOffsetPlusThemePositionToHsl(offset: ColorOffset, position: Position): string {
+  let positionalPercentage = (position.x + position.y)/2
+  if (positionalPercentage < 0) {
+    positionalPercentage = 0
+  }
+  let colorBase = gradientAtPercentage(positionalPercentage)
+  let color: Color = {
+    hue: jganttsHue(offset.lightness, positionalPercentage, colorBase),
+    saturation: jganttsSaturation(offset.lightness, positionalPercentage, colorBase),
+    lightness: jganttsLightness(offset.lightness, positionalPercentage, colorBase)
+  }
+  return componentsToHsl(color)
+}
+
+function gradientAtPercentage(percentage: number): Color {
+  let colorA: Color|null = null
+  let colorB: Color|null = null
+  let percentageAlongSection: number|null = null
+
+  for (let index=0; index < theme.backgroundColors.length; index++) {
+    if (theme.backgroundColors[index].stop > percentage) {
+      /*console.log(index)
+      console.log(theme.backgroundColors[index].stop)
+      console.log(percentage)
+      console.log("\n")*/
+      let stopA = theme.backgroundColors[index-1]
+      let stopB = theme.backgroundColors[index]
+
+      let lengthBetweenStops = stopB.stop-stopA.stop
+      let lengthSinceStopA = percentage - stopA.stop
+      percentageAlongSection = lengthSinceStopA/lengthBetweenStops
+      colorA = stopA.color
+      colorB = stopB.color
+      break
+    }
+  }
+  if (!colorA || !colorB || !percentageAlongSection) { 
+    return theme.backgroundColors[0].color
+  }
+  let hue = colorA.hue*(1-percentageAlongSection) + colorB.hue*percentageAlongSection
+  let saturation = colorA.saturation*(1-percentageAlongSection) + colorB.saturation*percentageAlongSection
+  let lightness = colorA.lightness*(1-percentageAlongSection) + colorB.lightness*percentageAlongSection
+
+  return {
+    hue,
+    saturation,
+    lightness
+  }
+}
+
+function jganttsHue(offset: number, positionalPercentage: number, colorBase: Color): number {
+  let hue = colorBase.hue
+  return hue
+}
+function jganttsSaturation(offset: number, positionalPercentage: number, colorBase: Color): number {
+  return colorBase.saturation/1.2 + offset
+}
+function jganttsLightness(offset: number, positionalPercentage: number, colorBase: Color): number {
+  let positionalLightness = (1-positionalPercentage)*0.2 + 0.8
+  return (colorBase.lightness + offset)// * positionalLightness
 }
 
 function boxToHex(color: Color, alphaMultiplier: number) {
@@ -810,52 +931,52 @@ function gaussianDistributionAt(variance: number, oneOverSqrtTwoPiVariance: numb
 
 function setCSSColors() {
   let bs = document.body.style
-  bs.setProperty("--base1", componentsTohsl(theme.base1))
-  bs.setProperty("--base2", componentsTohsl(theme.base2))
-  bs.setProperty("--base3", componentsTohsl(theme.base3))
-  bs.setProperty("--base4", componentsTohsl(theme.base4))
-  bs.setProperty("--base5", componentsTohsl(theme.base5))
-  bs.setProperty("--base6", componentsTohsl(theme.base6))
-  bs.setProperty("--base7", componentsTohsl(theme.base7))
-  bs.setProperty("--base8", componentsTohsl(theme.base8))
-  bs.setProperty("--base9", componentsTohsl(theme.base9))
-  bs.setProperty("--base10", componentsTohsl(theme.base10))
-  bs.setProperty("--base11", componentsTohsl(theme.base11))
-  bs.setProperty("--base12", componentsTohsl(theme.base12))
+  bs.setProperty("--base1", componentsToHsl(theme.base1))
+  bs.setProperty("--base2", componentsToHsl(theme.base2))
+  bs.setProperty("--base3", componentsToHsl(theme.base3))
+  bs.setProperty("--base4", componentsToHsl(theme.base4))
+  bs.setProperty("--base5", componentsToHsl(theme.base5))
+  bs.setProperty("--base6", componentsToHsl(theme.base6))
+  bs.setProperty("--base7", componentsToHsl(theme.base7))
+  bs.setProperty("--base8", componentsToHsl(theme.base8))
+  bs.setProperty("--base9", componentsToHsl(theme.base9))
+  bs.setProperty("--base10", componentsToHsl(theme.base10))
+  bs.setProperty("--base11", componentsToHsl(theme.base11))
+  bs.setProperty("--base12", componentsToHsl(theme.base12))
 
-  bs.setProperty("--accent1", componentsTohsl(theme.accent1))
-  bs.setProperty("--accent2", componentsTohsl(theme.accent2))
-  bs.setProperty("--accent3", componentsTohsl(theme.accent3))
-  bs.setProperty("--accent4", componentsTohsl(theme.accent4))
-  bs.setProperty("--accent5", componentsTohsl(theme.accent5))
-  bs.setProperty("--accent6", componentsTohsl(theme.accent6))
-  bs.setProperty("--accent7", componentsTohsl(theme.accent7))
-  bs.setProperty("--accent8", componentsTohsl(theme.accent8))
-  bs.setProperty("--accent9", componentsTohsl(theme.accent9))
-  bs.setProperty("--accent10", componentsTohsl(theme.accent10))
-  bs.setProperty("--accent11", componentsTohsl(theme.accent11))
-  bs.setProperty("--accent12", componentsTohsl(theme.accent12))
-
-
-  bs.setProperty("--textGrayOnBaseLowContrast", componentsTohsl(theme.textGrayOnBaseLowContrast))
-  bs.setProperty("--textGrayOnBase", componentsTohsl(theme.textGrayOnBase))
-
-  bs.setProperty("--textGrayOnAccentLowContrast", componentsTohsl(theme.textGrayOnAccentLowContrast))
-  bs.setProperty("--textGrayOnAccent", componentsTohsl(theme.textGrayOnAccent))
+  bs.setProperty("--accent1", componentsToHsl(theme.accent1))
+  bs.setProperty("--accent2", componentsToHsl(theme.accent2))
+  bs.setProperty("--accent3", componentsToHsl(theme.accent3))
+  bs.setProperty("--accent4", componentsToHsl(theme.accent4))
+  bs.setProperty("--accent5", componentsToHsl(theme.accent5))
+  bs.setProperty("--accent6", componentsToHsl(theme.accent6))
+  bs.setProperty("--accent7", componentsToHsl(theme.accent7))
+  bs.setProperty("--accent8", componentsToHsl(theme.accent8))
+  bs.setProperty("--accent9", componentsToHsl(theme.accent9))
+  bs.setProperty("--accent10", componentsToHsl(theme.accent10))
+  bs.setProperty("--accent11", componentsToHsl(theme.accent11))
+  bs.setProperty("--accent12", componentsToHsl(theme.accent12))
 
 
-  bs.setProperty("--textBaseOnBaseLowContrast", componentsTohsl(theme.textBaseOnBaseLowContrast))
-  bs.setProperty("--textBaseOnBase", componentsTohsl(theme.textBaseOnBase))
+  bs.setProperty("--textGrayOnBaseLowContrast", componentsToHsl(theme.textGrayOnBaseLowContrast))
+  bs.setProperty("--textGrayOnBase", componentsToHsl(theme.textGrayOnBase))
 
-  bs.setProperty("--textBaseOnAccentLowContrast", componentsTohsl(theme.textBaseOnAccentLowContrast))
-  bs.setProperty("--textBaseOnAccent", componentsTohsl(theme.textBaseOnAccent))
+  bs.setProperty("--textGrayOnAccentLowContrast", componentsToHsl(theme.textGrayOnAccentLowContrast))
+  bs.setProperty("--textGrayOnAccent", componentsToHsl(theme.textGrayOnAccent))
 
 
-  bs.setProperty("--textAccentOnBaseLowContrast", componentsTohsl(theme.textAccentOnBaseLowContrast))
-  bs.setProperty("--textAccentOnBase", componentsTohsl(theme.textAccentOnBase))
+  bs.setProperty("--textBaseOnBaseLowContrast", componentsToHsl(theme.textBaseOnBaseLowContrast))
+  bs.setProperty("--textBaseOnBase", componentsToHsl(theme.textBaseOnBase))
 
-  bs.setProperty("--textAccentOnAccentLowContrast", componentsTohsl(theme.textAccentOnAccentLowContrast))
-  bs.setProperty("--textAccentOnAccent", componentsTohsl(theme.textAccentOnAccent))
+  bs.setProperty("--textBaseOnAccentLowContrast", componentsToHsl(theme.textBaseOnAccentLowContrast))
+  bs.setProperty("--textBaseOnAccent", componentsToHsl(theme.textBaseOnAccent))
+
+
+  bs.setProperty("--textAccentOnBaseLowContrast", componentsToHsl(theme.textAccentOnBaseLowContrast))
+  bs.setProperty("--textAccentOnBase", componentsToHsl(theme.textAccentOnBase))
+
+  bs.setProperty("--textAccentOnAccentLowContrast", componentsToHsl(theme.textAccentOnAccentLowContrast))
+  bs.setProperty("--textAccentOnAccent", componentsToHsl(theme.textAccentOnAccent))
 }
 
 onMounted(async () => {

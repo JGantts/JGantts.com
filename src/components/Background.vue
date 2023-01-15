@@ -13,6 +13,8 @@ import {
   redDark,
   crimson,
   crimsonDark,
+  plum,
+  plumDark,
   violet,
   violetDark,
 
@@ -20,6 +22,8 @@ import {
   slate,
   slateDark,
 
+  indigo,
+  indigoDark,
   blue,
   blueDark,
   sky,
@@ -106,19 +110,19 @@ type Theme = {
   backgroundColors: { stop: number, color: Color}[]
 }
 
-let theme_GrassDark_olive__Tomato_mauve: Theme = {
-  base1: hslToComponents(grassDark.grass1),
-  base2: hslToComponents(grassDark.grass2),
-  base3: hslToComponents(grassDark.grass3),
-  base4: hslToComponents(grassDark.grass4),
-  base5: hslToComponents(grassDark.grass5),
-  base6: hslToComponents(grassDark.grass6),
-  base7: hslToComponents(grassDark.grass7),
-  base8: hslToComponents(grassDark.grass8),
-  base9: hslToComponents(grassDark.grass9),
-  base10: hslToComponents(grassDark.grass10),
-  base11: hslToComponents(grassDark.grass11),
-  base12: hslToComponents(grassDark.grass12),
+let theme_BlueDark_slate__Tomato_mauve: Theme = {
+  base1: hslToComponents(blueDark.blue1),
+  base2: hslToComponents(blueDark.blue2),
+  base3: hslToComponents(blueDark.blue3),
+  base4: hslToComponents(blueDark.blue4),
+  base5: hslToComponents(blueDark.blue5),
+  base6: hslToComponents(blueDark.blue6),
+  base7: hslToComponents(blueDark.blue7),
+  base8: hslToComponents(blueDark.blue8),
+  base9: hslToComponents(blueDark.blue9),
+  base10: hslToComponents(blueDark.blue10),
+  base11: hslToComponents(blueDark.blue11),
+  base12: hslToComponents(blueDark.blue12),
 
   accent1: hslToComponents(tomatoDark.tomato1),
   accent2: hslToComponents(tomatoDark.tomato2),
@@ -133,8 +137,8 @@ let theme_GrassDark_olive__Tomato_mauve: Theme = {
   accent11: hslToComponents(tomatoDark.tomato11),
   accent12: hslToComponents(tomatoDark.tomato12),
 
-  textGrayOnBaseLowContrast: hslToComponents(oliveDark.olive11),
-  textGrayOnBase: hslToComponents(oliveDark.olive12),
+  textGrayOnBaseLowContrast: hslToComponents(slateDark.slate11),
+  textGrayOnBase: hslToComponents(slateDark.slate12),
 
   textGrayOnAccentLowContrast: hslToComponents(mauveDark.mauve11),
   textGrayOnAccent: hslToComponents(mauveDark.mauve12),
@@ -151,13 +155,22 @@ let theme_GrassDark_olive__Tomato_mauve: Theme = {
   textAccentOnAccentLowContrast: hslToComponents(tomatoDark.tomato11),
   textAccentOnAccent: hslToComponents(tomatoDark.tomato12),
 
+  /*backgroundColors: [
+    { stop: 0/6, color: hslToComponents(red.red9) },
+    { stop: 1/6, color: hslToComponents(orange.orange9) },
+    { stop: 2/6, color: hslToComponents(yellow.yellow9) },
+    { stop: 3/6, color: hslToComponents(green.green9) },
+    { stop: 4/6, color: hslToComponents(blue.blue9) },
+    { stop: 5/6, color: hslToComponents(indigo.indigo9) },
+    { stop: 6/6, color: hslToComponents(violet.violet9) },
+  ],*/
   backgroundColors: [
     { stop: 0, color: hslToComponents(sky.sky9) },
     { stop: 0.3, color: hslToComponents(blue.blue9) },
     { stop: 0.5, color: hslToComponents(green.green9) },
     { stop: 0.6, color: hslToComponents(grass.grass9) },
     { stop: 1, color: hslToComponents(green.green9) },
-  ],
+  ]
 }
 
 let theme_Blue_slate__Orange_sand: Theme = {
@@ -205,6 +218,15 @@ let theme_Blue_slate__Orange_sand: Theme = {
   textAccentOnAccentLowContrast: hslToComponents(orangeDark.orange11),
   textAccentOnAccent: hslToComponents(orangeDark.orange12),
 
+  /*backgroundColors: [
+    { stop: 0/6, color: hslToComponents(red.red9) },
+    { stop: 1/6, color: hslToComponents(orange.orange9) },
+    { stop: 2/6, color: hslToComponents(yellow.yellow9) },
+    { stop: 3/6, color: hslToComponents(green.green9) },
+    { stop: 4/6, color: hslToComponents(blue.blue9) },
+    { stop: 5/6, color: hslToComponents(indigo.indigo9) },
+    { stop: 6/6, color: hslToComponents(violet.violet9) },
+  ],*/
   backgroundColors: [
     { stop: 0, color: hslToComponents(sky.sky9) },
     { stop: 0.3, color: hslToComponents(sky.sky9) },
@@ -217,7 +239,7 @@ let theme_Blue_slate__Orange_sand: Theme = {
 const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
 
 let themeLight = theme_Blue_slate__Orange_sand
-let themeDark = theme_GrassDark_olive__Tomato_mauve
+let themeDark = theme_BlueDark_slate__Tomato_mauve
 let theme = darkModePreference.matches ? themeDark : themeLight
 
 darkModePreference.addEventListener('change', event => {
@@ -244,7 +266,7 @@ let MULT_PIXEL_TANSDIM = 4
 let MULT_PIXEL_SELF = 1
 let MULT_PIXEL_FAMILY = 20
 
-let SMOOTHED_BOX_SIZE = 10
+let SMOOTHED_BOX_SIZE = 6
 
 let TOP_BUFFER_PIXEL = 34
 
@@ -793,10 +815,14 @@ function colorOffsetPlusThemePositionToHsl(offset: ColorOffset, position: Positi
 function gradientAtPercentage(percentage: number): Color {
   let colorA: Color|null = null
   let colorB: Color|null = null
-  let percentageAlongSection: number
+  let percentageAlongSection: number|null = null
 
   for (let index=0; index < theme.backgroundColors.length; index++) {
     if (theme.backgroundColors[index].stop > percentage) {
+      /*console.log(index)
+      console.log(theme.backgroundColors[index].stop)
+      console.log(percentage)
+      console.log("\n")*/
       let stopA = theme.backgroundColors[index-1]
       let stopB = theme.backgroundColors[index]
 
@@ -808,12 +834,12 @@ function gradientAtPercentage(percentage: number): Color {
       break
     }
   }
-  if (!colorA || !colorB) { 
+  if (!colorA || !colorB || !percentageAlongSection) { 
     return theme.backgroundColors[0].color
   }
-  let hue = colorA!.hue*(1-percentageAlongSection!) + colorB!.hue*percentageAlongSection!
-  let saturation = colorA!.saturation*(1-percentageAlongSection!) + colorB!.saturation*percentageAlongSection!
-  let lightness = colorA!.lightness*(1-percentageAlongSection!) + colorB!.lightness*percentageAlongSection!
+  let hue = colorA.hue*(1-percentageAlongSection) + colorB.hue*percentageAlongSection
+  let saturation = colorA.saturation*(1-percentageAlongSection) + colorB.saturation*percentageAlongSection
+  let lightness = colorA.lightness*(1-percentageAlongSection) + colorB.lightness*percentageAlongSection
 
   return {
     hue,

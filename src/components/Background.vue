@@ -166,9 +166,9 @@ let theme_BlueDark_slate__Tomato_mauve: Theme = {
   ],*/
   backgroundColors: [
     { stop: 0, color: hslToComponents(sky.sky9) },
-    { stop: 0.3, color: hslToComponents(blue.blue9) },
-    { stop: 0.5, color: hslToComponents(green.green9) },
-    { stop: 0.6, color: hslToComponents(grass.grass9) },
+    { stop: 0.45, color: hslToComponents(blue.blue9) },
+    { stop: 0.5, color: hslToComponents(blue.blue9) },
+    { stop: 0.6, color: hslToComponents(blue.blue9) },
     { stop: 1, color: hslToComponents(green.green9) },
   ]
 }
@@ -230,8 +230,10 @@ let theme_Blue_slate__Orange_sand: Theme = {
   backgroundColors: [
     { stop: 0, color: hslToComponents(sky.sky9) },
     { stop: 0.3, color: hslToComponents(sky.sky9) },
+    { stop: 0.45, color: hslToComponents(blue.blue9) },
     { stop: 0.5, color: hslToComponents(blue.blue9) },
-    { stop: 0.6, color: hslToComponents(blue.blue9) },
+    { stop: 0.55, color: hslToComponents(blue.blue9) },
+    { stop: 0.7, color: hslToComponents(green.green9) },
     { stop: 1, color: hslToComponents(green.green9) },
   ],
 }

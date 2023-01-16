@@ -166,9 +166,9 @@ let theme_BlueDark_slate__Tomato_mauve: Theme = {
   ],*/
   backgroundColors: [
     { stop: 0, color: hslToComponents(sky.sky9) },
-    { stop: 0.3, color: hslToComponents(blue.blue9) },
-    { stop: 0.5, color: hslToComponents(green.green9) },
-    { stop: 0.6, color: hslToComponents(grass.grass9) },
+    { stop: 0.45, color: hslToComponents(blue.blue9) },
+    { stop: 0.5, color: hslToComponents(blue.blue9) },
+    { stop: 0.6, color: hslToComponents(blue.blue9) },
     { stop: 1, color: hslToComponents(green.green9) },
   ]
 }
@@ -230,8 +230,10 @@ let theme_Blue_slate__Orange_sand: Theme = {
   backgroundColors: [
     { stop: 0, color: hslToComponents(sky.sky9) },
     { stop: 0.3, color: hslToComponents(sky.sky9) },
+    { stop: 0.45, color: hslToComponents(blue.blue9) },
     { stop: 0.5, color: hslToComponents(blue.blue9) },
-    { stop: 0.6, color: hslToComponents(blue.blue9) },
+    { stop: 0.55, color: hslToComponents(blue.blue9) },
+    { stop: 0.7, color: hslToComponents(green.green9) },
     { stop: 1, color: hslToComponents(green.green9) },
   ],
 }
@@ -812,6 +814,7 @@ function colorOffsetPlusThemePositionToHsl(offset: ColorOffset, position: Positi
   return componentsToHsl(color)
 }
 
+//Function only works when hues differentials don't cross 0/360
 function gradientAtPercentage(percentage: number): Color {
   let colorA: Color|null = null
   let colorB: Color|null = null
@@ -819,10 +822,6 @@ function gradientAtPercentage(percentage: number): Color {
 
   for (let index=0; index < theme.backgroundColors.length; index++) {
     if (theme.backgroundColors[index].stop > percentage) {
-      /*console.log(index)
-      console.log(theme.backgroundColors[index].stop)
-      console.log(percentage)
-      console.log("\n")*/
       let stopA = theme.backgroundColors[index-1]
       let stopB = theme.backgroundColors[index]
 

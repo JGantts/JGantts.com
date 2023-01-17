@@ -37,7 +37,7 @@ function checkDarkMode(mediaMatch: any) {
             <component :is="Component" />
           </transition>
         </router-view>
-        <NavBar />
+        <!-- <NavBar /> -->
         <div id="main03" class="main">
           <div class="inner">
             <div id="container03" class="container default full">

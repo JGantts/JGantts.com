@@ -804,7 +804,7 @@ function colorOffsetPlusThemePositionToHsl(offset: ColorOffset, position: Positi
   let colorBase = gradientAtPercentage(positionalPercentage)
   let color: Color = {
     hue: jganttsHue(offset.lightness, positionalPercentage, colorBase),
-    saturation: jganttsSaturation(offset.lightness, positionalPercentage, colorBase),
+    saturation: jganttsSaturation(offset.saturation, positionalPercentage, colorBase),
     lightness: jganttsLightness(offset.lightness, positionalPercentage, colorBase)
   }
   return componentsToHsl(color)

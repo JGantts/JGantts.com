@@ -22,7 +22,7 @@
               </ul>
             </div>
             <div>
-              <p id="text06"><span class="p">Looking for clients and employers.<br />I&#039;m a developer with years of professional and personal experience; from improving enterprise solutions to fuzz testing code parsers; game mods, websites; APIs and UX; C#, JavaScript; Swift, Laravel; I love it all!</span></p>
+              <p id="text06"><span class="p">Looking for clients and collaborators.<br />I&#039;m a developer with years of professional and personal experience; from improving enterprise solutions to fuzz testing code parsers; game mods, websites; APIs and UX; C#, JavaScript; Swift, Node; I love it all!</span></p>
             </div>
           </div>
         </div>

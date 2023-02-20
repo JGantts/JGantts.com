@@ -14,6 +14,15 @@ function checkDarkMode(mediaMatch: any) {
     document.body.classList.remove("dark-theme");
   }
 }
+
+document.body.addEventListener('touchstart', (event) => {
+  console.log(event)
+});
+
+document.body.addEventListener('wheel', (event) => {
+  console.log(event)
+});
+
 </script>
 
 <template>

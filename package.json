@@ -5,15 +5,15 @@
   "private": true,
   "scripts": {
     "dev-install": "(cd api && npm install) & (cd app && npm install)",
-    "dev": "(cd api && npm run dev) & (cd app && npm run dev)",
+    "start-dev": "NODE_ENV=development && (cd api && npm run dev) & (cd app && npm run dev)",
     "build": "((cd app && npm run build) & (cd api && npm run build)) && npm run build-only",
-    "stage": "cd dist && npm run start",
-    "test": "cd dist && npm run start",
-    "prod": "cd dist && npm run start",
-
-    "prebuild-only": "cd build-helpers/ && npm run build && npm install",
+    "start-test": "NODE_ENV=test && npm run launch",
+    "install-stage": "rm -r install-stage && cp -r dist install-stage && pm2 restart stage",
+    "install-prod": "rm -r install-prod && cp -r dist install-prod && pm2 restart prod",
+    "prebuild-only": "cd build-helpers && npm run build && npm install",
     "build-only": "node build-helpers/merge-packages ",
-    "postbuild-only": "cd dist && npm install"
+    "postbuild-only": "cd dist && npm install",
+    "launch": "cd dist && npm run start"
   },
   "prodScripts": {
     "start": "node index.js"

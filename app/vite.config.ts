@@ -10,7 +10,7 @@ export default defineConfig(({ command, mode, ssrBuild }) => {
     // dev
     server = {
       host: true,
-      port: 3001,
+      port: 42301,
       strictPort: true
     }
   } else { // command === build

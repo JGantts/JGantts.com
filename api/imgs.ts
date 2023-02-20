@@ -1,4 +1,4 @@
-const express = require('express');
+/*const express = require('express');
 const log4js = require("log4js");
 
 const { promisePug } = require(`../../pug-extensions.js`);
@@ -30,9 +30,9 @@ const hashingConfig = { // based on OWASP cheat sheet recommendations (as of Mar
 }
 
 
-/*
+
   Routers
-*/
+
 
 let backdoorRouter = express.Router();
 
@@ -53,4 +53,4 @@ backdoorRouter.get('*', require('./frontend.js'))
 
 backdoorRouter.post('*', require('./backend.js'))
 
-module.exports = backdoorRouter
+module.exports = backdoorRouter */

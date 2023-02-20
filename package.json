@@ -5,11 +5,13 @@
   "private": true,
   "scripts": {
     "dev-install": "(cd api && npm install) & (cd app && npm install)",
-    "start-dev": "NODE_ENV=development && cp env/.env.dev api/dev-build/.env && (cd api && npm run dev) & (cd app && npm run dev)",
+    "start-dev": "cp env/.env.dev api/dev-build/.env && (cd api && npm run dev) & (cd app && npm run dev)",
+    "start-dev-api": "cp env/.env.dev api/dev-build/.env && (cd api && npm run dev)",
+    "start-dev-app": "cp env/.env.dev api/dev-build/.env && (cd app && npm run dev)",
     "build": "rm -r dist && ((cd app && npm run build) & (cd api && npm run build)) && npm run build-only",
     "start-test": "cp env/.env.test dist/.env && cd dist && npm run start",
-    "install-stage": "rm -r install-stage && cp -r dist install-stage && cp env/.env.stage install-stage/.env && pm2 restart stage --update-env",
-    "install-prod": "rm -r install-prod && cp -r dist install-prod && cp env/.env.prod install-prod/.env && pm2 restart prod --update-env",
+    "install-stage": "rm -r install-stage && cp -r dist install-stage && cp env/.env.stage install-stage/.env",
+    "install-prod": "rm -r install-prod && cp -r dist install-prod && cp env/.env.prod install-prod/.env",
     "prebuild-only": "cd build-helpers && npm run build && npm install",
     "build-only": "node build-helpers/merge-packages ",
     "postbuild-only": "cd dist && npm install"

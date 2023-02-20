@@ -1,15 +1,11 @@
 module.exports = {
   apps : [{
-    name   : "prod",
-    script : "install-prod/index.js",
-    env: {
-      "NODE_ENV": "development",
-    }
+    name    : "prod",
+    script  : "index.js",
+    cwd     : "install-prod"
   },{
     name   : "stage",
-    script : "install-stage/index.js",
-    env: {
-      "NODE_ENV": "stage",
-    }
+    script : "index.js",
+    cwd     : "install-stage"
   }]
 }

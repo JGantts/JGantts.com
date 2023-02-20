@@ -14,7 +14,7 @@ env
 install-stage
 install-prod
 */dev-build
-
+build-helpers/*.js
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

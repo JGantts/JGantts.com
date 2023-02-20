@@ -5,9 +5,7 @@ let serveStatic = require('serve-static');
 const api: Express = express()
 const port = process.env.API_PORT
 
-api.get('/imgs/*', (req: Request, res: Response) => {
-  res.send(`You'd like an image, eh?`);
-})
+api.use('/imgs/*', require('./imgs'));
 
 api.get('/api/*', (req: Request, res: Response) => {
   res.send(`You'd like a function, eh?`);

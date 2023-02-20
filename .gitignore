@@ -13,6 +13,7 @@ dist
 env
 install-stage
 install-prod
+*/dev-build
 
 # Editor directories and files
 .vscode/*

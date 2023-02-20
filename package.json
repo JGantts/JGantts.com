@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev-install": "(cd api && npm install) & (cd app && npm install)",
-    "start-dev": "cp env/.env.dev api/dev-build/.env && (cd api && npm run dev) & (cd app && npm run dev)",
+    "start-dev": "cp env/.env.dev api/.env && (cd api && npm run dev) & (cd app && npm run dev)",
     "start-dev-api": "cp env/.env.dev api/dev-build/.env && (cd api && npm run dev)",
     "start-dev-app": "cp env/.env.dev api/dev-build/.env && (cd app && npm run dev)",
     "build": "rm -r dist && ((cd app && npm run build) & (cd api && npm run build)) && npm run build-only",

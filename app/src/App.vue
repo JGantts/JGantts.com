@@ -14,15 +14,6 @@ function checkDarkMode(mediaMatch: any) {
     document.body.classList.remove("dark-theme");
   }
 }
-
-document.body.addEventListener('touchstart', (event) => {
-  console.log(event)
-});
-
-document.body.addEventListener('wheel', (event) => {
-  console.log(event)
-});
-
 </script>
 
 <template>
@@ -41,12 +32,12 @@ document.body.addEventListener('wheel', (event) => {
             </div>
           </div>
         </div>
+        <NavBar />
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
             <component :is="Component" />
           </transition>
         </router-view>
-        <!-- <NavBar /> -->
         <div id="main03" class="main">
           <div class="inner">
             <div id="container03" class="container default full">

@@ -12,7 +12,7 @@ import NavBarItem from './NavBarItem.vue';
             <NavBarItem :name="'home'" :title="'Home'" />
           </li>
           <li>
-            <NavBarItem :name="'background'" :title="'Background Project'" />
+            <NavBarItem :name="'gallery'" :title="'Gallery'" />
           </li>
         </ul>
       </div>

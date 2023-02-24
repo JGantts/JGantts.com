@@ -4,9 +4,9 @@
   "description": "",
   "main": "dist-dev/index.js",
   "scripts": {
-    "dev": "npx tsc --watch --outDir 'dev-build' && npx nodemon -q dev-build/index.js",
+    "dev": "npx tsc --watch --outDir 'dev-build'",
     "build": "npm run build-only",
-    "build-only": "npx tsc --outDir '../dist/'"
+    "build-only": "npx tsc --outDir '../dist/' && cp -r imgs ../dist/imgs/"
   },
   "author": "",
   "license": "ISC",

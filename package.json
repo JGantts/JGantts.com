@@ -6,14 +6,23 @@
   "scripts": {
     "dev-install": "(cd api && npm install) & (cd app && npm install)",
     "start-dev": "cp env/.env.dev api/.env && (cd api && npm run dev) & (cd app && npm run dev)",
-    "start-dev-api": "cp env/.env.dev api/dev-build/.env && (cd api && npm run dev)",
-    "start-dev-app": "cp env/.env.dev api/dev-build/.env && (cd app && npm run dev)",
-    "build": "rm -r dist && ((cd app && npm run build) & (cd api && npm run build)) && npm run build-only",
+    "start-dev-api": "cp env/.env.dev api/.env && (cd api && npm run dev)",
+    "start-dev-app": "cp env/.env.dev app/.env && (cd app && npm run dev)",
+
+    "prebuild-test": "rm -r dist & cp env/.env.test api/.env & cp env/.env.test app/.env",
+    "build-test": "((cd app && npm run build) & (cd api && npm run build)) && npm run build-only",
+    "prebuild-stage": "rm -r dist & cp env/.env.stage api/.env & cp env/.env.stage app/.env",
+    "build-stage": "((cd app && npm run build) & (cd api && npm run build)) && npm run build-only",
+    "prebuild-prod": "rm -r dist & cp env/.env.prod api/.env & cp env/.env.prod app/.env",
+    "build-prod": "((cd app && npm run build) & (cd api && npm run build)) && npm run build-only",
+    
     "start-test": "cp env/.env.test dist/.env && cd dist && npm run start",
+
     "install-stage": "if [ -d install-stage ]; then rm -Rf install-stage; fi && cp -r dist install-stage && cp env/.env.stage install-stage/.env",
     "install-prod": "if [ -d install-prod ]; then rm -Rf install-prod; fi && cp -r dist install-prod && cp env/.env.prod install-prod/.env",
     "restart-stage": "pm2 restart stage",
     "restart-prod": "pm2 restart prod",
+
     "prebuild-only": "cd build-helpers && npm run build && npm install",
     "build-only": "node build-helpers/merge-packages",
     "postbuild-only": "cd dist && npm install"

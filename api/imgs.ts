@@ -1,56 +1,105 @@
-/*const express = require('express');
-const log4js = require("log4js");
+import { NextFunction } from "connect";
 
-const { promisePug } = require(`../../pug-extensions.js`);
+import express, { Express, Request, Response } from 'express';
+//const log4js = require("log4js");
 
-const fs = require('graceful-fs').promises;
+const fs = require('fs').promises;
 const path = require('path');
 const url = require('url');
 let serveStatic = require('serve-static')
 
-const passport = require('passport');
-const LocalStrategy = require('passport-local').Strategy;
-const { JsonDB, Config } = require('node-json-db');
-const argon2 = require("argon2");
-const crypto = require("crypto");
+//const { JsonDB, Config } = require('node-json-db');
 
-const logger = log4js.getLogger();
+//const logger = log4js.getLogger();
 
-const { CONSTS } = require("../../globalConstants.js")
-
-const ROLES = {
-  deity: "deity",
-  cleric: "cleric",
-}
-
-const hashingConfig = { // based on OWASP cheat sheet recommendations (as of March, 2022)
-  parallelism: 1,
-  memoryCost: 64000, // 64 mb
-  timeCost: 3 // number of itetations
-}
-
-
-
+/*
   Routers
+*/
+let imgsRouter = express.Router();
 
-
-let backdoorRouter = express.Router();
-
-backdoorRouter.use((req, res, next) => {
-  logger.backdoor(`${req.ip} -- ${req.session.id} -- ${req.method} ${req.originalUrl}`)
+imgsRouter.all('*', (req: Request, res: Response, next: NextFunction) => {
   next()
 })
 
-let backdoorPrivate = express.Router();
+imgsRouter.get('/img/:imgID/:imgType.jpg', 
+   async (req, res, next) => {
+     //logger.trace(`check static files under ${req.app.locals.PRIVATE_DIR}`)
+     let fileName = `imgs/img/${req.params.imgID}/${req.params.imgType}.jpg`;
 
-backdoorPrivate.get('/*', serveStatic(CONSTS.PRIVATE_DIR, { maxAge: CONSTS.APP_CONFIG.staticFile.cacheMaxAgeInMinutes*60*1000 }))
+     fileName = path.resolve(fileName);
+     let fileStat
+     try {
+       fileStat = await fs.stat(fileName)
+     } catch (err: any) {
+      console.log(err.message)
+       if (err.message.startsWith('ENOENT')) {
+         //logger.trace(`no static file ${query.pathname} under ${req.app.locals.PRIVATE_DIR} due to ${err}`)
+         next()
+         return
+       } else {
+         //logger.error(err)
+         res.sendStatus(500)
+         return
+       }
+     }
 
-backdoorRouter.get('*', backdoorPrivate)
+     let contentType
+     switch(path.parse(fileName).ext) {
+         case '.html': contentType = 'text/html';
+         break;
 
-backdoorRouter.all('*', require('./authentication.js').router)
+         case '.css': contentType = 'text/css';
+         break;
 
-backdoorRouter.get('*', require('./frontend.js'))
+         case '.js': contentType = 'application/javascript';
+         break;
 
-backdoorRouter.post('*', require('./backend.js'))
+         case '.map': contentType = 'application/json';
+         break;
 
-module.exports = backdoorRouter */
+         case '.gif': contentType = 'image/gif';
+         break;
+
+         case '.jpeg':
+         case '.jpg': contentType = 'image/jpeg';
+         break;
+
+         case '.png': contentType = 'image/png';
+         break;
+
+         case '.svg': contentType = 'image/svg+xml';
+         break;
+
+         case '.ico': contentType = 'image/x-icon';
+         break;
+
+         case '.pdf': contentType = 'application/pdf';
+         break;
+
+         case '.json': contentType = 'application/json';
+         break;
+
+         case '.xml': contentType = 'text/xml';
+         break;
+
+         case '.eot': contentType = 'application/vnd.ms-fontobject';
+         break;
+         case '.ttf': contentType = 'font/ttf';
+         break;
+         case '.woff': contentType = 'font/woff';
+         break;
+         case '.woff2': contentType = 'font/woff2';
+         break;
+
+         default: throw Error('Unrecognized file type');
+         break;
+     }
+
+     let contents = await fs.readFile(fileName);
+     res.writeHead(200, {'Content-Type': contentType});
+     res.write(contents);
+     res.end();
+   }
+ )
+
+module.exports = imgsRouter

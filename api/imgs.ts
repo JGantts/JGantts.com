@@ -45,51 +45,51 @@ imgsRouter.get('/img/:imgID/:imgType.jpg',
 
      let contentType
      switch(path.parse(fileName).ext) {
-         case '.html': contentType = 'text/html';
-         break;
+        //  case '.html': contentType = 'text/html';
+        //  break;
 
-         case '.css': contentType = 'text/css';
-         break;
+        //  case '.css': contentType = 'text/css';
+        //  break;
 
-         case '.js': contentType = 'application/javascript';
-         break;
+        //  case '.js': contentType = 'application/javascript';
+        //  break;
 
-         case '.map': contentType = 'application/json';
-         break;
+        //  case '.map': contentType = 'application/json';
+        //  break;
 
-         case '.gif': contentType = 'image/gif';
-         break;
+        //  case '.gif': contentType = 'image/gif';
+        //  break;
 
          case '.jpeg':
          case '.jpg': contentType = 'image/jpeg';
          break;
 
-         case '.png': contentType = 'image/png';
-         break;
+        //  case '.png': contentType = 'image/png';
+        //  break;
 
-         case '.svg': contentType = 'image/svg+xml';
-         break;
+        //  case '.svg': contentType = 'image/svg+xml';
+        //  break;
 
-         case '.ico': contentType = 'image/x-icon';
-         break;
+        //  case '.ico': contentType = 'image/x-icon';
+        //  break;
 
-         case '.pdf': contentType = 'application/pdf';
-         break;
+        //  case '.pdf': contentType = 'application/pdf';
+        //  break;
 
-         case '.json': contentType = 'application/json';
-         break;
+        //  case '.json': contentType = 'application/json';
+        //  break;
 
-         case '.xml': contentType = 'text/xml';
-         break;
+        //  case '.xml': contentType = 'text/xml';
+        //  break;
 
-         case '.eot': contentType = 'application/vnd.ms-fontobject';
-         break;
-         case '.ttf': contentType = 'font/ttf';
-         break;
-         case '.woff': contentType = 'font/woff';
-         break;
-         case '.woff2': contentType = 'font/woff2';
-         break;
+        //  case '.eot': contentType = 'application/vnd.ms-fontobject';
+        //  break;
+        //  case '.ttf': contentType = 'font/ttf';
+        //  break;
+        //  case '.woff': contentType = 'font/woff';
+        //  break;
+        //  case '.woff2': contentType = 'font/woff2';
+        //  break;
 
          default: throw Error('Unrecognized file type');
          break;

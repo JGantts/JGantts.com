@@ -996,7 +996,7 @@ window.addEventListener("resize", resizedWindow)*/
 </script>
 
 <template>
-  <div id='canvas-holder'>
+  <div id='canvas-holder' class='canvas-holder'>
     <canvas
     id='lowres-canvas'
     style= 'position: absolute; z-index: 2;'
@@ -1032,5 +1032,14 @@ window.addEventListener("resize", resizedWindow)*/
   width: 100vw;
   height: 100vh;
   overflow: clip;
+}
+
+.canvas-holder {
+  filter: none;
+  transition: all 2s;
+}
+
+.canvas-holder-grayscale {
+  filter: grayscale(60%) brightness(35%)
 }
 </style>

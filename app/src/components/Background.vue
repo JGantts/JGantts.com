@@ -1036,10 +1036,10 @@ window.addEventListener("resize", resizedWindow)*/
 
 .canvas-holder {
   filter: none;
-  transition: all 2s;
+  transition: filter 2s;
 }
 
 .canvas-holder-grayscale {
-  filter: grayscale(60%) brightness(35%)
+  filter: blur(0.5rem) brightness(0);
 }
 </style>

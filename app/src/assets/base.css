@@ -22,8 +22,6 @@ body {
 --backgroundSolidAccent: var(--accent9);
 --backgroundSolidHoveredBase: var(--base10);
 --backgroundSolidHoveredAccent: var(--accent10);
-
---app-background: black
 }
 
 
@@ -124,7 +122,7 @@ body {
 }
 
 #app {
-  background-color: var(--app-background)
+  background-color: var(--base2)
 }
 
 html {

@@ -25,8 +25,8 @@ function checkDarkMode(mediaMatch: any) {
             <div id="container01" class="container default full">
               <div class="wrapper">
                 <div class="inner">
-                  <h1 id="text01">JGantts.com</h1>
-                  <p id="text02">Welcome, all.</p>
+                  <h1 id="text-title">JGantts.com</h1>
+                  <p id="text-subtitle">Welcome, all.</p>
                 </div>
               </div>
             </div>
@@ -58,7 +58,35 @@ function checkDarkMode(mediaMatch: any) {
   </div>
 </template>
 
-<style>
+<style lang="scss">
+#text-title {
+  font-size: 2em;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+#text-subtitle {
+  font-size: 1em;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+#text-footer-title {
+  font-size: 1em;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+#text-footer-copywrite {
+  font-size: 0.5em;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+body {
+  background-color: black;
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: all 0.5s ease;
@@ -116,6 +144,34 @@ function checkDarkMode(mediaMatch: any) {
   text-align: var(--alignment);
   z-index: 1;
   border-radius: var(--border-radius-tl) var(--border-radius-tr) var(--border-radius-br) var(--border-radius-bl);
+}
+
+#text03 {
+  color: var(--textGrayOnBaseLowContrast);
+  font-size: 0.625em;
+  line-height: 1.5;
+  font-weight: 300;
+}
+#text04 {
+  font-size: 1em;
+  line-height: 1.5;
+  font-weight: 400;
+}
+#text05 {
+  font-size: 1em;
+  line-height: 1.5;
+  font-weight: 500;
+}
+#text06 {
+  text-align: justify;
+  font-size: 0.625em;
+  line-height: 1.5;
+  font-weight: 400;
+}
+#text07 {
+  font-size: 0.5em;
+  line-height: 1.5;
+  font-weight: 300;
 }
 
 #main01 > .inner {

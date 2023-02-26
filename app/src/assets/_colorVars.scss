@@ -1,0 +1,25 @@
+body {
+  --backgroundAppBase: var(--base3);
+  --backgroundAppAccent: var(--accent1);
+  --backgroundSubtleBase: var(--base2);
+  --backgroundSubtleAccent: var(--accent2);
+  
+  --backgroundUiElementBase: var(--base3);
+  --backgroundUiElementAccent: var(--accent3);
+  --backgroundUiElementHoveredBase: var(--base4);
+  --backgroundUiElementHoveredAccent: var(--accent4);
+  --backgroundUiElementActiveBase: var(--base5);
+  --backgroundUiElementActiveAccent: var(--accent5);
+  
+  --borderSubtleBase: var(--base6);
+  --borderSubtleAccent: var(--accent6);
+  --borderBase: var(--base7);
+  --borderAccent: var(--accent7);
+  --borderHoveredBase: var(--base8);
+  --borderHoveredAccent: var(--accent8);
+  
+  --backgroundSolidBase: var(--base9);
+  --backgroundSolidAccent: var(--accent9);
+  --backgroundSolidHoveredBase: var(--base10);
+  --backgroundSolidHoveredAccent: var(--accent10);
+  }

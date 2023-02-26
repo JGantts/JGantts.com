@@ -1,0 +1,170 @@
+body {
+  font-family: 'Figtree', Arial, sans-serif;
+}
+
+
+body {
+  color: var(--textGrayOnBase);
+}
+
+#app {
+  background-color: var(--base2)
+}
+
+body {
+  line-height: 1.0;
+  min-height: var(--viewport-height);
+  min-width: 320px;
+  overflow-x: hidden;
+  word-wrap: break-word;
+}
+
+u {
+  text-decoration: underline;
+}
+
+strong {
+  color: inherit;
+  font-weight: bolder;
+}
+
+em {
+  font-style: italic;
+}
+
+
+a {
+  color: inherit;
+  text-decoration: underline;
+  transition: color 0.25s ease;
+}
+
+
+#wrapper {
+  -webkit-overflow-scrolling: touch;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: var(--viewport-height);
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+  padding: 1.5rem 1.5rem 1.5rem 1.5rem;
+}
+
+.links {
+  justify-content: var(--flex-alignment);
+  letter-spacing: 0;
+  line-height: 1.5;
+  padding: 0;
+}
+
+#links01 {
+  font-family: 'Figtree', sans-serif;
+  font-size: 0.625em;
+  font-weight: 400;
+}
+
+#links01 li a {
+  text-decoration: none;
+}
+
+#links01 li a .underline-link {
+  text-decoration: underline;
+}
+
+#links01 li a:hover {
+  text-decoration: none;
+}
+
+#links01 li a:hover .underline-link {
+  color: var(--textAccentOnBaseLowContrast);
+}
+
+
+
+@media (max-width: 736px) {
+  #text01 {
+    letter-spacing: 0rem;
+    width: 100%;
+    font-size: 1.875em;
+    line-height: 1.5;
+  }
+
+  #text02 {
+    letter-spacing: 0rem;
+    width: 100%;
+    font-size: 1em;
+    line-height: 1.5;
+  }
+
+  #text03 {
+    letter-spacing: 0rem;
+    width: 100%;
+    font-size: 0.625em;
+    line-height: 1.5;
+  }
+
+  #text04 {
+    letter-spacing: 0rem;
+    width: 100%;
+    font-size: 1.75em;
+    line-height: 1.5;
+  }
+
+  #text06 {
+    letter-spacing: 0rem;
+    width: 100%;
+    font-size: 0.625em;
+    line-height: 1.5;
+  }
+
+  #text05 {
+    letter-spacing: 0rem;
+    width: 100%;
+    font-size: 1em;
+    line-height: 1.5;
+  }
+
+  #text07 {
+    letter-spacing: 0rem;
+    width: 100%;
+    font-size: 0.5em;
+    line-height: 1.5;
+  }
+
+  #links01 {
+    font-size: 1.125em;
+  }
+}
+
+@media (max-width: 360px) {
+  #text01 {
+    font-size: 1.875em;
+  }
+
+  #text02 {
+    font-size: 1em;
+  }
+
+  #text03 {
+    font-size: 0.625em;
+  }
+
+  #text04 {
+    font-size: 1.75em;
+  }
+
+  #text06 {
+    font-size: 0.625em;
+  }
+
+  #text05 {
+    font-size: 1em;
+  }
+
+  #text07 {
+    font-size: 0.5em;
+  }
+}

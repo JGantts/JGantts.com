@@ -1010,11 +1010,13 @@ window.addEventListener("resize", resizedWindow)*/
 
 <style scoped>
 #canvas-holder {
-  position: absolute;
+  position: fixed;
   left: 0;
   top: -0;
-  width: 100vw;
-  height: 100vh;
+  bottom: 0;
+  min-height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: clip;
 }
 #lowres-canvas {
@@ -1022,7 +1024,7 @@ window.addEventListener("resize", resizedWindow)*/
   left: 0;
   top: -0;
   width: 100vw;
-  height: 100vh;
+  height: 100%;
   overflow: clip;
 }
 #highres-canvas {
@@ -1030,7 +1032,7 @@ window.addEventListener("resize", resizedWindow)*/
   left: 0;
   top: -0;
   width: 100vw;
-  height: 100vh;
+  height: 100%;
   overflow: clip;
 }
 

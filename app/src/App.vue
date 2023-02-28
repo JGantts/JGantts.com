@@ -84,7 +84,7 @@ function checkDarkMode(mediaMatch: any) {
 }
 
 body {
-  background-color: black;
+  background-color: var(--base3);
 }
 
 .fade-enter-active,
@@ -108,6 +108,18 @@ body {
 }
 
 @media (max-width: 736px) {
+#text-title {
+  font-size: 1.875em;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+#text-subtitle {
+  font-size: 1em;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
 #container-nav > .wrapper > .inner > ul {
   flex-direction: column; 
 }

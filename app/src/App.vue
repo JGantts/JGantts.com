@@ -17,43 +17,41 @@ function checkDarkMode(mediaMatch: any) {
 </script>
 
 <template>
-  <div id="app">
-    <div id="background-holder">
-      <div id="wrapper">
-        <div id="main01" class="main">
-          <div class="inner">
-            <div id="container01" class="container default full">
-              <div class="wrapper">
-                <div class="inner">
-                  <h1 id="text-title">JGantts.com</h1>
-                  <p id="text-subtitle">Welcome, all.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <NavBar />
-        <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" />
-          </transition>
-        </router-view>
-        <div id="main03" class="main">
-          <div class="inner">
-            <div id="container03" class="container default full">
-              <div class="wrapper">
-                <div class="inner">
-                  <p id="text05">I write software!</p>
-                  <p id="text07">© 2023 Jacob Gantt</p>
-                </div>
+  <div id="background-holder">
+    <div id="wrapper">
+      <div id="main01" class="main">
+        <div class="inner">
+          <div id="container01" class="container default full">
+            <div class="wrapper">
+              <div class="inner">
+                <h1 id="text-title">JGantts.com</h1>
+                <p id="text-subtitle">Welcome, all.</p>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div id="background">
-        <Background></Background>
+      <NavBar />
+      <router-view v-slot="{ Component }">
+        <transition name="fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
+      <div id="main03" class="main">
+        <div class="inner">
+          <div id="container03" class="container default full">
+            <div class="wrapper">
+              <div class="inner">
+                <p id="text05">I write software!</p>
+                <p id="text07">© 2023 Jacob Gantt</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+    </div>
+    <div id="background">
+      <Background></Background>
     </div>
   </div>
 </template>

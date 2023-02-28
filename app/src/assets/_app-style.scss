@@ -5,10 +5,16 @@ body {
 
 body {
   color: var(--textGrayOnBase);
+  transition: background-color 2s;
 }
 
 #app {
-  background-color: var(--base3)
+  background-color: var(--base3);
+  transition: background-color 2s;
+}
+
+.app-photo {
+  background-color: black !important;
 }
 
 body {

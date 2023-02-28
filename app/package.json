@@ -13,6 +13,7 @@
     "@svgdotjs/svg.js": "^3.1.2",
     "dotenv": "^16.0.3",
     "mount-vue-component": "^0.10.2",
+    "pug": "^3.0.2",
     "vue": "^3.2.45",
     "vue-router": "^4.1.6"
   },

@@ -70,11 +70,19 @@ export default {
 
  ]
 
+    shuffle(photos)
 
     // don't forget to expose the function as well.
     return {
       photos
     }
+  }
+}
+
+function shuffle(array: any) {
+  for (let i = array.length - 1; i > 0; i--) {
+    let j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
   }
 }
 </script>
@@ -88,13 +96,28 @@ export default {
   .inner
     #container02.container.columns.full
       .wrapper
-        #gallery(v-for="photo in photos")
-          img(:src="photo.thumb")
+        section(id='gallery')
+          img(v-for="photo in photos" :src="photo.thumb")
 </template>
 
 <style>
 #gallery {
   width: min(100vw, 1920px);
-  display: grid;
+
+
+  /* Prevent vertical gaps */
+  line-height: 0;
+   
+  column-count:         5;
+  column-gap:           8px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+#gallery img {
+  /* Just in case there are inline attributes */
+  width: 100%;
+  height: auto;
+  padding-bottom: 8px;
 }
 </style>

@@ -88,6 +88,8 @@ export default {
 
  ]
 
+    
+
     shuffle(photos)
 
     // don't forget to expose the function as well.

@@ -15,6 +15,7 @@ env
 install-stage
 install-prod
 */dev-build
+*/tmp
 build-helpers/*.js
 api/imgs/*
 # Editor directories and files

@@ -16,6 +16,7 @@ install-stage
 install-prod
 */dev-build
 build-helpers/*.js
+api/imgs/*
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

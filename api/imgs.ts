@@ -21,12 +21,18 @@ imgsRouter.all('*', (req: Request, res: Response, next: NextFunction) => {
   next()
 })
 
-imgsRouter.get('/img/:imgID/:imgType.jpg', 
+imgsRouter.get('/img/:imgID/w-:imgWidth.jpg', 
    async (req, res, next) => {
      //logger.trace(`check static files under ${req.app.locals.PRIVATE_DIR}`)
-     let fileName = `imgs/img/${req.params.imgID}/${req.params.imgType}.jpg`;
+     let width = Math.floor(Number(req.params.imgWidth))
+     if (width > 2560) {
+      width = 2560
+     }
+     let fullSize = `imgs/img/${req.params.imgID}/full-size.jpg`
+     let fileName = `imgs/img/${req.params.imgID}/w-${width}.jpg`
 
      fileName = path.resolve(fileName);
+     fullSize = path.resolve(fullSize);
      let fileStat
      try {
        fileStat = await fs.stat(fileName)
@@ -34,8 +40,10 @@ imgsRouter.get('/img/:imgID/:imgType.jpg',
       console.log(err.message)
        if (err.message.startsWith('ENOENT')) {
          //logger.trace(`no static file ${query.pathname} under ${req.app.locals.PRIVATE_DIR} due to ${err}`)
-         next()
-         return
+         let image = await Jimp.read(fullSize);
+         image.scaleToFit(width, image.bitmap.height)
+         image.quality(90)
+         await image.writeAsync(fileName)
        } else {
          //logger.error(err)
          res.sendStatus(500)
@@ -43,63 +51,16 @@ imgsRouter.get('/img/:imgID/:imgType.jpg',
        }
      }
 
-     let contentType
-     switch(path.parse(fileName).ext) {
-        //  case '.html': contentType = 'text/html';
-        //  break;
+     let contents = await fs.readFile(fileName)
 
-        //  case '.css': contentType = 'text/css';
-        //  break;
-
-        //  case '.js': contentType = 'application/javascript';
-        //  break;
-
-        //  case '.map': contentType = 'application/json';
-        //  break;
-
-        //  case '.gif': contentType = 'image/gif';
-        //  break;
-
-         case '.jpeg':
-         case '.jpg': contentType = 'image/jpeg';
-         break;
-
-        //  case '.png': contentType = 'image/png';
-        //  break;
-
-        //  case '.svg': contentType = 'image/svg+xml';
-        //  break;
-
-        //  case '.ico': contentType = 'image/x-icon';
-        //  break;
-
-        //  case '.pdf': contentType = 'application/pdf';
-        //  break;
-
-        //  case '.json': contentType = 'application/json';
-        //  break;
-
-        //  case '.xml': contentType = 'text/xml';
-        //  break;
-
-        //  case '.eot': contentType = 'application/vnd.ms-fontobject';
-        //  break;
-        //  case '.ttf': contentType = 'font/ttf';
-        //  break;
-        //  case '.woff': contentType = 'font/woff';
-        //  break;
-        //  case '.woff2': contentType = 'font/woff2';
-        //  break;
-
-         default: throw Error('Unrecognized file type');
-         break;
-     }
-
-     let contents = await fs.readFile(fileName);
-     res.writeHead(200, {'Content-Type': contentType});
+     res.writeHead(200, { 'Content-Type': 'image/jpeg' });
      res.write(contents);
      res.end();
    }
- )
+)
+
+imgsRouter.post('/img', async (req, res) => {
+
+})
 
 module.exports = imgsRouter

@@ -44,7 +44,10 @@ export default {
         console.log(response)
         data.photos.length = 0
         data.photos.push.apply(data.photos, response)
-        //shuffle(photos)
+        for (let i = data.photos.length - 1; i > 0; i--) {
+          let j = Math.floor(Math.random() * (i + 1));
+          [data.photos[i], data.photos[j]] = [data.photos[j], data.photos[i]];
+        }
       })
       .catch((err: Error) => {
       // @ts-ignore
@@ -57,14 +60,6 @@ export default {
     }
   }
 }
-
-function shuffle(array: any) {
-  for (let i = array.length - 1; i > 0; i--) {
-    let j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-}
-
 
 </script>
 

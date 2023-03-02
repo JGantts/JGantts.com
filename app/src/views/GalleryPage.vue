@@ -18,7 +18,7 @@ let getImgUri = (photoID: string) => {
 export default {
   setup() {
 
-    const data: any = reactive({ photos: ["L92I6G5W9N1RH69VP2W3"] })
+    const data: any = reactive({ photos: [] })
     onMounted(async () => {
       // @ts-ignore
       document.getElementById('canvas-holder').classList.add('canvas-holder-grayscale')

@@ -6,6 +6,7 @@ import multer from 'multer'
 //const log4js = require("log4js");
 
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const url = require('url');
 let serveStatic = require('serve-static')
@@ -25,7 +26,7 @@ imgsRouter.all('*', (req: Request, res: Response, next: NextFunction) => {
 
 imgsRouter.get('/gallery/main', 
   async (req, res) => {
-    let dirs = await getDirectories(path.resolve('imgs/img/'))
+    let dirs = await getDirectories(path.resolve(`${process.env.APP_IMG_FILES}/img/`))
     // @ts-ignore
     res.setHeader('Access-Control-Allow-Origin', process.env.APP_ENDPOINT)
     res.send(JSON.stringify(dirs))
@@ -33,6 +34,9 @@ imgsRouter.get('/gallery/main',
 )
 
 async function getDirectories(source: String){
+  if (!fsSync.existsSync(source)){
+    await fs.mkdir(source, { recursive: true });
+  }
   return (await fs.readdir(source, { withFileTypes: true }))
     //.filter(dirent => dirent.isDirectory())
     .map((dirent: any) => dirent.name)
@@ -45,8 +49,8 @@ imgsRouter.get('/img/:imgID/w-:imgWidth.jpg',
      if (width > 2560) {
       width = 2560
      }
-     let fullSize = `imgs/img/${req.params.imgID}/full-size.jpg`
-     let fileName = `imgs/img/${req.params.imgID}/w-${width}.jpg`
+     let fullSize = `${process.env.APP_IMG_FILES}/img/${req.params.imgID}/full-size.jpg`
+     let fileName = `${process.env.APP_IMG_FILES}/img/${req.params.imgID}/w-${width}.jpg`
 
      fileName = path.resolve(fileName);
      fullSize = path.resolve(fullSize);
@@ -81,7 +85,7 @@ imgsRouter.get('/upload', async (req, res) => {
 })
 
 const upload = multer({
-  dest: "./tmp/uploaded/files",
+  dest: `${process.env.APP_IMG_FILES}/tmp`,
   // you might also want to set some limits: https://github.com/expressjs/multer#limits
   limits: {
     // 1MB * 100
@@ -98,13 +102,16 @@ imgsRouter.post(
   async (req, res) => {
     let newID = makeid(20)
     // @ts-ignore
-    const tempPath = path.join(__dirname, `../${req.file.path}`)
-    const targetPath = path.join(__dirname, `../imgs/img/${newID}/full-size.jpg`);
+    const tempPath = path.resolve(req.file.path)
+    const targetDir = path.resolve(`${process.env.APP_IMG_FILES}/img/${newID}/`);
+    const targetPath = path.resolve(`${targetDir}/full-size.jpg`);
+
+    const fileTypes = [".jpeg", ".jpg"]
 
     // @ts-ignore
-    if (path.extname(req.file.originalname).toLowerCase() === ".jpeg") {
+    if (fileTypes.includes(path.extname(req.file.originalname).toLowerCase())) {
 
-      await fs.mkdir(`imgs/img/${newID}/`)
+      await fs.mkdir(targetDir)
       await fs.rename(tempPath, targetPath)
 
       res
@@ -119,7 +126,7 @@ imgsRouter.post(
         res
           .status(403)
           .contentType("text/plain")
-          .end("Only .png files are allowed!");
+          .end(`Only ${fileTypes} file types are allowed!`);
       });
     }
   }

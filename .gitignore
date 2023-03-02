@@ -18,6 +18,8 @@ install-prod
 */tmp
 build-helpers/*.js
 api/imgs/*
+imgs/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

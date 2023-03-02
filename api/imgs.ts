@@ -24,9 +24,10 @@ imgsRouter.all('*', (req: Request, res: Response, next: NextFunction) => {
 })
 
 imgsRouter.get('/gallery/main', 
-  async (req, res, next) => {
+  async (req, res) => {
     let dirs = await getDirectories(path.resolve('imgs/img/'))
-    //res.send('hi')
+    // @ts-ignore
+    res.setHeader('Access-Control-Allow-Origin', process.env.APP_ENDPOINT)
     res.send(JSON.stringify(dirs))
   }
 )
@@ -34,7 +35,7 @@ imgsRouter.get('/gallery/main',
 async function getDirectories(source: String){
   return (await fs.readdir(source, { withFileTypes: true }))
     //.filter(dirent => dirent.isDirectory())
-    .map(dirent => dirent.name)
+    .map((dirent: any) => dirent.name)
 }
 
 imgsRouter.get('/img/:imgID/w-:imgWidth.jpg', 

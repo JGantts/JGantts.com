@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "photo_metas",
+  "info": {
+    "singularName": "photo-meta",
+    "pluralName": "photo-metas",
+    "displayName": "Photo-Meta"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "UUID": {
+      "type": "uid"
+    }
+  }
+}

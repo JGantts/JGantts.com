@@ -12,7 +12,7 @@ watch
 } from 'vue'
 
 let getImgUri = (photoID: string) => {
-  return `${import.meta.env.VITE_APP_API_ENDPOINT}/photo-library/img/${photoID}/w-320.jpg`
+  return `${import.meta.env.VITE_APP_API_ENDPOINT}/photo-library/img/${photoID}/w-640.jpg`
 }
 
 export default {
@@ -41,7 +41,6 @@ export default {
         return response.json()
       })
       .then(response => {
-        console.log(response)
         data.photos.length = 0
         data.photos.push.apply(data.photos, response)
         for (let i = data.photos.length - 1; i > 0; i--) {
@@ -69,7 +68,8 @@ export default {
     #container02.container.columns.full
       .wrapper
         section(id='gallery')
-          img(v-for="photo in data.photos" :key="photo" :src="getImgUri(photo)")
+          div(class='gallery-photo')
+            img(v-for="photo in data.photos" :key="photo.id" :src="getImgUri(photo.id)" class='gallery-photo')
 </template>
 
 <style>
@@ -77,9 +77,10 @@ export default {
   line-height: 0;
   column-gap: 8px;
   column-width: 320px;
+  color: white;
 }
 
-#gallery img {
+.gallery-photo {
   width: 100%;
   height: auto;
   padding-bottom: 8px;

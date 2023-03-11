@@ -2,6 +2,17 @@ jgantts.com {
   reverse_proxy 127.0.0.1:42000
 }
 
+cms.jgantts.com {
+  reverse_proxy 127.0.0.1:1337
+}
+
+piwigo.jgantts.com {
+  php_fastcgi / /var/run/php/php7.0-fpm.sock {
+    root /home/jgantts/JGantts.com/piwigo
+  	index	index.php
+  }
+}
+
 stage.jgantts.com {
   reverse_proxy 127.0.0.1:42100
 }

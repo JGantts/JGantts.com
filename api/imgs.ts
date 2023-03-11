@@ -4,6 +4,8 @@ import Jimp from "jimp"
 // @ts-ignore
 import multer from 'multer'
 //const log4js = require("log4js");
+import { encode as blurhashEncode } from "blurhash";
+const inkjet = require('inkjet');
 
 const fs = require('fs').promises;
 const fsSync = require('fs');
@@ -27,9 +29,18 @@ imgsRouter.all('*', (req: Request, res: Response, next: NextFunction) => {
 imgsRouter.get('/gallery/main', 
   async (req, res) => {
     let dirs = await getDirectories(path.resolve(`${process.env.APP_IMG_FILES}/img/`))
+    let photoMetas = dirs.map(async (dir: string) => {
+      return {
+        id: dir,
+        dimensionsRatio: await getDimensionsRatio(dir),
+        blurHash: await getBlurhash(dir)
+      }
+    })
+    photoMetas = await Promise.all(photoMetas)
+
     // @ts-ignore
     res.setHeader('Access-Control-Allow-Origin', process.env.APP_ENDPOINT)
-    res.send(JSON.stringify(dirs))
+    res.send(JSON.stringify(photoMetas))
   }
 )
 
@@ -49,36 +60,118 @@ imgsRouter.get('/img/:imgID/w-:imgWidth.jpg',
      if (width > 2560) {
       width = 2560
      }
-     let fullSize = `${process.env.APP_IMG_FILES}/img/${req.params.imgID}/full-size.jpg`
      let fileName = `${process.env.APP_IMG_FILES}/img/${req.params.imgID}/w-${width}.jpg`
 
-     fileName = path.resolve(fileName);
-     fullSize = path.resolve(fullSize);
-     let fileStat
-     try {
-       fileStat = await fs.stat(fileName)
-     } catch (err: any) {
-      console.log(err.message)
-       if (err.message.startsWith('ENOENT')) {
-         //logger.trace(`no static file ${query.pathname} under ${req.app.locals.PRIVATE_DIR} due to ${err}`)
-         let image = await Jimp.read(fullSize);
-         image.scaleToFit(width, image.bitmap.height)
-         image.quality(90)
-         await image.writeAsync(fileName)
-       } else {
-         //logger.error(err)
-         res.sendStatus(500)
-         return
-       }
-     }
+     fileName = path.resolve(fileName)
 
-     let contents = await fs.readFile(fileName)
+     let contents = await getFileContents_makeIfNeeded(
+      fileName,
+      async () => {
+        generateImageAtWidth(req.params.imgID, width)
+      }
+    )
 
      res.writeHead(200, { 'Content-Type': 'image/jpeg' });
      res.write(contents);
      res.end();
    }
 )
+
+async function generateImageAtWidth(imgID: string, width: number) {
+  let original = `${process.env.APP_IMG_FILES}/img/${imgID}/full-size.jpg`
+  let generate = `${process.env.APP_IMG_FILES}/img/${imgID}/w-${width}.jpg`
+  original = path.resolve(original)
+  generate = path.resolve(generate)
+
+  //logger.trace(`no static file ${query.pathname} under ${req.app.locals.PRIVATE_DIR} due to ${err}`)
+  //(original)
+  let image = await Jimp.read(original);
+  image.scaleToFit(width, image.bitmap.height)
+  image.quality(90)
+  await image.writeAsync(generate)
+}
+
+async function getBlurhash(imgID: string): Promise<string> {
+  let width320 = `${process.env.APP_IMG_FILES}/img/${imgID}/w-320.jpg`
+  let fileName = `${process.env.APP_IMG_FILES}/img/${imgID}/blurhash.txt`
+  fileName = path.resolve(fileName)
+  width320 = path.resolve(width320)
+
+  let contents = await getFileContents_makeIfNeeded(
+    fileName,
+    async () => {
+      await generateImageAtWidth(imgID, 320)
+      let contents320 = await fs.readFile(width320)
+      let blurhash = await new Promise(
+        async resolve => {
+          //console.log(fileName)
+          inkjet.decode(contents320, function(err: any, decoded: any) {
+            // decoded: { width: number, height: number, data: Uint8Array }
+            if (err) {
+              console.log(err)
+              //logger.debug()
+            } else {
+              //console.log("wut")
+              resolve(blurhashEncode(decoded.data, decoded.width, decoded.height, 4, 4));
+            }
+          });
+      })
+      
+      //console.log(blurhash)
+
+      await fs.writeFile(fileName, blurhash)
+    }
+  )
+  //console.log(contents.toString())
+
+  return contents.toString()
+}
+
+async function getDimensionsRatio(imgID: string): Promise<number> {
+  let fullSize = `${process.env.APP_IMG_FILES}/img/${imgID}/full-size.jpg`
+  let fileName = `${process.env.APP_IMG_FILES}/img/${imgID}/dimensionsRatio.txt`
+  fileName = path.resolve(fileName)
+  fullSize = path.resolve(fullSize)
+
+  let contents = await getFileContents_makeIfNeeded(
+    fileName,
+    async () => {
+      let dimensionsRatio: any = await new Promise(
+        async (resolve) => {
+          inkjet.decode((await fs.readFile(fullSize)), function(err: any, decoded: any) {
+            // decoded: { width: number, height: number, data: Uint8Array }
+            if (err) {
+              //logger.debug()
+            } else {
+              resolve(decoded.width/decoded.height)
+            }
+          })
+        })
+
+      await fs.writeFile(fileName, dimensionsRatio.toString())
+    }
+  )
+
+  //(Number(contents.toString()))
+  return Number(contents.toString())
+}
+
+async function getFileContents_makeIfNeeded(filePath: string, make: () => void) {
+  let fileStat
+  try {
+    fileStat = await fs.stat(filePath)
+  } catch (err: any) {
+      if (err.message.startsWith('ENOENT')) {
+        await make()
+      } else {
+        //logger.error(err)
+        throw err
+      }
+  }
+
+  let contents = await fs.readFile(filePath)
+  return contents
+}
 
 imgsRouter.get('/upload', async (req, res) => {
   res.send(`<form method="post" enctype="multipart/form-data" action="./upload"><input type="file" name="file"><br/><br/><input type="submit" value="Submit"></form>`)

@@ -20,6 +20,9 @@ build-helpers/*.js
 api/imgs/*
 imgs/
 
+CMS/public/uploads/*
+!CMS/public/uploads/.gitkeep
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

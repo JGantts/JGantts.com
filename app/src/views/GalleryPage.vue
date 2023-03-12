@@ -10,10 +10,7 @@ import {
   computed,
 watch
 } from 'vue'
-
-let getImgUri = (photoID: string) => {
-  return `${import.meta.env.VITE_APP_API_ENDPOINT}/photo-library/img/${photoID}/w-640.jpg`
-}
+import GalleryPhoto from './gallery/GalleryPhoto.vue'
 
 export default {
   setup() {
@@ -55,8 +52,11 @@ export default {
     
     return {
       data,
-      getImgUri
+      GalleryPhoto
     }
+  },
+  components: {
+    GalleryPhoto
   }
 }
 
@@ -68,8 +68,8 @@ export default {
     #container02.container.columns.full
       .wrapper
         section(id='gallery')
-          div(class='gallery-photo')
-            img(v-for="photo in data.photos" :key="photo.id" :src="getImgUri(photo.id)" class='gallery-photo')
+          div(v-for="photo in data.photos" :key="photo.id" class='gallery-photo')
+            GalleryPhoto(:photo=`photo`)
 </template>
 
 <style>

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently --kill-others 'npx tsc --watch --outDir \"dev-build\"' 'npx nodemon -q dev-build/index.js'",
     "build": "npm run build-only",
-    "build-only": "npx tsc --outDir '../dist/' && cp -r imgs ../dist/imgs/"
+    "build-only": "npx tsc --outDir '../dist/'"
   },
   "author": "",
   "license": "ISC",

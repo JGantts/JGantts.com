@@ -65,6 +65,8 @@ export default {
 <template lang='pug'>
 #main02
   .inner
+
+  
     #container02.container.columns.full
       .wrapper
         section(id='gallery')

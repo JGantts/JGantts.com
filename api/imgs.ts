@@ -67,11 +67,15 @@ imgsRouter.get('/img/:imgID/w-:imgWidth.jpg',
      let contents = await getFileContents_makeIfNeeded(
       fileName,
       async () => {
-        generateImageAtWidth(req.params.imgID, width)
+        await generateImageAtWidth(req.params.imgID, width)
       }
     )
 
-     res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+     res.writeHead(200, { 
+      'Content-Type': 'image/jpeg',
+      // @ts-ignore
+      'Access-Control-Allow-Origin': process.env.APP_ENDPOINT
+     })
      res.write(contents);
      res.end();
    }
@@ -88,7 +92,7 @@ async function generateImageAtWidth(imgID: string, width: number) {
   let image = await Jimp.read(original);
   image.scaleToFit(width, image.bitmap.height)
   image.quality(90)
-  await image.writeAsync(generate)
+  await image.writeAsync(generate)  
 }
 
 async function getBlurhash(imgID: string): Promise<string> {

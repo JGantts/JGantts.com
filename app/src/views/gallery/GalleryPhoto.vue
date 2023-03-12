@@ -12,11 +12,8 @@ watch
 } from 'vue'
 import { decode } from "blurhash";
 
-let id: string
-
-
 let getImgUri = (photoID: string) => {
-  return `${import.meta.env.VITE_APP_API_ENDPOINT}/photo-library/img/${photoID}/w-640.jpg`
+  return `${import.meta.env.VITE_APP_API_ENDPOINT}/photo-library/img/${photoID}/w-${320 * window.devicePixelRatio}.jpg`
 }
 
 export default {
@@ -24,51 +21,48 @@ export default {
     'photo'
   ],
   setup(props) {
-    let height = 320 / props.photo.dimensionsRatio
-    let latestData: any = decode(
-        props.photo.blurHash,
-        320,
-        Math.ceil(height)
-      )
-    id = props.photo.id
 
+    let widthPixels = 320
+    let heightPixels = 320 / props.photo.dimensionsRatio
 
+    let id = props.photo.id
+    let elementID = 'photo-canvas-' + id
+
+    console.log(id)
 
     onMounted(async () => {
-      /*try {
-        let response = fetch(getImgUri(id))
-      } catch (err) {
+      let blurData: any = decode(
+          props.photo.blurHash,
+          320,
+          Math.ceil(heightPixels)
+        )
 
-      }*/
+      // @ts-ignore
+      let ctx = document.getElementById(elementID).getContext("2d")
+
+      const imageData = new ImageData(blurData, 320)
+      ctx.putImageData(imageData, 0, 0)
+
+      ctx.scale(1/window.devicePixelRatio, 1/window.devicePixelRatio)
+      let tempImage = new Image()
+      tempImage.onload = () => {
+        console.log('why')
+        ctx.drawImage(tempImage, 0, 0)
+      }
+      console.log('when')
+      tempImage.src = getImgUri(id)
     });
-
+ 
     onUnmounted(async () => {
 
     });
     
     return {
-      latestData,
-      height,
+      id,
+      elementID,
+      widthPixels,
+      heightPixels,
       getImgUri
-    }
-  },
-  directives: {
-    newData: function(canvasElement, binding) {
-      let ctx = canvasElement.getContext("2d")
-      //ctx.clearRect(0, 0, 320, binding.instance.height)
-
-      //console.log(JSON.stringify(binding.instance))
-
-      //console.log(binding.instance.height)
-      //console.log(binding.value)
-
-      const imageData = new ImageData(binding.value, 320)
-      try {
-      //imageData.data.set(binding.instance.latestData)
-      } catch (err) { 
-        console.log(err.message)
-      }
-      ctx.putImageData(imageData, 0, 0)
     }
   }
 }
@@ -78,9 +72,9 @@ export default {
 <template lang='pug'>
 div
   canvas(
-    width="320"
-    :height="height"
-    v-new-data="latestData"
+    :id="elementID"
+    :width="widthPixels"
+    :height="heightPixels"
   )
 </template>
 

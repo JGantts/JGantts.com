@@ -16,35 +16,93 @@ let getImgUri = (photoID: string) => {
   return `${import.meta.env.VITE_APP_API_ENDPOINT}/photo-library/img/${photoID}/w-${320 * window.devicePixelRatio}.jpg`
 }
 
-let scaleRatio = 15
-
 export default {
   props: [
     'photo'
   ],
   setup(props) {
+    let scaleRatio = 15
+    let currentLoadLevel = 0
 
-    let widthPixels = 320
-    let heightPixels = Math.ceil(320 / props.photo.dimensionsRatio)
+    let widthPixels: number
+    let heightPixels: number
 
-    let widthPoints = widthPixels * window.devicePixelRatio
-    let heightPoints = heightPixels * window.devicePixelRatio
+    let widthPoints: number
+    let heightPoints: number
 
-    let widthSmall = Math.ceil(widthPixels/scaleRatio)
-    let heightSmall = Math.ceil(heightPixels/scaleRatio)
+    let widthSmall: number
+    let heightSmall: number
 
-    let id = props.photo.id
-    let elementID = 'photo-canvas-' + id
+    let id: string
+    let elementID: string
 
-    console.log(id)
-
-    //create blur
-    let blurData: any = decode(
-        props.photo.blurHash,
+    function unhashBlur(
+      level: number,
+      blurhash: string,
+      canvas: HTMLCanvasElement
+    ) {
+      //create blur
+      console.log(`${id} ${blurhash}`)
+      let blurData: any = decode(
+        blurhash,
         widthSmall,
         heightSmall
       )
-    const imageData = new ImageData(blurData, widthSmall)
+      const imageData = new ImageData(blurData, widthSmall)
+
+      let tempCanvas = document.createElement('canvas') as HTMLCanvasElement
+      let tempCtx = tempCanvas.getContext("2d")!
+
+      let ctx = canvas.getContext("2d")!
+
+      //draw blur @ small scale
+      tempCtx.putImageData(imageData, 0, 0)
+
+      //draw blur @ large scale
+      let tempImageBlur = new Image()
+      //tempImageBlur.crossOrigin = "anonymous";  // This enables CORS
+      tempImageBlur.onload = () => {
+        console.log(`${currentLoadLevel} < ${level}`)
+        if (currentLoadLevel < level) {
+          ctx.drawImage(
+            tempImageBlur,
+            0, 0,
+            widthSmall-1, heightSmall-1,
+            0, 0,
+            widthPoints, heightPoints
+          )
+          currentLoadLevel = level
+        }
+        console.log(`${currentLoadLevel} < ${level}`)
+      }
+      tempImageBlur.src = tempCanvas.toDataURL() 
+    }
+
+    function loadBlurhash(level: number, canvas: HTMLCanvasElement) {
+      fetch(`${import.meta.env.VITE_APP_API_ENDPOINT}/photo-library/img/${id}/blurhash-${level}`)
+          .then(response => {
+            return response.json()
+          })
+          .then(response => {
+            unhashBlur(level, response, canvas)
+          })
+          .catch((err: Error) => {
+            console.log(err)
+          })
+    }
+
+    widthPixels = 320
+    heightPixels = Math.ceil(320 / props.photo.dimensionsRatio)
+
+    widthPoints = widthPixels * window.devicePixelRatio
+    heightPoints = heightPixels * window.devicePixelRatio
+
+    widthSmall = Math.ceil(widthPixels/scaleRatio)
+    heightSmall = Math.ceil(heightPixels/scaleRatio)
+
+    id = props.photo.id
+    elementID = 'photo-canvas-' + id
+
 
     onMounted(async () => {
 
@@ -52,31 +110,27 @@ export default {
       let canvas = document.getElementById(elementID) as HTMLCanvasElement
       let ctx = canvas.getContext("2d")!
 
-      //draw blur @ small scale
-      ctx.putImageData(imageData, 0, 0)
+      unhashBlur(1, props.photo.blurHash, canvas)
 
-      //draw blur @ large scale
-      let tempImageBlur = new Image()
-      tempImageBlur.onload = () => {
-        //ctx.scale(scaleRatio*window.devicePixelRatio, scaleRatio*window.devicePixelRatio)
-        ctx.drawImage(
-          tempImageBlur,
-          0, 0,
-          widthSmall-1, heightSmall-1,
-          0, 0,
-          widthPoints, heightPoints
-        )
-      }
-      tempImageBlur.src = canvas.toDataURL() 
+      //loadBlurhash(2, canvas)
+      //loadBlurhash(3, canvas)
+      //loadBlurhash(4, canvas)
+      //loadBlurhash(5, canvas)
+      //loadBlurhash(6, canvas)
+      //loadBlurhash(7, canvas)
+      //loadBlurhash(8, canvas)
+      loadBlurhash(9, canvas)
 
-      //reset scale
-      //ctx.scale(1/scaleRatio, 1/scaleRatio)
       ctx.scale(1/window.devicePixelRatio, 1/window.devicePixelRatio)
 
       //draw final image
       let tempImageFinal = new Image()
       tempImageFinal.onload = () => {
-        ctx.drawImage(tempImageFinal, 0, 0)
+        if (currentLoadLevel < 10) {
+          ctx.clearRect(0, 0, widthPoints+1, heightPoints+1)
+          ctx.drawImage(tempImageFinal, 0, 0)
+          currentLoadLevel = 10
+        }
       }
       tempImageFinal.src = getImgUri(id)
     });

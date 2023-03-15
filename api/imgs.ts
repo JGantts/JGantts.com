@@ -33,7 +33,7 @@ imgsRouter.get('/gallery/main',
       return {
         id: dir,
         dimensionsRatio: await getDimensionsRatio(dir),
-        blurHash: await getBlurhash(dir)
+        blurHash: await getBlurhash(dir, 1)
       }
     })
     photoMetas = await Promise.all(photoMetas)
@@ -81,6 +81,16 @@ imgsRouter.get('/img/:imgID/w-:imgWidth.jpg',
    }
 )
 
+
+imgsRouter.get('/img/:imgID/blurhash-:hashSize',
+  async (req, res, next) => {
+
+    // @ts-ignore
+    res.setHeader('Access-Control-Allow-Origin', process.env.APP_ENDPOINT)
+    res.send(JSON.stringify(await getBlurhash(req.params.imgID, Number(req.params.hashSize))))
+  }
+)
+
 async function generateImageAtWidth(imgID: string, width: number) {
   let original = `${process.env.APP_IMG_FILES}/img/${imgID}/full-size.jpg`
   let generate = `${process.env.APP_IMG_FILES}/img/${imgID}/w-${width}.jpg`
@@ -95,16 +105,16 @@ async function generateImageAtWidth(imgID: string, width: number) {
   await image.writeAsync(generate)  
 }
 
-async function getBlurhash(imgID: string): Promise<string> {
-  let width320 = `${process.env.APP_IMG_FILES}/img/${imgID}/w-320.jpg`
-  let fileName = `${process.env.APP_IMG_FILES}/img/${imgID}/blurhash.txt`
+async function getBlurhash(imgID: string, hashSize: number): Promise<string> {
+  let width320 = `${process.env.APP_IMG_FILES}/img/${imgID}/w-40.jpg`
+  let fileName = `${process.env.APP_IMG_FILES}/img/${imgID}/blurhash-${hashSize}.txt`
   fileName = path.resolve(fileName)
   width320 = path.resolve(width320)
 
   let contents = await getFileContents_makeIfNeeded(
     fileName,
     async () => {
-      await generateImageAtWidth(imgID, 320)
+      await generateImageAtWidth(imgID, 40)
       let contents320 = await fs.readFile(width320)
       let blurhash = await new Promise(
         async resolve => {
@@ -116,7 +126,7 @@ async function getBlurhash(imgID: string): Promise<string> {
               //logger.debug()
             } else {
               //console.log("wut")
-              resolve(blurhashEncode(decoded.data, decoded.width, decoded.height, 4, 4));
+              resolve(blurhashEncode(decoded.data, decoded.width, decoded.height, hashSize, hashSize));
             }
           });
       })

@@ -5,7 +5,10 @@ import Jimp from "jimp"
 import multer from 'multer'
 //const log4js = require("log4js");
 import { encode as blurhashEncode } from "blurhash";
+import { getLogger } from "log4js";
 const inkjet = require('inkjet');
+const log4js = require("log4js");
+let logger = log4js.getLogger()
 
 const fs = require('fs').promises;
 const fsSync = require('fs');
@@ -23,6 +26,7 @@ let serveStatic = require('serve-static')
 let imgsRouter = express.Router();
 
 imgsRouter.all('*', (req: Request, res: Response, next: NextFunction) => {
+  logger.debug(req.path)
   next()
 })
 

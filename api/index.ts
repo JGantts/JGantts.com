@@ -1,7 +1,13 @@
 require('dotenv').config()
-import express, { Express, Request, Response } from 'express';
-let serveStatic = require('serve-static');
+import express, { Express, Request, Response } from 'express'
+let serveStatic = require('serve-static')
 let path = require('path')
+const log4js = require("log4js")
+log4js.configure("logger.config.json")
+let logger = log4js.getLogger()
+logger.level = "communication"
+
+logger.atomic("Launch")
 
 const api: Express = express()
 const port = process.env.API_PORT

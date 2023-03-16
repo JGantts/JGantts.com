@@ -81,6 +81,34 @@ imgsRouter.get('/img/:imgID/w-:imgWidth.jpg',
    }
 )
 
+imgsRouter.get('/img/:imgID/h-:imgHeight.jpg', 
+   async (req, res, next) => {
+     //logger.trace(`check static files under ${req.app.locals.PRIVATE_DIR}`)
+     let height = Math.floor(Number(req.params.imgHeight))
+     if (height > 2560) {
+      height = 2560
+     }
+     let fileName = `${process.env.APP_IMG_FILES}/img/${req.params.imgID}/h-${height}.jpg`
+
+     fileName = path.resolve(fileName)
+
+     let contents = await getFileContents_makeIfNeeded(
+      fileName,
+      async () => {
+        await generateImageAtHeight(req.params.imgID, height)
+      }
+    )
+
+     res.writeHead(200, { 
+      'Content-Type': 'image/jpeg',
+      // @ts-ignore
+      'Access-Control-Allow-Origin': process.env.APP_ENDPOINT
+     })
+     res.write(contents);
+     res.end();
+   }
+)
+
 
 imgsRouter.get('/img/:imgID/blurhash-:hashSize',
   async (req, res, next) => {
@@ -101,6 +129,20 @@ async function generateImageAtWidth(imgID: string, width: number) {
   //(original)
   let image = await Jimp.read(original);
   image.scaleToFit(width, image.bitmap.height)
+  image.quality(90)
+  await image.writeAsync(generate)  
+}
+
+async function generateImageAtHeight(imgID: string, height: number) {
+  let original = `${process.env.APP_IMG_FILES}/img/${imgID}/full-size.jpg`
+  let generate = `${process.env.APP_IMG_FILES}/img/${imgID}/h-${height}.jpg`
+  original = path.resolve(original)
+  generate = path.resolve(generate)
+
+  //logger.trace(`no static file ${query.pathname} under ${req.app.locals.PRIVATE_DIR} due to ${err}`)
+  //(original)
+  let image = await Jimp.read(original);
+  image.scaleToFit(image.bitmap.width, height)
   image.quality(90)
   await image.writeAsync(generate)  
 }

@@ -26,7 +26,7 @@ let serveStatic = require('serve-static')
 let imgsRouter = express.Router();
 
 imgsRouter.all('*', (req: Request, res: Response, next: NextFunction) => {
-  logger.debug(req.path)
+  logger.communication(req.path)
   next()
 })
 

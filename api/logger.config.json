@@ -24,10 +24,10 @@
   "appenders": {
     "publish-communication-toFilter": {
       "type": "file",
-      "filename": "../jgantts-com-logs/001-communication.log",
+      "filename": "./jgantts-com-logs/001-communication.log",
       "layout": {
         "type": "pattern",
-        "pattern": "[%f{2} %l] [%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
+        "pattern": "[%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
       }
     },
     "publish-communication": {
@@ -38,10 +38,10 @@
     },    
     "publish-communication-every-toFilter": {
       "type": "file",
-      "filename": "../jgantts-com-logs/001-communication.log",
+      "filename": "./jgantts-com-logs/001-communication.log",
       "layout": {
         "type": "pattern",
-        "pattern": "[%f{2} %l] [%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
+        "pattern": "[%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
       }
     },
     "publish-communication-every": {
@@ -53,10 +53,10 @@
 
     "publish-atomic-toFilter": {
       "type": "file",
-      "filename": "../jgantts-com-logs/002-atomic.log",
+      "filename": "./jgantts-com-logs/002-atomic.log",
       "layout": {
         "type": "pattern",
-        "pattern": "[%f{2} %l] [%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
+        "pattern": "[%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
       }
     },
     "publish-atomic": {
@@ -68,10 +68,10 @@
 
     "publish-trace-toFilter": {
       "type": "file",
-      "filename": "../jgantts-com-logs/003-trace.log",
+      "filename": "./jgantts-com-logs/003-trace.log",
       "layout": {
         "type": "pattern",
-        "pattern": "[%f{2} %l] [%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
+        "pattern": "[%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
       }
     },
     "publish-trace": {
@@ -83,7 +83,7 @@
 
     "publish-entry-toFilter": {
       "type": "file",
-      "filename": "../jgantts-com-logs/004-entry.log",
+      "filename": "./jgantts-com-logs/004-entry.log",
       "layout": {
         "type": "pattern",
         "pattern": "[%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
@@ -112,7 +112,7 @@
 
     "publish-debug-toFilter": {
       "type": "file",
-      "filename": "../jgantts-com-logs/005-debug.log",
+      "filename": "./jgantts-com-logs/005-debug.log",
       "layout": {
         "type": "pattern",
         "pattern": "[%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
@@ -127,7 +127,7 @@
 
     "publish-info-toFilter": {
       "type": "file",
-      "filename": "../jgantts-com-logs/006-info.log",
+      "filename": "./jgantts-com-logs/006-info.log",
       "layout": {
         "type": "pattern",
         "pattern": "[%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
@@ -142,7 +142,7 @@
 
     "publish-backdoor-toFilter": {
       "type": "file",
-      "filename": "../jgantts-com-logs/007-backdoor.log",
+      "filename": "./jgantts-com-logs/007-backdoor.log",
       "layout": {
         "type": "pattern",
         "pattern": "[%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
@@ -157,7 +157,7 @@
 
     "publish-warn-toFilter": {
       "type": "file",
-      "filename": "../jgantts-com-logs/008-warn.log",
+      "filename": "./jgantts-com-logs/008-warn.log",
       "layout": {
         "type": "pattern",
         "pattern": "[%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
@@ -172,7 +172,7 @@
 
     "publish-error-toFilter": {
       "type": "file",
-      "filename": "../jgantts-com-logs/009-error.log",
+      "filename": "./jgantts-com-logs/009-error.log",
       "layout": {
         "type": "pattern",
         "pattern": "[%f{2} %l] [%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
@@ -187,7 +187,7 @@
 
     "publish-fatal-toFilter": {
       "type": "file",
-      "filename": "../jgantts-com-logs/010-fatal.log",
+      "filename": "./jgantts-com-logs/010-fatal.log",
       "layout": {
         "type": "pattern",
         "pattern": "[%f{2} %l] [%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m"
@@ -202,7 +202,7 @@
     
     "email-error-toFilter": {
       "type": "file",
-      "filename": "../jgantts-com-logs/100-unsent-email.log",
+      "filename": "./jgantts-com-logs/100-unsent-email.log",
       "layout": {
         "type": "pattern",
         "pattern": "[%d{yyyy.MM.dd-hh:mm:ss.SSS}] %m%n%s"

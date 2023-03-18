@@ -32,6 +32,7 @@ imgsRouter.all('*', (req: Request, res: Response, next: NextFunction) => {
 
 imgsRouter.get('/gallery/main', 
   async (req, res) => {
+    //console.log("wut")
     let dirs = await getDirectories(path.resolve(`${process.env.APP_IMG_FILES}/img/`))
     let photoMetas = dirs.map(async (dir: string) => {
       return {
@@ -40,6 +41,7 @@ imgsRouter.get('/gallery/main',
         blurHash: await getBlurhash(dir, 1)
       }
     })
+
     photoMetas = await Promise.all(photoMetas)
 
     // @ts-ignore
@@ -74,6 +76,7 @@ imgsRouter.get('/img/:imgID/w-:imgWidth.jpg',
         await generateImageAtWidth(req.params.imgID, width)
       }
     )
+
 
      res.writeHead(200, { 
       'Content-Type': 'image/jpeg',
@@ -184,6 +187,7 @@ async function getBlurhash(imgID: string, hashSize: number): Promise<string> {
   )
   //console.log(contents.toString())
 
+  //console.log(imgID)
   return contents.toString()
 }
 
@@ -193,6 +197,7 @@ async function getDimensionsRatio(imgID: string): Promise<number> {
   fileName = path.resolve(fileName)
   fullSize = path.resolve(fullSize)
 
+  //console.log(`${imgID} - 11`)
   let contents = await getFileContents_makeIfNeeded(
     fileName,
     async () => {
@@ -201,7 +206,8 @@ async function getDimensionsRatio(imgID: string): Promise<number> {
           inkjet.decode((await fs.readFile(fullSize)), function(err: any, decoded: any) {
             // decoded: { width: number, height: number, data: Uint8Array }
             if (err) {
-              //logger.debug()
+              logger.error(err.message)
+              resolve(1)
             } else {
               resolve(decoded.width/decoded.height)
             }
@@ -211,6 +217,7 @@ async function getDimensionsRatio(imgID: string): Promise<number> {
       await fs.writeFile(fileName, dimensionsRatio.toString())
     }
   )
+  //console.log(`${imgID} - 14`)
 
   //(Number(contents.toString()))
   return Number(contents.toString())

@@ -42,7 +42,7 @@ export default {
       canvas: HTMLCanvasElement
     ) {
       //create blur
-      console.log(`${id} ${blurhash}`)
+      //console.log(`${id} ${blurhash}`)
       let blurData: any = decode(
         blurhash,
         widthSmall,
@@ -62,7 +62,7 @@ export default {
       let tempImageBlur = new Image()
       //tempImageBlur.crossOrigin = "anonymous";  // This enables CORS
       tempImageBlur.onload = () => {
-        console.log(`${currentLoadLevel} < ${level}`)
+        //console.log(`${currentLoadLevel} < ${level}`)
         if (currentLoadLevel < level) {
           ctx.drawImage(
             tempImageBlur,
@@ -73,7 +73,7 @@ export default {
           )
           currentLoadLevel = level
         }
-        console.log(`${currentLoadLevel} < ${level}`)
+        //console.log(`${currentLoadLevel} < ${level}`)
       }
       tempImageBlur.src = tempCanvas.toDataURL() 
     }

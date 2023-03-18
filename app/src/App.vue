@@ -3,6 +3,116 @@ import { RouterLink, RouterView } from 'vue-router'
 import Background from './components/Background.vue'
 import NavBar from './components/NavBar.vue'
 
+function log(type: string, message: string) {
+  let req = new XMLHttpRequest()
+  req.open('POST', `${import.meta.env.VITE_APP_API_ENDPOINT}/logger/log`)
+  req.setRequestHeader("Content-Type", "application/json;charset=UTF-8")
+  req.send(
+    JSON.stringify({
+      logtype: type,
+      logmessage: message
+    })
+  )
+}
+
+/*
+  'communication' - 1200
+  'atomic' - 2500
+  'trace'  - 5000
+  'entry'  - 7500
+  'debug'  - 10000
+  'info'.  - 20000
+  'backdoor' - 25000
+  'warn' - 30000
+  'error' - 40000
+  'fatal' - 50000
+*/
+// @ts-ignore
+window.logger = {
+  'communication': (mess: string) => {
+    log('communication', mess)
+  },
+  'atomic': (mess: string) => {
+    log('atomic', mess)
+  },
+  'trace': (mess: string) => {
+    log('trace', mess)
+  },
+  'entry': (mess: string) => {
+    log('entry', mess)
+  },
+  'debug': (mess: string) => {
+    log('debug', mess)
+  },
+  'info': (mess: string) => {
+    log('info', mess)
+  },
+  'backdoor': (mess: string) => {
+    log('backdoor', mess)
+  },
+  'warn': (mess: string) => {
+    log('warn', mess)
+  },
+  'error': (mess: string) => {
+    log('error', mess)
+  },
+  'fatal': (mess: string) => {
+    log('fatal', mess)
+  }
+}
+// @ts-ignore
+let logger = window.logger
+fetch(`${import.meta.env.VITE_APP_API_ENDPOINT}/logger/level`)
+  .then(response => response.json())
+  .then(response => {
+    console.log('wut')
+    let loglevel = Number(response.level)
+    // @ts-ignore
+    window.logger.communication = loglevel<1200 
+        ? () => {}
+        : (mess: string) => log('communication', mess)
+    // @ts-ignore
+    window.logger.atomic = loglevel<2500 
+        ? () => {}
+        : (mess: string) => log('atomic', mess)
+    // @ts-ignore
+    window.logger.trace = loglevel<5000 
+        ? () => {}
+        : (mess: string) => log('trace', mess)
+    // @ts-ignore
+      window.logger.entry =  loglevel<7500 
+        ? () => {}
+        : (mess: string) => log('entry', mess)
+    // @ts-ignore
+      window.logger.debug =  loglevel<10000 
+        ? () => {}
+        : (mess: string) => log('debug', mess)
+    // @ts-ignore
+      window.logger.info =  loglevel<20000 
+        ? () => {}
+        : (mess: string) => log('info', mess)
+    // @ts-ignore
+      window.logger.backdoor =  loglevel<25000 
+        ? () => {}
+        : (mess: string) => log('backdoor', mess)
+    // @ts-ignore
+      window.logger.warn =  loglevel<30000 
+        ? () => {}
+        : (mess: string) => log('warn', mess)
+    // @ts-ignore
+      window.logger.error =  loglevel<40000 
+        ? () => {}
+        : (mess: string) => log('error', mess)
+    // @ts-ignore
+      window.logger.fatal = loglevel<50000 
+        ? () => {}
+        : (mess: string) => log('fatal', mess)
+  })
+  .catch((err: Error) => {
+    console.log(err)
+  })
+logger.atomic("browser code begin")
+
 const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
 darkModePreference.addEventListener("change", checkDarkMode)
 checkDarkMode(darkModePreference)

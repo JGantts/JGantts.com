@@ -69,44 +69,44 @@ fetch(`${import.meta.env.VITE_APP_API_ENDPOINT}/logger/level`)
     let loglevel = Number(response.level)
     // @ts-ignore
     window.logger.communication = loglevel<1200 
-        ? () => {}
-        : (mess: string) => log('communication', mess)
+      ? () => {}
+      : (mess: string) => log('communication', mess)
     // @ts-ignore
     window.logger.atomic = loglevel<2500 
-        ? () => {}
-        : (mess: string) => log('atomic', mess)
+      ? () => {}
+      : (mess: string) => log('atomic', mess)
     // @ts-ignore
     window.logger.trace = loglevel<5000 
-        ? () => {}
-        : (mess: string) => log('trace', mess)
+      ? () => {}
+      : (mess: string) => log('trace', mess)
     // @ts-ignore
-      window.logger.entry =  loglevel<7500 
-        ? () => {}
-        : (mess: string) => log('entry', mess)
+    window.logger.entry =  loglevel<7500 
+      ? () => {}
+      : (mess: string) => log('entry', mess)
     // @ts-ignore
-      window.logger.debug =  loglevel<10000 
-        ? () => {}
-        : (mess: string) => log('debug', mess)
+    window.logger.debug =  loglevel<10000 
+      ? () => {}
+      : (mess: string) => log('debug', mess)
     // @ts-ignore
-      window.logger.info =  loglevel<20000 
-        ? () => {}
-        : (mess: string) => log('info', mess)
+    window.logger.info =  loglevel<20000 
+      ? () => {}
+      : (mess: string) => log('info', mess)
     // @ts-ignore
-      window.logger.backdoor =  loglevel<25000 
-        ? () => {}
-        : (mess: string) => log('backdoor', mess)
+    window.logger.backdoor =  loglevel<25000 
+      ? () => {}
+      : (mess: string) => log('backdoor', mess)
     // @ts-ignore
-      window.logger.warn =  loglevel<30000 
-        ? () => {}
-        : (mess: string) => log('warn', mess)
+    window.logger.warn =  loglevel<30000 
+      ? () => {}
+      : (mess: string) => log('warn', mess)
     // @ts-ignore
-      window.logger.error =  loglevel<40000 
-        ? () => {}
-        : (mess: string) => log('error', mess)
+    window.logger.error =  loglevel<40000 
+      ? () => {}
+      : (mess: string) => log('error', mess)
     // @ts-ignore
-      window.logger.fatal = loglevel<50000 
-        ? () => {}
-        : (mess: string) => log('fatal', mess)
+    window.logger.fatal = loglevel<50000 
+      ? () => {}
+      : (mess: string) => log('fatal', mess)
   })
   .catch((err: Error) => {
     console.log(err)

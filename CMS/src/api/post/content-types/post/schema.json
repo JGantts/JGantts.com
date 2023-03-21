@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "posts",
+  "info": {
+    "singularName": "post",
+    "pluralName": "posts",
+    "displayName": "Post",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "UUID": {
+      "type": "string",
+      "required": true,
+      "unique": true,
+      "maxLength": 20,
+      "minLength": 20
+    },
+    "caption": {
+      "type": "string"
+    },
+    "datetime": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "collage": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::collage.collage",
+      "inversedBy": "post"
+    },
+    "photos": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::photo.photo",
+      "inversedBy": "posts"
+    }
+  }
+}

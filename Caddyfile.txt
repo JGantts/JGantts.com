@@ -6,6 +6,10 @@ cms.jgantts.com {
   reverse_proxy 127.0.0.1:1337
 }
 
+vite.jgantts.dev {
+  reverse_proxy 127.0.0.1:5173
+}
+
 piwigo.jgantts.com {
   php_fastcgi / /var/run/php/php7.0-fpm.sock {
     root /home/jgantts/JGantts.com/piwigo

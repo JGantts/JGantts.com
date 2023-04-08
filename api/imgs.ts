@@ -34,13 +34,16 @@ imgsRouter.get('/gallery/main',
   async (req, res) => {
     //console.log("wut")
     let dirs = await getDirectories(path.resolve(`${process.env.APP_IMG_FILES}/img/`))
-    let photoMetas = dirs.map(async (dir: string) => {
-      return {
-        id: dir,
-        dimensionsRatio: await getDimensionsRatio(dir),
-        blurHash: await getBlurhash(dir, 1)
-      }
-    })
+    let photoMetas = dirs
+      .filter((dir: string) => dir[0] !== '.')
+      .map(async (dir: string) => {
+        let _ = await getBlurhash(dir, 9)
+        return {
+          id: dir,
+          dimensionsRatio: await getDimensionsRatio(dir),
+          blurHash: await getBlurhash(dir, 1)
+        }
+      })
 
     photoMetas = await Promise.all(photoMetas)
 

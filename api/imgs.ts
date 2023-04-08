@@ -266,7 +266,7 @@ imgsRouter.post(
     const targetDir = path.resolve(`${process.env.APP_IMG_FILES}/img/${newID}/`);
     const targetPath = path.resolve(`${targetDir}/full-size.jpg`);
 
-    const fileTypes = [".jpeg", ".jpg"]
+    const fileTypes = [".jpeg", ".jpg", ".avif"]
 
     // @ts-ignore
     if (fileTypes.includes(path.extname(req.file.originalname).toLowerCase())) {

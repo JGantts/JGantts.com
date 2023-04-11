@@ -16,6 +16,8 @@ const path = require('path');
 const url = require('url');
 let serveStatic = require('serve-static')
 
+import { decode83 } from "./base83";
+
 //const { JsonDB, Config } = require('node-json-db');
 
 //const logger = log4js.getLogger();
@@ -37,11 +39,13 @@ imgsRouter.get('/gallery/main',
     let photoMetas = dirs
       .filter((dir: string) => dir[0] !== '.')
       .map(async (dir: string) => {
+        let blurhash = await getBlurhash(dir, 9)
+        let averageColor = await getAverageColor(blurhash)
         return {
           id: dir,
           dimensionsRatio: await getDimensionsRatio(dir),
-          averageColor: await getBlurhash(dir, 1),
-          blurHash: await getBlurhash(dir, 9)
+          averageColor: averageColor,
+          blurHash: blurhash
         }
       })
 
@@ -192,6 +196,21 @@ async function getBlurhash(imgID: string, hashSize: number): Promise<string> {
 
   //console.log(imgID)
   return contents.toString()
+}
+
+async function getAverageColor(blurhash: string): Promise<string> {
+  let averageColorStr = blurhash.substring(2, 6)
+  let averageColorInt = decode83(averageColorStr)
+  let colorString = toColor(averageColorInt)
+  return colorString
+}
+
+function toColor(num: number): string {
+  num >>>= 0;
+  let b = num & 0xFF
+  let g = (num & 0xFF00) >>> 8
+  let r = (num & 0xFF0000) >>> 16
+  return "rgb(" + [r, g, b].join(",") + ")";
 }
 
 async function getDimensionsRatio(imgID: string): Promise<number> {

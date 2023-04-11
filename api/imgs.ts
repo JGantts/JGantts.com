@@ -37,11 +37,11 @@ imgsRouter.get('/gallery/main',
     let photoMetas = dirs
       .filter((dir: string) => dir[0] !== '.')
       .map(async (dir: string) => {
-        let _ = await getBlurhash(dir, 9)
         return {
           id: dir,
           dimensionsRatio: await getDimensionsRatio(dir),
-          blurHash: await getBlurhash(dir, 1)
+          averageColor: await getBlurhash(dir, 1),
+          blurHash: await getBlurhash(dir, 9)
         }
       })
 

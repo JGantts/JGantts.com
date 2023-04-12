@@ -17,6 +17,7 @@ const url = require('url');
 let serveStatic = require('serve-static')
 
 import { decode83 } from "./base83";
+import { RGBToHSL } from "./rgb2hsl";
 
 //const { JsonDB, Config } = require('node-json-db');
 
@@ -43,7 +44,7 @@ imgsRouter.get('/gallery/main',
         let averageColor = await getAverageColor(blurhash)
         return {
           id: dir,
-          dimensionsRatio: await getDimensionsRatio(dir),
+          dimensionsRatio: (await getDimensionsRatio(dir)).toFixed(3),
           averageColor: averageColor,
           blurHash: blurhash
         }
@@ -210,7 +211,8 @@ function toColor(num: number): string {
   let b = num & 0xFF
   let g = (num & 0xFF00) >>> 8
   let r = (num & 0xFF0000) >>> 16
-  return "rgb(" + [r, g, b].join(",") + ")";
+  let hsl = RGBToHSL(r, g, b)
+  return `hsl(${hsl[0]},${hsl[1]}%,${hsl[2]})%`;
 }
 
 async function getDimensionsRatio(imgID: string): Promise<number> {

@@ -153,7 +153,7 @@ function checkDarkMode(mediaMatch: any) {
             <div class="wrapper">
               <div class="inner">
                 <p id="text05">I write software!</p>
-                <p id="text07">© 2023 Jacob Gantt</p>
+                <p id="text07">© 2024 Jacob Gantt</p>
               </div>
             </div>
           </div>

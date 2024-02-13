@@ -697,7 +697,7 @@ async function renderScene(): Promise<Boolean> {
     //friction
     gaussianObjects[index].velocity *= 0.999
     gaussianObjects[index].position += gaussianObjects[index].velocity
-    if (gaussianObjects[index].position < canvasPixelElement.height + 2 ) {
+    if (gaussianObjects[index].position < canvasPixelElement.height + 20 ) {
       eachIsDone = false
     }
   }

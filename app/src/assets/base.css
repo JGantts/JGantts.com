@@ -129,6 +129,13 @@ html {
   font-size: 24pt;
 }
 
+#text01-accent {
+  color: var(--textAccentOnBaseLowContrast);
+  font-size: 2em;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
 #text01 {
   font-size: 2em;
   line-height: 1.5;
@@ -155,9 +162,11 @@ html {
 }
 
 #text05 {
+  color: var(--textAccentOnBaseLowContrast);
   font-size: 1em;
   line-height: 1.5;
   font-weight: 500;
+
 }
 
 #text06 {
@@ -171,6 +180,12 @@ html {
   font-size: 0.5em;
   line-height: 1.5;
   font-weight: 300;
+}
+
+#text07-accent {
+  font-size: 0.5em;
+  line-height: 1.5;
+  font-weight: 400;
 }
 
 *, *:before, *:after {

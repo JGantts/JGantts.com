@@ -34,7 +34,7 @@ document.body.addEventListener('wheel', (event) => {
             <div id="container01" class="container default full">
               <div class="wrapper">
                 <div class="inner">
-                  <h1 id="text01">JGantts.com</h1>
+                  <h1><span id="text01-accent">JGantts</span><span id="text01">.com</span></h1>
                   <p id="text02">Welcome, all.</p>
                 </div>
               </div>
@@ -53,7 +53,7 @@ document.body.addEventListener('wheel', (event) => {
               <div class="wrapper">
                 <div class="inner">
                   <p id="text05">I write software!</p>
-                  <p id="text07">© 2023 Jacob Gantt</p>
+                  <p id="text07">© 2024 Jacob Gantt</p>
                 </div>
               </div>
             </div>

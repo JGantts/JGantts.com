@@ -122,7 +122,10 @@ body {
 }
 
 #app {
-  background-color: var(--base8)
+  background-color: var(--base3);
+  background-color: hsl(206, 100%, 35.0%);
+  background-color: var(--base8);
+  background-color: hsl(206, 100%, 35.0%);
 }
 
 html {
@@ -130,7 +133,13 @@ html {
 }
 
 #text01-accent {
-  color: var(--textAccentOnBaseLowContrast);
+  color: var(--textAccentOnBase);
+  font-size: 2em;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+#text01-dot {
   font-size: 2em;
   line-height: 1.5;
   font-weight: 500;
@@ -162,7 +171,7 @@ html {
 }
 
 #text05 {
-  color: var(--textAccentOnBaseLowContrast);
+  color: var(--textAccentOnBase);
   font-size: 1em;
   line-height: 1.5;
   font-weight: 500;
@@ -732,7 +741,7 @@ h1 span.p, h2 span.p, h3 span.p, p span.p {
   text-decoration: none;
 }
 
-#links01 li a .underline-link {
+#links01 li a .underline {
   text-decoration: underline;
 }
 
@@ -740,8 +749,13 @@ h1 span.p, h2 span.p, h3 span.p, p span.p {
   text-decoration: none;
 }
 
-#links01 li a:hover .underline-link {
+#links01 li a:hover .link {
   color: var(--textAccentOnBaseLowContrast);
+}
+
+#links01 li .link {
+  cursor: pointer; 
+  white-space: nowrap;
 }
 
 @media (max-width: 1920px) {

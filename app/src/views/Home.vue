@@ -13,11 +13,11 @@
               <p id="text04">Jacob Gantt</p>
               <ul id="links01" class="links">
                 <li class="n01">
-                  <a href="mailto:contact@jgantts.com"><span class="underline-link"><i class="fa-solid fa-envelope" />&nbsp;contact@jgantts.com</span></a>
+                  <a href="mailto:contact@jgantts.com"><span class="link"><i class="fa-solid fa-envelope" />&nbsp;&nbsp;<span class="underline">contact@jgantts.com</span><span></span></span></a>
                 </li><li class="n02">
-                  <a href="https://github.com/JGantts"><span class="underline-link"><i class="fa-brands fa-github" />&nbsp;&nbsp;github.com/JGantts</span></a>
+                  <a href="https://github.com/JGantts"><span class="link"><i class="fa-brands fa-github" />&nbsp;&nbsp;<span class="underline">github.com/JGantts</span></span></a>
                 </li><li class="n03">
-                  <a href="/resume/GanttJ-Resume.pdf"><span class="underline-link"><i class="fa-solid fa-file-pdf" />&nbsp;&nbsp;GanttJ-Resume.pdf</span></a>
+                  <a href="/resume/GanttJ-Resume.pdf"><span class="link"><i class="fa-solid fa-file-pdf" />&nbsp;&nbsp;<span class="underline">GanttJ-Resume.pdf</span></span></a>
                 </li>
               </ul>
             </div>

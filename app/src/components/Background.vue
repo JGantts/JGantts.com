@@ -110,6 +110,16 @@ type Theme = {
   backgroundColors: { stop: number, color: Color}[]
 }
 
+/*backgroundColors: [
+  { stop: 0/6, color: hslToComponents(red.red9) },
+  { stop: 1/6, color: hslToComponents(orange.orange9) },
+  { stop: 2/6, color: hslToComponents(yellow.yellow9) },
+  { stop: 3/6, color: hslToComponents(green.green9) },
+  { stop: 4/6, color: hslToComponents(blue.blue9) },
+  { stop: 5/6, color: hslToComponents(indigo.indigo9) },
+  { stop: 6/6, color: hslToComponents(violet.violet9) },
+],*/
+
 let theme_BlueDark_slate__Tomato_mauve: Theme = {
   base1: hslToComponents(blueDark.blue1),
   base2: hslToComponents(blueDark.blue2),
@@ -150,20 +160,11 @@ let theme_BlueDark_slate__Tomato_mauve: Theme = {
   textBaseOnAccent: hslToComponents(grassDark.grass12),
 
   textAccentOnBaseLowContrast: hslToComponents(tomatoDark.tomato11),
-  textAccentOnBase: hslToComponents(tomatoDark.tomato12),
+  textAccentOnBase: hslToComponents(tomatoDark.tomato11),
 
   textAccentOnAccentLowContrast: hslToComponents(tomatoDark.tomato11),
   textAccentOnAccent: hslToComponents(tomatoDark.tomato12),
 
-  /*backgroundColors: [
-    { stop: 0/6, color: hslToComponents(red.red9) },
-    { stop: 1/6, color: hslToComponents(orange.orange9) },
-    { stop: 2/6, color: hslToComponents(yellow.yellow9) },
-    { stop: 3/6, color: hslToComponents(green.green9) },
-    { stop: 4/6, color: hslToComponents(blue.blue9) },
-    { stop: 5/6, color: hslToComponents(indigo.indigo9) },
-    { stop: 6/6, color: hslToComponents(violet.violet9) },
-  ],*/
   backgroundColors: [
     { stop: 0, color: hslToComponents(sky.sky9) },
     { stop: 0.45, color: hslToComponents(blue.blue9) },
@@ -213,7 +214,7 @@ let theme_Blue_slate__Orange_sand: Theme = {
   textBaseOnAccent: hslToComponents(blue.blue12),
 
   textAccentOnBaseLowContrast: hslToComponents(orange.orange11),
-  textAccentOnBase: hslToComponents(orange.orange12),
+  textAccentOnBase: hslToComponents(orange.orange10),
 
   textAccentOnAccentLowContrast: hslToComponents(orangeDark.orange11),
   textAccentOnAccent: hslToComponents(orangeDark.orange12),
@@ -383,7 +384,8 @@ async function initializeBackground() {
 
 
 async function initializeCurtain() {
-
+  console.log("hi")
+  doneAnimatingCurtain = false
   let countToAddSmoothed = widthInLargePixels*PIXELATED_LARGE_BOX_SIZE/SMOOTHED_BOX_SIZE
 
   let gaussianSumsPosition: number[] = gaussians(

@@ -2,6 +2,14 @@
 import { RouterLink, RouterView } from 'vue-router'
 import Background from './components/Background.vue'
 import NavBar from './components/NavBar.vue'
+import { ref, onMounted } from 'vue'
+
+const backgroundRef = ref(null)
+
+console.log(backgroundRef.value)
+onMounted(() => {
+  console.log(backgroundRef.value)
+})
 
 const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
 darkModePreference.addEventListener("change", checkDarkMode)
@@ -24,7 +32,7 @@ document.body.addEventListener('wheel', (event) => {
 });
 
 function reloadBackgound() {
-
+  backgroundRef.value.reloadBackgound()
 }
 
 </script>
@@ -93,11 +101,14 @@ function reloadBackgound() {
             </div>
           </div>
         </div>
+            <div id="main04" class="main" v-if="false">
+              <button @click="reloadBackgound">
+                <i class="fa-solid fa-rotate-right" />&nbsp;&nbsp;Replay
+              </button>
+            </div>
       </div>
       <div id="background">
-        <Background 
-          @reload-backgound="reloadBackgound"
-        />
+        <Background ref="backgroundRef" />
       </div>
     </div>
   </div>

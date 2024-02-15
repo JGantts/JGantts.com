@@ -995,6 +995,13 @@ onMounted(async () => {
 })
 
 window.addEventListener("resize", resizedWindow)*/
+
+const reloadBackgound = () => {
+  initializeBackground()
+  initializeCurtain()
+}
+
+defineExpose({ reloadBackgound })
 </script>
 
 <template>

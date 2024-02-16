@@ -457,10 +457,16 @@ async function reconPixelsFine() {
   }
 }
 
+let renderedPixelsFine = null
+
 async function paintPixelsFine() {
+  renderedPixelsFine = canvasPixelContext.createImageData(widthInFinePixels, heightInFinePixels)
+  console.log(renderedPixelsFine)
   for (let key in pixelColumnsFine) {
     renderColumn(Number(key))
   }
+  console.log(renderedPixelsFine)
+  canvasPixelContext.putImageData(renderedPixelsFine, 0, 0)
 }
 
 async function calculateColumnSuper(index: number) { 
@@ -759,23 +765,39 @@ function renderPixel(
 }) {
   let left = (pixelData.position.x)*PIXELATED_FINE_BOX_SIZE
   let top = (pixelData.position.y)*PIXELATED_FINE_BOX_SIZE
-  let right = left + PIXELATED_FINE_BOX_SIZE
-  let bottom = top + PIXELATED_FINE_BOX_SIZE
 
-  canvasPixelContext.clearRect(left, top, PIXELATED_FINE_BOX_SIZE, PIXELATED_FINE_BOX_SIZE)
+  //canvasPixelContext.clearRect(left, top, PIXELATED_FINE_BOX_SIZE, PIXELATED_FINE_BOX_SIZE)
 
-  canvasPixelContext.fillStyle = colorOffsetPlusThemePositionToHsl(
+  let pixelColor = colorOffsetPlusThemePositionToHsl(
     pixelData.color, 
     {
       x: pixelData.position.x/canvasPixelElement.width,
       y: pixelData.position.y/canvasPixelElement.height
-    })
-  canvasPixelContext.fillRect(left, top, PIXELATED_FINE_BOX_SIZE, PIXELATED_FINE_BOX_SIZE)
+    }
+  )
+  let rgb = HSLToRGB(pixelColor.hue, pixelColor.saturation, pixelColor.lightness)
+
+  let i = left + top * widthInFinePixels
+  i *= 4
+  renderedPixelsFine.data[i + 0] = rgb[0]
+  renderedPixelsFine.data[i + 1] = rgb[1]
+  renderedPixelsFine.data[i + 2] = rgb[2]
+  renderedPixelsFine.data[i + 3] = 255
 }
 
 /*
   Helper functions
 */
+const HSLToRGB = (h, s, l) => {
+  s /= 100;
+  l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n =>
+    l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [255 * f(0), 255 * f(8), 255 * f(4)];
+};
+
 function base9Gradient(): ColorOffset {
     return {
       saturation: Math.random()*80 - 40,
@@ -800,7 +822,7 @@ function componentsToHsl(color: Color): string {
   return `hsl(${color.hue}, ${color.saturation}%, ${color.lightness}%)`
 }
 
-function colorOffsetPlusThemePositionToHsl(offset: ColorOffset, position: Position): string {
+function colorOffsetPlusThemePositionToHsl(offset: ColorOffset, position: Position): Color {
   let positionalPercentage = (position.x + position.y)/2
   if (positionalPercentage < 0) {
     positionalPercentage = 0
@@ -811,7 +833,7 @@ function colorOffsetPlusThemePositionToHsl(offset: ColorOffset, position: Positi
     saturation: jganttsSaturation(offset.saturation, positionalPercentage, colorBase),
     lightness: jganttsLightness(offset.lightness, positionalPercentage, colorBase)
   }
-  return componentsToHsl(color)
+  return color
 }
 
 //Function only works when hues differentials don't cross 0/360

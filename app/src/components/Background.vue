@@ -166,11 +166,11 @@ let theme_BlueDark_slate__Tomato_mauve: Theme = {
   textAccentOnAccent: hslToComponents(tomatoDark.tomato12),
 
   backgroundColors: [
-    { stop: 0, color: hslToComponents(sky.sky9) },
-    { stop: 0.45, color: hslToComponents(blue.blue9) },
-    { stop: 0.5, color: hslToComponents(blue.blue9) },
-    { stop: 0.6, color: hslToComponents(blue.blue9) },
-    { stop: 1, color: hslToComponents(green.green9) },
+    { stop: 0, color: hslToComponents(sky.sky10) },
+    { stop: 0.45, color: hslToComponents(blue.blue10) },
+    { stop: 0.5, color: hslToComponents(blue.blue10) },
+    { stop: 0.6, color: hslToComponents(blue.blue10) },
+    { stop: 1, color: hslToComponents(green.green10) },
   ]
 }
 
@@ -229,9 +229,11 @@ let theme_Blue_slate__Orange_sand: Theme = {
     { stop: 6/6, color: hslToComponents(violet.violet9) },
   ],*/
   backgroundColors: [
-    { stop: 0, color: hslToComponents(sky.sky9) },
-    { stop: 0.5, color: hslToComponents(blue.blue9) },
-    { stop: 1, color: hslToComponents(green.green9) },
+    { stop: 0, color: hslToComponents(sky.sky5) },
+    { stop: 0.45, color: hslToComponents(blue.blue8) },
+    { stop: 0.5, color: hslToComponents(blue.blue8) },
+    { stop: 0.6, color: hslToComponents(blue.blue8) },
+    { stop: 1, color: hslToComponents(green.green8) },
   ],
 }
 

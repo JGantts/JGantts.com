@@ -170,7 +170,7 @@ let theme_BlueDark_slate__Tomato_mauve: Theme = {
     { stop: 0.45, color: hslToComponents(blue.blue10) },
     { stop: 0.5, color: hslToComponents(blue.blue10) },
     { stop: 0.6, color: hslToComponents(blue.blue10) },
-    { stop: 1, color: hslToComponents(green.green10) },
+    { stop: 1, color: hslToComponents(grass.grass10) },
   ]
 }
 

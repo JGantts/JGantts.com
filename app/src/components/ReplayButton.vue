@@ -1,5 +1,5 @@
 <template>
-  <div class="secondary" v-if="true">
+  <div class="secondary" v-if="fals">
     <button @click="$emit('click')">
       <i class="fa-solid fa-rotate-right" />&nbsp;&nbsp;Replay
     </button>

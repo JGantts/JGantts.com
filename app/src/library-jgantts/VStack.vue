@@ -19,7 +19,7 @@ const props = defineProps({
 <style scoped>
 .stack-panel {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   gap: var(--spacing);

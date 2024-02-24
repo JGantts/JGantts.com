@@ -3,11 +3,12 @@ import { RouterLink, RouterView } from 'vue-router'
 import Background from './components/Background.vue'
 import NavBar from './components/NavBar.vue'
 import { ref, onMounted } from 'vue'
-import { IslandSize } from './components/IslandSize';
 
 import Island from "./components/Island.vue"
 import HStack from "./library-jgantts/HStack.vue";
+import VStack from "./library-jgantts/VStack.vue";
 import ReplayButton from "./components/ReplayButton.vue"
+import Links from "./components/Links.vue"
 
 const backgroundRef = ref(null)
 
@@ -32,7 +33,7 @@ document.body.addEventListener('wheel', (event) => {
 });
 
 function reloadBackgound() {
-  backgroundRef.value.reloadBackgound()
+  backgroundRef.value?.reloadBackgound()
 }
 
 </script>
@@ -41,50 +42,40 @@ function reloadBackgound() {
   <div id="app">
     <div id="background-holder">
       <div id="wrapper">
-        <Island :size="IslandSize.Large">
-          <h1><span id="text01-accent">JGantts</span><span id="text01-dot">.</span><span id="text01">com</span></h1>
-          <p id="text02">Welcome, all.</p>
+        <Island cornerRadius="1.5rem">
+          <VStack padding="0.75rem 1.25rem" spacing="0">
+            <h1>
+              <span id="text01-accent">JGantts</span>
+              <span id="text01-dot">.</span>
+              <span id="text01">com</span>
+            </h1>
+            <p id="text02">Welcome, all.</p>
+          </VStack>
         </Island>
-        <Island :size="IslandSize.Medium">
-          <div class="inner">
-            <div id="container02" class="container columns full">
-              <div class="wrapper">
-                <div class="inner">
-                  <div>
-                    <p id="text03">Contact me about software:</p>
-                    <p id="text04">Jacob Gantt</p>
-                    <ul id="links01" class="links">
-                      <li class="n01">
-                        <a href="mailto:contact@jgantts.com"><span class="link"><i class="fa-solid fa-envelope" />&nbsp;&nbsp;<span class="underline">contact@jgantts.com</span><span></span></span></a>
-                      </li><li class="n02">
-                        <a href="https://github.com/JGantts"><span class="link"><i class="fa-brands fa-github" />&nbsp;&nbsp;<span class="underline">github.com/JGantts</span></span></a>
-                      </li><li class="n03">
-                        <a href="/resume/GanttJ-Resume.pdf"><span class="link"><i class="fa-solid fa-file-pdf" />&nbsp;&nbsp;<span class="underline">GanttJ-Resume.pdf</span></span></a>
-                      </li>
-                    </ul>
-                  </div>
-                  <div>
-                    <p id="text06">
-                      <span class="p">
-                        Looking for clients and collaborators.<br />
-                        I&#039;m a developer with years of professional and
-                        personal experience; from improving enterprise solutions
-                        to fuzz testing code parsers; game mods, websites;
-                        APIs and UX; C#, JavaScript; Swift, Node; I love it all!
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <Island cornerRadius="1.5rem">
+          <HStack padding="1rem" spacing="1rem">
+            <VStack>
+              <p id="text03">Contact me about<br />software:</p>
+              <p id="text04">Jacob Gantt</p>
+              <Links />
+            </VStack>
+            <p id="text06" style="width: 340px">
+              Looking for clients and collaborators.<br />
+              I&#039;m a developer with years of professional and personal
+              experience; from improving enterprise solutions to fuzz testing
+              code parsers; game mods, websites; APIs and UX; C#, JavaScript; Swift, Node;
+              I love it all!
+            </p>
+          </HStack>
         </Island>
         <!-- <NavBar /> -->
-        <HStack class="main-holder">
+        <HStack spacing="0.25rem">
           <ReplayButton style="visibility: hidden" />
-          <Island :size="IslandSize.Small">
-            <p id="text05">I write software!</p>
-            <p id="text07">© 2024 Jacob Gantt</p>
+          <Island cornerRadius="0.5rem">
+            <VStack padding=" 0.25rem 0.75rem">
+              <p id="text05">I write software!</p>
+              <p id="text07">© 2024 Jacob Gantt</p>
+            </VStack>
           </Island>
           <ReplayButton @click="reloadBackgound" />
         </HStack>
@@ -97,148 +88,12 @@ function reloadBackgound() {
 </template>
 
 <style>
-.fade-enter-active,
-.fade-leave-active {
-  transition: all 0.5s ease;
-  overflow: hidden;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  max-height: 1rem;
-}
-.fade-enter-to,
-.fade-leave-from {
-  opacity: 1;
-  max-height: 150vh;
-}
-
 .main {
   background-color: var(--backgroundAppBase);
 }
 
-@media (max-width: 736px) {
-#container-nav > .wrapper > .inner > ul {
-  flex-direction: column; 
-}
-}
-
-@media (max-width: 480px) {
-#container-nav > .wrapper > .inner > ul {
-  flex-direction: column; 
-}
-}
-
-@media (max-width: 360px) {
-#container-nav > .wrapper > .inner > ul {
-  flex-direction: column; 
-}
-}
-
-#main01 {
-  --alignment: center;
-  --flex-alignment: center;
-  --indent-left: 1;
-  --indent-right: 1;
-  --border-radius-tl: 1.5rem;
-  --border-radius-tr: 1.5rem;
-  --border-radius-br: 1.5rem;
-  --border-radius-bl: 1.5rem;
-  align-items: center;
-  display: flex;
-  flex-grow: 0;
-  flex-shrink: 0;
-  justify-content: center;
-  max-width: 100%;
-  position: relative;
-  text-align: var(--alignment);
-  z-index: 1;
-  border-radius: var(--border-radius-tl) var(--border-radius-tr) var(--border-radius-br) var(--border-radius-bl);
-}
-
-#main01 > .inner {
-  border-radius: var(--border-radius-tl) var(--border-radius-tr) var(--border-radius-br) var(--border-radius-bl);
-  max-width: 100%;
-  position: relative;
-  width: var(--width);
-  z-index: 1;
-  padding: var(--padding-vertical) var(--padding-horizontal);
-}
-
-#main01 > .inner > * {
-  margin-top: var(--spacing);
-  margin-bottom: var(--spacing);
-}
-
-#main01 > .inner > :first-child {
-  margin-top: 0 !important;
-}
-
-#main01 > .inner > :last-child {
-  margin-bottom: 0 !important;
-}
-
-#main01 > .inner > .full {
-  margin-left: calc(var(--padding-horizontal) * -1);
-  max-width: calc(100% + calc(var(--padding-horizontal) * 2) + 0.4725px);
-  width: calc(100% + calc(var(--padding-horizontal) * 2) + 0.4725px);
-}
-
-#main01 > .inner > .full:first-child {
-  border-top-left-radius: inherit;
-  border-top-right-radius: inherit;
-  margin-top: calc(var(--padding-vertical) * -1) !important;
-}
-
-#main01 > .inner > .full:last-child {
-  border-bottom-left-radius: inherit;
-  border-bottom-right-radius: inherit;
-  margin-bottom: calc(var(--padding-vertical) * -1) !important;
-}
-
-#main01 > .inner > .full.screen {
-  border-radius: 0 !important;
-  max-width: 100vw;
-  position: relative;
-  width: 100vw;
-  left: 50%;
-  margin-left: -50vw;
-  right: auto;
-}
-
-#main01 > .inner {
-  --padding-horizontal: 0;
-  --padding-vertical: -0.5rem;
-  --spacing: 0rem;
-  --width: 15rem;
-}
-
-#main04 {
-  background: transparent;
-  visibility: hidden;
-  visibility: visible;
-}
-
-@media (max-width: 736px) {
-  #main01 > .inner {
-    --padding-horizontal: 0;
-    --padding-vertical: -0.5rem;
-    --spacing: 0rem;
-  }
-}
-
-@media (max-width: 480px) {
-  #main01 > .inner {
-    --spacing: 0rem;
-  }
-}
-
-@media (max-width: 360px) {
-  #main01 > .inner {
-    --padding-horizontal: 0;
-    --padding-vertical: -0.5rem;
-    --spacing: 0rem;
-  }
+.link {
+  text-decoration: none;
 }
 
 .main-holder {
@@ -246,206 +101,5 @@ function reloadBackgound() {
   --flex-alignment: center;
 }
 
-#main03 {
-  --alignment: center;
-  --flex-alignment: center;
-  --indent-left: 1;
-  --indent-right: 1;
-  --border-radius-tl: 0.5rem;
-  --border-radius-tr: 0.5rem;
-  --border-radius-br: 0.5rem;
-  --border-radius-bl: 0.5rem;
-  align-items: center;
-  display: flex;
-  flex-grow: 0;
-  flex-shrink: 0;
-  justify-content: center;
-  max-width: 100%;
-  position: relative;
-  text-align: var(--alignment);
-  z-index: 1;
-  border-radius: var(--border-radius-tl) var(--border-radius-tr)
-    var(--border-radius-br) var(--border-radius-bl);
-}
 
-#main03 > .inner {
-  border-radius: var(--border-radius-tl) var(--border-radius-tr)
-    var(--border-radius-br) var(--border-radius-bl);
-  max-width: 100%;
-  position: relative;
-  width: var(--width);
-  z-index: 1;
-  padding: var(--padding-vertical) var(--padding-horizontal);
-}
-
-#main03 > .inner > * {
-  margin-top: var(--spacing);
-  margin-bottom: var(--spacing);
-}
-
-#main03 > .inner > :first-child {
-  margin-top: 0 !important;
-}
-
-#main03 > .inner > :last-child {
-  margin-bottom: 0 !important;
-}
-
-#main03 > .inner > .full {
-  margin-left: calc(var(--padding-horizontal) * -1);
-  max-width: calc(100% + calc(var(--padding-horizontal) * 2) + 0.4725px);
-  width: calc(100% + calc(var(--padding-horizontal) * 2) + 0.4725px);
-}
-
-#main03 > .inner > .full:first-child {
-  border-top-left-radius: inherit;
-  border-top-right-radius: inherit;
-  margin-top: calc(var(--padding-vertical) * -1) !important;
-}
-
-#main03 > .inner > .full:last-child {
-  border-bottom-left-radius: inherit;
-  border-bottom-right-radius: inherit;
-  margin-bottom: calc(var(--padding-vertical) * -1) !important;
-}
-
-#main03 > .inner > .full.screen {
-  border-radius: 0 !important;
-  max-width: 100vw;
-  position: relative;
-  width: 100vw;
-  left: 50%;
-  margin-left: -50vw;
-  right: auto;
-}
-
-#main03 > .inner {
-  --padding-horizontal: 0;
-  --padding-vertical: 0;
-  --spacing: 0rem;
-  --width: 9rem;
-}
-
-@media (max-width: 736px) {
-  #main03 > .inner {
-    --padding-horizontal: 0;
-    --padding-vertical: 0;
-    --spacing: 0rem;
-    --width: 11rem;
-  }
-}
-
-@media (max-width: 480px) {
-  #main03 > .inner {
-    --spacing: 0rem;
-    --width: 11rem;
-  }
-}
-
-@media (max-width: 360px) {
-  #main03 > .inner {
-    --padding-horizontal: 0;
-    --padding-vertical: 0;
-    --spacing: 0rem;
-    --width: 11rem;
-  }
-}
-
-#main02 {
-  --alignment: center;
-  --flex-alignment: center;
-  --indent-left: 1;
-  --indent-right: 1;
-  --border-radius-tl: 1.5rem;
-  --border-radius-tr: 1.5rem;
-  --border-radius-br: 1.5rem;
-  --border-radius-bl: 1.5rem;
-  align-items: center;
-  display: flex;
-  flex-grow: 0;
-  flex-shrink: 0;
-  justify-content: center;
-  max-width: 100%;
-  position: relative;
-  text-align: var(--alignment);
-  z-index: 1;
-  border-radius: var(--border-radius-tl) var(--border-radius-tr) var(--border-radius-br) var(--border-radius-bl);
-}
-
-#main02 > .inner {
-  border-radius: var(--border-radius-tl) var(--border-radius-tr) var(--border-radius-br) var(--border-radius-bl);
-  max-width: 100%;
-  position: relative;
-  width: calc(var(--width) + va(--padding-horizontal));
-  z-index: 1;
-  padding: var(--padding-vertical) var(--padding-horizontal);
-}
-
-#main02 > .inner > * {
-  margin-top: var(--spacing);
-  margin-bottom: var(--spacing);
-}
-
-#main02 > .inner > :first-child {
-  margin-top: 0 !important;
-}
-
-#main02 > .inner > :last-child {
-  margin-bottom: 0 !important;
-}
-
-#main02 > .inner > .full {
-  margin-left: calc(var(--padding-horizontal) * -1);
-  max-width: calc(100% + calc(var(--padding-horizontal) * 2) + 0.4725px);
-  width: calc(100% + calc(var(--padding-horizontal) * 2) + 0.4725px);
-}
-
-#main02 > .inner > .full:first-child {
-  border-top-left-radius: inherit;
-  border-top-right-radius: inherit;
-}
-
-#main02 > .inner > .full:last-child {
-  border-bottom-left-radius: inherit;
-  border-bottom-right-radius: inherit;
-}
-
-#main02 > .inner > .full.screen {
-  border-radius: 0 !important;
-  max-width: 100vw;
-  position: relative;
-  width: 100vw;
-  left: 50%;
-  margin-left: -50vw;
-  right: auto;
-}
-
-#main02 > .inner {
-  --padding-horizontal: 0.75rem;
-  --padding-vertical: 0.75rem;
-  --spacing: 0rem;
-  --width: 20rem;
-}
-
-@media (max-width: 736px) {
-  #main02 > .inner {
-    --padding-horizontal: 0.75rem;
-    --padding-vertical: 0.75rem;
-    --spacing: 0rem;
-  }
-}
-
-@media (max-width: 480px) {
-  #main02 > .inner {
-    --spacing: 0rem;
-  }
-}
-
-@media (max-width: 360px) {
-  #main02 > .inner {
-    --padding-horizontal: 0.75rem;
-    --padding-vertical: 0.75rem;
-    --spacing: 0rem;
-  }
-}
 </style>

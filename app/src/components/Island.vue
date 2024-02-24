@@ -1,78 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, defineProps, } from 'vue';
-import { IslandSize } from './IslandSize';
-
-const myRoot = ref(null)
 
 const props = defineProps<{
-  size: IslandSize;
+  cornerRadius: String;
 }>()
-
-onMounted(() => {
-  let constValues = {
-    small: {
-      borderRadius: ".5rem",
-      widthSW1: "9rem",
-      widthSW2: "11rem",
-      widthSW3: "11rem",
-      widthSW4: "11rem",
-    },
-    medium: {
-      borderRadius: "1.5rem",
-      widthSW1: "20rem",
-      widthSW2: "20rem",
-      widthSW3: "100%",
-      widthSW4: "100%",
-    },
-    large: {
-      borderRadius: "1.5rem",
-      widthSW1: "15rem",
-      widthSW2: "15rem",
-      widthSW3: "15rem",
-      widthSW4: "15rem",
-    },
-  }
-
-  let specificConst = null
-
-  switch (props.size) {
-    case IslandSize.Small:
-      specificConst = constValues.small
-      break
-    case IslandSize.Medium:
-      specificConst = constValues.medium
-      break
-    case IslandSize.Large:
-      specificConst = constValues.large
-      break
-    default:
-      console.log("err")
-      console.log(props.size)
-      console.log(IslandSize.Large)
-      specificConst = constValues.small
-      break
-  }
-
-  myRoot.value?.style?.setProperty('--border-radius', specificConst.borderRadius)
-  myRoot.value?.style?.setProperty('--widthSW1', specificConst.widthSW1)
-  myRoot.value?.style?.setProperty('--widthSW2', specificConst.widthSW2)
-  myRoot.value?.style?.setProperty('--widthSW3', specificConst.widthSW3)
-  myRoot.value?.style?.setProperty('--widthSW4', specificConst.widthSW4)
-})
-
 </script>
 
 <template>
-  <div class="main" ref="myRoot">
-    <div class="inner">
-      <div id="container03" class="container default full">
-        <div class="wrapper">
-          <div class="inner">
-            <slot />
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="main" :style="{ borderRadius: props.cornerRadius + '' }">
+    <slot />
   </div>
 </template>
 
@@ -149,14 +85,16 @@ onMounted(() => {
   --padding-vertical: 0;
   --spacing: 0rem;
   --width: var(--widthSW1);
+  --padding-horizontal: var(--padding-horizontalSW1);
+  --padding-vertical: var(--padding-verticalSW1);
 }
 
 @media (max-width: 736px) {
   .main > .inner {
-    --padding-horizontal: 0;
-    --padding-vertical: 0;
     --spacing: 0rem;
     --width: var(--widthSW2);
+    --padding-horizontal: var(--padding-horizontalSW2);
+    --padding-vertical: var(--padding-verticalSW2);
   }
 }
 
@@ -164,15 +102,17 @@ onMounted(() => {
   .main > .inner {
     --spacing: 0rem;
     --width: var(--widthSW3);
+    --padding-horizontal: var(--padding-horizontalSW3);
+    --padding-vertical: var(--padding-verticalSW3);
   }
 }
 
 @media (max-width: 360px) {
   .main > .inner {
-    --padding-horizontal: 0;
-    --padding-vertical: 0;
     --spacing: 0rem;
     --width: var(--widthSW4);
+    --padding-horizontal: var(--padding-horizontalSW4);
+    --padding-vertical: var(--padding-verticalSW4);
   }
 }
 </style>

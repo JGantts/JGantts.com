@@ -3,13 +3,13 @@ import { RouterLink, RouterView } from 'vue-router'
 import Background from './components/Background.vue'
 import NavBar from './components/NavBar.vue'
 import { ref, onMounted } from 'vue'
-import { IslandSize } from './components/IslandSize';
-
-import Island from "./components/Island.vue"
-import HStack from "./library-jgantts/HStack.vue";
-import ReplayButton from "./components/ReplayButton.vue"
 
 const backgroundRef = ref(null)
+
+console.log(backgroundRef.value)
+onMounted(() => {
+  console.log(backgroundRef.value)
+})
 
 const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
 darkModePreference.addEventListener("change", checkDarkMode)
@@ -38,62 +38,73 @@ function reloadBackgound() {
 </script>
 
 <template>
-  <div id="app">
-    <div id="background-holder">
       <div id="wrapper">
-        <Island :size="IslandSize.Large">
-          <h1><span id="text01-accent">JGantts</span><span id="text01-dot">.</span><span id="text01">com</span></h1>
-          <p id="text02">Welcome, all.</p>
-        </Island>
-        <Island :size="IslandSize.Medium">
+        <div id="main01" class="main">
           <div class="inner">
-            <div id="container02" class="container columns full">
+            <div id="container01" class="container default full">
               <div class="wrapper">
                 <div class="inner">
-                  <div>
-                    <p id="text03">Contact me about software:</p>
-                    <p id="text04">Jacob Gantt</p>
-                    <ul id="links01" class="links">
-                      <li class="n01">
-                        <a href="mailto:contact@jgantts.com"><span class="link"><i class="fa-solid fa-envelope" />&nbsp;&nbsp;<span class="underline">contact@jgantts.com</span><span></span></span></a>
-                      </li><li class="n02">
-                        <a href="https://github.com/JGantts"><span class="link"><i class="fa-brands fa-github" />&nbsp;&nbsp;<span class="underline">github.com/JGantts</span></span></a>
-                      </li><li class="n03">
-                        <a href="/resume/GanttJ-Resume.pdf"><span class="link"><i class="fa-solid fa-file-pdf" />&nbsp;&nbsp;<span class="underline">GanttJ-Resume.pdf</span></span></a>
-                      </li>
-                    </ul>
-                  </div>
-                  <div>
-                    <p id="text06">
-                      <span class="p">
-                        Looking for clients and collaborators.<br />
-                        I&#039;m a developer with years of professional and
-                        personal experience; from improving enterprise solutions
-                        to fuzz testing code parsers; game mods, websites;
-                        APIs and UX; C#, JavaScript; Swift, Node; I love it all!
-                      </span>
-                    </p>
-                  </div>
+                  <h1><span id="text01-accent">JGantts</span><span id="text01-dot">.</span><span id="text01">com</span></h1>
+                  <p id="text02">Welcome, all.</p>
                 </div>
               </div>
             </div>
           </div>
-        </Island>
-        <!-- <NavBar /> -->
-        <HStack class="main-holder">
-          <ReplayButton style="visibility: hidden" />
-          <Island :size="IslandSize.Small">
-            <p id="text05">I write software!</p>
-            <p id="text07">© 2024 Jacob Gantt</p>
-          </Island>
-          <ReplayButton @click="reloadBackgound" />
-        </HStack>
-      </div>
-      <div id="background">
-        <Background ref="backgroundRef" />
+        </div>
+        <div id="main02" class="main">
+    <div class="inner">
+      <div id="container02" class="container columns full">
+        <div class="wrapper">
+          <div class="inner">
+            <div>
+              <p id="text03">Contact me about software:</p>
+              <p id="text04">Jacob Gantt</p>
+              <ul id="links01" class="links">
+                <li class="n01">
+                  <a href="mailto:contact@jgantts.com"><span class="link"><i class="fa-solid fa-envelope" />&nbsp;&nbsp;<span class="underline">contact@jgantts.com</span><span></span></span></a>
+                </li><li class="n02">
+                  <a href="https://github.com/JGantts"><span class="link"><i class="fa-brands fa-github" />&nbsp;&nbsp;<span class="underline">github.com/JGantts</span></span></a>
+                </li><li class="n03">
+                  <a href="/resume/GanttJ-Resume.pdf"><span class="link"><i class="fa-solid fa-file-pdf" />&nbsp;&nbsp;<span class="underline">GanttJ-Resume.pdf</span></span></a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <p id="text06"><span class="p">
+                Looking for clients and collaborators.<br />
+                I&#039;m a developer with years of professional and personal experience;
+                from improving enterprise solutions to fuzz testing code parsers;
+                game mods, websites;
+                APIs and UX;
+                C#, JavaScript;
+                Swift, Node;
+                I love it all!
+              </span></p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
+        <!-- <NavBar /> -->
+        <div id="main03" class="main">
+          <div class="inner">
+            <div id="container03" class="container default full">
+              <div class="wrapper">
+                <div class="inner">
+                  <p id="text05">I write software!</p>
+                  <p id="text07">© 2024 Jacob Gantt</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+            <div id="main04" class="main" v-if="true">
+              <button @click="reloadBackgound">
+                <i class="fa-solid fa-rotate-right" />&nbsp;&nbsp;Replay
+              </button>
+            </div>
+      </div>
 </template>
 
 <style>
@@ -241,11 +252,6 @@ function reloadBackgound() {
   }
 }
 
-.main-holder {
-  --alignment: center;
-  --flex-alignment: center;
-}
-
 #main03 {
   --alignment: center;
   --flex-alignment: center;
@@ -264,13 +270,11 @@ function reloadBackgound() {
   position: relative;
   text-align: var(--alignment);
   z-index: 1;
-  border-radius: var(--border-radius-tl) var(--border-radius-tr)
-    var(--border-radius-br) var(--border-radius-bl);
+  border-radius: var(--border-radius-tl) var(--border-radius-tr) var(--border-radius-br) var(--border-radius-bl);
 }
 
 #main03 > .inner {
-  border-radius: var(--border-radius-tl) var(--border-radius-tr)
-    var(--border-radius-br) var(--border-radius-bl);
+  border-radius: var(--border-radius-tl) var(--border-radius-tr) var(--border-radius-br) var(--border-radius-bl);
   max-width: 100%;
   position: relative;
   width: var(--width);

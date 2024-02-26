@@ -271,3 +271,89 @@ h1 span.p, h2 span.p, h3 span.p, p span.p {
 .container {
   position: relative;
 }
+
+html {
+  font-size: 15pt;
+}
+#text01 {
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 1.875em;
+  line-height: 1.5;
+}
+#text02 {
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 1em;
+  line-height: 1.5;
+}
+#text03 {
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 0.625em;
+  line-height: 1.5;
+}
+#text04 {
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 1.75em;
+  line-height: 1.5;
+}
+#text06 {
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 0.625em;
+  line-height: 1.5;
+}
+#text05 {
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 1em;
+  line-height: 1.5;
+}
+#text07 {
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 0.5em;
+  line-height: 1.5;
+}
+
+@media (min-width: 481px) {
+  #text01 {
+    font-size: 1.875em;
+  }
+  #text02 {
+    font-size: 1em;
+  }
+  #text03 {
+    font-size: 0.625em;
+  }
+  #text04 {
+    font-size: 1.75em;
+  }
+  #text06 {
+    font-size: 0.625em;
+  }
+  #text05 {
+    font-size: 1em;
+  }
+  #text07 {
+    font-size: 0.5em;
+  }
+
+  #links01 {
+    gap: 0rem;
+    font-size: 1.125em;
+  }
+}
+
+@media (min-width: 769px) {
+  html {
+    font-size: 18pt;
+  }
+}
+@media (min-width: 1025px) {
+  html {
+    font-size: 21pt;
+  }
+}

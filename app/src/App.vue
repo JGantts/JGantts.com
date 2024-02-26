@@ -5,10 +5,12 @@ import NavBar from './components/NavBar.vue'
 import { ref, onMounted } from 'vue'
 
 import Island from "./components/Island.vue"
+import DStack from "./library-jgantts/DStack.vue";
 import HStack from "./library-jgantts/HStack.vue";
 import VStack from "./library-jgantts/VStack.vue";
 import ReplayButton from "./components/ReplayButton.vue"
 import Links from "./components/Links.vue"
+import { Breakpoint } from "./common/Breakpoint"
 
 const backgroundRef = ref(null)
 
@@ -23,14 +25,6 @@ function checkDarkMode(mediaMatch: any) {
     document.body.classList.remove("dark-theme");
   }
 }
-
-document.body.addEventListener('touchstart', (event) => {
-  console.log(event)
-});
-
-document.body.addEventListener('wheel', (event) => {
-  console.log(event)
-});
 
 function reloadBackgound() {
   backgroundRef.value?.reloadBackgound()
@@ -53,20 +47,20 @@ function reloadBackgound() {
           </VStack>
         </Island>
         <Island cornerRadius="1.5rem">
-          <HStack padding="1rem" spacing="1rem">
+          <DStack padding="1rem" spacing="1rem" :breakpoint="Breakpoint._2_M">
             <VStack>
               <p id="text03">Contact me about<br />software:</p>
               <p id="text04">Jacob Gantt</p>
               <Links />
             </VStack>
-            <p id="text06" style="width: 340px">
+            <p id="text06" style="max-width: 340px">
               Looking for clients and collaborators.<br />
               I&#039;m a developer with years of professional and personal
               experience; from improving enterprise solutions to fuzz testing
               code parsers; game mods, websites; APIs and UX; C#, JavaScript; Swift, Node;
               I love it all!
             </p>
-          </HStack>
+          </DStack>
         </Island>
         <!-- <NavBar /> -->
         <HStack spacing="0.25rem">
@@ -81,7 +75,7 @@ function reloadBackgound() {
         </HStack>
       </div>
       <div id="background">
-        <Background ref="backgroundRef" />
+        <Background ref="{backgroundRef}" />
       </div>
     </div>
   </div>

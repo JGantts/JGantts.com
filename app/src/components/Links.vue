@@ -56,4 +56,23 @@
   cursor: pointer;
   white-space: nowrap;
 }
+
+#links {
+  gap: 0rem;
+  font-size: 0.625em;
+}
+
+@media (min-width: 481px) {
+  #links {
+    gap: 0rem;
+    font-size: 0.875em;
+  }
+}
+
+@media (min-width: 769px) {
+  #links {
+    gap: 0rem;
+    font-size: 0.75em;
+  }
+}
 </style>

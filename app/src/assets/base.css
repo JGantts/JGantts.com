@@ -288,6 +288,7 @@ html {
   line-height: 1.5;
 }
 #text03 {
+  display: none;
   letter-spacing: 0rem;
   width: 100%;
   font-size: 0.625em;
@@ -319,6 +320,10 @@ html {
 }
 
 @media (min-width: 481px) {
+  html {
+    font-size: 18pt;
+  }
+
   #text01 {
     font-size: 1.875em;
   }
@@ -326,7 +331,8 @@ html {
     font-size: 1em;
   }
   #text03 {
-    font-size: 0.625em;
+    display: contents;
+    font-size: 0.75em;
   }
   #text04 {
     font-size: 1.75em;
@@ -341,18 +347,25 @@ html {
     font-size: 0.5em;
   }
 
-  #links01 {
+  #links {
     gap: 0rem;
-    font-size: 1.125em;
+    font-size: 3em;
   }
 }
 
-@media (min-width: 481px) {
-  html {
-    font-size: 18pt;
+@media (min-width: 769px) {
+  #text03 {
+    display: none;
+  }
+  #text04 {
+    font-size: 1.5em;
   }
 }
+
 @media (min-width: 1025px) {
+  #text03 {
+    display: contents;
+  }
   html {
     font-size: 21pt;
   }

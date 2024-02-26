@@ -347,7 +347,7 @@ html {
   }
 }
 
-@media (min-width: 769px) {
+@media (min-width: 481px) {
   html {
     font-size: 18pt;
   }

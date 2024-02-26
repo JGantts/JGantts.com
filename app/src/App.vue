@@ -10,6 +10,7 @@ import HStack from "./library-jgantts/HStack.vue";
 import VStack from "./library-jgantts/VStack.vue";
 import ReplayButton from "./components/ReplayButton.vue"
 import Links from "./components/Links.vue"
+import ExpandedView from "./library-jgantts/ExpandedView.vue"
 import { Breakpoint } from "./common/Breakpoint"
 
 const backgroundRef = ref(null)
@@ -47,7 +48,12 @@ function reloadBackgound() {
           </VStack>
         </Island>
         <Island cornerRadius="1.5rem">
-          <DStack padding="1rem" spacing="1rem" :breakpoint="Breakpoint._2_M">
+          <DStack
+            :breakpoint="Breakpoint._2_M"
+            padding="1rem"
+            hSpacing="1rem"
+            vSpacing="1rem"
+          >
             <VStack>
               <p id="text03">Contact me about<br />software:</p>
               <p id="text04">Jacob Gantt</p>
@@ -57,22 +63,29 @@ function reloadBackgound() {
               Looking for clients and collaborators.<br />
               I&#039;m a developer with years of professional and personal
               experience; from improving enterprise solutions to fuzz testing
-              code parsers; game mods, websites; APIs and UX; C#, JavaScript; Swift, Node;
-              I love it all!
+              code parsers; game mods, websites; APIs and UX; C#, JavaScript;
+              Swift, Node; I love it all!
             </p>
           </DStack>
         </Island>
         <!-- <NavBar /> -->
-        <HStack spacing="0.25rem">
-          <ReplayButton style="visibility: hidden" />
+        <DStack
+          :breakpoint="Breakpoint._2_M"
+          padding="0"
+          hSpacing="1rem"
+          vSpacing="1rem"
+        >
+          <ExpandedView>
+            <ReplayButton style="visibility: hidden"/>
+          </ExpandedView>
           <Island cornerRadius="0.5rem">
-            <VStack padding=" 0.25rem 0.75rem">
+            <VStack padding="0.25rem 0.75rem">
               <p id="text05">I write software!</p>
               <p id="text07">© 2024 Jacob Gantt</p>
             </VStack>
           </Island>
           <ReplayButton @click="reloadBackgound" />
-        </HStack>
+        </DStack>
       </div>
       <div id="background">
         <Background ref="{backgroundRef}" />

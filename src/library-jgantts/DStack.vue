@@ -28,6 +28,7 @@ const props = defineProps({
 const stackPanelRef = ref(null)
 
 onMounted(() => {
+  //@ts-expect-error
   let style = stackPanelRef.value?.style;
   if (!style) {
     return;

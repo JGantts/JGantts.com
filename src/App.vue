@@ -28,6 +28,7 @@ function checkDarkMode(mediaMatch: any) {
 }
 
 function reloadBackgound() {
+  //@ts-expect-error
   backgroundRef.value?.reloadBackgound()
 }
 

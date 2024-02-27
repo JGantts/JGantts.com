@@ -27,5 +27,5 @@ jobs:
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: vite-app-build
+        name: dist
         path: dist/

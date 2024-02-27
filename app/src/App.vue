@@ -105,6 +105,7 @@ function reloadBackgound() {
   justify-content: center;
   align-items: center;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 #box {

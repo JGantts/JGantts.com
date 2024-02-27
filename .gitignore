@@ -8,29 +8,19 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.DS_Store
 dist
+dist-ssr
+coverage
 *.local
-env
-*.env
-install-stage
-install-prod
-*/dev-build
-*/tmp
-build-helpers/*.js
-api/imgs/*
-imgs/
 
-CMS/public/uploads/*
-!CMS/public/uploads/.gitkeep
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-dev-build

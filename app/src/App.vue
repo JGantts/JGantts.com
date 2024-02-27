@@ -36,7 +36,6 @@ function reloadBackgound() {
 <template>
   <div id="app">
     <div id="box">
-      <Background id="background" ref="{backgroundRef}" />
       <div id="content">
         <VStack padding="1.25rem" spacing="0.5rem">
           <Island cornerRadius="1.5rem">
@@ -90,6 +89,7 @@ function reloadBackgound() {
           </DStack>
         </VStack>
       </div>
+      <Background id="background" ref="{backgroundRef}" />
     </div>
   </div>
 </template>

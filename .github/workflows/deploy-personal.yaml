@@ -23,3 +23,9 @@ jobs:
 
     - name: Build Vite App
       run: npm run build
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: vite-app-build
+        path: dist/

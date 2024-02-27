@@ -1,0 +1,353 @@
+body {
+--backgroundAppBase: var(--base3);
+--backgroundAppAccent: var(--accent1);
+--backgroundSubtleBase: var(--base2);
+--backgroundSubtleAccent: var(--accent2);
+
+--backgroundUiElementBase: var(--base3);
+--backgroundUiElementAccent: var(--accent3);
+--backgroundUiElementHoveredBase: var(--base4);
+--backgroundUiElementHoveredAccent: var(--accent4);
+--backgroundUiElementActiveBase: var(--base5);
+--backgroundUiElementActiveAccent: var(--accent5);
+
+--borderSubtleBase: var(--base6);
+--borderSubtleAccent: var(--accent6);
+--borderBase: var(--base7);
+--borderAccent: var(--accent7);
+--borderHoveredBase: var(--base8);
+--borderHoveredAccent: var(--accent8);
+
+--backgroundSolidBase: var(--base9);
+--backgroundSolidAccent: var(--accent9);
+--backgroundSolidHoveredBase: var(--base10);
+--backgroundSolidHoveredAccent: var(--accent10);
+}
+
+
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td,article,aside,canvas,details,embed,figure,figcaption,footer,header,hgroup,menu,nav,output,ruby,section,summary,time,mark,audio,video{margin:0;padding:0;border:0;font-size:100%;font:inherit;vertical-align:baseline;}article,aside,details,figcaption,figure,footer,header,hgroup,menu,nav,section{display:block;}body{line-height:1;}ol,ul{list-style:none;}blockquote,q{quotes:none;}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none;}table{border-collapse:collapse;border-spacing:0;}body{-webkit-text-size-adjust:none}mark{background-color:transparent;color:inherit}input::-moz-focus-inner{border:0;padding:0}input[type="text"],input[type="email"],select,textarea{-moz-appearance:none;-webkit-appearance:none;-ms-appearance:none;appearance:none}
+
+button, input[type="submit"], input[type="reset"] {
+	background: none;
+	color: inherit;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	outline: inherit;
+}
+
+@font-face {
+  font-family: "Figtree";
+  font-weight: 300;
+  font-style: normal;
+  font-display: auto;
+  unicode-range: U+000-5FF;
+  src:
+    local("Figtree"),
+    url(/fonts//Figtree/Figtree-Light.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-weight: 400;
+  font-style: normal;
+  font-display: auto;
+  unicode-range: U+000-5FF;
+  src:
+    local("Figtree"),
+    url(/fonts/Figtree/Figtree-Regular.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-weight: 500;
+  font-style: normal;
+  font-display: auto;
+  unicode-range: U+000-5FF;
+  src:
+    local("Figtree"),
+    url(/fonts/Figtree/Figtree-Medium.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-weight: 700;
+  font-style: normal;
+  font-display: auto;
+  unicode-range: U+000-5FF;
+  src:
+    local("Figtree"),
+    url(/fonts/Figtree/Figtree-Bold.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-weight: 800;
+  font-style: normal;
+  font-display: auto;
+  unicode-range: U+000-5FF;
+  src:
+    local("Figtree"),
+    url(/fonts/Figtree/Figtree-ExtraBold.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-weight: 900;
+  font-style: normal;
+  font-display: auto;
+  unicode-range: U+000-5FF;
+  src:
+    local("Figtree"),
+    url(/fonts/Figtree/Figtree-Black.woff2) format("woff2");
+}
+
+#app {
+  font-family: 'Figtree', Arial, sans-serif;
+}
+
+body {
+  color: var(--textGrayOnBase);
+}
+
+#backgorund-holder {
+    position: relative;
+}
+
+#background-parent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  width: 100vw;
+  background-attachment: scroll;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#app {
+  background-color: var(--base3);
+  background-color: hsl(206, 100%, 35.0%);
+  background-color: var(--base8);
+  background-color: hsl(206, 100%, 35.0%);
+}
+
+html {
+  font-size: 24pt;
+}
+
+#text01-accent {
+  color: var(--textAccentOnBase);
+  font-size: 2em;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+#text01-dot {
+  font-size: 2em;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+#text01 {
+  font-size: 2em;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+#text02 {
+  font-size: 1em;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+#text03 {
+  color: var(--textGrayOnBaseLowContrast);
+  font-size: 0.625em;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+#text04 {
+  font-size: 1em;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+#text05 {
+  color: var(--textAccentOnBase);
+  font-size: 1em;
+  line-height: 1.5;
+  font-weight: 500;
+
+}
+
+#text06 {
+  text-align: justify;
+  font-size: 0.625em;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+#text07 {
+  font-size: 0.5em;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+#text07-accent {
+  font-size: 0.5em;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+*, *:before, *:after {
+  box-sizing: border-box;
+}
+
+body {
+  line-height: 1.0;
+  min-height: var(--viewport-height);
+  min-width: 320px;
+  overflow-x: hidden;
+  word-wrap: break-word;
+}
+
+:root {
+  --background-height: 100vh;
+  --site-language-alignment: left;
+  --site-language-direction: ltr;
+  --site-language-flex-alignment: flex-start;
+  --site-language-indent-left: 1;
+  --site-language-indent-right: 0;
+  --viewport-height: 100vh;
+}
+
+u {
+  text-decoration: underline;
+}
+
+strong {
+  color: inherit;
+  font-weight: bolder;
+}
+
+em {
+  font-style: italic;
+}
+
+
+a {
+  color: inherit;
+  text-decoration: underline;
+  transition: color 0.25s ease;
+}
+
+h1, h2, h3, p {
+  display: block;
+  position: relative;
+}
+
+h1 span.p, h2 span.p, h3 span.p, p span.p {
+  display: block;
+  position: relative;
+}
+
+.container {
+  position: relative;
+}
+
+html {
+  font-size: 15pt;
+}
+#text01 {
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 1.875em;
+  line-height: 1.5;
+}
+#text02 {
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 1em;
+  line-height: 1.5;
+}
+#text03 {
+  display: none;
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 0.625em;
+  line-height: 1.5;
+}
+#text04 {
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 1.75em;
+  line-height: 1.5;
+}
+#text06 {
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 0.625em;
+  line-height: 1.5;
+}
+#text05 {
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 1em;
+  line-height: 1.5;
+}
+#text07 {
+  letter-spacing: 0rem;
+  width: 100%;
+  font-size: 0.5em;
+  line-height: 1.5;
+}
+
+@media (min-width: 481px) {
+  html {
+    font-size: 18pt;
+  }
+
+  #text01 {
+    font-size: 1.875em;
+  }
+  #text02 {
+    font-size: 1em;
+  }
+  #text03 {
+    display: contents;
+    font-size: 0.75em;
+  }
+  #text04 {
+    font-size: 1.75em;
+  }
+  #text06 {
+    font-size: 0.625em;
+  }
+  #text05 {
+    font-size: 1em;
+  }
+  #text07 {
+    font-size: 0.5em;
+  }
+
+  #links {
+    gap: 0rem;
+    font-size: 3em;
+  }
+}
+
+@media (min-width: 769px) {
+  #text03 {
+    display: none;
+  }
+  #text04 {
+    font-size: 1.5em;
+  }
+}
+
+@media (min-width: 1025px) {
+  #text03 {
+    display: contents;
+  }
+  html {
+    font-size: 21pt;
+  }
+}

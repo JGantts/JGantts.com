@@ -421,8 +421,14 @@ async function initializeCurtain() {
       })
   }
 
+
+  clientWidthInitial = canvasSmoothElement.clientWidth
+  clientHeightInitial = canvasSmoothElement.clientHeight
   window.requestAnimationFrame(renderLoop)
 }
+
+let clientWidthInitial = 0
+let clientHeightInitial = 0
 
 async function renderLoop() {
   let done = await renderScene();
@@ -694,7 +700,6 @@ async function calculateColumnFine(index: number) {
   )
 }
 
-
 let doneAnimatingCurtain = false
 async function renderScene(): Promise<Boolean> {
   if (doneAnimatingCurtain) {
@@ -729,8 +734,8 @@ async function renderScene(): Promise<Boolean> {
   for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
     canvasSmoothContext.lineTo(index, gaussionSmoothed(index/SMOOTHED_BOX_SIZE))
   }
-  canvasSmoothContext.lineTo(canvasSmoothElement.clientWidth, canvasSmoothElement.clientHeight)
-  canvasSmoothContext.lineTo(0, canvasSmoothElement.clientHeight)
+  canvasSmoothContext.lineTo(clientWidthInitial, clientHeightInitial)
+  canvasSmoothContext.lineTo(0, clientHeightInitial)
   canvasSmoothContext.closePath()
 
   canvasSmoothContext.fillStyle = componentsToHsl(theme.base3)

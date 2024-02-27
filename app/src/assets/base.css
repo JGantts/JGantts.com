@@ -110,7 +110,7 @@ body {
     position: relative;
 }
 
-#background {
+#background-parent {
   position: absolute;
   left: 0;
   top: 0;
@@ -237,25 +237,6 @@ a {
   color: inherit;
   text-decoration: underline;
   transition: color 0.25s ease;
-}
-
-#wrapper {
-  -webkit-overflow-scrolling: touch;
-  align-items: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: var(--viewport-height);
-  overflow: hidden;
-  position: relative;
-  z-index: 2;
-  padding: 1.5rem 1.5rem 1.5rem 1.5rem;
-}
-
-#wrapper > * {
-  --spacing: 0.25rem;
-  margin-top: var(--spacing);
-  margin-bottom: var(--spacing);
 }
 
 h1, h2, h3, p {

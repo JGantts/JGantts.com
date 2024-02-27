@@ -1,0 +1,67 @@
+jgantts.com {
+  reverse_proxy 127.0.0.1:42000
+}
+
+stage.jgantts.com {
+  reverse_proxy 127.0.0.1:42100
+}
+
+test.jgantts.com {
+  reverse_proxy 127.0.0.1:42200
+}
+
+sites.jgantts.dev:42310 {
+  reverse_proxy 127.0.0.1:42300
+}
+sites.jgantts.dev:42311 {
+  reverse_proxy 127.0.0.1:42301
+}
+
+sites.jgantts.dev:3100 {
+  reverse_proxy 127.0.0.1:3000
+}
+sites.jgantts.dev:3101 {
+  reverse_proxy 127.0.0.1:3001
+}
+sites.jgantts.dev:3102 {
+  reverse_proxy 127.0.0.1:3002
+}
+sites.jgantts.dev:3103 {
+  reverse_proxy 127.0.0.1:3003
+}
+sites.jgantts.dev:3104 {
+  reverse_proxy 127.0.0.1:3004
+}
+sites.jgantts.dev:3105 {
+  reverse_proxy 127.0.0.1:3005
+}
+sites.jgantts.dev:3106 {
+  reverse_proxy 127.0.0.1:3006
+}
+sites.jgantts.dev:3107 {
+  reverse_proxy 127.0.0.1:3007
+}
+
+
+env.jgantts.dev {
+  handle_path /jgantts/* {
+    handle_path /ide/vscode/* {
+      reverse_proxy 127.0.0.1:1024
+    }
+  }
+  handle_path /linda/* {
+    handle_path /ide/vscode/* {
+      reverse_proxy 127.0.0.1:1025
+    }
+  }
+  handle_path /skyline-glow/* {
+    handle_path /ide/vscode/* {
+      reverse_proxy 127.0.0.1:1026
+    }
+    handle_path /sites/rainbow-cake/* {
+      root * /home/skyline-glow/site/rainbow-cake
+      file_server
+      header Cache-Control "no-cache, no-store, must-revalidate"
+    }
+  }
+}

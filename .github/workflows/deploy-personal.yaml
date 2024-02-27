@@ -2,9 +2,9 @@ name: Build Vite App
 
 on:
   push:
-    branches: [ main ]
+    branches: [ deploy-personal ]
   pull_request:
-    branches: [ main ]
+    branches: [ deploy-personal ]
 
 jobs:
   build:
@@ -16,10 +16,16 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v2
       with:
-        node-version: '16'
+        node-version: '20'
 
     - name: Install dependencies
       run: npm install
 
     - name: Build Vite App
       run: npm run build
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist/

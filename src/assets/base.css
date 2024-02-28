@@ -133,6 +133,7 @@ body {
   background-color: hsl(206, 100%, 35.0%);
   background-color: var(--base8);
   background-color: hsl(206, 100%, 35.0%);
+  background-color: var(--backgroundAppBase);
 }
 
 html {

@@ -312,34 +312,35 @@ let pixelColumnsFine: ColorOffset[][] = []
 
 let gaussianObjects: GaussianObject[]
 
-let canvasPixelElement: HTMLCanvasElement
-let canvasPixelContext: CanvasRenderingContext2D
-let canvasSmoothElement: HTMLCanvasElement
-let canvasSmoothContext: CanvasRenderingContext2D
+let canvasContext: CanvasRenderingContext2D
+let canvasElement: HTMLCanvasElement
 
 /*
   Rendering functions
 */
 async function initializeBackground() {
-  canvasPixelElement.width = canvasPixelElement.clientWidth;
-  canvasPixelElement.height = canvasPixelElement.clientHeight;
-  canvasSmoothElement.width = canvasSmoothElement.clientWidth;
-  canvasSmoothElement.height = canvasSmoothElement.clientHeight;
+  canvasElement.width = canvasElement.clientWidth;
+  canvasElement.height = canvasElement.clientHeight;
 
-  canvasPixelContext.clearRect(0, 0, canvasPixelElement.width, canvasPixelElement.height)
-  canvasSmoothContext.clearRect(0, 0, canvasPixelElement.width, canvasPixelElement.height)
+  canvasContext.clearRect(0, 0, canvasElement.width, canvasElement.height)
 
   pixelColumnsSuper = []
   pixelColumnsLarge = []
   pixelColumnsFine = []
   doneAnimatingCurtain = false
 
-  widthInLargePixels = Math.ceil(canvasPixelElement.width/PIXELATED_LARGE_BOX_SIZE) + 1
-  heightInLargePixels = Math.ceil(canvasPixelElement.height/PIXELATED_LARGE_BOX_SIZE) + 1
+  widthInLargePixels = Math.ceil(canvasElement.width/PIXELATED_LARGE_BOX_SIZE) + 1
+  heightInLargePixels = Math.ceil(canvasElement.height/PIXELATED_LARGE_BOX_SIZE) + 1
   widthInSuperPixels = widthInLargePixels*PIXELATION_RATIO_LARGE_SUPER
   heightInSuperPixels = heightInLargePixels*PIXELATION_RATIO_LARGE_SUPER
   widthInFinePixels = widthInLargePixels*PIXELATION_RATIO_LARGE_FINE
   heightInFinePixels = heightInLargePixels*PIXELATION_RATIO_LARGE_FINE
+
+console.log(canvasElement.width)
+
+  console.log(widthInFinePixels)
+  console.log(widthInLargePixels)
+  console.log(widthInSuperPixels)
 
 
   let gaussianSumsPixelsSuper: number[] = gaussians(
@@ -422,8 +423,8 @@ async function initializeCurtain() {
   }
 
 
-  clientWidthInitial = canvasSmoothElement.clientWidth
-  clientHeightInitial = canvasSmoothElement.clientHeight
+  clientWidthInitial = canvasElement.clientWidth
+  clientHeightInitial = canvasElement.clientHeight
   window.requestAnimationFrame(renderLoop)
 }
 
@@ -467,14 +468,14 @@ async function reconPixelsFine() {
 let renderedPixelsFine = null
 
 async function paintPixelsFine() {
-  renderedPixelsFine = canvasPixelContext.createImageData(widthInFinePixels, heightInFinePixels)
-  console.log(renderedPixelsFine)
+  renderedPixelsFine = canvasContext.createImageData(widthInFinePixels, heightInFinePixels)
   for (let key in pixelColumnsFine) {
     renderColumn(Number(key))
   }
-  console.log(renderedPixelsFine)
-  canvasPixelContext.putImageData(renderedPixelsFine, 0, 0)
+  backgroundPattern = canvasContext.createPattern(await createImageBitmap(renderedPixelsFine), "no-repeat")
+  //canvasPixelContext.putImageData(renderedPixelsFine, 0, 0)
 }
+let backgroundPattern: CanvasPattern|null = null
 
 async function calculateColumnSuper(index: number) { 
   let column = pixelColumnsSuper[index]
@@ -705,7 +706,6 @@ async function renderScene(): Promise<Boolean> {
   if (doneAnimatingCurtain) {
     return true
   }
-
   let eachIsDone = true
   for (let index=0; index < gaussianObjects.length; index++) {
     gaussianObjects[index].acceleration += gaussianObjects[index].jolt
@@ -713,7 +713,7 @@ async function renderScene(): Promise<Boolean> {
     //friction
     gaussianObjects[index].velocity *= 0.999
     gaussianObjects[index].position += gaussianObjects[index].velocity
-    if (gaussianObjects[index].position < canvasPixelElement.height + 20 ) {
+    if (gaussianObjects[index].position < canvasElement.height + 20 ) {
       eachIsDone = false
     }
   }
@@ -725,21 +725,22 @@ async function renderScene(): Promise<Boolean> {
   //@ts-ignore
   let gaussionSmoothed = Smooth(gaussianObjects.map(objct => objct.position))
 
-  canvasSmoothContext.clearRect(0, 0, canvasSmoothElement.width, canvasSmoothElement.height);
+  canvasContext.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-  canvasSmoothContext.beginPath()
+  canvasContext.beginPath()
   let index=0
-  canvasSmoothContext.moveTo(index, gaussionSmoothed(index))
+  canvasContext.moveTo(index, gaussionSmoothed(index))
   index++
   for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
-    canvasSmoothContext.lineTo(index, gaussionSmoothed(index/SMOOTHED_BOX_SIZE))
+    canvasContext.lineTo(index, gaussionSmoothed(index/SMOOTHED_BOX_SIZE))
   }
-  canvasSmoothContext.lineTo(clientWidthInitial, clientHeightInitial)
-  canvasSmoothContext.lineTo(0, clientHeightInitial)
-  canvasSmoothContext.closePath()
+  canvasContext.lineTo(clientWidthInitial, 0)
+  canvasContext.lineTo(0, 0)
+  canvasContext.closePath()
 
-  canvasSmoothContext.fillStyle = componentsToHsl(theme.base3)
-  canvasSmoothContext.fill()
+  canvasContext.fillStyle = backgroundPattern ?? "black"
+  canvasContext.fill()
+  canvasContext.createPattern
   //canvasSmoothContext.restore()
   return false
 }
@@ -777,8 +778,8 @@ function renderPixel(
   let pixelColor = colorOffsetPlusThemePositionToHsl(
     pixelData.color, 
     {
-      x: pixelData.position.x/canvasPixelElement.width,
-      y: pixelData.position.y/canvasPixelElement.height
+      x: pixelData.position.x/canvasElement.width,
+      y: pixelData.position.y/canvasElement.height
     }
   )
   let rgb = HSLToRGB(pixelColor.hue, pixelColor.saturation, pixelColor.lightness)
@@ -795,10 +796,8 @@ function renderPixel(
   renderedPixelsFine.data[i + 3] = 255
 }
 
-/*
-  Helper functions
-*/
-  //@ts-expect-error
+//#region Helper Functions
+//@ts-expect-error
 const HSLToRGB = (h, s, l) => {
   s /= 100;
   l /= 100;
@@ -963,6 +962,8 @@ function gaussianDistributionAt(variance: number, oneOverSqrtTwoPiVariance: numb
     return output
 }
 
+//#endregion
+
 function setCSSColors() {
   let bs = document.body.style
   bs.setProperty("--base1", componentsToHsl(theme.base1))
@@ -1017,10 +1018,9 @@ onMounted(async () => {
   console.log("Hello, world!")
   setCSSColors()
 
-  canvasPixelElement = document.getElementById('lowres-canvas') as HTMLCanvasElement
-  canvasPixelContext = canvasPixelElement.getContext("2d")!
-  canvasSmoothElement = document.getElementById('highres-canvas') as HTMLCanvasElement
-  canvasSmoothContext = canvasSmoothElement.getContext("2d")!
+  canvasElement = canvasRef.value
+  canvasContext = canvasElement.getContext("2d")!
+
   
   initializeBackground()
   initializeCurtain()
@@ -1039,39 +1039,18 @@ const reloadBackgound = () => {
 }
 
 defineExpose({ reloadBackgound })
+
+const canvasRef = ref(null)
 </script>
 
 <template>
   <div id='canvas-holder'>
-    <canvas
-    id='lowres-canvas'
-    style= 'position: absolute; z-index: 2;'
-    >NOOOOO!</canvas>
-    <canvas
-    id='highres-canvas'
-    style= 'position: absolute; z-index: 3;'
-    >NOOOOO!</canvas>
+    <canvas class="the-canvas" ref="canvasRef"/>
   </div>
 </template>
 
 <style scoped>
-#canvas-holder {
-  position: absolute;
-  left: 0;
-  top: -0;
-  width: 100vw;
-  height: 100vh;
-  overflow: clip;
-}
-#lowres-canvas {
-  position: absolute;
-  left: 0;
-  top: -0;
-  width: 100vw;
-  height: 100vh;
-  overflow: clip;
-}
-#highres-canvas {
+.the-canvas {
   position: absolute;
   left: 0;
   top: -0;

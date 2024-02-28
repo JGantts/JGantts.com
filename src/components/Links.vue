@@ -1,25 +1,31 @@
+<script setup lang="ts">
+  import FileTextIcon from '../assets/icons/file-text.svg'
+  import GithubIcon from '../assets/icons/github.svg'
+  import MailIcon from '../assets/icons/mail.svg'
+</script>
+
 <template>
   <ul id="links">
     <li>
       <a href="mailto:contact@jgantts.com">
-        <span class="link">
-          <i class="fa-solid fa-envelope" />&nbsp;&nbsp;
+        <span class="link line">
+          <MailIcon />&nbsp;&nbsp;
           <span class="underline">contact@jgantts.com</span>
         </span>
       </a>
     </li>
     <li>
       <a href="https://github.com/JGantts">
-        <span class="link">
-          <i class="fa-brands fa-github" />&nbsp;&nbsp;
+        <span class="link line">
+          <GithubIcon />&nbsp;&nbsp;
           <span class="underline">github.com/JGantts</span>
         </span>
       </a>
     </li>
     <li>
       <a href="/resume/GanttJ-Resume.pdf">
-        <span class="link">
-          <i class="fa-solid fa-file-pdf" />&nbsp;&nbsp;
+        <span class="link line">
+          <FileTextIcon />&nbsp;&nbsp;
           <span class="underline">GanttJ-Resume.pdf</span>
         </span>
       </a>
@@ -28,6 +34,12 @@
 </template>
 
 <style scoped>
+.line {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 #links {
   display: flex;
   letter-spacing: 0;

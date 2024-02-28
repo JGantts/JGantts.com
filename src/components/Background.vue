@@ -1059,24 +1059,24 @@ defineExpose({ reloadBackgound })
   position: absolute;
   left: 0;
   top: -0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   overflow: clip;
 }
 #lowres-canvas {
   position: absolute;
   left: 0;
   top: -0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   overflow: clip;
 }
 #highres-canvas {
   position: absolute;
   left: 0;
   top: -0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   overflow: clip;
 }
 </style>

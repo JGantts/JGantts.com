@@ -25,7 +25,7 @@ export default defineConfig(({ command, mode, ssrBuild }) => {
     outDir = 'dist'
   } else { // command === build
     // prod
-    outDir = './dist/app/'
+    outDir = './dist/'
   }
 
   return {

@@ -98,6 +98,13 @@ button, input[type="submit"], input[type="reset"] {
     url(/fonts/Figtree/Figtree-Black.woff2) format("woff2");
 }
 
+.fa-icon {
+  height: 1em;
+  width: 1em;
+  vertical-align: middle;
+  fill: currentColor;
+}
+
 #app {
   font-family: 'Figtree', Arial, sans-serif;
 }

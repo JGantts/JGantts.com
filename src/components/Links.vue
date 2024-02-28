@@ -1,7 +1,7 @@
 <script setup lang="ts">
-  import FileTextIcon from '../assets/icons/file-text.svg'
+  import FilePdfIcon from '../assets/icons/file-pdf.svg'
   import GithubIcon from '../assets/icons/github.svg'
-  import MailIcon from '../assets/icons/mail.svg'
+  import EnvelopeIcon from '../assets/icons/envelope.svg'
 </script>
 
 <template>
@@ -9,7 +9,7 @@
     <li>
       <a href="mailto:contact@jgantts.com">
         <span class="link line">
-          <MailIcon />&nbsp;&nbsp;
+          <EnvelopeIcon class="fa-icon" />&nbsp;&nbsp;
           <span class="underline">contact@jgantts.com</span>
         </span>
       </a>
@@ -17,7 +17,7 @@
     <li>
       <a href="https://github.com/JGantts">
         <span class="link line">
-          <GithubIcon />&nbsp;&nbsp;
+          <GithubIcon class="fa-icon" />&nbsp;&nbsp;
           <span class="underline">github.com/JGantts</span>
         </span>
       </a>
@@ -25,7 +25,7 @@
     <li>
       <a href="/resume/GanttJ-Resume.pdf">
         <span class="link line">
-          <FileTextIcon />&nbsp;&nbsp;
+          <FilePdfIcon class="fa-icon" />&nbsp;&nbsp;
           <span class="underline">GanttJ-Resume.pdf</span>
         </span>
       </a>

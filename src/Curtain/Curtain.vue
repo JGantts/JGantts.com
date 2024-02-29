@@ -791,19 +791,19 @@ onMounted(async () => {
 
 window.addEventListener("resize", resizedWindow)*/
 
-const reloadBackground = () => {
-  console.log("fsdih")
-  initializeBackground()
-  initializeCurtain()
-}
-
-defineExpose({ reloadBackground })
 const { themeLight, themeDark} = defineProps({ 
   themeLight: Object as PropType<Theme>,
   themeDark: Object as PropType<Theme>,
 })
 
 const canvasRef = ref(null)
+
+const reloadBackground = () => {
+  initializeBackground()
+  initializeCurtain()
+}
+
+defineExpose({ reloadBackground })
 </script>
 
 <template>

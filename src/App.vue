@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-import Background from './components/Background.vue'
-import NavBar from './components/NavBar.vue'
 import { ref, onMounted } from 'vue'
 
 import Island from "./components/Island.vue"
@@ -11,6 +9,8 @@ import VStack from "./library-jgantts/VStack.vue";
 import ReplayButton from "./components/ReplayButton.vue"
 import Links from "./components/Links.vue"
 import ExpandedView from "./library-jgantts/ExpandedView.vue"
+import Background from "./components/Background.vue"
+
 import { Breakpoint } from "./common/Breakpoint"
 
 const backgroundRef = ref(null)
@@ -27,9 +27,10 @@ function checkDarkMode(mediaMatch: any) {
   }
 }
 
-function reloadBackgound() {
+function reloadBackground() {
+  console.log("ioriwa")
   //@ts-expect-error
-  backgroundRef.value?.reloadBackgound()
+  backgroundRef.value?.reloadBackground()
 }
 
 </script>
@@ -86,11 +87,11 @@ function reloadBackgound() {
                 <p id="text07">© 2024 Jacob Gantt</p>
               </VStack>
             </Island>
-            <ReplayButton @click="reloadBackgound" />
+            <ReplayButton @click="reloadBackground" />
           </DStack>
         </VStack>
       </div>
-      <Background id="background" ref="{backgroundRef}" />
+      <Background />
     </div>
   </div>
 </template>

@@ -4,6 +4,7 @@ import { ref, onMounted, onUnmounted, type PropType } from 'vue'
 import{ Smooth } from '../assets/Smooth'
 
 import type { Color, Theme } from './Types';
+import type { log } from 'console';
 
 /*backgroundColors: [
   { stop: 0/6, color: hslToComponents(red.red9) },
@@ -99,13 +100,6 @@ async function initializeBackground() {
   heightInSuperPixels = heightInLargePixels*PIXELATION_RATIO_LARGE_SUPER
   widthInFinePixels = widthInLargePixels*PIXELATION_RATIO_LARGE_FINE
   heightInFinePixels = heightInLargePixels*PIXELATION_RATIO_LARGE_FINE
-
-console.log(canvasElement.width)
-
-  console.log(widthInFinePixels)
-  console.log(widthInLargePixels)
-  console.log(widthInSuperPixels)
-
 
   let gaussianSumsPixelsSuper: number[] = gaussians(
     widthInSuperPixels,
@@ -482,6 +476,8 @@ async function renderScene(): Promise<Boolean> {
     }
   }
   if (eachIsDone) {
+    console.log('cegin curtain call')
+    emit('curtainCall', '')
     doneAnimatingCurtain = true
     return true
   }
@@ -780,9 +776,6 @@ onMounted(async () => {
     paintPixelsFine()
   })
   
-  initializeBackground()
-  initializeCurtain()
-  //await new Promise(resolve => setTimeout(resolve, 400))
 })
 
 /*onUnmounted(() => {
@@ -803,6 +796,9 @@ const reloadBackground = () => {
   initializeCurtain()
 }
 
+const emit = defineEmits([
+  'curtainCall',
+]);
 defineExpose({ reloadBackground })
 </script>
 

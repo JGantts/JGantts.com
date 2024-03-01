@@ -741,6 +741,7 @@ function gaussianDistributionAt(variance: number, oneOverSqrtTwoPiVariance: numb
 onMounted(async () => {
   console.log("Hello, world!")
 
+  //@ts-expect-error
   canvasElement = canvasRef.value
   canvasContext = canvasElement.getContext("2d")! 
 })

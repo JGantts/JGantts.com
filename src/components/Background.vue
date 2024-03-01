@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-import Curtain from '@/Curtain/Curtain.vue';
+import Curtain from '../Curtain/Curtain.vue';
 
 import type { Color } from '../Curtain/Types';
 
@@ -204,6 +204,7 @@ const reload2 = async () => {
 function loadNext(
   element1: Element|null,
   element2: Element|null,
+  //@ts-expect-error
   curtainNext: Curtain|null
 ) {
   let classList1 = element1?.classList

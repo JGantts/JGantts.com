@@ -9,7 +9,7 @@
     "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@radix-ui/colors": "^0.1.8",
+    "@radix-ui/colors": "^2.1.0",
     "@svgdotjs/svg.js": "^3.1.2",
     "dotenv": "^16.0.3",
     "mount-vue-component": "^0.10.2",

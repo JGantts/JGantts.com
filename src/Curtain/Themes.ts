@@ -1,4 +1,7 @@
 import {
+  bronze,
+  bronzeDark,
+
   // Mauve
   mauve,
   mauveDark,
@@ -13,6 +16,8 @@ import {
   plumDark,
   violet,
   violetDark,
+  purple,
+  purpleDark,
 
   // Slate
   slate,
@@ -60,7 +65,9 @@ import {
 
 import type { Theme, Color } from './Types'
 
-let theme_BlueDark_slate__Tomato_mauve: Theme = {
+
+
+const theme_BlueDark_slate__Tomato_mauve: Theme = {
   base1: hslToComponents(blueDark.blue1),
   base2: hslToComponents(blueDark.blue2),
   base3: hslToComponents(blueDark.blue3),
@@ -104,17 +111,9 @@ let theme_BlueDark_slate__Tomato_mauve: Theme = {
 
   textAccentOnAccentLowContrast: hslToComponents(tomatoDark.tomato11),
   textAccentOnAccent: hslToComponents(tomatoDark.tomato12),
-
-  backgroundColors: [
-    { stop: 0, color: hslToComponents(sky.sky10) },
-    { stop: 0.45, color: hslToComponents(blue.blue10) },
-    { stop: 0.5, color: hslToComponents(blue.blue10) },
-    { stop: 0.6, color: hslToComponents(blue.blue10) },
-    { stop: 1, color: hslToComponents(grass.grass10) },
-  ]
 }
 
-let theme_Blue_slate__Orange_sand: Theme = {
+const theme_Blue_slate__Orange_sand: Theme = {
   base1: hslToComponents(blue.blue1),
   base2: hslToComponents(blue.blue2),
   base3: hslToComponents(blue.blue3),
@@ -168,21 +167,14 @@ let theme_Blue_slate__Orange_sand: Theme = {
     { stop: 5/6, color: hslToComponents(indigo.indigo9) },
     { stop: 6/6, color: hslToComponents(violet.violet9) },
   ],*/
-  backgroundColors: [
-    { stop: 0, color: hslToComponents(sky.sky5) },
-    { stop: 0.45, color: hslToComponents(blue.blue8) },
-    { stop: 0.5, color: hslToComponents(blue.blue8) },
-    { stop: 0.6, color: hslToComponents(blue.blue8) },
-    { stop: 1, color: hslToComponents(green.green8) },
-  ],
 }
 
 function hslToComponents(hsl: string): Color {
-  let splitA = hsl.split(',')
-  let hue = splitA[0].split('(')[1]
-  let saturation = splitA[1].split('%')[0]
-  let lightness = splitA[2].split('%')[0]
-  let color = {
+  const splitA = hsl.split(',')
+  const hue = splitA[0].split('(')[1]
+  const saturation = splitA[1].split('%')[0]
+  const lightness = splitA[2].split('%')[0]
+  const color = {
     hue: Number(hue),
     saturation: Number(saturation),
     lightness: Number(lightness),

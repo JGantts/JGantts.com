@@ -11,7 +11,12 @@ import Links from "./components/Links.vue"
 import ExpandedView from "./library-jgantts/ExpandedView.vue"
 import Background from "./components/Background.vue"
 
+import { setCSSColors } from './Curtain/ThemeHandler'
 import { Breakpoint } from "./common/Breakpoint"
+import {
+  theme_BlueDark_slate__Tomato_mauve,
+  theme_Blue_slate__Orange_sand,
+} from './Curtain/Themes'
 
 const backgroundRef = ref(null)
 
@@ -25,6 +30,7 @@ function checkDarkMode(mediaMatch: any) {
   } else {
     document.body.classList.remove("dark-theme");
   }
+  setCSSColors(mediaMatch.matches ? theme_BlueDark_slate__Tomato_mauve : theme_Blue_slate__Orange_sand)
 }
 
 function reloadBackground() {
@@ -33,6 +39,8 @@ function reloadBackground() {
   backgroundRef.value?.reloadBackground()
 }
 
+onMounted(() => {
+})
 </script>
 
 <template>
@@ -43,7 +51,7 @@ function reloadBackground() {
           <Island cornerRadius="1.5rem">
             <VStack padding="0.75rem 1.25rem" spacing="0">
               <h1>
-                <span id="text01-accent">JGantts</span>
+                <span id="text01-accent" class="see-through-text">JGantts</span>
                 <span id="text01-dot">.</span>
                 <span id="text01">com</span>
               </h1>

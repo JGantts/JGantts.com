@@ -3,8 +3,7 @@ import { ref, onMounted, onUnmounted, type PropType } from 'vue'
 // @ts-ignore
 import{ Smooth } from '../assets/Smooth'
 
-import type { Color, Theme } from './Types';
-import type { log } from 'console';
+import type { Color} from './Types';
 
 /*backgroundColors: [
   { stop: 0/6, color: hslToComponents(red.red9) },
@@ -15,10 +14,6 @@ import type { log } from 'console';
   { stop: 5/6, color: hslToComponents(indigo.indigo9) },
   { stop: 6/6, color: hslToComponents(violet.violet9) },
 ],*/
-
-let darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
-
-let theme = null
 
 let PIXELATED_FINE_BOX_SIZE = 1
 let PIXELATED_LARGE_BOX_SIZE = 8
@@ -577,12 +572,9 @@ function base9Gradient(): ColorOffset {
     }
   }
 
-function componentsToHsl(color: Color): string {
-  return `hsl(${color.hue}, ${color.saturation}%, ${color.lightness}%)`
-}
-
 function colorOffsetPlusThemePositionToHsl(offset: ColorOffset, position: Position): Color {
-  let positionalPercentage = (position.x + position.y)/2
+  let positionalPercentage: number
+  positionalPercentage = (position.x + position.y)/2
   if (positionalPercentage < 0) {
     positionalPercentage = 0
   }
@@ -601,10 +593,10 @@ function gradientAtPercentage(percentage: number): Color {
   let colorB: Color|null = null
   let percentageAlongSection: number|null = null
 
-  for (let index=0; index < theme.backgroundColors.length; index++) {
-    if (theme.backgroundColors[index].stop > percentage) {
-      let stopA = theme.backgroundColors[index-1]
-      let stopB = theme.backgroundColors[index]
+  for (let index=0; index < colors.length; index++) {
+    if (colors[index].stop > percentage) {
+      let stopA = colors[index-1]
+      let stopB = colors[index]
 
       let lengthBetweenStops = stopB.stop-stopA.stop
       let lengthSinceStopA = percentage - stopA.stop
@@ -615,11 +607,46 @@ function gradientAtPercentage(percentage: number): Color {
     }
   }
   if (!colorA || !colorB || !percentageAlongSection) { 
-    return theme.backgroundColors[0].color
+    return colors[0].color
   }
-  let hue = colorA.hue*(1-percentageAlongSection) + colorB.hue*percentageAlongSection
-  let saturation = colorA.saturation*(1-percentageAlongSection) + colorB.saturation*percentageAlongSection
-  let lightness = colorA.lightness*(1-percentageAlongSection) + colorB.lightness*percentageAlongSection
+  /*console.log(colorA.hue)
+  console.log(colorB.hue)
+  console.log(colorA.hue - colorB.hue)
+  console.log('')*/
+  let hue: number
+  let saturation: number
+  let lightness: number
+  if (Math.abs(colorA.hue - colorB.hue) < 360/2) {
+    //linear from A to B
+    hue = colorA.hue*(1-percentageAlongSection) + colorB.hue*percentageAlongSection
+    saturation = colorA.saturation*(1-percentageAlongSection) + colorB.saturation*percentageAlongSection
+    lightness = colorA.lightness*(1-percentageAlongSection) + colorB.lightness*percentageAlongSection
+  } else {
+    //linear from A to B through 0/360
+     
+    let colorHigh: Color
+    let colorLow: Color
+    let targetHue: number
+    if (colorA.hue > colorB.hue) {
+      colorHigh = colorA
+      colorLow = colorB
+    } else {
+      colorHigh = colorB
+      colorLow = colorA
+      percentageAlongSection = 1 - percentageAlongSection
+    }
+    saturation = colorHigh.saturation*(1-percentageAlongSection) + colorLow.saturation*percentageAlongSection
+    lightness = colorHigh.lightness*(1-percentageAlongSection) + colorLow.lightness*percentageAlongSection
+    targetHue = 360 + colorLow.hue
+    let hueUnsliced = colorHigh.hue*(1-percentageAlongSection) + targetHue*percentageAlongSection
+    //console.log(`${colorA.hue} ${colorB.hue}`)
+    //console.log(`${percentageAlongSection} from ${colorHighHue} to ${colorLowHue} ${hueUnsliced}`)
+    if (hueUnsliced < 360) {
+      hue = hueUnsliced
+    } else {
+      hue = hueUnsliced - 360
+    }
+  }
 
   return {
     hue,
@@ -711,71 +738,11 @@ function gaussianDistributionAt(variance: number, oneOverSqrtTwoPiVariance: numb
 
 //#endregion
 
-function setCSSColors() {
-  let bs = document.body.style
-  bs.setProperty("--base1", componentsToHsl(theme.base1))
-  bs.setProperty("--base2", componentsToHsl(theme.base2))
-  bs.setProperty("--base3", componentsToHsl(theme.base3))
-  bs.setProperty("--base4", componentsToHsl(theme.base4))
-  bs.setProperty("--base5", componentsToHsl(theme.base5))
-  bs.setProperty("--base6", componentsToHsl(theme.base6))
-  bs.setProperty("--base7", componentsToHsl(theme.base7))
-  bs.setProperty("--base8", componentsToHsl(theme.base8))
-  bs.setProperty("--base9", componentsToHsl(theme.base9))
-  bs.setProperty("--base10", componentsToHsl(theme.base10))
-  bs.setProperty("--base11", componentsToHsl(theme.base11))
-  bs.setProperty("--base12", componentsToHsl(theme.base12))
-
-  bs.setProperty("--accent1", componentsToHsl(theme.accent1))
-  bs.setProperty("--accent2", componentsToHsl(theme.accent2))
-  bs.setProperty("--accent3", componentsToHsl(theme.accent3))
-  bs.setProperty("--accent4", componentsToHsl(theme.accent4))
-  bs.setProperty("--accent5", componentsToHsl(theme.accent5))
-  bs.setProperty("--accent6", componentsToHsl(theme.accent6))
-  bs.setProperty("--accent7", componentsToHsl(theme.accent7))
-  bs.setProperty("--accent8", componentsToHsl(theme.accent8))
-  bs.setProperty("--accent9", componentsToHsl(theme.accent9))
-  bs.setProperty("--accent10", componentsToHsl(theme.accent10))
-  bs.setProperty("--accent11", componentsToHsl(theme.accent11))
-  bs.setProperty("--accent12", componentsToHsl(theme.accent12))
-
-
-  bs.setProperty("--textGrayOnBaseLowContrast", componentsToHsl(theme.textGrayOnBaseLowContrast))
-  bs.setProperty("--textGrayOnBase", componentsToHsl(theme.textGrayOnBase))
-
-  bs.setProperty("--textGrayOnAccentLowContrast", componentsToHsl(theme.textGrayOnAccentLowContrast))
-  bs.setProperty("--textGrayOnAccent", componentsToHsl(theme.textGrayOnAccent))
-
-
-  bs.setProperty("--textBaseOnBaseLowContrast", componentsToHsl(theme.textBaseOnBaseLowContrast))
-  bs.setProperty("--textBaseOnBase", componentsToHsl(theme.textBaseOnBase))
-
-  bs.setProperty("--textBaseOnAccentLowContrast", componentsToHsl(theme.textBaseOnAccentLowContrast))
-  bs.setProperty("--textBaseOnAccent", componentsToHsl(theme.textBaseOnAccent))
-
-
-  bs.setProperty("--textAccentOnBaseLowContrast", componentsToHsl(theme.textAccentOnBaseLowContrast))
-  bs.setProperty("--textAccentOnBase", componentsToHsl(theme.textAccentOnBase))
-
-  bs.setProperty("--textAccentOnAccentLowContrast", componentsToHsl(theme.textAccentOnAccentLowContrast))
-  bs.setProperty("--textAccentOnAccent", componentsToHsl(theme.textAccentOnAccent))
-}
-
 onMounted(async () => {
   console.log("Hello, world!")
 
   canvasElement = canvasRef.value
-  canvasContext = canvasElement.getContext("2d")!
-
-  theme = darkModePreference.matches ? themeDark : themeLight
-
-  setCSSColors()
-  darkModePreference.addEventListener('change', event => {
-    theme = event.matches ? themeDark : themeLight
-    setCSSColors()
-    paintPixelsFine()
-  })
-  
+  canvasContext = canvasElement.getContext("2d")! 
 })
 
 /*onUnmounted(() => {
@@ -784,14 +751,12 @@ onMounted(async () => {
 
 window.addEventListener("resize", resizedWindow)*/
 
-const { themeLight, themeDark} = defineProps({ 
-  themeLight: Object as PropType<Theme>,
-  themeDark: Object as PropType<Theme>,
-})
-
 const canvasRef = ref(null)
 
-const reloadBackground = () => {
+let colors: { stop: number, color: Color}[] = [];
+
+const reloadBackground = (colorsIn: { stop: number, color: Color}[]) => {
+  colors = colorsIn
   initializeBackground()
   initializeCurtain()
 }
@@ -818,4 +783,3 @@ defineExpose({ reloadBackground })
   overflow: clip;
 }
 </style>
-../Curtain/Types

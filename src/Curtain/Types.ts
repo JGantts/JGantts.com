@@ -48,11 +48,12 @@ type Theme = {
 
   textAccentOnAccentLowContrast: Color,
   textAccentOnAccent: Color,
-
-  backgroundColors: { stop: number, color: Color}[]
 }
+
+type Rainbow = { stop: number, color: Color}[]
 
 export type {
   Color,
   Theme,
+  Rainbow,
 }

@@ -78,7 +78,7 @@ import {
 
 } from '@radix-ui/colors';
 
-let colorsCycleIndex = 0
+let colorsCycleIndex = 1
 const colorsCycle: Rainbow[] = [
   {
       dir: RainbowDirection.Regular,
@@ -97,13 +97,13 @@ const colorsCycle: Rainbow[] = [
     },
   },
   {
-    dir: RainbowDirection.Reversed,
+    dir: RainbowDirection.Regular,
     stops: [
-      { stop: 0, color: hslToComponents(ruby.ruby11) },
+      { stop: 0, color: hslToComponents(orange.orange9) },
       { stop: 0.45, color: hslToComponents(tomato.tomato10) },
       //{ stop: 0.5, color: hslToComponents(tomato.tomato9) },
-      { stop: 0.6, color: hslToComponents(orange.orange9) },
-      { stop: 1, color: hslToComponents(orange.orange8) },
+      { stop: 0.6, color: hslToComponents(red.red10) },
+      { stop: 1, color: hslToComponents(ruby.ruby11) },
     ],
     curve: {
       pos: { low: -300, high: 0 },
@@ -270,7 +270,7 @@ defineExpose({ reloadBackground })
     >
       <Curtain
         class="curtain"
-        id="curtain2" ref="curtain2Ref"
+        ref="curtain2Ref"
         @curtainCall="reload2"
       />
     </div>
@@ -291,8 +291,5 @@ defineExpose({ reloadBackground })
 }
 .front-curtain {
   z-index: 1;
-}
-#curtain1 {
-  transform: scaleY(-1);
 }
 </style>

@@ -497,6 +497,13 @@ async function renderScene(): Promise<Boolean> {
   canvasContext.fill()
   canvasContext.createPattern
   //canvasSmoothContext.restore()
+
+  if (eachIsDone) {
+    emit('curtainCall', '')
+    doneAnimatingCurtain = true
+    return true
+  }
+
   return false
 }
 

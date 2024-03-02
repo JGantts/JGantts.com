@@ -3,7 +3,8 @@ import { ref, onMounted, onUnmounted, type PropType } from 'vue'
 // @ts-ignore
 import{ Smooth } from '../assets/Smooth'
 
-import type { Color} from './Types';
+import type { Color, Rainbow } from './Types';
+import { RainbowDirection } from './Types';
 
 /*backgroundColors: [
   { stop: 0/6, color: hslToComponents(red.red9) },
@@ -147,22 +148,22 @@ async function initializeCurtain() {
   let gaussianSumsPosition: number[] = gaussians(
     countToAddSmoothed,
     () => {return Math.random()*90 + 10},
-    -300, 0
+    rainbow.curve.pos.low, rainbow.curve.pos.high
   )
   let gaussianSumsVelocity: number[] = gaussians(
     countToAddSmoothed,
     () => {return Math.random()*90 + 10},
-    0, 0.5
+    rainbow.curve.velo.low*(1/10), rainbow.curve.velo.high*(1/10)
   )
   let gaussianSumsAcceleration: number[] = gaussians(
     countToAddSmoothed,
     () => {return Math.random()*90 + 10},
-    0.005, 0.01
+    rainbow.curve.acc.low*(1/1000), rainbow.curve.acc.high*(1/1000)
   )
   let gaussianSumsJolt: number[] = gaussians(
     countToAddSmoothed,
     () => {return Math.random()*90 + 10},
-    -0.000005, 0.000005
+    rainbow.curve.jolt.low*(1/1000000), rainbow.curve.jolt.high*(1/1000000)
   )
 
   gaussianObjects = []
@@ -472,7 +473,7 @@ async function renderScene(): Promise<Boolean> {
   }
   if (eachIsDone) {
     console.log('cegin curtain call')
-    emit('curtainCall', '')
+    //emit('curtainCall', '')
     doneAnimatingCurtain = true
     return true
   }
@@ -574,7 +575,11 @@ function base9Gradient(): ColorOffset {
 
 function colorOffsetPlusThemePositionToHsl(offset: ColorOffset, position: Position): Color {
   let positionalPercentage: number
-  positionalPercentage = (position.x + position.y)/2
+  if (rainbow.dir == RainbowDirection.Regular) {
+    positionalPercentage = (position.x + position.y)/2
+  } else {
+    positionalPercentage = (1-position.x + position.y)/2
+  }
   if (positionalPercentage < 0) {
     positionalPercentage = 0
   }
@@ -593,10 +598,11 @@ function gradientAtPercentage(percentage: number): Color {
   let colorB: Color|null = null
   let percentageAlongSection: number|null = null
 
-  for (let index=0; index < colors.length; index++) {
-    if (colors[index].stop > percentage) {
-      let stopA = colors[index-1]
-      let stopB = colors[index]
+  //console.log(rainbow)
+  for (let index=0; index < rainbow.stops.length; index++) {
+    if (rainbow.stops[index].stop > percentage) {
+      let stopA = rainbow.stops[index-1]
+      let stopB = rainbow.stops[index]
 
       let lengthBetweenStops = stopB.stop-stopA.stop
       let lengthSinceStopA = percentage - stopA.stop
@@ -607,7 +613,7 @@ function gradientAtPercentage(percentage: number): Color {
     }
   }
   if (!colorA || !colorB || !percentageAlongSection) { 
-    return colors[0].color
+    return rainbow.stops[0].color
   }
   /*console.log(colorA.hue)
   console.log(colorB.hue)
@@ -754,10 +760,10 @@ window.addEventListener("resize", resizedWindow)*/
 
 const canvasRef = ref(null)
 
-let colors: { stop: number, color: Color}[] = [];
+let rainbow: Rainbow
 
-const reloadBackground = (colorsIn: { stop: number, color: Color}[]) => {
-  colors = colorsIn
+const reloadBackground = (rainbowIn: Rainbow) => {
+  rainbow = rainbowIn
   initializeBackground()
   initializeCurtain()
 }

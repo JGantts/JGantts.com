@@ -23,7 +23,7 @@
       </a>
     </li>
     <li>
-      <a href="/resume/GanttJ-Resume.pdf">
+      <a href="/resume/GanttJ-Resume.pdf" target="_blank">
         <span class="link line">
           <FilePdfIcon class="fa-icon" />&nbsp;&nbsp;
           <span class="underline">GanttJ-Resume.pdf</span>

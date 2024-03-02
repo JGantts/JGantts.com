@@ -50,10 +50,30 @@ type Theme = {
   textAccentOnAccent: Color,
 }
 
-type Rainbow = { stop: number, color: Color}[]
+enum RainbowDirection {
+  Regular,
+  Reversed,
+}
 
-export type {
-  Color,
-  Theme,
-  Rainbow,
+type Range = {
+  low: number,
+  high: number,
+}
+
+type Rainbow = {
+  stops: { stop: number, color: Color}[],
+  dir: RainbowDirection
+  curve: {
+    pos: Range
+    velo: Range,
+    acc: Range,
+    jolt: Range,
+  }
+}
+
+export {
+  type Color,
+  type Theme,
+  RainbowDirection,
+  type Rainbow,
 }

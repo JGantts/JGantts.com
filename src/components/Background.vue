@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 
 import Curtain from '../Curtain/Curtain.vue';
 
-import type { Color } from '../Curtain/Types';
+import { RainbowDirection, type Color, type Rainbow } from '../Curtain/Types';
 
 import {
   bronze,
@@ -79,21 +79,39 @@ import {
 } from '@radix-ui/colors';
 
 let colorsCycleIndex = 0
-const colorsCycle: { stop: number, color: Color}[][] = [
-  [
-    { stop: 0, color: hslToComponents(sky.sky10) },
-    { stop: 0.45, color: hslToComponents(blue.blue10) },
-    { stop: 0.5, color: hslToComponents(blue.blue10) },
-    { stop: 0.6, color: hslToComponents(blue.blue10) },
-    { stop: 1, color: hslToComponents(grass.grass10) },
-  ],
-  [
-    { stop: 0, color: hslToComponents(orange.orange8) },
-    { stop: 0.45, color: hslToComponents(orange.orange9) },
-    //{ stop: 0.5, color: hslToComponents(tomato.tomato9) },
-    { stop: 0.6, color: hslToComponents(tomato.tomato10) },
-    { stop: 1, color: hslToComponents(ruby.ruby11) },
-  ],
+const colorsCycle: Rainbow[] = [
+  {
+      dir: RainbowDirection.Regular,
+      stops: [
+        { stop: 0, color: hslToComponents(sky.sky10) },
+        { stop: 0.45, color: hslToComponents(blue.blue10) },
+        { stop: 0.5, color: hslToComponents(blue.blue10) },
+        { stop: 0.6, color: hslToComponents(blue.blue10) },
+        { stop: 1, color: hslToComponents(grass.grass10) },
+      ],
+    curve: {
+      pos: { low: -300, high: 0 },
+      velo: { low: 0, high: 5 },
+      acc: { low: 5, high: 10 },
+      jolt: { low: -5, high: 5 },
+    },
+  },
+  {
+    dir: RainbowDirection.Reversed,
+    stops: [
+      { stop: 0, color: hslToComponents(ruby.ruby11) },
+      { stop: 0.45, color: hslToComponents(tomato.tomato10) },
+      //{ stop: 0.5, color: hslToComponents(tomato.tomato9) },
+      { stop: 0.6, color: hslToComponents(orange.orange9) },
+      { stop: 1, color: hslToComponents(orange.orange8) },
+    ],
+    curve: {
+      pos: { low: -300, high: 0 },
+      velo: { low: 0, high: 5 },
+      acc: { low: 5, high: 10 },
+      jolt: { low: -5, high: 5 },
+    },
+  },
 
   /*[
     { stop: 0, color: hslToComponents(sky.sky9) },
@@ -242,7 +260,7 @@ defineExpose({ reloadBackground })
         ref="curtainHolder1Ref">
       <Curtain
         class="curtain"
-        ref="curtain1Ref"
+        id="curtain1" ref="curtain1Ref"
         @curtainCall="reload1"
       />
     </div>
@@ -252,7 +270,7 @@ defineExpose({ reloadBackground })
     >
       <Curtain
         class="curtain"
-        ref="curtain2Ref"
+        id="curtain2" ref="curtain2Ref"
         @curtainCall="reload2"
       />
     </div>
@@ -273,5 +291,8 @@ defineExpose({ reloadBackground })
 }
 .front-curtain {
   z-index: 1;
+}
+#curtain1 {
+  transform: scaleY(-1);
 }
 </style>

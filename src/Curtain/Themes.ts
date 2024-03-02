@@ -107,7 +107,7 @@ const theme_BlueDark_slate__Tomato_mauve: Theme = {
   textBaseOnAccent: hslToComponents(grassDark.grass12),
 
   textAccentOnBaseLowContrast: hslToComponents(tomatoDark.tomato11),
-  textAccentOnBase: hslToComponents(tomatoDark.tomato11),
+  textAccentOnBase: hslToComponents(tomatoDark.tomato10),
 
   textAccentOnAccentLowContrast: hslToComponents(tomatoDark.tomato11),
   textAccentOnAccent: hslToComponents(tomatoDark.tomato12),

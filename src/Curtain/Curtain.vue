@@ -467,29 +467,25 @@ async function renderScene(): Promise<Boolean> {
     //friction
     gaussianObjects[index].velocity *= 0.999
     gaussianObjects[index].position += gaussianObjects[index].velocity
-    if (gaussianObjects[index].position < canvasElement.height + 20 ) {
-      eachIsDone = false
-    }
-  }
-  if (eachIsDone) {
-    console.log('cegin curtain call')
-    //emit('curtainCall', '')
-    doneAnimatingCurtain = true
-    return true
   }
 
   //@ts-ignore
   let gaussionSmoothed = Smooth(gaussianObjects.map(objct => objct.position))
 
-  canvasContext.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  canvasContext.clearRect(0, 0, clientWidthInitial, clientHeightInitial);
 
   canvasContext.beginPath()
   let index=0
   canvasContext.moveTo(index, gaussionSmoothed(index))
   index++
   for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
-    canvasContext.lineTo(index, gaussionSmoothed(index/SMOOTHED_BOX_SIZE))
+    let smoothedPoint = gaussionSmoothed(index/SMOOTHED_BOX_SIZE)
+    canvasContext.lineTo(index, smoothedPoint)
+    if (smoothedPoint <= clientHeightInitial + 5 ) {
+      eachIsDone = false
+    }
   }
+
   canvasContext.lineTo(clientWidthInitial, 0)
   canvasContext.lineTo(0, 0)
   canvasContext.closePath()
@@ -498,6 +494,13 @@ async function renderScene(): Promise<Boolean> {
   canvasContext.fill()
   canvasContext.createPattern
   //canvasSmoothContext.restore()
+
+  if (eachIsDone) {
+    //emit('curtainCall', '')
+    doneAnimatingCurtain = true
+    return true
+  }
+
   return false
 }
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, type PropType } from 'vue'
+
 // @ts-ignore
 import{ Smooth } from '../assets/Smooth'
 
@@ -80,10 +81,11 @@ let canvasElement: HTMLCanvasElement
   Rendering functions
 */
 async function initializeBackground() {
-  canvasElement.width = canvasElement.clientWidth;
-  canvasElement.height = canvasElement.clientHeight;
+  if (canvasElement.width != canvasElement.clientWidth) {
+    canvasElement.width = canvasElement.clientWidth;
+    canvasElement.height = canvasElement.clientHeight;
+  }
 
-  canvasContext.clearRect(0, 0, canvasElement.width, canvasElement.height)
 
   pixelColumnsSuper = []
   pixelColumnsLarge = []
@@ -134,14 +136,11 @@ async function initializeBackground() {
     )
   }
   await reconPixelsFine()
-
-  await paintPixelsFine()
 }
 
 
 
 async function initializeCurtain() {
-  console.log("hi")
   doneAnimatingCurtain = false
   let countToAddSmoothed = widthInLargePixels*PIXELATED_LARGE_BOX_SIZE/SMOOTHED_BOX_SIZE
 
@@ -176,23 +175,28 @@ async function initializeCurtain() {
       })
   }
 
-
-  clientWidthInitial = canvasElement.clientWidth
-  clientHeightInitial = canvasElement.clientHeight
-  window.requestAnimationFrame(renderLoop)
+  if (clientWidthInitial != canvasElement.clientWidth) {
+    clientWidthInitial = canvasElement.clientWidth
+    clientHeightInitial = canvasElement.clientHeight
+  }
 }
 
 let clientWidthInitial = 0
 let clientHeightInitial = 0
 
 async function renderLoop() {
-  let done = await renderScene();
-  let continueToNextFrame = !done
-  if (continueToNextFrame) {
-    window.requestAnimationFrame(renderLoop)
+  let state = await renderScene();
+  switch(state) {
+    case AnimationState.AboveTop:
+      renderLoop()
+      break
+    case AnimationState.Inside:
+      window.requestAnimationFrame(renderLoop)
+      break
+    case AnimationState.BelowBottom:
+      return
   }
 }
-
 
 async function reconPixelsSuper() {
   while ((pixelColumnsSuper[0].length-TOP_BUFFER_PIXEL*2) < heightInSuperPixels) {
@@ -455,12 +459,17 @@ async function calculateColumnFine(index: number) {
   )
 }
 
+enum AnimationState {
+  AboveTop,
+  Inside,
+  BelowBottom,
+}
+
 let doneAnimatingCurtain = false
-async function renderScene(): Promise<Boolean> {
+async function renderScene(): Promise<AnimationState> {
   if (doneAnimatingCurtain) {
-    return true
+    return AnimationState.BelowBottom
   }
-  let eachIsDone = true
   for (let index=0; index < gaussianObjects.length; index++) {
     gaussianObjects[index].acceleration += gaussianObjects[index].jolt
     gaussianObjects[index].velocity += gaussianObjects[index].acceleration
@@ -477,12 +486,17 @@ async function renderScene(): Promise<Boolean> {
   canvasContext.beginPath()
   let index=0
   canvasContext.moveTo(index, gaussionSmoothed(index))
+  let eachIsAbove = true
+  let eachIsBelow = true
   index++
   for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
     let smoothedPoint = gaussionSmoothed(index/SMOOTHED_BOX_SIZE)
     canvasContext.lineTo(index, smoothedPoint)
+    if (smoothedPoint >= -5 ) {
+      eachIsAbove = false
+    }
     if (smoothedPoint <= clientHeightInitial + 5 ) {
-      eachIsDone = false
+      eachIsBelow = false
     }
   }
 
@@ -495,13 +509,16 @@ async function renderScene(): Promise<Boolean> {
   canvasContext.createPattern
   //canvasSmoothContext.restore()
 
-  if (eachIsDone) {
+  if (eachIsAbove) {
+    return AnimationState.AboveTop
+  }
+  if (eachIsBelow) {
     emit('curtainCall', '')
     doneAnimatingCurtain = true
-    return true
+    return AnimationState.BelowBottom
   }
 
-  return false
+  return AnimationState.Inside
 }
 
 async function renderColumn(columnIndex: number) {
@@ -601,7 +618,6 @@ function gradientAtPercentage(percentage: number): Color {
   let colorB: Color|null = null
   let percentageAlongSection: number|null = null
 
-  //console.log(rainbow)
   for (let index=0; index < rainbow.stops.length; index++) {
     if (rainbow.stops[index].stop > percentage) {
       let stopA = rainbow.stops[index-1]
@@ -618,10 +634,6 @@ function gradientAtPercentage(percentage: number): Color {
   if (!colorA || !colorB || !percentageAlongSection) { 
     return rainbow.stops[0].color
   }
-  /*console.log(colorA.hue)
-  console.log(colorB.hue)
-  console.log(colorA.hue - colorB.hue)
-  console.log('')*/
   let hue: number
   let saturation: number
   let lightness: number
@@ -648,8 +660,6 @@ function gradientAtPercentage(percentage: number): Color {
     lightness = colorHigh.lightness*(1-percentageAlongSection) + colorLow.lightness*percentageAlongSection
     targetHue = 360 + colorLow.hue
     let hueUnsliced = colorHigh.hue*(1-percentageAlongSection) + targetHue*percentageAlongSection
-    //console.log(`${colorA.hue} ${colorB.hue}`)
-    //console.log(`${percentageAlongSection} from ${colorHighHue} to ${colorLowHue} ${hueUnsliced}`)
     if (hueUnsliced < 360) {
       hue = hueUnsliced
     } else {
@@ -748,8 +758,6 @@ function gaussianDistributionAt(variance: number, oneOverSqrtTwoPiVariance: numb
 //#endregion
 
 onMounted(async () => {
-  console.log("Hello, world!")
-
   //@ts-expect-error
   canvasElement = canvasRef.value
   canvasContext = canvasElement.getContext("2d")! 
@@ -765,16 +773,25 @@ const canvasRef = ref(null)
 
 let rainbow: Rainbow
 
-const reloadBackground = (rainbowIn: Rainbow) => {
+const loadCurtain = async (rainbowIn: Rainbow) => {
   rainbow = rainbowIn
-  initializeBackground()
-  initializeCurtain()
+  await initializeBackground()
+  await initializeCurtain()
+}
+
+const playCurtain = async () => {
+  //canvasContext.clearRect(0, 0, canvasElement.width, canvasElement.height)
+  await paintPixelsFine()
+  window.requestAnimationFrame(renderLoop)
 }
 
 const emit = defineEmits([
   'curtainCall',
 ]);
-defineExpose({ reloadBackground })
+defineExpose({ 
+  loadCurtain,
+  playCurtain,
+ })
 </script>
 
 <template>

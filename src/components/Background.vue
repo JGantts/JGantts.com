@@ -78,8 +78,24 @@ import {
 
 } from '@radix-ui/colors';
 
-let colorsCycleIndex = 1
+let colorsCycleIndex = 0
 const colorsCycle: Rainbow[] = [
+  {
+    dir: RainbowDirection.Regular,
+    stops: [
+      { stop: 0, color: hslToComponents(orange.orange8) },
+      { stop: 0.45, color: hslToComponents(tomato.tomato10) },
+      //{ stop: 0.5, color: hslToComponents(tomato.tomato9) },
+      { stop: 0.6, color: hslToComponents(red.red10) },
+      { stop: 1, color: hslToComponents(ruby.ruby11) },
+    ],
+    curve: {
+      pos: { low: -300, high: 0 },
+      velo: { low: 0, high: 5 },
+      acc: { low: 5, high: 10 },
+      jolt: { low: -5, high: 5 },
+    },
+  },
   {
       dir: RainbowDirection.Regular,
       stops: [
@@ -89,22 +105,6 @@ const colorsCycle: Rainbow[] = [
         { stop: 0.6, color: hslToComponents(blue.blue10) },
         { stop: 1, color: hslToComponents(grass.grass10) },
       ],
-    curve: {
-      pos: { low: -300, high: 0 },
-      velo: { low: 0, high: 5 },
-      acc: { low: 5, high: 10 },
-      jolt: { low: -5, high: 5 },
-    },
-  },
-  {
-    dir: RainbowDirection.Regular,
-    stops: [
-      { stop: 0, color: hslToComponents(orange.orange9) },
-      { stop: 0.45, color: hslToComponents(tomato.tomato10) },
-      //{ stop: 0.5, color: hslToComponents(tomato.tomato9) },
-      { stop: 0.6, color: hslToComponents(red.red10) },
-      { stop: 1, color: hslToComponents(ruby.ruby11) },
-    ],
     curve: {
       pos: { low: -300, high: 0 },
       velo: { low: 0, high: 5 },
@@ -207,43 +207,84 @@ function hslToComponents(hsl: string): Color {
 
 const curtain1Ref = ref(null)
 const curtain2Ref = ref(null)
+const curtain3Ref = ref(null)
 
 const curtainHolder1Ref = ref(null)
 const curtainHolder2Ref = ref(null)
+const curtainHolder3Ref = ref(null)
 
 const reload1 = async () => {
-  loadNext(curtainHolder2Ref.value, curtainHolder1Ref.value, curtain2Ref.value)
+  loadNext(
+    curtainHolder2Ref.value,
+    curtainHolder3Ref.value,
+    curtainHolder1Ref.value,
+    curtain2Ref.value,
+    curtain3Ref.value
+  )
 }
 
 const reload2 = async () => {
-  loadNext(curtainHolder1Ref.value, curtainHolder2Ref.value, curtain1Ref.value)
+  loadNext(
+    curtainHolder3Ref.value,
+    curtainHolder1Ref.value,
+    curtainHolder2Ref.value,
+    curtain3Ref.value,
+    curtain1Ref.value
+  )
 }
 
-function loadNext(
-  element1: Element|null,
-  element2: Element|null,
-  //@ts-expect-error
-  curtainNext: Curtain|null
-) {
-  let classList1 = element1?.classList
-  let classList2 = element2?.classList
+const reload3 = async () => {
+  loadNext(
+    curtainHolder1Ref.value,
+    curtainHolder2Ref.value,
+    curtainHolder3Ref.value,
+    curtain1Ref.value,
+    curtain2Ref.value
+  )
+}
 
-  if (!classList1 || !classList2 || !curtainNext) {
+async function loadNext(
+  elementNext: Element|null,
+  elementThen: Element|null,
+  elementClear: Element|null,
+  //@ts-expect-error
+  curtainNext: Curtain|null,
+  //@ts-expect-error
+  curtainThen: Curtain|null,
+) {
+  let classListNext = elementNext?.classList
+  let classListThen = elementThen?.classList
+  let classListClear = elementClear?.classList
+
+  if (!classListNext || !classListThen || !classListClear || !curtainNext || !curtainThen) {
     console.log("err")
     return
   }
 
-  classList2.remove("front-curtain")
-  classList1.add("front-curtain")
+
   if (colorsCycleIndex >= colorsCycle.length) {
     colorsCycleIndex = 0
   }
-  curtainNext.reloadBackground(colorsCycle[colorsCycleIndex])
+  curtainNext.playCurtain()
+
+  curtainThen.loadCurtain(colorsCycle[colorsCycleIndex])
   colorsCycleIndex++
+
+  //const delay = ms => new Promise(res => setTimeout(res, ms));
+
+  window.requestAnimationFrame(() => {
+    classListNext?.add("curr-curtain")
+    classListThen?.remove("prev-curtain")
+    classListClear?.add("prev-curtain")
+    classListClear?.remove("curr-curtain")
+  })
 }
 
-onMounted(() => {
-  reload1()
+onMounted(async () => {
+  await curtain1Ref.value?.loadCurtain(colorsCycle[1])
+  await curtain2Ref.value?.loadCurtain(colorsCycle[0])
+  await curtain3Ref.value?.loadCurtain(colorsCycle[1])
+  reload2()
 })
 
 function reloadBackground() {
@@ -260,7 +301,7 @@ defineExpose({ reloadBackground })
         ref="curtainHolder1Ref">
       <Curtain
         class="curtain"
-        id="curtain1" ref="curtain1Ref"
+        ref="curtain1Ref"
         @curtainCall="reload1"
       />
     </div>
@@ -274,6 +315,16 @@ defineExpose({ reloadBackground })
         @curtainCall="reload2"
       />
     </div>
+    <div
+        class="curtain-holder"
+        ref="curtainHolder3Ref"
+    >
+      <Curtain
+        class="curtain"
+        ref="curtain3Ref"
+        @curtainCall="reload3"
+      />
+    </div>
   </div>
 </template>
 
@@ -283,13 +334,15 @@ defineExpose({ reloadBackground })
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: 0;  
 }
-.front-curtain {
+.curtain-holder{
   position: fixed;
-  z-index: 0;
 }
-.front-curtain {
+.curr-curtain {
+  z-index: 2;
+}
+.prev-curtain {
   z-index: 1;
 }
 </style>

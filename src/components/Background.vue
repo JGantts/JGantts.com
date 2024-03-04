@@ -209,6 +209,8 @@ const curtain1Ref = ref(null)
 const curtain2Ref = ref(null)
 const curtain3Ref = ref(null)
 
+let curtainCurrent: Curtain|null = null
+
 const curtainHolder1Ref = ref(null)
 const curtainHolder2Ref = ref(null)
 const curtainHolder3Ref = ref(null)
@@ -243,6 +245,17 @@ const reload3 = async () => {
   )
 }
 
+const reloadLast = async () => {
+  reload3()
+}
+
+enum BackgroundState {
+  Prerun,
+  Firstrun,
+  Secondrun,
+  Subseqrun,
+}
+let backgroundState = BackgroundState.Prerun
 async function loadNext(
   elementNext: Element|null,
   elementThen: Element|null,
@@ -252,6 +265,23 @@ async function loadNext(
   //@ts-expect-error
   curtainThen: Curtain|null,
 ) {
+  switch (backgroundState) {
+    case BackgroundState.Prerun:
+      backgroundState = BackgroundState.Firstrun
+    break
+    case BackgroundState.Firstrun:
+      backgroundState = BackgroundState.Secondrun
+      emit('firstRunDone')
+      return
+    case BackgroundState.Secondrun:
+      backgroundState = BackgroundState.Subseqrun
+
+    break
+    case BackgroundState.Subseqrun:
+
+    break
+  }
+
   let classListNext = elementNext?.classList
   let classListThen = elementThen?.classList
   let classListClear = elementClear?.classList
@@ -266,7 +296,7 @@ async function loadNext(
     colorsCycleIndex = 0
   }
   curtainNext.playCurtain()
-
+  curtainCurrent = curtainNext
   curtainThen.loadCurtain(colorsCycle[colorsCycleIndex])
   colorsCycleIndex++
 
@@ -284,14 +314,21 @@ onMounted(async () => {
   await curtain1Ref.value?.loadCurtain(colorsCycle[1])
   await curtain2Ref.value?.loadCurtain(colorsCycle[0])
   await curtain3Ref.value?.loadCurtain(colorsCycle[1])
-  reload2()
+  reloadLast()
 })
 
-function reloadBackground() {
-
+async function pausePlay(): Promise<BackgroundState> {
+  return await curtainCurrent.pausePlay()
 }
 
-defineExpose({ reloadBackground })
+let firstRunStarted = false
+let firstRunDone = false
+let continualRun = false
+const emit = defineEmits([
+  'firstRunDone',
+]);
+
+defineExpose({ pausePlay })
 </script>
 
 <template>
@@ -302,6 +339,7 @@ defineExpose({ reloadBackground })
       <Curtain
         class="curtain"
         ref="curtain1Ref"
+        :playState="1"
         @curtainCall="reload1"
       />
     </div>

@@ -17,8 +17,10 @@ import {
   theme_BlueDark_slate__Tomato_mauve,
   theme_Blue_slate__Orange_sand,
 } from './Curtain/Themes'
+import { BackgroundState } from './Curtain/Types';
 
 const backgroundRef = ref(null)
+const replayButtonRef = ref(null)
 
 const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
 darkModePreference.addEventListener("change", checkDarkMode)
@@ -33,10 +35,17 @@ function checkDarkMode(mediaMatch: any) {
   setCSSColors(mediaMatch.matches ? theme_BlueDark_slate__Tomato_mauve : theme_Blue_slate__Orange_sand)
 }
 
-function reloadBackground() {
-  console.log("ioriwa")
+async function pausePlay() {
   //@ts-expect-error
-  backgroundRef.value?.reloadBackground()
+  let newState = await backgroundRef.value?.pausePlay()
+  console.log(newState)
+  replayButtonRef.value.state = newState
+  console.log(replayButtonRef.value.state)
+}
+
+function firstRunDone() {
+  console.log("houhuoho")
+  replayButtonRef.value?.firstRunDone()
 }
 
 onMounted(() => {
@@ -86,20 +95,17 @@ onMounted(() => {
             hSpacing="1rem"
             vSpacing="1rem"
           >
-            <ExpandedView>
-              <ReplayButton style="visibility: hidden"/>
-            </ExpandedView>
             <Island cornerRadius="0.5rem">
               <VStack padding="0.25rem 0.75rem">
                 <p id="text05">I write software!</p>
                 <p id="text07">© 2024 Jacob Gantt</p>
               </VStack>
             </Island>
-            <ReplayButton @click="reloadBackground" />
+            <ReplayButton @click="pausePlay" :state="BackgroundState.First" ref="replayButtonRef"/>
           </DStack>
         </VStack>
       </div>
-      <Background />
+      <Background ref="backgroundRef" @first-run-done="firstRunDone"/>
     </div>
   </div>
 </template>

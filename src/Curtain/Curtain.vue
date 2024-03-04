@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, type PropType } from 'vue'
+import {Mutex, type MutexInterface, Semaphore, type SemaphoreInterface, withTimeout} from 'async-mutex';
+
 
 // @ts-ignore
 import{ Smooth } from '../assets/Smooth'
 
 import type { Color, Rainbow } from './Types';
-import { RainbowDirection } from './Types';
+import { BackgroundState, RainbowDirection } from './Types';
 
 /*backgroundColors: [
   { stop: 0/6, color: hslToComponents(red.red9) },
@@ -185,16 +187,18 @@ let clientWidthInitial = 0
 let clientHeightInitial = 0
 
 async function renderLoop() {
-  let state = await renderScene();
-  switch(state) {
-    case AnimationState.AboveTop:
-      renderLoop()
-      break
-    case AnimationState.Inside:
-      window.requestAnimationFrame(renderLoop)
-      break
-    case AnimationState.BelowBottom:
+  let state: AnimationState|null = null
+  await pauseMutex.runExclusive(async () => {
+    if (playStateInternal == BackgroundState.AfterFirstPaused) {
       return
+    }
+    state = await renderScene();
+    if (state == AnimationState.Inside) {
+      window.requestAnimationFrame(renderLoop)
+    }
+  })
+  if (state == AnimationState.AboveTop) {
+      renderLoop()
   }
 }
 
@@ -513,6 +517,7 @@ async function renderScene(): Promise<AnimationState> {
     return AnimationState.AboveTop
   }
   if (eachIsBelow) {
+    playStateInternal = BackgroundState.AfterFirstPaused
     emit('curtainCall', '')
     doneAnimatingCurtain = true
     return AnimationState.BelowBottom
@@ -781,8 +786,37 @@ const loadCurtain = async (rainbowIn: Rainbow) => {
 
 const playCurtain = async () => {
   //canvasContext.clearRect(0, 0, canvasElement.width, canvasElement.height)
-  await paintPixelsFine()
+  if (playStateInternal == BackgroundState.Unset) {
+    playStateInternal = BackgroundState.AfterFirstPlaying
+  }
+  await paintPixelsFine()    
   window.requestAnimationFrame(renderLoop)
+}
+
+let playStateInternal = BackgroundState.Unset
+const pauseMutex = new Mutex()
+const pausePlay = async (): Promise<BackgroundState> => {
+  console.log(`blarg: ${playStateInternal}`)
+  return await pauseMutex.runExclusive(() => {
+    console.log(playStateInternal)
+    switch (playStateInternal) {
+      case BackgroundState.First:
+        return BackgroundState.First
+      case BackgroundState.AfterFirstPlaying:
+      playStateInternal = BackgroundState.AfterFirstPaused
+        console.log("hfsdlifh")
+        return BackgroundState.AfterFirstPaused
+      case BackgroundState.Unset:
+        // eslint-disable-next-line no-fallthrough
+      case BackgroundState.AfterFirstPaused:
+        playStateInternal = BackgroundState.AfterFirstPlaying
+          console.log('wut')
+          doneAnimatingCurtain = false
+          window.requestAnimationFrame(renderLoop)
+          return BackgroundState.AfterFirstPlaying
+    }
+  })
+  //return BackgroundState.AfterFirstPaused
 }
 
 const emit = defineEmits([
@@ -791,6 +825,13 @@ const emit = defineEmits([
 defineExpose({ 
   loadCurtain,
   playCurtain,
+  pausePlay,
+ })
+ const props = defineProps({
+  playState: {
+    type: Number,
+    default: BackgroundState.AfterFirstPaused
+  }
  })
 </script>
 

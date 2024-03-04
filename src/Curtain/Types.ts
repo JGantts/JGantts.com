@@ -71,9 +71,17 @@ type Rainbow = {
   }
 }
 
+enum BackgroundState {
+  Unset,
+  First,
+  AfterFirstPlaying,
+  AfterFirstPaused,
+}
+
 export {
   type Color,
   type Theme,
   RainbowDirection,
   type Rainbow,
+  BackgroundState,
 }

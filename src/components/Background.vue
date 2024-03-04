@@ -209,6 +209,7 @@ const curtain1Ref = ref(null)
 const curtain2Ref = ref(null)
 const curtain3Ref = ref(null)
 
+//@ts-expect-error
 let curtainCurrent: Curtain|null = null
 
 const curtainHolder1Ref = ref(null)
@@ -311,8 +312,11 @@ async function loadNext(
 }
 
 onMounted(async () => {
+  //@ts-expect-error
   await curtain1Ref.value?.loadCurtain(colorsCycle[1])
+  //@ts-expect-error
   await curtain2Ref.value?.loadCurtain(colorsCycle[0])
+  //@ts-expect-error
   await curtain3Ref.value?.loadCurtain(colorsCycle[1])
   reloadLast()
 })

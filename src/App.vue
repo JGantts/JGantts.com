@@ -39,12 +39,15 @@ async function pausePlay() {
   //@ts-expect-error
   let newState = await backgroundRef.value?.pausePlay()
   console.log(newState)
+  //@ts-expect-error
   replayButtonRef.value.state = newState
+  //@ts-expect-error
   console.log(replayButtonRef.value.state)
 }
 
 function firstRunDone() {
   console.log("houhuoho")
+  //@ts-expect-error
   replayButtonRef.value?.firstRunDone()
 }
 

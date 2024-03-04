@@ -16,7 +16,7 @@ const firstRunDone = () => {
   isVisible.value = true
 }
 
-const state = ref(BackgroundState.First)
+const state = ref(BackgroundState.AfterFirstPaused)
 
 defineExpose({ 
   state,

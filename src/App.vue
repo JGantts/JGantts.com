@@ -21,6 +21,7 @@ import { BackgroundState } from './Curtain/Types';
 
 const backgroundRef = ref(null)
 const replayButtonRef = ref(null)
+const dummyButtonRef = ref(null)
 
 const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
 darkModePreference.addEventListener("change", checkDarkMode)
@@ -49,6 +50,8 @@ function firstRunDone() {
   console.log("houhuoho")
   //@ts-expect-error
   replayButtonRef.value?.firstRunDone()
+  //@ts-expect-error
+  dummyButtonRef.value?.firstRunDone()
 }
 
 onMounted(() => {
@@ -93,18 +96,14 @@ onMounted(() => {
           </Island>
           <!-- <NavBar /> -->
           <div id="replay-holder">
-            <ExpandedView>
-              <ReplayButton style="visibility: hidden"/>
-            </ExpandedView>
+            <ReplayButton class="dummy-button replay-button" style="visibility: hidden" ref="dummyButtonRef"/>
             <Island id="replay-sibling" cornerRadius="0.5rem">
               <VStack padding="0.25rem 0.75rem">
                 <p id="text05">I write software!</p>
                 <p id="text07">© 2024 Jacob Gantt</p>
               </VStack>
             </Island>
-            <div id="replay-button">
-              <ReplayButton @click="pausePlay" :state="BackgroundState.First" ref="replayButtonRef"/>
-            </div>
+            <ReplayButton class="replay-button" @click="pausePlay" :state="BackgroundState.First" ref="replayButtonRef"/>
           </div>
         </VStack>
       </div>
@@ -167,8 +166,7 @@ onMounted(() => {
   text-align: center; /* Center the content of the sibling */
 }
 
-#replay-button {
-  float: right;
+.replay-button {
   width: 1em;
 }
 </style>

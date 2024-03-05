@@ -78,7 +78,7 @@ import {
 
 } from '@radix-ui/colors';
 
-let colorsCycleIndex = -1
+let colorsCycleIndex = 0
 const colorsCycle: Rainbow[] = [
   {
       dir: RainbowDirection.Regular,
@@ -309,13 +309,13 @@ async function loadNext(
   }
 
 
+  colorsCycleIndex++
   if (colorsCycleIndex >= colorsCycle.length) {
     colorsCycleIndex = 0
   }
   curtainNext.playCurtain()
   curtainCurrent = curtainNext
   curtainThen.loadCurtain(colorsCycle[colorsCycleIndex])
-  colorsCycleIndex++
 
   //const delay = ms => new Promise(res => setTimeout(res, ms));
 
@@ -330,10 +330,6 @@ async function loadNext(
 onMounted(async () => {
   //@ts-expect-error
   await curtain1Ref.value?.loadCurtain(colorsCycle[0])
-  //@ts-expect-error
-  await curtain2Ref.value?.loadCurtain(colorsCycle[1])
-  //@ts-expect-error
-  await curtain3Ref.value?.loadCurtain(colorsCycle[2])
   reloadLast()
 })
 

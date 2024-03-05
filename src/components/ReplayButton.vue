@@ -24,16 +24,14 @@ defineExpose({
 </script>
 
 <template>
-  <div class="secondary">
-    <button @click.stop="$emit('click')" v-if="isVisible" class="button-animation play-button">
-      <div v-if="state === BackgroundState.AfterFirstPaused" >
-        <PlayIcon class="fa-icon" />
-      </div>
-      <div v-else>
-        <PauseIcon class="fa-icon" />
-      </div>
-    </button>
-  </div>
+  <button @click.stop="$emit('click')" v-if="isVisible" class="button-animation play-button">
+    <div v-if="state === BackgroundState.AfterFirstPaused" class="play-button">
+      <PlayIcon class="fa-icon"/>
+    </div>
+    <div v-else  class="play-button">
+      <PauseIcon class="fa-icon" />
+    </div>
+  </button>
 </template>
 
 
@@ -60,8 +58,18 @@ defineExpose({
 }
 
 .play-button {
-  background-color: #4CAF50;
-  border-radius: 10px;
+  color: var(--textGrayOnBase);
+  background-color: var(--backgroundAppBase);
+  height: 1.1em;
+  width: 1.1em;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;  
+}
+
+.fa-icon {
+  padding: auto;
 }
 </style>
 

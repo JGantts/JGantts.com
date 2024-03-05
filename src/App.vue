@@ -101,7 +101,7 @@ onMounted(() => {
                 <p id="text07">© 2024 Jacob Gantt</p>
               </VStack>
             </Island>
-            <ReplayButton class="replay-button see-through-text" @click="pausePlay" :state="BackgroundState.First" ref="replayButtonRef"/>
+            <ReplayButton class="replay-button" @click="pausePlay" :state="BackgroundState.First" ref="replayButtonRef"/>
           </div>
         </VStack>
       </div>

@@ -75,11 +75,28 @@ import {
   amberDark,
   orange,
   orangeDark,
+pink,
 
 } from '@radix-ui/colors';
 
 let colorsCycleIndex = 0
 const colorsCycle: Rainbow[] = [
+  /*{
+      dir: RainbowDirection.Regular,
+      stops: [
+        { stop: 0, color: hslToComponents(plum.plum10) },
+        { stop: 0.45, color: hslToComponents(crimson.crimson10) },
+        //{ stop: 0.5, color: hslToComponents(blue.blue10) },
+        { stop: 0.6, color: hslToComponents(pink.pink10) },
+        { stop: 1, color: hslToComponents(purple.purple10) },
+      ],
+    curve: {
+      pos: { low: -300, high: 0 },
+      velo: { low: 0, high: 5 },
+      acc: { low: 5, high: 10 },
+      jolt: { low: -5, high: 5 },
+    },
+  },*/
   {
       dir: RainbowDirection.Regular,
       stops: [
@@ -112,7 +129,7 @@ const colorsCycle: Rainbow[] = [
       jolt: { low: -5, high: 5 },
     },
   },
-  {
+  /*{
       dir: RainbowDirection.Regular,
       stops: [
         { stop: 0, color: hslToComponents(purple.purple9) },
@@ -127,7 +144,7 @@ const colorsCycle: Rainbow[] = [
       acc: { low: 5, high: 10 },
       jolt: { low: -5, high: 5 },
     },
-  },
+  },*/
 
   /*[
     { stop: 0, color: hslToComponents(sky.sky9) },

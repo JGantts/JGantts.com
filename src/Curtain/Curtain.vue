@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, type PropType } from 'vue'
-import {Mutex, type MutexInterface, Semaphore, type SemaphoreInterface, withTimeout} from 'async-mutex';
+import { ref, onMounted } from 'vue'
+import { Mutex } from 'async-mutex';
 
 
 // @ts-ignore
@@ -786,7 +786,7 @@ const loadCurtain = async (rainbowIn: Rainbow) => {
 
 const playCurtain = async () => {
   //canvasContext.clearRect(0, 0, canvasElement.width, canvasElement.height)
-  if (playStateInternal == BackgroundState.Unset) {
+  if (playStateInternal != BackgroundState.First) {
     playStateInternal = BackgroundState.AfterFirstPlaying
   }
   await paintPixelsFine()    

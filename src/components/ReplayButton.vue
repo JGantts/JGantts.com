@@ -38,23 +38,26 @@ defineExpose({
 <style scoped>
 @keyframes the-anim {
   0% {
-    transform: rotate(-720deg) scale(0.2);
+    transform: rotate(-720deg) scale(0);
     opacity: 0;
   }
   50% {
-    transform: rotate(-360deg) scale(0.6);
+    transform: rotate(-360deg) scale(1);
   }
   75% {
     opacity: 1;
+    transform: rotate(-180deg) scale(1.5);
+  }
+  87.5% {
+    transform: rotate(-90deg) scale(1.4);
   }
   100% {
-    transform: rotate(0deg);
+    transform: rotate(0deg) scale(1.0);
   }
 }
 
 .button-animation {
-  animation: 
-    the-anim 0.6s;
+  animation: the-anim 1s cubic-bezier(0.58, 0.81, 0.62, 0.57);
 }
 
 .play-button {

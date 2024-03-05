@@ -21,7 +21,6 @@ import { BackgroundState } from './Curtain/Types';
 
 const backgroundRef = ref(null)
 const replayButtonRef = ref(null)
-const dummyButtonRef = ref(null)
 
 const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
 darkModePreference.addEventListener("change", checkDarkMode)
@@ -49,8 +48,6 @@ const runningSecondary = ref(false)
 function firstRunDone() {
   //@ts-expect-error
   replayButtonRef.value?.firstRunDone()
-  //@ts-expect-error
-  dummyButtonRef.value?.firstRunDone()
 }
 
 onMounted(() => {
@@ -94,14 +91,16 @@ onMounted(() => {
           </Island>
           <!-- <NavBar /> -->
           <div id="replay-holder">
-            <ReplayButton class="dummy-button replay-button" style="visibility: hidden" ref="dummyButtonRef"/>
+            <div style="width: 2rem" />
             <Island id="replay-sibling" cornerRadius="0.5rem">
               <VStack padding="0.25rem 0.75rem">
                 <p class="text05 highlight" :class="{ mellow: runningSecondary }">I write software!</p>
                 <p id="text07">© 2024 Jacob Gantt</p>
               </VStack>
             </Island>
-            <ReplayButton class="replay-button" @click="pausePlay" :state="BackgroundState.First" ref="replayButtonRef"/>
+            <div style="width: 2rem">
+              <ReplayButton class="replay-button" @click="pausePlay" :state="BackgroundState.First" ref="replayButtonRef"/>
+            </div>
           </div>
         </VStack>
       </div>

@@ -12,7 +12,6 @@ const emit = defineEmits([
 ]);
 
 const firstRunDone = () => {
-  console.log('hi')
   isVisible.value = true
 }
 
@@ -26,7 +25,7 @@ defineExpose({
 
 <template>
   <div class="secondary">
-    <button @click.stop="$emit('click')" v-if="isVisible" class="button-animation">
+    <button @click.stop="$emit('click')" v-if="isVisible" class="button-animation play-button">
       <div v-if="state === BackgroundState.AfterFirstPaused" >
         <PlayIcon class="fa-icon" />
       </div>
@@ -58,6 +57,11 @@ defineExpose({
 .button-animation {
   animation: 
     the-anim 0.6s;
+}
+
+.play-button {
+  background-color: #4CAF50;
+  border-radius: 10px;
 }
 </style>
 

@@ -37,17 +37,16 @@ function checkDarkMode(mediaMatch: any) {
 }
 
 async function pausePlay() {
+  runningSecondary.value = true
   //@ts-expect-error
   let newState = await backgroundRef.value?.pausePlay()
-  console.log(newState)
   //@ts-expect-error
   replayButtonRef.value.state = newState
-  //@ts-expect-error
-  console.log(replayButtonRef.value.state)
 }
 
+const runningSecondary = ref(false)
+
 function firstRunDone() {
-  console.log("houhuoho")
   //@ts-expect-error
   replayButtonRef.value?.firstRunDone()
   //@ts-expect-error
@@ -66,9 +65,8 @@ onMounted(() => {
           <Island cornerRadius="1.5rem">
             <VStack padding="0.75rem 1.25rem" spacing="0">
               <h1>
-                <span id="text01-accent" class="see-through-text">JGantts</span>
-                <span id="text01-dot">.</span>
-                <span id="text01">com</span>
+                <span class="text01 highlight" :class="{ mellow: runningSecondary }">JGantts</span>
+                <span class="text01">.com</span>
               </h1>
               <p id="text02">Welcome, all.</p>
             </VStack>
@@ -99,11 +97,11 @@ onMounted(() => {
             <ReplayButton class="dummy-button replay-button" style="visibility: hidden" ref="dummyButtonRef"/>
             <Island id="replay-sibling" cornerRadius="0.5rem">
               <VStack padding="0.25rem 0.75rem">
-                <p id="text05">I write software!</p>
+                <p class="text05 highlight" :class="{ mellow: runningSecondary }">I write software!</p>
                 <p id="text07">© 2024 Jacob Gantt</p>
               </VStack>
             </Island>
-            <ReplayButton class="replay-button" @click="pausePlay" :state="BackgroundState.First" ref="replayButtonRef"/>
+            <ReplayButton class="replay-button see-through-text" @click="pausePlay" :state="BackgroundState.First" ref="replayButtonRef"/>
           </div>
         </VStack>
       </div>
@@ -168,5 +166,76 @@ onMounted(() => {
 
 .replay-button {
   width: 1em;
+}
+
+.text01-accent {
+  color: var(--textAccentOnBase);
+  font-size: 2em;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.text01 {
+  font-size: 2em;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+#text02 {
+  font-size: 1em;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+#text03 {
+  color: var(--textGrayOnBaseLowContrast);
+  font-size: 0.625em;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+#text04 {
+  font-size: 1em;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.text05 {
+  font-size: 1em;
+  line-height: 1.5;
+  font-weight: 500;
+
+}
+
+#text06 {
+  text-align: justify;
+  font-size: 0.625em;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+#text07 {
+  font-size: 0.5em;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+#text07-accent {
+  font-size: 0.5em;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+</style>
+
+<style scoped>
+.highlight {
+  color: var(--textAccentOnBase);
+}
+
+/* Apply the animation to the text element */
+.mellow {
+  color: var(--textBaseOnAccentLowContrast);
+  transition: color 3s ease-in-out 1.5s;
 }
 </style>

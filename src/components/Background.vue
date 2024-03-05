@@ -78,8 +78,24 @@ import {
 
 } from '@radix-ui/colors';
 
-let colorsCycleIndex = 0
+let colorsCycleIndex = -1
 const colorsCycle: Rainbow[] = [
+  {
+      dir: RainbowDirection.Regular,
+      stops: [
+        { stop: 0, color: hslToComponents(sky.sky10) },
+        { stop: 0.45, color: hslToComponents(blue.blue10) },
+        { stop: 0.5, color: hslToComponents(blue.blue10) },
+        { stop: 0.6, color: hslToComponents(blue.blue10) },
+        { stop: 1, color: hslToComponents(grass.grass10) },
+      ],
+    curve: {
+      pos: { low: -300, high: 0 },
+      velo: { low: 0, high: 5 },
+      acc: { low: 5, high: 10 },
+      jolt: { low: -5, high: 5 },
+    },
+  },
   {
     dir: RainbowDirection.Regular,
     stops: [
@@ -99,11 +115,11 @@ const colorsCycle: Rainbow[] = [
   {
       dir: RainbowDirection.Regular,
       stops: [
-        { stop: 0, color: hslToComponents(sky.sky10) },
-        { stop: 0.45, color: hslToComponents(blue.blue10) },
+        { stop: 0, color: hslToComponents(purple.purple9) },
+        { stop: 0.45, color: hslToComponents(blue.blue9) },
         { stop: 0.5, color: hslToComponents(blue.blue10) },
-        { stop: 0.6, color: hslToComponents(blue.blue10) },
-        { stop: 1, color: hslToComponents(grass.grass10) },
+        { stop: 0.6, color: hslToComponents(blue.blue11) },
+        { stop: 1, color: hslToComponents(red.red11) },
       ],
     curve: {
       pos: { low: -300, high: 0 },
@@ -313,11 +329,11 @@ async function loadNext(
 
 onMounted(async () => {
   //@ts-expect-error
-  await curtain1Ref.value?.loadCurtain(colorsCycle[1])
+  await curtain1Ref.value?.loadCurtain(colorsCycle[0])
   //@ts-expect-error
-  await curtain2Ref.value?.loadCurtain(colorsCycle[0])
+  await curtain2Ref.value?.loadCurtain(colorsCycle[1])
   //@ts-expect-error
-  await curtain3Ref.value?.loadCurtain(colorsCycle[1])
+  await curtain3Ref.value?.loadCurtain(colorsCycle[2])
   reloadLast()
 })
 

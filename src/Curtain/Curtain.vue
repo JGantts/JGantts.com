@@ -796,21 +796,17 @@ const playCurtain = async () => {
 let playStateInternal = BackgroundState.Unset
 const pauseMutex = new Mutex()
 const pausePlay = async (): Promise<BackgroundState> => {
-  console.log(`blarg: ${playStateInternal}`)
   return await pauseMutex.runExclusive(() => {
-    console.log(playStateInternal)
     switch (playStateInternal) {
       case BackgroundState.First:
         return BackgroundState.First
       case BackgroundState.AfterFirstPlaying:
       playStateInternal = BackgroundState.AfterFirstPaused
-        console.log("hfsdlifh")
         return BackgroundState.AfterFirstPaused
       case BackgroundState.Unset:
         // eslint-disable-next-line no-fallthrough
       case BackgroundState.AfterFirstPaused:
         playStateInternal = BackgroundState.AfterFirstPlaying
-          console.log('wut')
           doneAnimatingCurtain = false
           window.requestAnimationFrame(renderLoop)
           return BackgroundState.AfterFirstPlaying

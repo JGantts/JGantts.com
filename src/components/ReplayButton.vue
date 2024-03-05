@@ -26,7 +26,7 @@ defineExpose({
 
 <template>
   <div class="secondary">
-    <button @click.stop="$emit('click')" v-show="isVisible">
+    <button @click.stop="$emit('click')" v-if="isVisible" class="button-animation">
       <div v-if="state === BackgroundState.AfterFirstPaused" >
         <PlayIcon class="fa-icon" />
       </div>
@@ -39,12 +39,25 @@ defineExpose({
 
 
 <style scoped>
-button {
-  transition: opacity 0.5s ease-in-out;;
-  
+@keyframes the-anim {
+  0% {
+    transform: rotate(-720deg) scale(0.2);
+    opacity: 0;
+  }
+  50% {
+    transform: rotate(-360deg) scale(0.6);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(0deg);
+  }
 }
 
-button[v-show] {
-  opacity: 1;
+.button-animation {
+  animation: 
+    the-anim 0.6s;
 }
 </style>
+

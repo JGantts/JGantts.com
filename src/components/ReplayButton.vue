@@ -57,14 +57,14 @@ defineExpose({
 }
 
 .button-animation {
-  animation: the-anim 1s cubic-bezier(0.58, 0.81, 0.62, 0.57);
+  animation: the-anim 0.75s cubic-bezier(0.58, 0.81, 0.62, 0.57);
 }
 
 .play-button {
   color: var(--textGrayOnBase);
   background-color: var(--backgroundAppBase);
-  height: 1.1em;
-  width: 1.1em;
+  height: 1.15em;
+  width: 1.15em;
   border-radius: 0.375rem;
   display: flex;
   align-items: center;

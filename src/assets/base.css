@@ -99,8 +99,8 @@ button, input[type="submit"], input[type="reset"] {
 }
 
 .fa-icon {
-  height: 24px;
-  width: 24px;
+  height: 1em;
+  width: 1em;
   line-height: 1;
   vertical-align: middle;
   fill: currentColor;

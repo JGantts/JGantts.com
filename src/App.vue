@@ -92,20 +92,20 @@ onMounted(() => {
             </DStack>
           </Island>
           <!-- <NavBar /> -->
-          <DStack
-            :breakpoint="Breakpoint._2_M"
-            padding="0"
-            hSpacing="1rem"
-            vSpacing="1rem"
-          >
-            <Island cornerRadius="0.5rem">
+          <div id="replay-holder">
+            <ExpandedView>
+              <ReplayButton style="visibility: hidden"/>
+            </ExpandedView>
+            <Island id="replay-sibling" cornerRadius="0.5rem">
               <VStack padding="0.25rem 0.75rem">
                 <p id="text05">I write software!</p>
                 <p id="text07">© 2024 Jacob Gantt</p>
               </VStack>
             </Island>
-            <ReplayButton @click="pausePlay" :state="BackgroundState.First" ref="replayButtonRef"/>
-          </DStack>
+            <div id="replay-button">
+              <ReplayButton @click="pausePlay" :state="BackgroundState.First" ref="replayButtonRef"/>
+            </div>
+          </div>
         </VStack>
       </div>
       <Background ref="backgroundRef" @first-run-done="firstRunDone"/>
@@ -155,5 +155,20 @@ onMounted(() => {
   --flex-alignment: center;
 }
 
+#replay-holder {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* To vertically center the items */
+  gap: 0.75rem;
+}
 
+#replay-sibling {
+  flex-grow: 1; /* Allow the sibling to grow and take up available space */
+  text-align: center; /* Center the content of the sibling */
+}
+
+#replay-button {
+  float: right;
+  width: 1em;
+}
 </style>

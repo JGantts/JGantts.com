@@ -81,22 +81,6 @@ pink,
 
 let colorsCycleIndex = 0
 const colorsCycle: Rainbow[] = [
-  /*{
-      dir: RainbowDirection.Regular,
-      stops: [
-        { stop: 0, color: hslToComponents(plum.plum10) },
-        { stop: 0.45, color: hslToComponents(crimson.crimson10) },
-        //{ stop: 0.5, color: hslToComponents(blue.blue10) },
-        { stop: 0.6, color: hslToComponents(pink.pink10) },
-        { stop: 1, color: hslToComponents(purple.purple10) },
-      ],
-    curve: {
-      pos: { low: -300, high: 0 },
-      velo: { low: 0, high: 5 },
-      acc: { low: 5, high: 10 },
-      jolt: { low: -5, high: 5 },
-    },
-  },*/
   {
       dir: RainbowDirection.Regular,
       stops: [
@@ -122,6 +106,50 @@ const colorsCycle: Rainbow[] = [
       { stop: 0.6, color: hslToComponents(red.red10) },
       { stop: 1, color: hslToComponents(ruby.ruby11) },
     ],
+    curve: {
+      pos: { low: -300, high: 0 },
+      velo: { low: 0, high: 5 },
+      acc: { low: 5, high: 10 },
+      jolt: { low: -5, high: 5 },
+    },
+  },
+  {
+      dir: RainbowDirection.Regular,
+      stops: [
+        { stop: 0, color: hslToComponents(purple.purple8) },
+        { stop: 0.45, color: hslToComponents(crimson.crimson10) },
+        { stop: 0.55, color: hslToComponents(crimson.crimson10) },
+        { stop: 0.6, color: hslToComponents(pink.pink10) },
+        { stop: 1, color: hslToComponents(plum.plum12) },
+      ],
+    curve: {
+      pos: { low: -300, high: 0 },
+      velo: { low: 0, high: 5 },
+      acc: { low: 5, high: 10 },
+      jolt: { low: -5, high: 5 },
+    },
+  },
+  {
+      dir: RainbowDirection.Regular,
+      stops: [
+        { stop: 0, color: hslToComponents(mint.mint9) },
+        { stop: 0.45, color: hslToComponents(lime.lime9) },
+        { stop: 0.55, color: hslToComponents(lime.lime10) },
+        { stop: 1, color: hslToComponents(green.green10) },
+      ],
+    curve: {
+      pos: { low: -300, high: 0 },
+      velo: { low: 0, high: 5 },
+      acc: { low: 5, high: 10 },
+      jolt: { low: -5, high: 5 },
+    },
+  },
+  {
+      dir: RainbowDirection.Regular,
+      stops: [
+        { stop: 0, color: hslToComponents(green.green8) },
+        { stop: 1, color: hslToComponents(crimson.crimson10) },
+      ],
     curve: {
       pos: { low: -300, high: 0 },
       velo: { low: 0, high: 5 },

@@ -82,14 +82,15 @@ pink,
 let colorsCycleIndex = 0
 const colorsCycle: Rainbow[] = [
   {
-      dir: RainbowDirection.Regular,
-      stops: [
-        { stop: 0, color: hslToComponents(sky.sky10) },
-        { stop: 0.45, color: hslToComponents(blue.blue10) },
-        { stop: 0.5, color: hslToComponents(blue.blue10) },
-        { stop: 0.6, color: hslToComponents(blue.blue10) },
-        { stop: 1, color: hslToComponents(grass.grass10) },
-      ],
+    name: "blue",
+    dir: RainbowDirection.Regular,
+    stops: [
+      { stop: 0, color: hslToComponents(sky.sky10) },
+      { stop: 0.45, color: hslToComponents(blue.blue10) },
+      { stop: 0.5, color: hslToComponents(blue.blue10) },
+      { stop: 0.6, color: hslToComponents(blue.blue10) },
+      { stop: 1, color: hslToComponents(grass.grass10) },
+    ],
     curve: {
       pos: { low: -300, high: 0 },
       velo: { low: 0, high: 5 },
@@ -98,6 +99,7 @@ const colorsCycle: Rainbow[] = [
     },
   },
   {
+    name: "orange",
     dir: RainbowDirection.Regular,
     stops: [
       { stop: 0, color: hslToComponents(orange.orange8) },
@@ -114,14 +116,15 @@ const colorsCycle: Rainbow[] = [
     },
   },
   {
-      dir: RainbowDirection.Regular,
-      stops: [
-        { stop: 0, color: hslToComponents(purple.purple8) },
-        { stop: 0.45, color: hslToComponents(crimson.crimson10) },
-        { stop: 0.55, color: hslToComponents(crimson.crimson10) },
-        { stop: 0.6, color: hslToComponents(pink.pink10) },
-        { stop: 1, color: hslToComponents(plum.plum12) },
-      ],
+    name: "purple",
+    dir: RainbowDirection.Regular,
+    stops: [
+      { stop: 0, color: hslToComponents(purple.purple8) },
+      { stop: 0.45, color: hslToComponents(crimson.crimson10) },
+      { stop: 0.55, color: hslToComponents(crimson.crimson10) },
+      { stop: 0.6, color: hslToComponents(pink.pink10) },
+      { stop: 1, color: hslToComponents(plum.plum12) },
+    ],
     curve: {
       pos: { low: -300, high: 0 },
       velo: { low: 0, high: 5 },
@@ -130,13 +133,14 @@ const colorsCycle: Rainbow[] = [
     },
   },
   {
-      dir: RainbowDirection.Regular,
-      stops: [
-        { stop: 0, color: hslToComponents(mint.mint9) },
-        { stop: 0.45, color: hslToComponents(lime.lime9) },
-        { stop: 0.55, color: hslToComponents(lime.lime10) },
-        { stop: 1, color: hslToComponents(green.green10) },
-      ],
+    name: "mint",
+    dir: RainbowDirection.Regular,
+    stops: [
+      { stop: 0, color: hslToComponents(mint.mint9) },
+      { stop: 0.45, color: hslToComponents(lime.lime9) },
+      { stop: 0.55, color: hslToComponents(lime.lime10) },
+      { stop: 1, color: hslToComponents(green.green10) },
+    ],
     curve: {
       pos: { low: -300, high: 0 },
       velo: { low: 0, high: 5 },
@@ -145,11 +149,12 @@ const colorsCycle: Rainbow[] = [
     },
   },
   {
-      dir: RainbowDirection.Regular,
-      stops: [
-        { stop: 0, color: hslToComponents(green.green8) },
-        { stop: 1, color: hslToComponents(crimson.crimson10) },
-      ],
+    name: "green-red",
+    dir: RainbowDirection.Regular,
+    stops: [
+      { stop: 0, color: hslToComponents(green.green8) },
+      { stop: 1, color: hslToComponents(crimson.crimson10) },
+    ],
     curve: {
       pos: { low: -300, high: 0 },
       velo: { low: 0, high: 5 },
@@ -279,9 +284,10 @@ const curtainHolder3Ref = ref(null)
 
 const reload1 = async () => {
   loadNext(
+    curtainHolder1Ref.value,
     curtainHolder2Ref.value,
     curtainHolder3Ref.value,
-    curtainHolder1Ref.value,
+    curtain1Ref.value,
     curtain2Ref.value,
     curtain3Ref.value
   )
@@ -289,9 +295,10 @@ const reload1 = async () => {
 
 const reload2 = async () => {
   loadNext(
+    curtainHolder2Ref.value,
     curtainHolder3Ref.value,
     curtainHolder1Ref.value,
-    curtainHolder2Ref.value,
+    curtain2Ref.value,
     curtain3Ref.value,
     curtain1Ref.value
   )
@@ -299,9 +306,10 @@ const reload2 = async () => {
 
 const reload3 = async () => {
   loadNext(
+    curtainHolder3Ref.value,
     curtainHolder1Ref.value,
     curtainHolder2Ref.value,
-    curtainHolder3Ref.value,
+    curtain3Ref.value,
     curtain1Ref.value,
     curtain2Ref.value
   )
@@ -319,9 +327,11 @@ enum BackgroundState {
 }
 let backgroundState = BackgroundState.Prerun
 async function loadNext(
+  elementPrev: Element|null,
   elementNext: Element|null,
   elementThen: Element|null,
-  elementClear: Element|null,
+  //@ts-expect-error
+  curtainPrev: Curtain|null,
   //@ts-expect-error
   curtainNext: Curtain|null,
   //@ts-expect-error
@@ -344,11 +354,11 @@ async function loadNext(
     break
   }
 
+  let classListPrev = elementPrev?.classList
   let classListNext = elementNext?.classList
   let classListThen = elementThen?.classList
-  let classListClear = elementClear?.classList
 
-  if (!classListNext || !classListThen || !classListClear || !curtainNext || !curtainThen) {
+  if (!classListNext || !classListThen || !classListPrev || !curtainNext || !curtainThen) {
     console.log("err")
     return
   }
@@ -360,16 +370,17 @@ async function loadNext(
   }
   curtainNext.playCurtain()
   curtainCurrent = curtainNext
-  curtainThen.loadCurtain(colorsCycle[colorsCycleIndex])
 
   //const delay = ms => new Promise(res => setTimeout(res, ms));
 
   window.requestAnimationFrame(() => {
     classListNext?.add("curr-curtain")
-    classListThen?.remove("prev-curtain")
-    classListClear?.add("prev-curtain")
-    classListClear?.remove("curr-curtain")
+    classListThen?.remove("prev-curtain"); classListThen?.remove("curr-curtain")
+    classListPrev?.add("prev-curtain")
+    classListPrev?.remove("curr-curtain")
   })
+
+  curtainThen.loadCurtain(colorsCycle[colorsCycleIndex])
 }
 
 onMounted(async () => {
@@ -437,11 +448,12 @@ defineExpose({ pausePlay })
 }
 .curtain-holder{
   position: fixed;
-}
-.curr-curtain {
-  z-index: 2;
+  z-index: -20;
 }
 .prev-curtain {
-  z-index: 1;
+  z-index: -10;
+}
+.curr-curtain {
+  z-index: 0;
 }
 </style>

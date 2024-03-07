@@ -296,6 +296,6 @@ html {
   }
 }
 
-.shadow {
+.shadow-NO {
   box-shadow: 10px 20px 8px rgba(0, 0, 0, 0.5);
 }

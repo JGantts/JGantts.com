@@ -61,6 +61,7 @@ type Range = {
 }
 
 type Rainbow = {
+  name: String,
   stops: { stop: number, color: Color}[],
   dir: RainbowDirection
   curve: {

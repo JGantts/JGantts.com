@@ -83,6 +83,8 @@ let canvasElement: HTMLCanvasElement
   Rendering functions
 */
 async function initializeBackground() {
+canvasContext.clearRect(0, 0, canvasElement.width, canvasElement.height)
+
   if (canvasElement.width != canvasElement.clientWidth) {
     canvasElement.width = canvasElement.clientWidth;
     canvasElement.height = canvasElement.clientHeight;
@@ -510,8 +512,8 @@ async function renderScene(): Promise<AnimationState> {
 
   canvasContext.shadowColor = "rgba(0, 0, 0, 0.2)"
   canvasContext.shadowOffsetX = 5
-  canvasContext.shadowOffsetY = 10
-  canvasContext.shadowBlur = 8
+  canvasContext.shadowOffsetY = 15
+  canvasContext.shadowBlur = 20
   canvasContext.fillStyle = backgroundPattern ?? "black"
   canvasContext.fill()
   canvasContext.createPattern

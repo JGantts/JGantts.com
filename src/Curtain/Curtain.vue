@@ -148,25 +148,32 @@ async function initializeCurtain() {
   doneAnimatingCurtain = false
   let countToAddSmoothed = widthInLargePixels*PIXELATED_LARGE_BOX_SIZE/SMOOTHED_BOX_SIZE
 
+  let curve = {
+      pos: { low: -300, high: 0 },
+      velo: { low: 0, high: 5 },
+      acc: { low: 5, high: 10 },
+      jolt: { low: -5, high: 5 },
+    }
+
   let gaussianSumsPosition: number[] = gaussians(
     countToAddSmoothed,
     () => {return Math.random()*90 + 10},
-    rainbow.curve.pos.low, rainbow.curve.pos.high
+    curve.pos.low, curve.pos.high
   )
   let gaussianSumsVelocity: number[] = gaussians(
     countToAddSmoothed,
     () => {return Math.random()*90 + 10},
-    rainbow.curve.velo.low*(1/10), rainbow.curve.velo.high*(1/10)
+    curve.velo.low*(1/10), curve.velo.high*(1/10)
   )
   let gaussianSumsAcceleration: number[] = gaussians(
     countToAddSmoothed,
     () => {return Math.random()*90 + 10},
-    rainbow.curve.acc.low*(1/1000), rainbow.curve.acc.high*(1/1000)
+    curve.acc.low*(1/1000), curve.acc.high*(1/1000)
   )
   let gaussianSumsJolt: number[] = gaussians(
     countToAddSmoothed,
     () => {return Math.random()*90 + 10},
-    rainbow.curve.jolt.low*(1/1000000), rainbow.curve.jolt.high*(1/1000000)
+    curve.jolt.low*(1/1000000), curve.jolt.high*(1/1000000)
   )
 
   gaussianObjects = []

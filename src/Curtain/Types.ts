@@ -64,12 +64,6 @@ type Rainbow = {
   name: String,
   stops: { stop: number, color: Color}[],
   dir: RainbowDirection
-  curve: {
-    pos: Range
-    velo: Range,
-    acc: Range,
-    jolt: Range,
-  }
 }
 
 enum BackgroundState {

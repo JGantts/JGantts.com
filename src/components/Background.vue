@@ -241,53 +241,17 @@ function hslToComponents(hsl: string): Color {
   return color
 }
 
-const curtain1Ref = ref(null)
-const curtain2Ref = ref(null)
-const curtain3Ref = ref(null)
+const curtainRef = ref(null)
 
-//@ts-expect-error
-let curtainCurrent: Curtain|null = null
+const curtainHolderRef = ref(null)
 
-const curtainHolder1Ref = ref(null)
-const curtainHolder2Ref = ref(null)
-const curtainHolder3Ref = ref(null)
-
-const reload1 = async () => {
+const reload = async () => {
   loadNext(
-    curtainHolder1Ref.value,
-    curtainHolder2Ref.value,
-    curtainHolder3Ref.value,
-    curtain1Ref.value,
-    curtain2Ref.value,
-    curtain3Ref.value
+    curtainHolderRef.value,
+    curtainRef.value,
   )
 }
 
-const reload2 = async () => {
-  loadNext(
-    curtainHolder2Ref.value,
-    curtainHolder3Ref.value,
-    curtainHolder1Ref.value,
-    curtain2Ref.value,
-    curtain3Ref.value,
-    curtain1Ref.value
-  )
-}
-
-const reload3 = async () => {
-  loadNext(
-    curtainHolder3Ref.value,
-    curtainHolder1Ref.value,
-    curtainHolder2Ref.value,
-    curtain3Ref.value,
-    curtain1Ref.value,
-    curtain2Ref.value
-  )
-}
-
-const reloadLast = async () => {
-  reload3()
-}
 
 enum BackgroundState {
   Prerun,
@@ -297,15 +261,9 @@ enum BackgroundState {
 }
 let backgroundState = BackgroundState.Prerun
 async function loadNext(
-  elementPrev: Element|null,
-  elementNext: Element|null,
-  elementThen: Element|null,
+  element: Element|null,
   //@ts-expect-error
-  curtainPrev: Curtain|null,
-  //@ts-expect-error
-  curtainNext: Curtain|null,
-  //@ts-expect-error
-  curtainThen: Curtain|null,
+  curtain: Curtain|null,
 ) {
   switch (backgroundState) {
     case BackgroundState.Prerun:
@@ -324,43 +282,28 @@ async function loadNext(
     break
   }
 
-  let classListPrev = elementPrev?.classList
-  let classListNext = elementNext?.classList
-  let classListThen = elementThen?.classList
+  let classList = element?.classList
 
-  if (!classListNext || !classListThen || !classListPrev || !curtainNext || !curtainThen) {
+  if (!classList || !curtain) {
     console.log("err")
     return
   }
-
 
   colorsCycleIndex++
   if (colorsCycleIndex >= colorsCycle.length) {
     colorsCycleIndex = 0
   }
-  curtainNext.playCurtain()
-  curtainCurrent = curtainNext
-
-  //const delay = ms => new Promise(res => setTimeout(res, ms));
-
-  window.requestAnimationFrame(() => {
-    classListNext?.add("curr-curtain")
-    classListThen?.remove("prev-curtain"); classListThen?.remove("curr-curtain")
-    classListPrev?.add("prev-curtain")
-    classListPrev?.remove("curr-curtain")
-  })
-
-  curtainThen.loadCurtain(colorsCycle[colorsCycleIndex])
+  curtain.playCurtain()
+  curtain.loadCurtain(colorsCycle[colorsCycleIndex])
 }
 
 onMounted(async () => {
-  //@ts-expect-error
-  await curtain1Ref.value?.loadCurtain(colorsCycle[0])
-  reloadLast()
+  await curtainRef.value?.loadCurtain(colorsCycle[0])
+  reload()
 })
 
 async function pausePlay(): Promise<BackgroundState> {
-  return await curtainCurrent.pausePlay()
+  return await curtainRef.value.pausePlay()
 }
 
 let firstRunStarted = false
@@ -377,32 +320,12 @@ defineExpose({ pausePlay })
   <div>
     <div
         class="curtain-holder"
-        ref="curtainHolder1Ref">
+        ref="curtainHolderRef">
       <Curtain
         class="curtain"
-        ref="curtain1Ref"
+        ref="curtainRef"
         :playState="1"
-        @curtainCall="reload1"
-      />
-    </div>
-    <div
-        class="curtain-holder"
-        ref="curtainHolder2Ref"
-    >
-      <Curtain
-        class="curtain"
-        ref="curtain2Ref"
-        @curtainCall="reload2"
-      />
-    </div>
-    <div
-        class="curtain-holder"
-        ref="curtainHolder3Ref"
-    >
-      <Curtain
-        class="curtain"
-        ref="curtain3Ref"
-        @curtainCall="reload3"
+        @curtainCall="reload"
       />
     </div>
   </div>

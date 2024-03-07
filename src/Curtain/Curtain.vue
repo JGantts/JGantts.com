@@ -83,8 +83,6 @@ let canvasElement: HTMLCanvasElement
   Rendering functions
 */
 async function initializeBackground() {
-canvasContext.clearRect(0, 0, canvasElement.width, canvasElement.height)
-
   if (canvasElement.width != canvasElement.clientWidth) {
     canvasElement.width = canvasElement.clientWidth;
     canvasElement.height = canvasElement.clientHeight;

@@ -7,7 +7,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <div class="main" :style="{ borderRadius: props.cornerRadius + '' }">
+  <div class="main shadow" :style="{ borderRadius: props.cornerRadius + '' }">
     <slot />
   </div>
 </template>

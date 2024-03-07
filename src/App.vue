@@ -58,7 +58,7 @@ onMounted(() => {
   <div id="app">
     <div id="box">
       <div id="content">
-        <VStack padding="1.25rem" spacing="0.5rem">
+        <VStack padding="1.25rem" spacing="1.25rem">          
           <Island cornerRadius="1.5rem">
             <VStack padding="0.75rem 1.25rem" spacing="0">
               <h1>
@@ -155,7 +155,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center; /* To vertically center the items */
-  gap: 0.75rem;
+  gap: 1.25rem;
 }
 
 #replay-sibling {

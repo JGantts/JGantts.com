@@ -485,7 +485,7 @@ async function renderScene(): Promise<AnimationState> {
   //@ts-ignore
   let gaussionSmoothed = Smooth(gaussianObjects.map(objct => objct.position))
 
-  canvasContext.clearRect(0, 0, clientWidthInitial, clientHeightInitial);
+  //canvasContext.clearRect(0, 0, clientWidthInitial, clientHeightInitial);
 
   canvasContext.beginPath()
   let index=0
@@ -508,6 +508,10 @@ async function renderScene(): Promise<AnimationState> {
   canvasContext.lineTo(0, 0)
   canvasContext.closePath()
 
+  canvasContext.shadowColor = "rgba(0, 0, 0, 0.2)"
+  canvasContext.shadowOffsetX = 5
+  canvasContext.shadowOffsetY = 10
+  canvasContext.shadowBlur = 8
   canvasContext.fillStyle = backgroundPattern ?? "black"
   canvasContext.fill()
   canvasContext.createPattern
@@ -840,10 +844,10 @@ defineExpose({
 <style scoped>
 .the-canvas {
   position: absolute;
-  left: 0;
-  top: -0;
-  width: 100vw;
-  height: 100vh;
+  left: -25px;
+  top: -25px;
+  width: calc(100vw + 50px);
+  height: calc(100vh + 50px);
   overflow: clip;
 }
 </style>

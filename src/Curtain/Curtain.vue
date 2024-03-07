@@ -515,13 +515,8 @@ async function renderScene(): Promise<AnimationState> {
   canvasContext.lineTo(0, 0)
   canvasContext.closePath()
 
-  canvasContext.shadowColor = "rgba(0, 0, 0, 0.2)"
-  canvasContext.shadowOffsetX = 5
-  canvasContext.shadowOffsetY = 15
-  canvasContext.shadowBlur = 20
   canvasContext.fillStyle = backgroundPattern ?? "black"
   canvasContext.fill()
-  canvasContext.createPattern
   //canvasSmoothContext.restore()
 
   if (eachIsAbove) {
@@ -585,7 +580,7 @@ function renderPixel(
   //@ts-expect-error
   renderedPixelsFine.data[i + 2] = rgb[2]
   //@ts-expect-error
-  renderedPixelsFine.data[i + 3] = 255
+  renderedPixelsFine.data[i + 3] = 256//32
 }
 
 //#region Helper Functions
@@ -855,6 +850,6 @@ defineExpose({
   top: -25px;
   width: calc(100vw + 50px);
   height: calc(100vh + 50px);
-  overflow: clip;
+  clip-path: inset(0);
 }
 </style>

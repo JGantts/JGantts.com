@@ -298,12 +298,14 @@ async function loadNext(
 }
 
 onMounted(async () => {
+  //@ts-expect-error
   await curtainRef.value?.loadCurtain(colorsCycle[0])
   reload()
 })
 
 async function pausePlay(): Promise<BackgroundState> {
-  return await curtainRef.value.pausePlay()
+  //@ts-expect-error
+  return await curtainRef?.value?.pausePlay()
 }
 
 let firstRunStarted = false

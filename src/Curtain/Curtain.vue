@@ -624,7 +624,7 @@ function renderPixel(
   //@ts-expect-error
   renderedPixelsFine.data[i + 3] = 256
   //@ts-expect-error
-  renderedPixelsFineAlpha.data[i + 3] = 128
+  renderedPixelsFineAlpha.data[i + 3] = 16
 }
 const BORDER_MULTI = 0.5
 

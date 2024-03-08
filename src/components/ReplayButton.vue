@@ -24,8 +24,7 @@ defineExpose({
 </script>
 
 <template>
-  <div v-if="isVisible"  class="shadow play-button">
-    <button @click.stop="$emit('click')" class="button-animation">
+    <button v-if="isVisible" @click.stop="$emit('click')" class="button-animation play-button">
       <div v-if="state === BackgroundState.AfterFirstPaused" class="play-button">
         <PlayIcon class="fa-icon"/>
       </div>
@@ -33,7 +32,6 @@ defineExpose({
         <PauseIcon class="fa-icon" />
       </div>
     </button>
-  </div>
 </template>
 
 

@@ -235,16 +235,21 @@ async function reconPixelsFine() {
 
   //@ts-expect-error
 let renderedPixelsFine = null
+  //@ts-expect-error
+let renderedPixelsFineAlpha = null
 
 async function paintPixelsFine() {
   renderedPixelsFine = canvasContext.createImageData(widthInFinePixels, heightInFinePixels)
+  renderedPixelsFineAlpha = canvasContext.createImageData(widthInFinePixels, heightInFinePixels)
   for (let key in pixelColumnsFine) {
     renderColumn(Number(key))
   }
   backgroundPattern = canvasContext.createPattern(await createImageBitmap(renderedPixelsFine), "no-repeat")
+  backgroundPatternAlpha = canvasContext.createPattern(await createImageBitmap(renderedPixelsFineAlpha), "no-repeat")
   //canvasPixelContext.putImageData(renderedPixelsFine, 0, 0)
 }
 let backgroundPattern: CanvasPattern|null = null
+let backgroundPatternAlpha: CanvasPattern|null = null
 
 async function calculateColumnSuper(index: number) { 
   let column = pixelColumnsSuper[index]
@@ -476,11 +481,16 @@ enum AnimationState {
   BelowBottom,
 }
 
+
 let doneAnimatingCurtain = false
 async function renderScene(): Promise<AnimationState> {
   if (doneAnimatingCurtain) {
     return AnimationState.BelowBottom
   }
+
+  //@ts-ignore
+  let gaussionSmoothed1 = Smooth(gaussianObjects.map(objct => objct.position))
+
   for (let index=0; index < gaussianObjects.length; index++) {
     gaussianObjects[index].acceleration += gaussianObjects[index].jolt
     gaussianObjects[index].velocity += gaussianObjects[index].acceleration
@@ -490,34 +500,25 @@ async function renderScene(): Promise<AnimationState> {
   }
 
   //@ts-ignore
-  let gaussionSmoothed = Smooth(gaussianObjects.map(objct => objct.position))
+  let gaussionSmoothed2 = Smooth(gaussianObjects.map(objct => objct.position))
 
-  //canvasContext.clearRect(0, 0, clientWidthInitial, clientHeightInitial);
+  let smoothedY1: number[] = []
+  let smoothedY2: number[] = []
 
-  canvasContext.beginPath()
   let index=0
-  canvasContext.moveTo(index, gaussionSmoothed(index))
   let eachIsAbove = true
   let eachIsBelow = true
-  index++
   for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
-    let smoothedPoint = gaussionSmoothed(index/SMOOTHED_BOX_SIZE)
-    canvasContext.lineTo(index, smoothedPoint)
-    if (smoothedPoint >= -5 ) {
+    let smoothedIndex = index/SMOOTHED_BOX_SIZE
+    smoothedY1[smoothedIndex] = gaussionSmoothed1(smoothedIndex)
+    smoothedY2[smoothedIndex] = gaussionSmoothed2(smoothedIndex)
+    if (smoothedY1[smoothedIndex] >= -5 ) {
       eachIsAbove = false
     }
-    if (smoothedPoint <= clientHeightInitial + 5 ) {
+    if (smoothedY1[smoothedIndex] <= clientHeightInitial + 5 ) {
       eachIsBelow = false
     }
   }
-
-  canvasContext.lineTo(clientWidthInitial, 0)
-  canvasContext.lineTo(0, 0)
-  canvasContext.closePath()
-
-  canvasContext.fillStyle = backgroundPattern ?? "black"
-  canvasContext.fill()
-  //canvasSmoothContext.restore()
 
   if (eachIsAbove) {
     return AnimationState.AboveTop
@@ -528,6 +529,41 @@ async function renderScene(): Promise<AnimationState> {
     doneAnimatingCurtain = true
     return AnimationState.BelowBottom
   }
+
+  canvasContext.beginPath()
+  index=0
+  canvasContext.moveTo(index, smoothedY2[0])
+  index++
+  for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
+    let x = index/SMOOTHED_BOX_SIZE
+    let y2 = smoothedY2[x]
+    let y1 = smoothedY1[x]
+    let y3 = -5*(y2-y1) + y2 + 40
+    canvasContext.lineTo(index+5, y2+10)
+  }
+  canvasContext.lineTo(clientWidthInitial, 0)
+  canvasContext.lineTo(0, 0)
+  canvasContext.closePath()
+
+  canvasContext.fillStyle = backgroundPatternAlpha ?? "black"
+  canvasContext.fill()
+
+
+
+  canvasContext.beginPath()
+  index=0
+  canvasContext.moveTo(index,smoothedY1[0])
+  index++
+  for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {    
+    canvasContext.lineTo(index, smoothedY1[index/SMOOTHED_BOX_SIZE])
+  }
+  canvasContext.lineTo(clientWidthInitial, 0)
+  canvasContext.lineTo(0, 0)
+  canvasContext.lineWidth = 10
+  canvasContext.closePath()
+
+  canvasContext.fillStyle = backgroundPattern ?? "black"
+  canvasContext.fill()
 
   return AnimationState.Inside
 }
@@ -576,12 +612,22 @@ function renderPixel(
   //@ts-expect-error
   renderedPixelsFine.data[i + 0] = rgb[0]
   //@ts-expect-error
+  renderedPixelsFineAlpha.data[i + 0] = rgb[0] * BORDER_MULTI
+  //@ts-expect-error
   renderedPixelsFine.data[i + 1] = rgb[1]
+  //@ts-expect-error
+  renderedPixelsFineAlpha.data[i + 1] = rgb[1] * BORDER_MULTI
   //@ts-expect-error
   renderedPixelsFine.data[i + 2] = rgb[2]
   //@ts-expect-error
-  renderedPixelsFine.data[i + 3] = 256//32
+  renderedPixelsFineAlpha.data[i + 2] = rgb[2] * BORDER_MULTI
+  //@ts-expect-error
+  renderedPixelsFine.data[i + 3] = 256
+  //@ts-expect-error
+  renderedPixelsFineAlpha.data[i + 3] = 128
 }
+const BORDER_MULTI = 0.5
+
 
 //#region Helper Functions
 //@ts-expect-error
@@ -623,7 +669,6 @@ function colorOffsetPlusThemePositionToHsl(offset: ColorOffset, position: Positi
   return color
 }
 
-//Function only works when hues differentials don't cross 0/360
 function gradientAtPercentage(percentage: number): Color {
   let colorA: Color|null = null
   let colorB: Color|null = null

@@ -19,6 +19,10 @@ import {
 } from './Curtain/Themes'
 import { BackgroundState } from './Curtain/Types';
 
+const sleep = (ms: number|undefined) => {
+  return new Promise(resolve => setTimeout(resolve, ms || 2000));
+}
+
 const backgroundRef = ref(null)
 const replayButtonRef = ref(null)
 
@@ -38,9 +42,10 @@ function checkDarkMode(mediaMatch: any) {
 async function pausePlay() {
   runningSecondary.value = true
   //@ts-expect-error
-  let newState = await backgroundRef.value?.pausePlay()
+  replayButtonRef.value.backgroundState = BackgroundState.AfterFirstLoading
+  //await sleep(2500)
   //@ts-expect-error
-  replayButtonRef.value.state = newState
+  replayButtonRef.value.backgroundState = await backgroundRef.value?.pausePlay()
 }
 
 const runningSecondary = ref(false)

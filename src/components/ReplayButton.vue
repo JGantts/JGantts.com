@@ -2,8 +2,11 @@
 import { ref } from 'vue'
 import { BackgroundState } from '../Curtain/Types'
 
+import CirclePlayIcon from '../assets/icons/circle-play.svg'
+import CirclePauseIcon from '../assets/icons/circle-pause.svg'
 import PlayIcon from '../assets/icons/play.svg'
 import PauseIcon from '../assets/icons/pause.svg'
+import GithubIcon from '../assets/icons/github.svg'
 
 const sleep = (ms: number|undefined) => {
   return new Promise(resolve => setTimeout(resolve, ms || 2000));
@@ -19,46 +22,49 @@ const firstRunDone = () => {
   isVisible.value = true
 }
 
-const state = ref(BackgroundState.AfterFirstPaused)
-const clicked = ref(false)
+const backgroundState = ref(BackgroundState.AfterFirstPaused)
 
 const handleClick = async () => {
   emit('click')
-  clicked.value = true
-  await sleep(100)
-  clicked.value = false
-}
+ }
 
-defineExpose({ 
-  state,
-  firstRunDone
+defineExpose({
+  firstRunDone,
+  backgroundState,
 })
 </script>
 
 <template>
+  <Transition name="spin">
     <button
       v-if="isVisible"
       @click.stop="handleClick"
       class="button-animation"
-      :class="{ 'click-animation': clicked }"
-      :disabled="clicked"
     >
-      <div
-        v-if="state === BackgroundState.AfterFirstPaused"
-        class="play-button">
-        <PlayIcon class="fa-icon"/>
-      </div>
-      <div
-        v-else
-        class="play-button">
-        <PauseIcon class="fa-icon" />
-      </div>
+        <div v-if="backgroundState === BackgroundState.AfterFirstPaused"
+          key="0"
+          class="play-button">
+          <CirclePlayIcon class="fa-icon"/>
+        </div>
+        <div v-else-if="backgroundState === BackgroundState.AfterFirstLoading"
+          class="play-button">
+          <CirclePlayIcon class="fa-icon loading" />
+        </div>
+        <div v-else
+          class="play-button">
+          <CirclePauseIcon class="fa-icon" />
+        </div>
     </button>
+  </Transition>
 </template>
 
-
 <style scoped>
-@keyframes the-anim {
+.spin-enter-active {
+  animation: spin-in 0.75s cubic-bezier(0.58, 0.81, 0.62, 0.57);
+  transform-origin: center;
+}
+
+@keyframes spin-in {
   0% {
     transform: rotate(-720deg) scale(0);
     opacity: 0;
@@ -78,8 +84,17 @@ defineExpose({
   }
 }
 
-.button-animation {
-  animation: the-anim 0.75s cubic-bezier(0.58, 0.81, 0.62, 0.57);
+.loading {
+  animation: spin-load 0.5s linear infinite;
+}
+
+@keyframes spin-load {
+  0% {
+    transform: rotate(0);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
 }
 
 .play-button {
@@ -87,7 +102,7 @@ defineExpose({
   background-color: var(--backgroundAppBase);
   height: 1.15em;
   width: 1.15em;
-  border-radius: 0.375rem;
+  border-radius: 0.3rem;
   display: flex;
   align-items: center;
   justify-content: center;

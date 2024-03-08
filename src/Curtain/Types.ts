@@ -69,6 +69,7 @@ type Rainbow = {
 enum BackgroundState {
   Unset,
   First,
+  AfterFirstLoading,
   AfterFirstPlaying,
   AfterFirstPaused,
 }

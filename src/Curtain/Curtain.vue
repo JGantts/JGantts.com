@@ -535,11 +535,7 @@ async function renderScene(): Promise<AnimationState> {
   canvasContext.moveTo(index, smoothedY2[0])
   index++
   for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
-    let x = index/SMOOTHED_BOX_SIZE
-    let y2 = smoothedY2[x]
-    let y1 = smoothedY1[x]
-    let y3 = -5*(y2-y1) + y2 + 40
-    canvasContext.lineTo(index+5, y2+10)
+    canvasContext.lineTo(index+5, smoothedY2[index/SMOOTHED_BOX_SIZE]+15)
   }
   canvasContext.lineTo(clientWidthInitial, 0)
   canvasContext.lineTo(0, 0)
@@ -624,7 +620,7 @@ function renderPixel(
   //@ts-expect-error
   renderedPixelsFine.data[i + 3] = 256
   //@ts-expect-error
-  renderedPixelsFineAlpha.data[i + 3] = 16
+  renderedPixelsFineAlpha.data[i + 3] = 32
 }
 const BORDER_MULTI = 0.5
 

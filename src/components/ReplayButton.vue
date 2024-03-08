@@ -5,6 +5,10 @@ import { BackgroundState } from '../Curtain/Types'
 import PlayIcon from '../assets/icons/play.svg'
 import PauseIcon from '../assets/icons/pause.svg'
 
+const sleep = (ms: number|undefined) => {
+  return new Promise(resolve => setTimeout(resolve, ms || 2000));
+}
+
 const isVisible = ref(false)
 
 const emit = defineEmits([
@@ -16,6 +20,14 @@ const firstRunDone = () => {
 }
 
 const state = ref(BackgroundState.AfterFirstPaused)
+const clicked = ref(false)
+
+const handleClick = async () => {
+  emit('click')
+  clicked.value = true
+  await sleep(100)
+  clicked.value = false
+}
 
 defineExpose({ 
   state,
@@ -24,11 +36,21 @@ defineExpose({
 </script>
 
 <template>
-    <button v-if="isVisible" @click.stop="$emit('click')" class="button-animation play-button">
-      <div v-if="state === BackgroundState.AfterFirstPaused" class="play-button">
+    <button
+      v-if="isVisible"
+      @click.stop="handleClick"
+      class="button-animation"
+      :class="{ 'click-animation': clicked }"
+      :disabled="clicked"
+    >
+      <div
+        v-if="state === BackgroundState.AfterFirstPaused"
+        class="play-button">
         <PlayIcon class="fa-icon"/>
       </div>
-      <div v-else  class="play-button">
+      <div
+        v-else
+        class="play-button">
         <PauseIcon class="fa-icon" />
       </div>
     </button>
@@ -68,7 +90,7 @@ defineExpose({
   border-radius: 0.375rem;
   display: flex;
   align-items: center;
-  justify-content: center;  
+  justify-content: center;
 }
 
 .fa-icon {

@@ -488,9 +488,6 @@ async function renderScene(): Promise<AnimationState> {
     return AnimationState.BelowBottom
   }
 
-  //@ts-ignore
-  let gaussionSmoothed1 = Smooth(gaussianObjects.map(objct => objct.position))
-
   for (let index=0; index < gaussianObjects.length; index++) {
     gaussianObjects[index].acceleration += gaussianObjects[index].jolt
     gaussianObjects[index].velocity += gaussianObjects[index].acceleration
@@ -500,22 +497,20 @@ async function renderScene(): Promise<AnimationState> {
   }
 
   //@ts-ignore
-  let gaussionSmoothed2 = Smooth(gaussianObjects.map(objct => objct.position))
+  let gaussionSmoothed = Smooth(gaussianObjects.map(objct => objct.position))
 
-  let smoothedY1: number[] = []
-  let smoothedY2: number[] = []
+  let smoothedY: number[] = []
 
   let index=0
   let eachIsAbove = true
   let eachIsBelow = true
   for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
     let smoothedIndex = index/SMOOTHED_BOX_SIZE
-    smoothedY1[smoothedIndex] = gaussionSmoothed1(smoothedIndex)
-    smoothedY2[smoothedIndex] = gaussionSmoothed2(smoothedIndex)
-    if (smoothedY1[smoothedIndex] >= -5 ) {
+    smoothedY[smoothedIndex] = gaussionSmoothed(smoothedIndex)
+    if (smoothedY[smoothedIndex] >= -5 ) {
       eachIsAbove = false
     }
-    if (smoothedY1[smoothedIndex] <= clientHeightInitial + 5 ) {
+    if (smoothedY[smoothedIndex] <= clientHeightInitial + 5 ) {
       eachIsBelow = false
     }
   }
@@ -532,30 +527,13 @@ async function renderScene(): Promise<AnimationState> {
 
   canvasContext.beginPath()
   index=0
-  canvasContext.moveTo(index, smoothedY2[0])
+  canvasContext.moveTo(index, smoothedY[0])
   index++
   for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
-    canvasContext.lineTo(index+5, smoothedY2[index/SMOOTHED_BOX_SIZE]+15)
+    canvasContext.lineTo(index, smoothedY[index/SMOOTHED_BOX_SIZE]+16)
   }
   canvasContext.lineTo(clientWidthInitial, 0)
   canvasContext.lineTo(0, 0)
-  canvasContext.closePath()
-
-  canvasContext.fillStyle = backgroundPatternAlpha ?? "black"
-  canvasContext.fill()
-
-
-
-  canvasContext.beginPath()
-  index=0
-  canvasContext.moveTo(index,smoothedY1[0])
-  index++
-  for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {    
-    canvasContext.lineTo(index, smoothedY1[index/SMOOTHED_BOX_SIZE])
-  }
-  canvasContext.lineTo(clientWidthInitial, 0)
-  canvasContext.lineTo(0, 0)
-  canvasContext.lineWidth = 10
   canvasContext.closePath()
 
   canvasContext.fillStyle = backgroundPattern ?? "black"
@@ -622,7 +600,7 @@ function renderPixel(
   //@ts-expect-error
   renderedPixelsFineAlpha.data[i + 3] = 32
 }
-const BORDER_MULTI = 0.5
+const BORDER_MULTI = 1
 
 
 //#region Helper Functions

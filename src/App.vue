@@ -214,6 +214,10 @@ onMounted(() => {
   max-width: 320px;
 }
 
+#text06::first-line {
+  line-height: 2.25;
+}
+
 #text07 {
   font-size: 0.5em;
   line-height: 1.5;

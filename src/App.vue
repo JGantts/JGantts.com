@@ -80,7 +80,7 @@ onMounted(() => {
                 <p id="text04">Jacob Gantt</p>
                 <Links />
               </VStack>
-              <p id="text06" style="max-width: 340px">
+              <p id="text06">
                 Looking for clients and collaborators.<br />
                 I&#039;m a developer with years of professional and personal
                 experience; from improving enterprise solutions to fuzz testing
@@ -211,6 +211,7 @@ onMounted(() => {
   font-size: 0.625em;
   line-height: 1.5;
   font-weight: 400;
+  max-width: 320px;
 }
 
 #text07 {

@@ -125,6 +125,14 @@ const colorsCycle: Rainbow[] = [
     ],
   },
   {
+    name: "orange2",
+    dir: RainbowDirection.Regular,
+    stops: [
+      { stop: 0, color: hslToComponents(orange.orange7) },
+      { stop: 1, color: hslToComponents(crimson.crimson9) },
+    ],
+  },
+  {
     name: "green-red",
     dir: RainbowDirection.Regular,
     stops: [

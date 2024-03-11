@@ -140,6 +140,24 @@ const colorsCycle: Rainbow[] = [
       { stop: 1, color: hslToComponents(crimson.crimson10) },
     ],
   },
+  {
+    name: "crimson-green",
+    dir: RainbowDirection.Regular,
+    stops: [
+      { stop: 0, color: hslToComponents(crimson.crimson10) },
+      { stop: 0.5, color: hslToComponents(crimson.crimson10) },
+      { stop: 1, color: hslToComponents(green.green8) },
+    ],
+  },
+  {
+    name: "green-purple",
+    dir: RainbowDirection.Regular,
+    stops: [
+      { stop: 0, color: hslToComponents(green.green8) },
+      { stop: 0.5, color: hslToComponents(teal.teal10) },
+      { stop: 1, color: hslToComponents(purple.purple10) },
+    ],
+  },
   /*{
       dir: RainbowDirection.Regular,
       stops: [

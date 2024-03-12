@@ -821,6 +821,7 @@ const playCurtain = async () => {
 let playStateInternal = BackgroundState.Unset
 const pauseMutex = new Mutex()
 const pausePlay = async (): Promise<BackgroundState> => {
+  //@ts-expect-error
   return await pauseMutex.runExclusive(() => {
     switch (playStateInternal) {
       case BackgroundState.First:

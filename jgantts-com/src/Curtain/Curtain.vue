@@ -98,7 +98,7 @@ async function initializeBackground() {
 
   doneAnimatingCurtain = false
 
-  const ratio = 0.5 //window.devicePixelRatio || 1;
+  const ratio = window.devicePixelRatio || 1;
   if (canvasElement.width != width) {
     canvasElement.width = width * ratio;
     canvasElement.height = height * ratio;

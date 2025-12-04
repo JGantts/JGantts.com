@@ -27,7 +27,7 @@ jobs:
         with:
           host: ${{ secrets.LINODE_IP }}
           username: ${{ secrets.LINODE_USER }}
-          key: ${{ secrets.LINODE_SSH_KEY }}
+          password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
           source: './jgantts-server/*,./jgantts-com/dist/*,./jgantts-com/PUBLIC/*'
-          target: '/opt/nodejs/'
+          target: '/home/jgantts-com/node-js/'

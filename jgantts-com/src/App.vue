@@ -98,7 +98,7 @@ onMounted(() => {
                     <span class="underline link">contact@jgantts.com</span>
                   </span>
                 </a>
-                <p class="text-subtitle-1">© 2024 Jacob Gantt</p>
+                <p class="text-subtitle-1">© 2025 Jacob Gantt</p>
               </VStack>
             </Island>
             <div style="width: 2rem">

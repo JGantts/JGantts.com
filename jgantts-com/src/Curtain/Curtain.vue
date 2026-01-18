@@ -60,6 +60,7 @@ let gaussianObjects: GaussianObject[]
 let canvasContext: CanvasRenderingContext2D
 let canvasElement: HTMLCanvasElement
 
+
 let resizeTimeout: ReturnType<typeof setTimeout> | undefined;
 
 function throttledResizeHandler() {
@@ -337,6 +338,8 @@ async function renderScene(state: AnimationState|null): Promise<AnimationState> 
   canvasContext.fillStyle = backgroundPattern ?? "black"
   canvasContext.fill()
 
+  emit("export-ready", canvasContext.getImageData(0, 0, canvasElement.width, canvasElement.height));
+
   return AnimationState.Inside
 }
 
@@ -548,6 +551,10 @@ const loadCurtain = async (rainbowIn: Rainbow) => {
   initializeBackground()
 }
 
+const getCanvas = async (): Promise<HTMLCanvasElement> => {
+  return canvasElement
+}
+
 let playStateInternal = BackgroundState.Unset
 const pauseMutex = new Mutex()
 const pausePlay = async (): Promise<BackgroundState> => {
@@ -589,11 +596,14 @@ const play = async (): Promise<BackgroundState> => {
   })
 }
 
+
 const emit = defineEmits([
   'curtainCall',
   'stageEntrance',
+  'export-ready',
 ]);
-defineExpose({ 
+defineExpose({
+  getCanvas,
   loadCurtain,
   pausePlay,
   play,

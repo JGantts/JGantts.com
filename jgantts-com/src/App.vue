@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, provide } from 'vue'
 
 import Island from "./components/Island.vue"
 import DStack from "./library-jgantts/DStack.vue";
@@ -23,11 +23,13 @@ import { BackgroundState } from './Curtain/Types';
 
   import EnvelopeIcon from './assets/icons/envelope.svg'
 
+const backgroundRef = ref(null)
+provide("backgroundRef", backgroundRef);
+
 const sleep = (ms: number|undefined) => {
   return new Promise(resolve => setTimeout(resolve, ms || 2000));
 }
 
-const backgroundRef = ref(null)
 const replayButtonRef = ref(null)
 
 const darkModePreference = window.matchMedia("(prefers-color-scheme: dark)")
@@ -59,8 +61,7 @@ function firstRunDone() {
   replayButtonRef.value?.firstRunDone()
 }
 
-onMounted(() => {
-})
+
 </script>
 
 <template>
@@ -76,7 +77,7 @@ onMounted(() => {
               </h1>
             </VStack>
           </Island>
-          <NavBar />
+          <!-- <NavBar /> -->
           <router-view v-slot="{ Component }">
             <transition
               name="fade"
@@ -109,7 +110,7 @@ onMounted(() => {
           </DStack>
         </VStack>
       </div>
-      <Background ref="backgroundRef" @first-run-done="firstRunDone"/>
+      <Background ref="backgroundRef" @first-run-done="firstRunDone"/> 
     </div>
   </div>
 </template>
@@ -238,6 +239,9 @@ onMounted(() => {
 
 .highlight {
   color: var(--textAccentOnBase);
+}
+.highlight2 {
+  color: var(--textBaseOnBase);
 }
 
 .heavy {

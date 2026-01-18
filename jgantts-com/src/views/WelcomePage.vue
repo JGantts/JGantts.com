@@ -24,16 +24,21 @@ import NavBar from '../components/NavBar.vue';
     <DStack :breakpoint="Breakpoint._2_M" vSpacing="1.0rem" hSpacing="1.0rem">
       <p class="text-h4" style="max-width: 15rem;">
         Hi, I'm<br />
-        Jacob, a<br />
-        professional<br />
-        <span class="highlight">web</span> developer.
+        Jacob.<br />
+        <span class="highlight">I make</span><br />
+        <span class="highlight">software.</span>
       </p>
       <VStack class="text-h5" id="text06" spacing="0.5rem">
-        <p>
-          I craft websites tailored to <span class="highlight">your unique needs</span>, capable of doing anything you envision.
+        <div style="height:0.5rem"/>
+        <p class="text-h4">
+          What <span class="highlight">I do</span>:
         </p>
         <p>
-          From handling technical complexities to ensuring <span>seamless interactions</span>, I make your site work flawlessly so you can <span class="highlight">focus on what matters</span> most.
+          I <span class="highlight">tailor</span> software to your unique requirements;<br/>
+          <span class="highlight">making it capable</span> of doing what needs to be done.
+        </p>
+        <p>
+          From <span class="highlight">handling technical complexities</span> to ensuring <span class="highlight">seamless interactions</span>, I make the software work <span class="highlight">so you can focus</span> on your business.
         </p>
       </VStack>
     </DStack>

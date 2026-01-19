@@ -7,28 +7,6 @@
   </div>
 </template>
 
-<style scoped>
-.glass-panel {
-  position: relative;
-  overflow: hidden;
-}
-
-.panel-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.content {
-  position: relative;
-  z-index: 1;
-}
-</style>
-
 <script setup lang="ts">
 import { ref, inject, onMounted, nextTick, type Ref } from "vue";
 
@@ -60,28 +38,16 @@ async function backgroundReady() {
 
   let panelOffset = [0, 0];
   let panelSize = [0, 0];
+
   const updateOffset = () => {
     const panelRect = panelCanvas.getBoundingClientRect();
     const bgRect = bgDom.getBoundingClientRect();
-
-console.log("Panel Rect:", panelRect);
-console.log("BG Rect:", bgRect);
-
-    // CSS offset relative to BG DOM
-    const ox = panelRect.left - bgRect.left;
-    const oy = panelRect.top  - bgRect.top;
-
-console.log("Offset:", ox, oy);
-
-    panelOffset = [ox, oy];
-
+    panelOffset = [panelRect.left - bgRect.left, panelRect.top - bgRect.top];
     panelSize = [panelRect.width, panelRect.height];
   };
-
   updateOffset();
   window.addEventListener("resize", updateOffset);
 
-  // Set canvas size in device pixels
   const setSize = () => {
     const dpr = window.devicePixelRatio || 1;
     panelCanvas.width  = panelCanvas.clientWidth  * dpr;
@@ -90,13 +56,12 @@ console.log("Offset:", ox, oy);
   setSize();
   window.addEventListener("resize", setSize);
 
-  const gl = (panelCanvas.getContext("webgl") || panelCanvas.getContext("experimental-webgl")) as WebGLRenderingContext | null;
+  const gl = panelCanvas.getContext("webgl") as WebGLRenderingContext | null;
   if (!gl) {
     console.error("WebGL not supported");
     return;
   }
 
-  // Vertex shader: fullscreen quad
   const vsSource = `
     attribute vec2 position;
     void main() {
@@ -104,37 +69,66 @@ console.log("Offset:", ox, oy);
     }
   `;
 
-  // Fragment shader: pure copy, vertical flip handled here
-const fsSource = `
-precision mediump float;
+  // Full-panel distortion shader
+  const fsSource = `
+  
+  precision mediump float;
+
 uniform sampler2D u_texture;
 uniform vec2 u_bgSize;
 uniform vec2 u_offset;
 uniform vec2 u_panelSize;
 
 void main() {
-  // Flip Y inside the panel
-  vec2 flippedCoord = vec2(gl_FragCoord.x, u_panelSize.y - gl_FragCoord.y);
+    vec2 fragCoord = gl_FragCoord.xy;
+    vec2 uv = fragCoord / u_panelSize;
 
-  // Map to background pixel coordinates with offset
-  vec2 bgPixel = flippedCoord + u_offset;
+    vec2 flippedCoord = vec2(gl_FragCoord.x, u_panelSize.y - gl_FragCoord.y);
+    
+    // Map fragCoord to background pixel coordinates
+    vec2 bgPixel = flippedCoord + u_offset;
 
-  // Convert to UV for texture sampling
-  vec2 uv = vec2(
-    bgPixel.x / u_bgSize.x,
-    bgPixel.y / u_bgSize.y
-  );
+    // Normalize to [-1, 1] for rounded box math
+    vec2 p = (fragCoord / u_panelSize) * 2.0 - 1.0;
 
-  gl_FragColor = texture2D(u_texture, uv);
+    // Rounded box: tweak exponent for corner roundness
+    float cornerRadius = 0.2; // fraction of panel size
+    float roundedBox = pow(max(abs(p.x) - (1.0 - cornerRadius), 0.0), 2.0) +
+                       pow(max(abs(p.y) - (1.0 - cornerRadius), 0.0), 2.0);
+
+    float mask = smoothstep(0.0, 0.001, 1.0 - roundedBox); // 1 inside box, 0 outside
+
+    vec4 baseColor = texture2D(u_texture, bgPixel / u_bgSize);
+
+    // Apply distortion only inside the rounded box
+    if(mask > 0.0) {
+        vec4 accum = vec4(0.0);
+        float total = 0.0;
+        const float range = 4.0;
+
+        for(float x=-range; x<=range; x++){
+            for(float y=-range; y<=range; y++){
+                vec2 offset = vec2(x, y) / u_panelSize;
+                accum += texture2D(u_texture, (bgPixel / u_bgSize) + offset);
+                total += 1.0;
+            }
+        }
+        accum /= total;
+
+        baseColor = mix(baseColor, accum, 0.8); // blend for glass effect
+    }
+
+    gl_FragColor = baseColor * mask;
 }
-`;
 
+  
+  `;
 
   const createShader = (type: number, source: string) => {
     const shader = gl.createShader(type)!;
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    if(!gl.getShaderParameter(shader, gl.COMPILE_STATUS)){
       console.error(gl.getShaderInfoLog(shader));
       gl.deleteShader(shader);
       return null;
@@ -151,54 +145,69 @@ void main() {
   gl.linkProgram(program);
   gl.useProgram(program);
 
-  // Fullscreen quad
   const buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
-    gl.STATIC_DRAW
-  );
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
 
-  const position = gl.getAttribLocation(program, "position");
+  const position = gl.getAttribLocation(program,"position");
   gl.enableVertexAttribArray(position);
-  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(position,2,gl.FLOAT,false,0,0);
 
-  // Uniforms
   const uniforms = {
-    bgSize: gl.getUniformLocation(program, "u_bgSize")!,
-    texture: gl.getUniformLocation(program, "u_texture")!,
-    offset:  gl.getUniformLocation(program, "u_offset")!,
-    panelSize: gl.getUniformLocation(program, "u_panelSize")!,
+    bgSize: gl.getUniformLocation(program,"u_bgSize")!,
+    texture: gl.getUniformLocation(program,"u_texture")!,
+    offset: gl.getUniformLocation(program,"u_offset")!,
+    panelSize: gl.getUniformLocation(program,"u_panelSize")!,
   };
 
-  // Texture setup
   const texture = gl.createTexture()!;
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.bindTexture(gl.TEXTURE_2D,texture);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
 
   const render = async () => {
     const currentBg = await backgroundRef?.value?.getCanvas();
-    if (!currentBg) return;
+    if(!currentBg) return;
 
-    gl.viewport(0, 0, panelCanvas.width, panelCanvas.height);
+    gl.viewport(0,0,panelCanvas.width,panelCanvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, currentBg);
+    gl.bindTexture(gl.TEXTURE_2D,texture);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,currentBg);
 
     const dpr = window.devicePixelRatio || 1;
-    gl.uniform2f(uniforms.bgSize, currentBg.width, currentBg.height);
-    gl.uniform1i(uniforms.texture, 0);
-    gl.uniform2f(uniforms.offset, panelOffset[0] * dpr, panelOffset[1] * dpr);
-    gl.uniform2f(uniforms.panelSize, panelSize[0] * dpr, panelSize[1] * dpr);
+    gl.uniform2f(uniforms.bgSize,currentBg.width,currentBg.height);
+    gl.uniform1i(uniforms.texture,0);
+    gl.uniform2f(uniforms.offset,panelOffset[0]*dpr,panelOffset[1]*dpr);
+    gl.uniform2f(uniforms.panelSize,panelSize[0]*dpr,panelSize[1]*dpr);
 
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
     requestAnimationFrame(render);
   };
 
   render();
 }
 </script>
+
+<style scoped>
+.glass-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.panel-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+}
+</style>

@@ -10,21 +10,19 @@
 <style scoped>
 .glass-panel {
   position: relative;
-  overflow: hidden; /* so canvas never peeks out */
+  overflow: hidden;
 }
 
-/* canvas sits behind */
 .panel-canvas {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  pointer-events: none; /* so it won't eat mouse events */
+  pointer-events: none;
   z-index: 0;
 }
 
-/* content goes above */
 .content {
   position: relative;
   z-index: 1;
@@ -34,17 +32,14 @@
 <script setup lang="ts">
 import { ref, inject, onMounted, nextTick, type Ref } from "vue";
 
-// Interface for the background component
 interface BackgroundRef {
   getCanvas: () => HTMLCanvasElement | null;
   getDom: () => HTMLElement | null;
 }
 
-// Inject the live background ref
 const backgroundRef = inject<Ref<BackgroundRef | null>>("backgroundRef");
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
-
 const registerPanel = inject<(panel: any) => void>("registerPanel");
 
 onMounted(() => {
@@ -56,48 +51,49 @@ async function backgroundReady() {
 
   const panelCanvas = canvasRef.value;
   const bgCanvas = backgroundRef?.value?.getCanvas();
-  console.log("GlassPanel: backgroundReady called");
-  console.log("panelCanvas:", backgroundRef);
   const bgDom = await backgroundRef?.value?.getDom();
-  console.log("bgDOM:", bgDom);
 
-let panelOffset = [0, 0];
-
-const updateOffset = () => {
-  if (!panelCanvas || !bgDom) return;
-  const rect = panelCanvas.getBoundingClientRect();
-  const bgRect = bgDom.getBoundingClientRect();
-  panelOffset = [
-    rect.left - bgRect.left,
-    bgRect.height - (rect.top - bgRect.top) - panelCanvas.height
-  ];
-};
-
-updateOffset();
-window.addEventListener("resize", updateOffset);
-
-  if (!panelCanvas || !bgCanvas) {
-    console.error("GlassPanel: Missing canvas refs");
-    console.log("panelCanvas:", panelCanvas);
-    console.log("bgCanvas:", bgCanvas);
+  if (!panelCanvas || !bgCanvas || !bgDom) {
+    console.error("GlassPanel missing refs");
     return;
   }
 
-  // Set panel canvas size to match container
+  let panelOffset = [0, 0];
+  const updateOffset = () => {
+    const panelRect = panelCanvas.getBoundingClientRect();
+    const bgRect = bgDom.getBoundingClientRect();
+
+console.log("Panel Rect:", panelRect);
+console.log("BG Rect:", bgRect);
+
+    // CSS offset relative to BG DOM
+    const ox = panelRect.left - bgRect.left;
+    const oy = panelRect.top  - bgRect.top;
+
+console.log("Offset:", ox, oy);
+
+    panelOffset = [ox, oy];
+  };
+
+  updateOffset();
+  window.addEventListener("resize", updateOffset);
+
+  // Set canvas size in device pixels
   const setSize = () => {
-    panelCanvas.width = panelCanvas.clientWidth;
-    panelCanvas.height = panelCanvas.clientHeight;
+    const dpr = window.devicePixelRatio || 1;
+    panelCanvas.width  = panelCanvas.clientWidth  * dpr;
+    panelCanvas.height = panelCanvas.clientHeight * dpr;
   };
   setSize();
   window.addEventListener("resize", setSize);
 
   const gl = (panelCanvas.getContext("webgl") || panelCanvas.getContext("experimental-webgl")) as WebGLRenderingContext | null;
   if (!gl) {
-    console.error("GlassPanel: WebGL not supported");
+    console.error("WebGL not supported");
     return;
   }
 
-  // Vertex shader
+  // Vertex shader: fullscreen quad
   const vsSource = `
     attribute vec2 position;
     void main() {
@@ -105,24 +101,21 @@ window.addEventListener("resize", updateOffset);
     }
   `;
 
-  // Fragment shader: simple lens distortion
+  // Fragment shader: pure copy, vertical flip handled here
   const fsSource = `
     precision mediump float;
     uniform sampler2D u_texture;
-    uniform vec2 u_panelSize;
     uniform vec2 u_bgSize;
+    uniform vec2 u_offset;
 
     void main() {
-      // Map fragment coord to background UV
-      vec2 uv = gl_FragCoord.xy / u_panelSize;
-      uv *= u_panelSize / u_bgSize;
+      vec2 bgPixel = gl_FragCoord.xy + u_offset;
 
-      vec2 center = vec2(0.5, 0.5);
-      vec2 offset = uv - center;
-      float r = length(offset);
-
-      // Lens distortion
-      uv += offset * 0.2 * exp(-5.0 * r*r);
+      // convert to UV
+      vec2 uv = vec2(
+        bgPixel.x / u_bgSize.x,
+        1.0 - bgPixel.y / u_bgSize.y  // flip Y so top panel samples top
+      );
 
       gl_FragColor = texture2D(u_texture, uv);
     }
@@ -164,13 +157,12 @@ window.addEventListener("resize", updateOffset);
 
   // Uniforms
   const uniforms = {
-    panelSize: gl.getUniformLocation(program, "u_panelSize")!,
     bgSize: gl.getUniformLocation(program, "u_bgSize")!,
     texture: gl.getUniformLocation(program, "u_texture")!,
     offset:  gl.getUniformLocation(program, "u_offset")!,
   };
 
-  // Texture
+  // Texture setup
   const texture = gl.createTexture()!;
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -179,20 +171,18 @@ window.addEventListener("resize", updateOffset);
 
   const render = async () => {
     const currentBg = await backgroundRef?.value?.getCanvas();
-    console.log("hfiudshfiuhfiu")
     if (!currentBg) return;
 
     gl.viewport(0, 0, panelCanvas.width, panelCanvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     gl.bindTexture(gl.TEXTURE_2D, texture);
-
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, currentBg);
 
-    gl.uniform2f(uniforms.panelSize, panelCanvas.width, panelCanvas.height);
+    const dpr = window.devicePixelRatio || 1;
     gl.uniform2f(uniforms.bgSize, currentBg.width, currentBg.height);
     gl.uniform1i(uniforms.texture, 0);
-    gl.uniform2f(uniforms.offset, panelOffset[0], panelOffset[1]);
+    gl.uniform2f(uniforms.offset, panelOffset[0] * dpr, panelOffset[1] * dpr);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     requestAnimationFrame(render);
@@ -201,4 +191,3 @@ window.addEventListener("resize", updateOffset);
   render();
 }
 </script>
-

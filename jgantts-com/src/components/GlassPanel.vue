@@ -59,6 +59,7 @@ async function backgroundReady() {
   }
 
   let panelOffset = [0, 0];
+  let panelSize = [0, 0];
   const updateOffset = () => {
     const panelRect = panelCanvas.getBoundingClientRect();
     const bgRect = bgDom.getBoundingClientRect();
@@ -73,6 +74,8 @@ console.log("BG Rect:", bgRect);
 console.log("Offset:", ox, oy);
 
     panelOffset = [ox, oy];
+
+    panelSize = [panelRect.width, panelRect.height];
   };
 
   updateOffset();
@@ -102,24 +105,30 @@ console.log("Offset:", ox, oy);
   `;
 
   // Fragment shader: pure copy, vertical flip handled here
-  const fsSource = `
-    precision mediump float;
-    uniform sampler2D u_texture;
-    uniform vec2 u_bgSize;
-    uniform vec2 u_offset;
+const fsSource = `
+precision mediump float;
+uniform sampler2D u_texture;
+uniform vec2 u_bgSize;
+uniform vec2 u_offset;
+uniform vec2 u_panelSize;
 
-    void main() {
-      vec2 bgPixel = gl_FragCoord.xy + u_offset;
+void main() {
+  // Flip Y inside the panel
+  vec2 flippedCoord = vec2(gl_FragCoord.x, u_panelSize.y - gl_FragCoord.y);
 
-      // convert to UV
-      vec2 uv = vec2(
-        bgPixel.x / u_bgSize.x,
-        bgPixel.y / u_bgSize.y
-      );
+  // Map to background pixel coordinates with offset
+  vec2 bgPixel = flippedCoord + u_offset;
 
-      gl_FragColor = texture2D(u_texture, uv);
-    }
-  `;
+  // Convert to UV for texture sampling
+  vec2 uv = vec2(
+    bgPixel.x / u_bgSize.x,
+    bgPixel.y / u_bgSize.y
+  );
+
+  gl_FragColor = texture2D(u_texture, uv);
+}
+`;
+
 
   const createShader = (type: number, source: string) => {
     const shader = gl.createShader(type)!;
@@ -160,6 +169,7 @@ console.log("Offset:", ox, oy);
     bgSize: gl.getUniformLocation(program, "u_bgSize")!,
     texture: gl.getUniformLocation(program, "u_texture")!,
     offset:  gl.getUniformLocation(program, "u_offset")!,
+    panelSize: gl.getUniformLocation(program, "u_panelSize")!,
   };
 
   // Texture setup
@@ -183,6 +193,7 @@ console.log("Offset:", ox, oy);
     gl.uniform2f(uniforms.bgSize, currentBg.width, currentBg.height);
     gl.uniform1i(uniforms.texture, 0);
     gl.uniform2f(uniforms.offset, panelOffset[0] * dpr, panelOffset[1] * dpr);
+    gl.uniform2f(uniforms.panelSize, panelSize[0] * dpr, panelSize[1] * dpr);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     requestAnimationFrame(render);

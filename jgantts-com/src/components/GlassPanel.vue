@@ -114,7 +114,7 @@ console.log("Offset:", ox, oy);
       // convert to UV
       vec2 uv = vec2(
         bgPixel.x / u_bgSize.x,
-        1.0 - bgPixel.y / u_bgSize.y  // flip Y so top panel samples top
+        bgPixel.y / u_bgSize.y
       );
 
       gl_FragColor = texture2D(u_texture, uv);

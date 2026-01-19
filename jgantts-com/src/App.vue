@@ -23,6 +23,11 @@ import { BackgroundState } from './Curtain/Types';
 
   import EnvelopeIcon from './assets/icons/envelope.svg'
 
+const panels = ref<Set<any>>(new Set());
+provide("registerPanel", (panel: any) => panels.value.add(panel));
+provide("unregisterPanel", (panel: any) => panels.value.delete(panel));
+//provide("panels", panels);
+
 const backgroundRef = ref(null)
 provide("backgroundRef", backgroundRef);
 
@@ -60,7 +65,11 @@ function firstRunDone() {
   //@ts-expect-error
   replayButtonRef.value?.firstRunDone()
 }
-
+function backgroundReady() {
+  panels.value.forEach(panelBackgroundReady => {
+    panelBackgroundReady()
+  })
+}
 
 </script>
 
@@ -110,7 +119,7 @@ function firstRunDone() {
           </DStack>
         </VStack>
       </div>
-      <Background ref="backgroundRef" @first-run-done="firstRunDone"/> 
+      <Background ref="backgroundRef" @first-run-done="firstRunDone" @ready="backgroundReady"/> 
     </div>
   </div>
 </template>

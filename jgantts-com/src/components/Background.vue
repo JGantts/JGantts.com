@@ -1,6 +1,6 @@
 <script setup lang="ts">
   let gl: WebGLRenderingContext | null = null;
-  
+
 import { ref, onMounted } from 'vue'
 
 import Curtain from '../Curtain/Curtain.vue';
@@ -289,6 +289,7 @@ enum BackgroundState {
 }
 let backgroundState = BackgroundState.Prerun
 async function startRun() {
+  emit('ready')
   switch (backgroundState) {
     case BackgroundState.Prerun:
       backgroundState = BackgroundState.Firstrun
@@ -350,15 +351,19 @@ async function getCanvas(): Promise<HTMLCanvasElement|null> {
   //@ts-expect-error
   return await curtainRef?.value?.getCanvas()
 }
+async function getDom(): Promise<HTMLElement|null> {
+  //@ts-expect-error
+  return await curtainRef?.value?.getDom()
+}
 
 let firstRunStarted = false
 let firstRunDone = false
 let continualRun = false
 const emit = defineEmits([
-  'firstRunDone',
+  'firstRunDone', 'ready'
 ]);
 
-defineExpose({ pausePlay, getCanvas });
+defineExpose({ pausePlay, getCanvas, getDom });
 </script>
 
 <template>

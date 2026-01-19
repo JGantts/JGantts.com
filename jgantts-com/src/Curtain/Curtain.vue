@@ -542,6 +542,7 @@ window.visualViewport?.addEventListener("resize", throttledResizeHandler)
 
 
 const canvasRef = ref(null)
+const canvasHolderRef = ref(null)
 
 let rainbow: Rainbow
 
@@ -553,6 +554,10 @@ const loadCurtain = async (rainbowIn: Rainbow) => {
 
 const getCanvas = async (): Promise<HTMLCanvasElement> => {
   return canvasElement
+}
+
+const getDom = async (): Promise<HTMLElement> => {
+  return canvasHolderRef.value
 }
 
 let playStateInternal = BackgroundState.Unset
@@ -604,6 +609,7 @@ const emit = defineEmits([
 ]);
 defineExpose({
   getCanvas,
+  getDom,
   loadCurtain,
   pausePlay,
   play,
@@ -617,7 +623,7 @@ defineExpose({
 </script>
 
 <template>
-  <div id='canvas-holder'>
+  <div id='canvas-holder' ref="canvasHolderRef">
     <canvas class="the-canvas" ref="canvasRef"/>
   </div>
 </template>

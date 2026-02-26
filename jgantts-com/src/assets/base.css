@@ -141,6 +141,30 @@ html {
   font-size: 24pt;
 }
 
+.highlight {
+  color: var(--textAccentOnBase);
+}
+
+.heavy {
+  font-weight: 800;
+}
+
+.bold {
+  font-weight: 600;
+}
+
+.light {
+  font-weight: 100;
+}
+
+.large {
+  font-size: 0.9rem;
+}
+
+.medium {
+  font-size: 0.8rem;
+}
+
 *, *:before, *:after {
   box-sizing: border-box;
 }

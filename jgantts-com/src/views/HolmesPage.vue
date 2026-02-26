@@ -23,19 +23,31 @@
         <p class="tips-heading">Tip Me</p>
         <div class="tips-grid">
           <a class="link-card tip-card" href="https://cash.app/$eniorWhoopy" target="_blank" rel="noopener noreferrer">
-            <span class="link-title">Cash App</span>
+            <span class="link-title">
+              <img class="brand-logo" src="https://cdn.simpleicons.org/cashapp/ffffff" alt="Cash App logo" />
+              Cash App
+            </span>
             <span class="link-meta">$eniorWhoopy</span>
           </a>
           <a class="link-card tip-card venmo" href="https://venmo.com/u/SeniorWhoopy" target="_blank" rel="noopener noreferrer">
-            <span class="link-title">Venmo</span>
+            <span class="link-title">
+              <img class="brand-logo" src="https://cdn.simpleicons.org/venmo/ffffff" alt="Venmo logo" />
+              Venmo
+            </span>
             <span class="link-meta">@SeniorWhoopy</span>
           </a>
           <a class="link-card tip-card paypal" href="https://www.paypal.biz/ThriftJesus" target="_blank" rel="noopener noreferrer">
-            <span class="link-title">PayPal</span>
+            <span class="link-title">
+              <img class="brand-logo" src="https://cdn.simpleicons.org/paypal/ffffff" alt="PayPal logo" />
+              PayPal
+            </span>
             <span class="link-meta">ThriftJesus</span>
           </a>
           <a class="link-card primary-tip tip-card zelle" href="https://www.zellepay.com/" target="_blank" rel="noopener noreferrer">
-            <span class="link-title">Zelle</span>
+            <span class="link-title">
+              <img class="brand-logo" src="https://cdn.simpleicons.org/zelle/ffffff" alt="Zelle logo" />
+              Zelle
+            </span>
             <span class="link-meta">ZACHARY • xxx-xxx-7534</span>
           </a>
         </div>
@@ -43,39 +55,66 @@
 
       <nav class="links" aria-label="Zach Holmes links">
         <a class="link-card primary instagram" href="https://www.instagram.com/seniorwhoopy" target="_blank" rel="noopener noreferrer">
-          <span class="link-title">Instagram</span>
+          <span class="link-title">
+            <img class="brand-logo" src="https://cdn.simpleicons.org/instagram/ffffff" alt="Instagram logo" />
+            Instagram
+          </span>
           <span class="link-meta">@seniorwhoopy</span>
         </a>
         <a class="link-card primary youtube" href="https://www.youtube.com/@SeniorWhoopyIRL" target="_blank" rel="noopener noreferrer">
-          <span class="link-title">YouTube</span>
+          <span class="link-title">
+            <img class="brand-logo" src="https://cdn.simpleicons.org/youtube/ffffff" alt="YouTube logo" />
+            YouTube
+          </span>
           <span class="link-meta">@SeniorWhoopyIRL</span>
         </a>
         <a class="link-card primary maps" href="https://maps.google.com/?q=1647%20Boulder%20City%20Pkwy%20Ste%20A%2C%20Boulder%20City%2C%20NV%2089005" target="_blank" rel="noopener noreferrer">
-          <span class="link-title">Google Maps</span>
+          <span class="link-title">
+            <img class="brand-logo" src="https://cdn.simpleicons.org/googlemaps/ffffff" alt="Google Maps logo" />
+            Google Maps
+          </span>
           <span class="link-meta">Driving Directions</span>
         </a>
         <a class="link-card secondary website" href="https://www.desert-adventures.com/" target="_blank" rel="noopener noreferrer">
-          <span class="link-title">Desert Adventures</span>
+          <span class="link-title">
+            <img class="brand-logo" src="https://cdn.simpleicons.org/googlechrome/ffffff" alt="Website icon" />
+            Desert Adventures
+          </span>
           <span class="link-meta">desert-adventures.com</span>
         </a>
         <a class="link-card secondary tiktok" href="https://www.tiktok.com/@seniorwhoopy" target="_blank" rel="noopener noreferrer">
-          <span class="link-title">TikTok</span>
+          <span class="link-title">
+            <img class="brand-logo" src="https://cdn.simpleicons.org/tiktok/ffffff" alt="TikTok logo" />
+            TikTok
+          </span>
           <span class="link-meta">@seniorwhoopy</span>
         </a>
         <a class="link-card tertiary yelp" href="https://www.yelp.com/search?find_desc=Desert+Adventures&find_loc=Boulder+City%2C+NV" target="_blank" rel="noopener noreferrer">
-          <span class="link-title">Yelp</span>
+          <span class="link-title">
+            <img class="brand-logo" src="https://cdn.simpleicons.org/yelp/ffffff" alt="Yelp logo" />
+            Yelp
+          </span>
           <span class="link-meta">Reviews</span>
         </a>
         <a class="link-card tertiary tripadvisor" href="https://www.tripadvisor.com/Search?q=Desert+Adventures+Boulder+City" target="_blank" rel="noopener noreferrer">
-          <span class="link-title">TripAdvisor</span>
+          <span class="link-title">
+            <img class="brand-logo" src="https://cdn.simpleicons.org/tripadvisor/ffffff" alt="TripAdvisor logo" />
+            TripAdvisor
+          </span>
           <span class="link-meta">Reviews</span>
         </a>
         <a class="link-card tertiary facebook" href="https://www.facebook.com/share/iX3bPaDWHyr4ftmd/?mibextid=LQQJ4d" target="_blank" rel="noopener noreferrer">
-          <span class="link-title">Facebook</span>
+          <span class="link-title">
+            <img class="brand-logo" src="https://cdn.simpleicons.org/facebook/ffffff" alt="Facebook logo" />
+            Facebook
+          </span>
           <span class="link-meta">Official Page</span>
         </a>
         <a class="link-card tertiary snapchat" href="https://www.snapchat.com/add/seniorwhoopy" target="_blank" rel="noopener noreferrer">
-          <span class="link-title">Snapchat</span>
+          <span class="link-title">
+            <img class="brand-logo" src="https://cdn.simpleicons.org/snapchat/ffffff" alt="Snapchat logo" />
+            Snapchat
+          </span>
           <span class="link-meta">Add SeniorWhoopy</span>
         </a>
       </nav>
@@ -368,8 +407,18 @@ h1 {
 }
 
 .link-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   font-size: clamp(0.62rem, 2.4vw, 0.8rem);
   font-weight: 700;
+}
+
+.brand-logo {
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 
 .link-meta {

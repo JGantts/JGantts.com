@@ -528,7 +528,10 @@ function decToTwoDigitHex(dec: number) {
 //#endregion
 
 onMounted(async () => {
-  //@ts-expect-error
+  if (!canvasRef.value) {
+    throw new Error("Canvas element not found")
+  }
+
   canvasElement = canvasRef.value
   canvasContext = canvasElement.getContext("2d")! 
 })
@@ -541,8 +544,8 @@ window.addEventListener("resize", throttledResizeHandler)
 window.visualViewport?.addEventListener("resize", throttledResizeHandler)
 
 
-const canvasRef = ref(null)
-const canvasHolderRef = ref(null)
+const canvasRef = ref<HTMLCanvasElement | null>(null)
+const canvasHolderRef = ref<HTMLElement | null>(null)
 
 let rainbow: Rainbow
 
@@ -557,6 +560,10 @@ const getCanvas = async (): Promise<HTMLCanvasElement> => {
 }
 
 const getDom = async (): Promise<HTMLElement> => {
+  if (!canvasHolderRef.value) {
+    throw new Error("Canvas holder not found")
+  }
+
   return canvasHolderRef.value
 }
 

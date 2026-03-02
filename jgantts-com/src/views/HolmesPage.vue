@@ -1,3 +1,55 @@
+<script setup lang="ts">
+const browserIconMap = {
+  chrome: {
+    src: 'https://cdn.simpleicons.org/googlechrome/ffffff',
+    alt: 'Google Chrome logo',
+  },
+  edge: {
+    src: 'https://cdn.simpleicons.org/microsoftedge/ffffff',
+    alt: 'Microsoft Edge logo',
+  },
+  firefox: {
+    src: 'https://cdn.simpleicons.org/firefoxbrowser/ffffff',
+    alt: 'Firefox logo',
+  },
+  opera: {
+    src: 'https://cdn.simpleicons.org/opera/ffffff',
+    alt: 'Opera logo',
+  },
+  safari: {
+    src: 'https://cdn.simpleicons.org/safari/ffffff',
+    alt: 'Safari logo',
+  },
+} as const
+
+function detectBrowserIcon(userAgent: string) {
+  if (/Edg\//.test(userAgent)) {
+    return browserIconMap.edge
+  }
+
+  if (/OPR\//.test(userAgent)) {
+    return browserIconMap.opera
+  }
+
+  if (/Firefox\//.test(userAgent) || /FxiOS\//.test(userAgent)) {
+    return browserIconMap.firefox
+  }
+
+  if (/Chrome\//.test(userAgent) || /CriOS\//.test(userAgent)) {
+    return browserIconMap.chrome
+  }
+
+  if (/Safari\//.test(userAgent)) {
+    return browserIconMap.safari
+  }
+
+  return browserIconMap.chrome
+}
+
+const websiteBrowserIcon =
+  typeof navigator === 'undefined' ? browserIconMap.chrome : detectBrowserIcon(navigator.userAgent)
+</script>
+
 <template>
   <main class="holmes-page">
     <div class="sky-glow" />
@@ -11,7 +63,7 @@
       <article class="profile-card">
         <p class="eyebrow">Down the Colorado River</p>
         <h1>
-          <span class="name-holmes">HOLMES</span>, ZACH
+          <span class="name-holmes">HOLMES</span>, <span class="name-zachary">ZACHARY</span>
         </h1>
         <p class="tagline">Professional Tour Guide</p>
         <p class="copy">
@@ -43,13 +95,13 @@
             </span>
             <span class="link-meta">ThriftJesus</span>
           </a>
-          <a class="link-card primary-tip tip-card zelle" href="https://www.zellepay.com/" target="_blank" rel="noopener noreferrer">
+          <!--<a class="link-card primary-tip tip-card zelle" href="https://www.zellepay.com/" target="_blank" rel="noopener noreferrer">
             <span class="link-title">
               <img class="brand-logo" src="https://cdn.simpleicons.org/zelle/ffffff" alt="Zelle logo" />
               Zelle
             </span>
             <span class="link-meta">ZACHARY • xxx-xxx-7534</span>
-          </a>
+          </a>-->
         </div>
       </section>
 
@@ -73,11 +125,11 @@
             <img class="brand-logo" src="https://cdn.simpleicons.org/googlemaps/ffffff" alt="Google Maps logo" />
             Google Maps
           </span>
-          <span class="link-meta">Driving Directions</span>
+          <span class="link-meta">Reviews</span>
         </a>
         <a class="link-card secondary website" href="https://www.desert-adventures.com/" target="_blank" rel="noopener noreferrer">
           <span class="link-title">
-            <img class="brand-logo" src="https://cdn.simpleicons.org/googlechrome/ffffff" alt="Website icon" />
+            <img class="brand-logo" :src="websiteBrowserIcon.src" :alt="websiteBrowserIcon.alt" />
             Desert Adventures
           </span>
           <span class="link-meta">desert-adventures.com</span>
@@ -94,28 +146,24 @@
             <img class="brand-logo" src="https://cdn.simpleicons.org/yelp/ffffff" alt="Yelp logo" />
             Yelp
           </span>
-          <span class="link-meta">Reviews</span>
         </a>
         <a class="link-card tertiary tripadvisor" href="https://www.tripadvisor.com/Search?q=Desert+Adventures+Boulder+City" target="_blank" rel="noopener noreferrer">
           <span class="link-title">
             <img class="brand-logo" src="https://cdn.simpleicons.org/tripadvisor/ffffff" alt="TripAdvisor logo" />
             TripAdvisor
           </span>
-          <span class="link-meta">Reviews</span>
         </a>
-        <a class="link-card tertiary facebook" href="https://www.facebook.com/share/iX3bPaDWHyr4ftmd/?mibextid=LQQJ4d" target="_blank" rel="noopener noreferrer">
+        <a class="link-card tertiary facebook" href="https://www.facebook.com/seniorwhoopy" target="_blank" rel="noopener noreferrer">
           <span class="link-title">
             <img class="brand-logo" src="https://cdn.simpleicons.org/facebook/ffffff" alt="Facebook logo" />
             Facebook
           </span>
-          <span class="link-meta">Official Page</span>
         </a>
         <a class="link-card tertiary snapchat" href="https://www.snapchat.com/add/seniorwhoopy" target="_blank" rel="noopener noreferrer">
           <span class="link-title">
             <img class="brand-logo" src="https://cdn.simpleicons.org/snapchat/ffffff" alt="Snapchat logo" />
             Snapchat
           </span>
-          <span class="link-meta">Add SeniorWhoopy</span>
         </a>
       </nav>
     </section>
@@ -225,7 +273,7 @@
 .panel-stack {
   position: relative;
   z-index: 2;
-  width: min(760px, 100%);
+  width: min(450px, 100%);
   display: grid;
   gap: 0.75rem;
 }
@@ -254,7 +302,7 @@
 }
 
 h1 {
-  font-size: clamp(1.4rem, 6.5vw, 3.2rem);
+  font-size: clamp(1.15rem, 4.4vw, 2.25rem);
   line-height: 1.08;
   font-weight: 700;
 }
@@ -267,6 +315,10 @@ h1 {
     0 0 16px rgba(45, 255, 255, 0.75),
     0 0 30px rgba(255, 45, 156, 0.5);
   letter-spacing: 0.03em;
+}
+
+.name-zachary {
+  font-size: 0.88em;
 }
 
 .tagline {
@@ -286,7 +338,7 @@ h1 {
 
 .links {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.65rem;
 }
 
@@ -317,17 +369,20 @@ h1 {
 }
 
 .link-card {
+  --logo-size: 1.55rem;
+  --logo-left: 0.75rem;
   text-decoration: none;
   border-radius: 0.9rem;
   border: 1px solid var(--chip-border, rgba(77, 240, 255, 0.5));
   background: var(--chip-bg, rgba(18, 14, 44, 0.58));
   color: var(--chip-text, #f3fdff);
   min-height: 2.9rem;
-  padding: 0.6rem 0.75rem;
+  padding: 0.6rem 0.75rem 0.6rem calc(var(--logo-left) + var(--logo-size) + 0.45rem);
   font-size: clamp(0.52rem, 2.2vw, 0.72rem);
   line-height: 1.2;
   text-align: left;
   display: flex;
+  position: relative;
   flex-direction: column;
   justify-content: center;
   gap: 0.18rem;
@@ -365,8 +420,10 @@ h1 {
   --chip-border: rgba(147, 255, 204, 0.8);
   --chip-border-hover: rgba(198, 255, 227, 1);
   --chip-glow: rgba(147, 255, 204, 0.45);
+  --logo-size: 1.2rem;
+  --logo-left: 0.5rem;
   min-height: 2.6rem;
-  padding: 0.45rem 0.5rem;
+  padding: 0.45rem 0.5rem 0.45rem calc(var(--logo-left) + var(--logo-size) + 0.35rem);
 }
 
 .venmo {
@@ -407,16 +464,18 @@ h1 {
 }
 
 .link-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
+  display: block;
   font-size: clamp(0.62rem, 2.4vw, 0.8rem);
   font-weight: 700;
 }
 
 .brand-logo {
-  width: 1em;
-  height: 1em;
+  position: absolute;
+  left: var(--logo-left);
+  top: 50%;
+  width: var(--logo-size);
+  height: var(--logo-size);
+  transform: translateY(-50%);
   object-fit: contain;
   flex: 0 0 auto;
 }

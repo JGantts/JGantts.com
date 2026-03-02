@@ -28,6 +28,9 @@ const router = createRouter({
           alias: 'welcome/',
           name: 'welcome',
           component: WelcomePageVue,
+          meta: {
+            title: 'JGantts',
+          },
         },
         /*{
           path: "services/",
@@ -65,6 +68,9 @@ const router = createRouter({
           path: '',
           name: 'Holmes',
           component: HolmesPage,
+          meta: {
+            title: 'Holmes, Zachary',
+          },
         },
       ],
     },
@@ -81,6 +87,14 @@ const router = createRouter({
 
     return { top: 0 }
   },
+})
+
+router.afterEach((to) => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.title = typeof to.meta.title === 'string' ? to.meta.title : 'JGantts'
 })
 
 export default router

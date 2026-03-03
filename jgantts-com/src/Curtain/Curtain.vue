@@ -85,6 +85,13 @@ let heightInLargePixels = 0
 let widthInFinePixels = 0
 let heightInFinePixels = 0
 
+function getViewportSize() {
+  return {
+    width: window.innerWidth || canvasElement.clientWidth,
+    height: (window.innerHeight || canvasElement.clientHeight) + TOP_BUFFER_PIXEL,
+  }
+}
+
 
 let pixelColumnsSuper: {saturation: number, lightness: number}[][] = []
 let pixelColumnsLarge: {saturation: number, lightness: number}[][] = []
@@ -94,13 +101,12 @@ let pixelColumnsFine: {saturation: number, lightness: number}[][] = []
   Rendering functions
 */
 async function initializeBackground() {
-  const width = window.visualViewport?.width || canvasElement.clientWidth
-  const height = window.visualViewport?.height || canvasElement.clientHeight
+  const { width, height } = getViewportSize()
 
   doneAnimatingCurtain = false
 
   const ratio = window.devicePixelRatio || 1;
-  if (canvasElement.width != width) {
+  if (canvasElement.width !== width * ratio || canvasElement.height !== height * ratio) {
     canvasElement.width = width * ratio;
     canvasElement.height = height * ratio;
     //canvasContext.scale(ratio, ratio);
@@ -212,10 +218,9 @@ async function initializeCurtain() {
       })
   }
 
-  const width = window.visualViewport?.width || canvasElement.clientWidth
-  const height = window.visualViewport?.height || canvasElement.clientHeight
+  const { width, height } = getViewportSize()
 
-  if (clientWidthInitial != width) {
+  if (clientWidthInitial !== width * ratio || clientHeightInitial !== height * ratio) {
     clientWidthInitial = width * ratio
     clientHeightInitial = height * ratio
   }
@@ -318,6 +323,10 @@ async function renderScene(state: AnimationState|null): Promise<AnimationState> 
     return AnimationState.AboveTop
   }
   if (eachIsBelow) {
+    canvasContext.clearRect(0, 0, canvasElement.width, canvasElement.height)
+    canvasContext.fillStyle = backgroundPattern ?? "black"
+    canvasContext.fillRect(0, 0, canvasElement.width, canvasElement.height)
+    emit("export-ready", canvasContext.getImageData(0, 0, canvasElement.width, canvasElement.height));
     playStateInternal = BackgroundState.AfterFirstPaused
     emit('curtainCall', '')
     doneAnimatingCurtain = true
@@ -345,7 +354,7 @@ async function renderScene(state: AnimationState|null): Promise<AnimationState> 
 
 async function renderColumn(columnIndex: number) {
   let column = pixelColumnsFine[columnIndex]
-  for (let boxIndex=TOP_BUFFER_PIXEL; boxIndex<column.length; boxIndex++) {
+  for (let boxIndex=0; boxIndex<column.length; boxIndex++) {
     tryRenderBox(columnIndex, boxIndex)
   }
 }
@@ -357,7 +366,7 @@ function tryRenderBox(columnIndex: number, boxIndex: number): boolean {
       return false
     }
     renderPixel({
-      position: { x: columnIndex-1, y: boxIndex-1-TOP_BUFFER_PIXEL},
+      position: { x: columnIndex-1, y: boxIndex-1},
       color: me,
     })
     return true
@@ -541,7 +550,6 @@ onUnmounted(() => {
 })
 
 window.addEventListener("resize", throttledResizeHandler)
-window.visualViewport?.addEventListener("resize", throttledResizeHandler)
 
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -638,10 +646,8 @@ defineExpose({
 <style scoped>
 .the-canvas {
   position: absolute;
-  left: -25px;
-  top: -25px;
-  width: calc(100% + 50px);
-  height: calc(100% + 50px);
-  clip-path: inset(0);
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 </style>

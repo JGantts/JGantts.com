@@ -1,99 +1,296 @@
 <script setup lang="ts">
-import Island from "../components/Island.vue"
+import { ref } from 'vue'
+
+const emailAddress = 'contact@jgantts.com'
+const popoverMessage = ref('Copy email')
+const showPopover = ref(false)
+let popoverTimer: ReturnType<typeof setTimeout> | null = null
+
+async function copyEmail() {
+  try {
+    await navigator.clipboard.writeText(emailAddress)
+    popoverMessage.value = 'Email copied'
+  } catch {
+    popoverMessage.value = 'Copy failed'
+  }
+
+  showPopover.value = true
+
+  if (popoverTimer) {
+    clearTimeout(popoverTimer)
+  }
+
+  popoverTimer = setTimeout(() => {
+    showPopover.value = false
+    popoverMessage.value = 'Copy email'
+  }, 1800)
+}
 </script>
 
 <template>
-  <Island class="hero-card" cornerRadius="3rem">
-    <div class="hero-content">
-      <div class="hero-intro text-h4">
-        <p>
-          Hi, I'm<br />
-          <span class="highlight">Jacob.</span>
-        </p>
-        <p>
-          I build<br />
-          <span class="highlight">production-ready</span><br />
-          software.
-        </p>
-      </div>
-      <div class="hero-copy">
-        <p class="hero-support text-h5">
-          Systems, tooling, and full-stack applications &mdash;<br />
-          <span class="highlight">designed to last.</span>
-        </p>
-        <p class="hero-detail">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer
-          dapibus, sem at suscipit tincidunt, arcu erat fermentum nibh, vitae
-          posuere massa lectus non turpis.
-        </p>
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="hero-kicker">Independent software engineering</p>
+      <h2 class="hero-title">
+        Hi, I'm <span class="highlight">Jacob</span>.<br />
+        I build <span class="highlight">production-ready</span><br />
+        software for teams that need<br />
+        reliable systems.
+      </h2>
+      <p class="hero-support">
+        Full-stack applications, internal tools, and durable workflows with
+        less fragility, less maintenance debt, and less guesswork.
+      </p>
+      <div class="hero-actions">
+        <div class="copy-action-wrap">
+          <button type="button" class="primary-action" @click="copyEmail">
+            Copy email
+          </button>
+          <transition name="popover-fade">
+            <span v-if="showPopover" class="copy-popover">{{ popoverMessage }}</span>
+          </transition>
+        </div>
+        <span class="secondary-action">{{ emailAddress }}</span>
       </div>
     </div>
-  </Island>
+    <div class="hero-rail">
+      <div class="signal-card">
+        <p class="signal-label">What I build</p>
+        <p class="signal-value">Internal tools, business systems, and full-stack delivery.</p>
+      </div>
+      <div class="signal-card">
+        <p class="signal-label">How it should feel</p>
+        <p class="signal-value">
+          Calm, maintainable, and ready to survive real production use.
+        </p>
+      </div>
+      <p class="hero-note">
+        Placeholder proof copy for layout balance. Replace this with client work,
+        a short capabilities list, or a concise credibility statement.
+      </p>
+    </div>
+  </section>
 </template>
 
 <style scoped>
-.hero-card {
-  width: min(100%, 54rem);
-}
-
-.hero-content {
+.hero {
   display: grid;
-  grid-template-columns: minmax(12rem, 14rem) minmax(18rem, 28rem);
-  justify-content: space-between;
-  align-items: center;
-  gap: clamp(1.5rem, 4vw, 2.75rem);
-  padding: clamp(1.25rem, 3vw, 2rem);
-  text-align: left;
-}
-
-.hero-intro {
-  display: grid;
-  gap: 0.5em;
+  grid-template-columns: minmax(0, 1.15fr) minmax(15rem, 0.72fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: start;
   width: 100%;
-  line-height: 1.15;
-}
-
-.hero-intro p,
-.hero-support,
-.hero-detail {
-  margin: 0;
+  padding: clamp(0.5rem, 1.5vw, 1rem) 0;
 }
 
 .hero-copy {
   display: grid;
-  gap: 0.9rem;
+  gap: 1.1rem;
+  max-width: 38rem;
+}
+
+.hero-kicker {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(214, 223, 232, 0.74);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.hero-title {
+  margin: 0;
+  max-width: 9.5ch;
+  font-size: clamp(2.7rem, 5.8vw, 4.7rem);
+  line-height: 0.98;
+  font-weight: 500;
+  color: rgba(236, 241, 246, 0.95);
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.2);
 }
 
 .hero-support {
-  line-height: 1.35;
+  margin: 0;
+  max-width: 30rem;
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  line-height: 1.45;
+  color: rgba(222, 229, 237, 0.86);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
-.hero-detail {
-  max-width: 28rem;
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.copy-action-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1.25rem;
+  border: 0;
+  border-radius: 999px;
+  background-color: var(--backgroundSolidAccent);
+  color: var(--textAccentOnAccent);
+  font: inherit;
   font-size: 1rem;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.82);
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease, background-color 0.2s ease;
+}
+
+.secondary-action {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.6rem 0;
+  color: rgba(228, 234, 241, 0.9);
+  font-size: 0.95rem;
+  line-height: 1.2;
+  border-bottom: 1px solid rgba(220, 228, 236, 0.45);
+}
+
+.primary-action:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.copy-popover {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.65rem);
+  transform: translateX(-50%);
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.75rem;
+  background: rgba(6, 24, 48, 0.92);
+  color: rgba(232, 238, 244, 0.92);
+  font-size: 0.82rem;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.copy-popover::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 0.55rem;
+  height: 0.55rem;
+  background: rgba(6, 24, 48, 0.92);
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.hero-rail {
+  display: grid;
+  gap: 0.9rem;
+  padding-top: 1.25rem;
+}
+
+.signal-card {
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 1rem;
+  background: rgba(6, 24, 48, 0.48);
+  backdrop-filter: blur(10px);
+}
+
+.signal-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(206, 216, 226, 0.7);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.signal-value {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: rgba(228, 234, 241, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.hero-note {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: rgba(206, 216, 226, 0.74);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.popover-fade-enter-active,
+.popover-fade-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.popover-fade-enter-from,
+.popover-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(4px);
 }
 
 @media (max-width: 900px) {
-  .hero-content {
+  .hero {
     grid-template-columns: 1fr;
-    align-items: start;
-    gap: 1.25rem;
+    gap: 1.35rem;
   }
 
-  .hero-detail {
+  .hero-title,
+  .hero-support,
+  .hero-note {
     max-width: none;
+  }
+
+  .hero-rail {
+    grid-template-columns: 1fr;
+    padding-top: 0;
   }
 }
 
-@media (max-width: 480px) {
-  .hero-content {
-    padding: 1rem;
+@media (max-width: 560px) {
+  .hero-title {
+    font-size: clamp(2.2rem, 11vw, 3.6rem);
+    max-width: none;
   }
 
-  .hero-intro {
-    line-height: 1.05;
+  .hero-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .copy-action-wrap,
+  .primary-action {
+    width: 100%;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .hero-support,
+  .secondary-action,
+  .hero-note {
+    color: rgba(56, 70, 86, 0.88);
+    text-shadow: none;
+  }
+
+  .hero-title {
+    color: rgba(46, 60, 76, 0.92);
+    text-shadow: none;
+  }
+
+  .secondary-action {
+    border-bottom-color: rgba(56, 70, 86, 0.35);
   }
 }
 </style>

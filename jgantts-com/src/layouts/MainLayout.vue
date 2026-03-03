@@ -1,12 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-import Island from "@/components/Island.vue"
 import VStack from "@/library-jgantts/VStack.vue"
 import Background from "@/components/Background.vue"
-import NavBar from '@/components/NavBar.vue'
-
-import EnvelopeIcon from '@/assets/icons/envelope.svg'
 
 const runningSecondary = ref(false)
 </script>
@@ -14,41 +10,32 @@ const runningSecondary = ref(false)
 <template>
   <div id="app">
     <div id="box">
+      <div class="content-scrim" />
       <div id="content">
-        <VStack padding="1.25rem" spacing="1.5rem">
-          <Island id="welcome-island" cornerRadius="2.5rem">
-            <VStack class="text-h3" padding="0.75rem 1.25rem" spacing="0">
-              <h1>
-                <span class="highlight" :class="{ mellow: runningSecondary }">JGantts</span>
-                <span>.com</span>
-              </h1>
-            </VStack>
-          </Island>
-          <NavBar />
-          <router-view v-slot="{ Component }">
-            <transition
-              name="fade"
-              mode="out-in"
-            >
-              <component :is="Component" :ket="$route.path" />
-            </transition>
-          </router-view>
-          <div class="contact-wrap">
-            <Island id="replay-sibling" cornerRadius="2rem">
-              <VStack class="text-h4" padding="0.5rem 1rem" spacing="0.3rem">
-                <a href="mailto:contact@jgantts.com" class="link">
-                  <span class="line">
-                    <div class="link-icon" :class="{ mellow: runningSecondary }" >
-                      <EnvelopeIcon class="fa-icon" />
-                    </div>
-                    <span class="link-space">&nbsp;&nbsp;</span>
-                    <span class="underline link">contact@jgantts.com</span>
-                  </span>
-                </a>
-                <p class="text-subtitle-1">© 2026 Jacob Gantt</p>
-              </VStack>
-            </Island>
-          </div>
+        <VStack class="page-shell" padding="1.5rem" spacing="1.5rem">
+          <header class="site-header">
+            <p class="brand-mark text-h2">
+              <span class="highlight" :class="{ mellow: runningSecondary }">JGantts</span>
+              <span>.com</span>
+            </p>
+            <p class="site-tagline">Jacob Gantt's personal website</p>
+            <p class="site-status">Currently available for new projects</p>
+          </header>
+
+          <main class="page-main">
+            <router-view v-slot="{ Component }">
+              <transition
+                name="fade"
+                mode="out-in"
+              >
+                <component :is="Component" :ket="$route.path" />
+              </transition>
+            </router-view>
+          </main>
+
+          <footer class="site-footer">
+            <p class="footer-meta">© 2026 Jacob Gantt</p>
+          </footer>
         </VStack>
       </div>
       <Background />
@@ -62,12 +49,10 @@ const runningSecondary = ref(false)
   left: 0;
   right: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   min-width: 100vw;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
+  display: block;
+  overflow: visible;
 }
 
 #box {
@@ -79,107 +64,116 @@ const runningSecondary = ref(false)
   overflow: visible;
 }
 
+.content-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 22% 34%, rgba(5, 19, 44, 0.68), transparent 36%),
+    radial-gradient(circle at 70% 38%, rgba(5, 19, 44, 0.58), transparent 34%),
+    linear-gradient(180deg, rgba(6, 23, 49, 0.7), rgba(6, 23, 49, 0.62));
+}
+
+@media (prefers-color-scheme: light) {
+  .content-scrim {
+    background:
+      radial-gradient(circle at 22% 34%, rgba(230, 239, 249, 0.54), transparent 40%),
+      radial-gradient(circle at 70% 38%, rgba(223, 234, 246, 0.46), transparent 38%),
+      linear-gradient(180deg, rgba(214, 228, 244, 0.42), rgba(214, 228, 244, 0.32));
+  }
+
+  .brand-mark,
+  .site-status,
+  .footer-link {
+    color: rgba(52, 66, 82, 0.9) !important;
+    text-shadow: none;
+  }
+
+  .mellow {
+    color: rgba(90, 104, 120, 0.78);
+  }
+}
+
 #content {
   position: relative;
+  width: 100%;
   max-width: 100vw;
-  max-height: 100vh;
-  z-index: 3;
+  z-index: 4;
 }
 
-.main {
-  background-color: var(--backgroundAppBase);
+.page-shell {
+  width: min(100%, 70rem);
+  margin: 0 auto;
+  justify-content: flex-start;
 }
 
-.link {
-  text-decoration: none;
-}
-
-.main-holder {
-  --alignment: center;
-  --flex-alignment: center;
-}
-
-#replay-holder {
+.site-header {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-}
-
-#replay-sibling {
-  width: min(100%, 32rem);
+  gap: 0.35rem;
+  width: 100%;
   text-align: center;
 }
 
-.contact-wrap {
+.brand-mark,
+.site-tagline,
+.site-status,
+.footer-meta {
+  margin: 0;
+}
+
+.brand-mark {
+  color: rgba(236, 241, 246, 0.94);
+  font-size: clamp(2.2rem, 4.6vw, 4.1rem) !important;
+  line-height: 0.95;
+}
+
+.site-tagline {
+  font-size: 1rem;
+  line-height: 1.35;
+  color: rgba(220, 228, 236, 0.84);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.site-status {
+  font-size: 0.95rem;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: rgba(214, 223, 232, 0.78);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.page-main {
+  display: block;
+}
+
+.site-footer {
   display: flex;
-  justify-content: center;
-  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  margin-top: 1.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.replay-button {
-  width: 1em;
+.footer-link {
+  margin: 0;
+  color: rgba(206, 216, 226, 0.74);
+  font-size: 0.9rem;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
-.text01-accent {
-  color: var(--textAccentOnBase);
-  font-size: 2em;
-  line-height: 1.5;
-  font-weight: 500;
-}
-
-.text01 {
-  font-size: 2em;
-  line-height: 1.5;
-  font-weight: 500;
-}
-
-#text02 {
-  font-size: 1em;
-  line-height: 1.5;
-  font-weight: 300;
-}
-
-#text03 {
-  color: var(--textGrayOnBaseLowContrast);
-  font-size: 0.625em;
-  line-height: 1.5;
-  font-weight: 300;
-}
-
-#text04 {
-  font-size: 1em;
-  line-height: 1.5;
-  font-weight: 400;
-}
-
-.text05 {
-  font-size: 1em;
-  line-height: 1.5;
-  font-weight: 500;
-}
-
-#text06 {
-  text-align: start;
-  font-size: 0.625em;
-  line-height: 1.5;
-  font-weight: 400;
-}
-
-#text06>p {
-  padding-bottom: 0.25em;
-}
-
-#text07 {
-  font-size: 0.5em;
-  line-height: 1.5;
-  font-weight: 300;
-}
-
-#text07-accent {
-  font-size: 0.5em;
-  line-height: 1.5;
-  font-weight: 400;
+.footer-meta {
+  font-size: 0.9rem;
+  line-height: 1.3;
+  color: rgba(212, 221, 231, 0.76);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .mellow {
@@ -187,68 +181,39 @@ const runningSecondary = ref(false)
   transition: color 3s ease-in-out 1.5s;
 }
 
-.line {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-decoration: none;
-}
-
-.link-icon {
-  color: var(--textAccentOnBase);
-}
-
-@media (max-width: 450px) {
-  .link-icon {
-    display: none;
-  }
-
-  .link-space {
-    display: none;
-  }
-
-  .link {
-    color: var(--textAccentOnBase);
-  }
-}
-
-.link {
-  cursor: pointer;
-  white-space: nowrap;
-}
 </style>
 
 <style scoped>
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
-  max-height: 0;
 }
+
 .fade-enter-to, .fade-leave-from {
   opacity: 1;
-  max-height: 100vh;
 }
 
 .fade-leave-active {
-  transition: opacity 0.2s ease-in 0s, max-height 0.4s ease-out;
+  transition: opacity 0.2s ease-in 0s;
   color: rgba(0, 0, 0, 0);
 }
-.fade-enter-active {
-  transition: opacity 0.2s ease-out calc(0.4s - 0.2s), max-height 0.4s ease-in;
-  color: rgba(0, 0, 0, 0);
-}
-</style>
 
-<style scoped>
-a {
-  text-decoration: none;
+.fade-enter-active {
+  transition: opacity 0.2s ease-out 0s;
+  color: rgba(0, 0, 0, 0);
 }
-a .underline {
-  text-decoration: underline;
-}
-a:hover {
-  text-decoration: none;
-}
-a:hover .link, a:hover .link-icon {
-  color: var(--textAccentOnBase);
+
+@media (max-width: 700px) {
+  .page-shell {
+    padding: 1.1rem !important;
+  }
+
+  .site-footer {
+    align-items: center;
+    flex-direction: column;
+  }
+
+  .page-main {
+    align-items: flex-start;
+  }
 }
 </style>

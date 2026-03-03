@@ -395,8 +395,10 @@ defineExpose({ pausePlay, getCanvas, getDom });
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
+  height: calc(100% + 34px);
   z-index: -20;
+  pointer-events: none;
+  transform: translateY(-34px);
 }
 .prev-curtain {
   z-index: -10;

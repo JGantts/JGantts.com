@@ -6,17 +6,30 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const jgantts_com_Path = path.join(__dirname, '../jgantts-com');
-const jgantts_conlangiii_Path = path.join(__dirname, '../conlangiii');
 const jgantts_com_Dist_Path = path.join(jgantts_com_Path, 'dist');
 const jgantts_com_Public_Path = path.join(jgantts_com_Path, 'PUBLIC');
 const jgantts_com_Index_Path = path.join(jgantts_com_Dist_Path, 'index.html');
-const jgantts_com_Dev_Index_Path = path.join(jgantts_com_Path, 'index.html');
 const holmesSocialPreviewPath = path.join(
   jgantts_com_Path,
   'src',
   'assets',
   'holmes-social-preview.svg',
 );
+const configuredSiteOrigin = process.env.SITE_ORIGIN
+  ? process.env.SITE_ORIGIN.replace(/\/+$/, '')
+  : '';
+
+if (!fs.existsSync(jgantts_com_Index_Path)) {
+  throw new Error(
+    `Missing built app HTML at ${jgantts_com_Index_Path}. Build jgantts-com before starting the server.`,
+  );
+}
+
+if (process.env.NODE_ENV === 'production' && !configuredSiteOrigin) {
+  throw new Error('SITE_ORIGIN must be set in production so canonical social URLs are stable.');
+}
+
+const appHtmlTemplate = fs.readFileSync(jgantts_com_Index_Path, 'utf8');
 
 const defaultPageMeta = {
   title: 'JGantts.com',
@@ -69,6 +82,10 @@ function upsertTitleTag(html, title) {
 }
 
 function getBaseUrl(req) {
+  if (configuredSiteOrigin) {
+    return configuredSiteOrigin;
+  }
+
   const forwardedProto = req.headers['x-forwarded-proto'];
   const protocol = typeof forwardedProto === 'string' ? forwardedProto.split(',')[0] : req.protocol;
 
@@ -90,17 +107,9 @@ function getPageMeta(req) {
   };
 }
 
-function readAppHtml() {
-  if (fs.existsSync(jgantts_com_Index_Path)) {
-    return fs.readFileSync(jgantts_com_Index_Path, 'utf8');
-  }
-
-  return fs.readFileSync(jgantts_com_Dev_Index_Path, 'utf8');
-}
-
 function renderAppHtml(req) {
   const pageMeta = getPageMeta(req);
-  let html = readAppHtml();
+  let html = appHtmlTemplate;
 
   html = upsertTitleTag(html, pageMeta.title);
   html = upsertMetaTag(html, 'name', 'description', pageMeta.description);
@@ -124,12 +133,6 @@ function renderAppHtml(req) {
   return html;
 }
 
-app.use('/conlangiii/assets', express.static(path.join(jgantts_conlangiii_Path, 'dist', 'assets')));
-app.use('/conlangiii/', express.static(path.join(jgantts_conlangiii_Path, 'dist')));
-app.get('/conlangiii*', (req, res) => {
-  res.sendFile(path.join(jgantts_conlangiii_Path, 'dist', 'index.html'));
-});
-
 // Serve static files from the dist directory
 app.use('/assets', express.static(path.join(jgantts_com_Dist_Path, 'assets')));
 app.use(express.static(jgantts_com_Public_Path));
@@ -140,6 +143,11 @@ app.get('/holmes-social-preview.svg', (req, res) => {
 
 // Serve the index.html file for any other route
 app.get('*', (req, res) => {
+  if (path.extname(req.path)) {
+    res.sendStatus(404);
+    return;
+  }
+
   res.type('html').send(renderAppHtml(req));
 });
 

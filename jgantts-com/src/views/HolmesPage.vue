@@ -1,4 +1,8 @@
 <script setup lang="ts">
+defineProps<{
+  tips?: boolean
+}>()
+
 const browserIconMap = {
   chrome: {
     src: 'https://cdn.simpleicons.org/googlechrome/ffffff',
@@ -62,6 +66,7 @@ const websiteBrowserIcon =
     <section class="panel-stack">
       <article class="profile-card">
         <p class="eyebrow">Down the Colorado River</p>
+        <p v-if="tips" class="route-chip">Tips</p>
         <h1>
           <span class="name-holmes">HOLMES</span>, <span class="name-zachary">ZACHARY</span>
         </h1>
@@ -326,6 +331,20 @@ h1 {
   font-size: clamp(0.75rem, 3vw, 1.05rem);
   font-weight: 600;
   color: #ffe79d;
+}
+
+.route-chip {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 0.85rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff5d5;
+  font-size: 0.8rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .copy {

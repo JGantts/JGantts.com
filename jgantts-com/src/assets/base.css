@@ -29,7 +29,6 @@ html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abb
 
 html {
   background-color: hsl(197, 76%, 78%);
-  overscroll-behavior-y: none;
 }
 
 button, input[type="submit"], input[type="reset"] {
@@ -180,7 +179,6 @@ body {
   min-width: 320px;
   background-color: var(--backgroundAppBase);
   overflow-x: hidden;
-  overscroll-behavior-y: none;
   word-wrap: break-word;
 }
 

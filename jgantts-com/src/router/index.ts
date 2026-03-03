@@ -117,8 +117,12 @@ const router = createRouter({
       children: [
         {
           path: '',
+          alias: 'tips',
           name: 'Holmes',
           component: HolmesPage,
+          props: (route) => ({
+            tips: route.path === '/holmes/tips',
+          }),
           meta: {
             title: 'Holmes, Zachary',
             description: 'Professional tour guide at Desert Adventures. Find Zachary Holmes on social, maps, and tip links.',

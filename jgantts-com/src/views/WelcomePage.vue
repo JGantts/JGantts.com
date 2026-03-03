@@ -1,158 +1,99 @@
 <script setup lang="ts">
-import { Breakpoint } from '@/common/Breakpoint';
-
 import Island from "../components/Island.vue"
-import DStack from "../library-jgantts/DStack.vue";
-import HStack from "../library-jgantts/HStack.vue";
-import VStack from "../library-jgantts/VStack.vue";
-import ReplayButton from "../components/ReplayButton.vue"
-import Links from "../components/Links.vue"
-import ExpandedView from "../library-jgantts/ExpandedView.vue"
-import Background from "../components/Background.vue"
-import NavBar from '../components/NavBar.vue';
-
 </script>
 
 <template>
-<Island cornerRadius="3rem">
-  <DStack
-    :breakpoint="Breakpoint._2_M"
-    padding="1rem"
-    hSpacing="1rem"
-    vSpacing="1rem"
-  >
-    <DStack :breakpoint="Breakpoint._2_M" vSpacing="1.0rem" hSpacing="1.0rem">
-      <p class="text-h4" style="max-width: 15rem;">
-        Hi, I'm<br />
-        Jacob.<br />
-        <span class="highlight">I make</span><br />
-        <span class="highlight">software.</span>
-      </p>
-      <VStack class="text-h5" id="text06" spacing="0.5rem">
-        <div style="height:0.5rem"/>
-        <p class="text-h4">
-          What <span class="highlight">I do</span>:
+  <Island class="hero-card" cornerRadius="3rem">
+    <div class="hero-content">
+      <div class="hero-intro text-h4">
+        <p>
+          Hi, I'm<br />
+          <span class="highlight">Jacob.</span>
         </p>
         <p>
-          I <span class="highlight">tailor</span> software to your unique requirements;<br/>
-          <span class="highlight">making it capable</span> of doing what needs to be done.
+          I build<br />
+          <span class="highlight">production-ready</span><br />
+          software.
         </p>
-        <p>
-          From <span class="highlight">handling technical complexities</span> to ensuring <span class="highlight">seamless interactions</span>, I make the software work <span class="highlight">so you can focus</span> on your business.
+      </div>
+      <div class="hero-copy">
+        <p class="hero-support text-h5">
+          Systems, tooling, and full-stack applications &mdash;<br />
+          <span class="highlight">designed to last.</span>
         </p>
-      </VStack>
-    </DStack>
-  </DStack>
-</Island>
+        <p class="hero-detail">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer
+          dapibus, sem at suscipit tincidunt, arcu erat fermentum nibh, vitae
+          posuere massa lectus non turpis.
+        </p>
+      </div>
+    </div>
+  </Island>
 </template>
 
 <style scoped>
-#text06 {
-  max-width: 320px;
+.hero-card {
+  width: min(100%, 54rem);
 }
 
-@media (min-width: 1025px) {
-  #text06 {
-    max-width: 320px;
-  }
-}
-
-
-#main02 {
-  --alignment: center;
-  --flex-alignment: center;
-  --indent-left: 1;
-  --indent-right: 1;
-  --border-radius-tl: 1.5rem;
-  --border-radius-tr: 1.5rem;
-  --border-radius-br: 1.5rem;
-  --border-radius-bl: 1.5rem;
+.hero-content {
+  display: grid;
+  grid-template-columns: minmax(12rem, 14rem) minmax(18rem, 28rem);
+  justify-content: space-between;
   align-items: center;
-  display: flex;
-  flex-grow: 0;
-  flex-shrink: 0;
-  justify-content: center;
-  max-width: 100%;
-  position: relative;
-  text-align: var(--alignment);
-  z-index: 1;
-  border-radius: var(--border-radius-tl) var(--border-radius-tr) var(--border-radius-br) var(--border-radius-bl);
+  gap: clamp(1.5rem, 4vw, 2.75rem);
+  padding: clamp(1.25rem, 3vw, 2rem);
+  text-align: left;
 }
 
-#main02 > .inner {
-  border-radius: var(--border-radius-tl) var(--border-radius-tr) var(--border-radius-br) var(--border-radius-bl);
-  max-width: 100%;
-  position: relative;
-  width: calc(var(--width) + va(--padding-horizontal));
-  z-index: 1;
-  padding: var(--padding-vertical) var(--padding-horizontal);
+.hero-intro {
+  display: grid;
+  gap: 0.5em;
+  width: 100%;
+  line-height: 1.15;
 }
 
-#main02 > .inner > * {
-  margin-top: var(--spacing);
-  margin-bottom: var(--spacing);
+.hero-intro p,
+.hero-support,
+.hero-detail {
+  margin: 0;
 }
 
-#main02 > .inner > :first-child {
-  margin-top: 0 !important;
+.hero-copy {
+  display: grid;
+  gap: 0.9rem;
 }
 
-#main02 > .inner > :last-child {
-  margin-bottom: 0 !important;
+.hero-support {
+  line-height: 1.35;
 }
 
-#main02 > .inner > .full {
-  margin-left: calc(var(--padding-horizontal) * -1);
-  max-width: calc(100% + calc(var(--padding-horizontal) * 2) + 0.4725px);
-  width: calc(100% + calc(var(--padding-horizontal) * 2) + 0.4725px);
+.hero-detail {
+  max-width: 28rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.82);
 }
 
-#main02 > .inner > .full:first-child {
-  border-top-left-radius: inherit;
-  border-top-right-radius: inherit;
-}
+@media (max-width: 900px) {
+  .hero-content {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 1.25rem;
+  }
 
-#main02 > .inner > .full:last-child {
-  border-bottom-left-radius: inherit;
-  border-bottom-right-radius: inherit;
-}
-
-#main02 > .inner > .full.screen {
-  border-radius: 0 !important;
-  max-width: 100vw;
-  position: relative;
-  width: 100vw;
-  left: 50%;
-  margin-left: -50vw;
-  right: auto;
-}
-
-#main02 > .inner {
-  --padding-horizontal: 0.75rem;
-  --padding-vertical: 0.75rem;
-  --spacing: 0rem;
-  --width: 20rem;
-}
-
-@media (max-width: 736px) {
-  #main02 > .inner {
-    --padding-horizontal: 0.75rem;
-    --padding-vertical: 0.75rem;
-    --spacing: 0rem;
+  .hero-detail {
+    max-width: none;
   }
 }
 
 @media (max-width: 480px) {
-  #main02 > .inner {
-    --spacing: 0rem;
+  .hero-content {
+    padding: 1rem;
   }
-}
 
-@media (max-width: 360px) {
-  #main02 > .inner {
-    --padding-horizontal: 0.75rem;
-    --padding-vertical: 0.75rem;
-    --spacing: 0rem;
+  .hero-intro {
+    line-height: 1.05;
   }
 }
 </style>

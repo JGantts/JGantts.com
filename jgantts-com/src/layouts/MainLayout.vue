@@ -2,12 +2,9 @@
 import { ref } from 'vue'
 
 import Island from "@/components/Island.vue"
-import DStack from "@/library-jgantts/DStack.vue"
 import VStack from "@/library-jgantts/VStack.vue"
 import Background from "@/components/Background.vue"
 import NavBar from '@/components/NavBar.vue'
-
-import { Breakpoint } from "@/common/Breakpoint"
 
 import EnvelopeIcon from '@/assets/icons/envelope.svg'
 
@@ -36,8 +33,7 @@ const runningSecondary = ref(false)
               <component :is="Component" :ket="$route.path" />
             </transition>
           </router-view>
-          <DStack :breakpoint="Breakpoint._2_M" vSpacing="1rem" hSpacing="1rem">
-            <div style="width: 2rem" />
+          <div class="contact-wrap">
             <Island id="replay-sibling" cornerRadius="2rem">
               <VStack class="text-h4" padding="0.5rem 1rem" spacing="0.3rem">
                 <a href="mailto:contact@jgantts.com" class="link">
@@ -49,11 +45,10 @@ const runningSecondary = ref(false)
                     <span class="underline link">contact@jgantts.com</span>
                   </span>
                 </a>
-                <p class="text-subtitle-1">© 2025 Jacob Gantt</p>
+                <p class="text-subtitle-1">© 2026 Jacob Gantt</p>
               </VStack>
             </Island>
-            <div style="width: 2rem" />
-          </DStack>
+          </div>
         </VStack>
       </div>
       <Background />
@@ -112,8 +107,14 @@ const runningSecondary = ref(false)
 }
 
 #replay-sibling {
-  flex-grow: 1;
+  width: min(100%, 32rem);
   text-align: center;
+}
+
+.contact-wrap {
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 .replay-button {

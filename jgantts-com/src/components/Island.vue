@@ -9,7 +9,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <GlassPanel>
+  <GlassPanel :style="{ '--glass-radius': props.cornerRadius }">
     <slot />
   </GlassPanel>
 </template>

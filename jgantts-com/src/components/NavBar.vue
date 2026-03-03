@@ -10,7 +10,7 @@ import VStack from '@/library-jgantts/VStack.vue';
       <div class="inner">
         <ul>
           <li>
-            <NavBarItem :name="'welcome'" :title="'Welcome'" />
+            <NavBarItem :name="'welcome'" :title="'Build with me'" />
           </li>
           <!--<li>
             <NavBarItem :name="'web'" :title="'Getting Started'" />

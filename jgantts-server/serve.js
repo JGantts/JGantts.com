@@ -9,12 +9,6 @@ const jgantts_com_Path = path.join(__dirname, '../jgantts-com');
 const jgantts_com_Dist_Path = path.join(jgantts_com_Path, 'dist');
 const jgantts_com_Public_Path = path.join(jgantts_com_Path, 'PUBLIC');
 const jgantts_com_Index_Path = path.join(jgantts_com_Dist_Path, 'index.html');
-const holmesSocialPreviewPath = path.join(
-  jgantts_com_Path,
-  'src',
-  'assets',
-  'holmes-social-preview.svg',
-);
 const configuredSiteOrigin = process.env.SITE_ORIGIN
   ? process.env.SITE_ORIGIN.replace(/\/+$/, '')
   : '';
@@ -49,36 +43,36 @@ const holmesPageMeta = {
   socialImage: '/holmes-social-preview.svg',
 };
 
+const requiredTemplateTokens = [
+  '__PAGE_TITLE__',
+  '__PAGE_DESCRIPTION__',
+  '__OG_URL__',
+  '__OG_TYPE__',
+  '__OG_TITLE__',
+  '__OG_DESCRIPTION__',
+  '__OG_IMAGE__',
+  '__OG_SITE_NAME__',
+  '__OG_LOCALE__',
+  '__TWITTER_CARD__',
+  '__TWITTER_TITLE__',
+  '__TWITTER_DESCRIPTION__',
+  '__TWITTER_IMAGE__',
+];
+
+for (const token of requiredTemplateTokens) {
+  if (!appHtmlTemplate.includes(token)) {
+    throw new Error(
+      `Missing required metadata token ${token} in ${jgantts_com_Index_Path}. Rebuild jgantts-com with the updated HTML template.`,
+    );
+  }
+}
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
-}
-
-function upsertTag(html, tagName, matcher, replacement) {
-  if (matcher.test(html)) {
-    return html.replace(matcher, replacement);
-  }
-
-  return html.replace(`</head>`, `  ${replacement}\n  </head>`);
-}
-
-function upsertMetaTag(html, attribute, key, content) {
-  const escapedContent = escapeHtml(content);
-  const matcher = new RegExp(`<meta\\s+${attribute}="${key}"[^>]*>`, 'i');
-  const replacement = `<meta ${attribute}="${key}" content="${escapedContent}" />`;
-
-  return upsertTag(html, 'meta', matcher, replacement);
-}
-
-function upsertTitleTag(html, title) {
-  const escapedTitle = escapeHtml(title);
-  const matcher = /<title>.*?<\/title>/i;
-  const replacement = `<title>${escapedTitle}</title>`;
-
-  return upsertTag(html, 'title', matcher, replacement);
 }
 
 function getBaseUrl(req) {
@@ -109,26 +103,27 @@ function getPageMeta(req) {
 
 function renderAppHtml(req) {
   const pageMeta = getPageMeta(req);
+  const replacements = {
+    __PAGE_TITLE__: pageMeta.title,
+    __PAGE_DESCRIPTION__: pageMeta.description,
+    __OG_URL__: pageMeta.url,
+    __OG_TYPE__: 'website',
+    __OG_TITLE__: pageMeta.socialTitle,
+    __OG_DESCRIPTION__: pageMeta.socialDescription,
+    __OG_IMAGE__: pageMeta.socialImage,
+    __OG_SITE_NAME__: 'JGantts.com',
+    __OG_LOCALE__: 'en_US',
+    __TWITTER_CARD__: pageMeta.socialImage ? 'summary_large_image' : 'summary',
+    __TWITTER_TITLE__: pageMeta.socialTitle,
+    __TWITTER_DESCRIPTION__: pageMeta.socialDescription,
+    __TWITTER_IMAGE__: pageMeta.socialImage,
+  };
+
   let html = appHtmlTemplate;
 
-  html = upsertTitleTag(html, pageMeta.title);
-  html = upsertMetaTag(html, 'name', 'description', pageMeta.description);
-  html = upsertMetaTag(html, 'property', 'og:url', pageMeta.url);
-  html = upsertMetaTag(html, 'property', 'og:type', 'website');
-  html = upsertMetaTag(html, 'property', 'og:title', pageMeta.socialTitle);
-  html = upsertMetaTag(html, 'property', 'og:description', pageMeta.socialDescription);
-  html = upsertMetaTag(html, 'property', 'og:image', pageMeta.socialImage);
-  html = upsertMetaTag(html, 'property', 'og:site_name', 'JGantts.com');
-  html = upsertMetaTag(html, 'property', 'og:locale', 'en_US');
-  html = upsertMetaTag(
-    html,
-    'name',
-    'twitter:card',
-    pageMeta.socialImage ? 'summary_large_image' : 'summary',
-  );
-  html = upsertMetaTag(html, 'name', 'twitter:title', pageMeta.socialTitle);
-  html = upsertMetaTag(html, 'name', 'twitter:description', pageMeta.socialDescription);
-  html = upsertMetaTag(html, 'name', 'twitter:image', pageMeta.socialImage);
+  for (const [token, value] of Object.entries(replacements)) {
+    html = html.replaceAll(token, escapeHtml(value));
+  }
 
   return html;
 }
@@ -136,10 +131,6 @@ function renderAppHtml(req) {
 // Serve static files from the dist directory
 app.use('/assets', express.static(path.join(jgantts_com_Dist_Path, 'assets')));
 app.use(express.static(jgantts_com_Public_Path));
-app.get('/holmes-social-preview.svg', (req, res) => {
-  res.sendFile(holmesSocialPreviewPath);
-});
-
 
 // Serve the index.html file for any other route
 app.get('*', (req, res) => {

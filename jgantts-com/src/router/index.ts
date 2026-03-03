@@ -15,7 +15,6 @@ import ServicesPageVue from '@/views/ServicesPage.vue'
 import AboutMePage from '@/views/about-me/AboutMePage.vue'
 import AboutMe2Page from '@/views/about-me/AboutMe2Page.vue'*/
 import HolmesPage from '@/views/HolmesPage.vue'
-import holmesSocialPreviewUrl from '@/assets/holmes-social-preview.svg?url'
 
 type AppRouteMeta = {
   title?: string
@@ -129,7 +128,7 @@ const router = createRouter({
             socialTitle: 'Holmes, Zachary | Desert Adventures',
             socialDescription:
               'Professional tour guide. Follow Zachary Holmes, get directions, and find tip links in one place.',
-            socialImage: holmesSocialPreviewUrl,
+            socialImage: '/holmes-social-preview.svg',
           },
         },
       ],

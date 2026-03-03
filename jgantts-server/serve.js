@@ -13,17 +13,18 @@ const configuredSiteOrigin = process.env.SITE_ORIGIN
   ? process.env.SITE_ORIGIN.replace(/\/+$/, '')
   : '';
 
-if (!fs.existsSync(jgantts_com_Index_Path)) {
-  throw new Error(
-    `Missing built app HTML at ${jgantts_com_Index_Path}. Build jgantts-com before starting the server.`,
-  );
-}
+const hasBuiltAppHtml = fs.existsSync(jgantts_com_Index_Path);
+const maintenanceMessage = 'sorry, Jacob is doing his best. contact@JGantts.com';
 
 if (process.env.NODE_ENV === 'production' && !configuredSiteOrigin) {
-  throw new Error('SITE_ORIGIN must be set in production so canonical social URLs are stable.');
+  console.warn('SITE_ORIGIN is not set in production; falling back to request-derived URLs.');
 }
 
-const appHtmlTemplate = fs.readFileSync(jgantts_com_Index_Path, 'utf8');
+const appHtmlTemplate = hasBuiltAppHtml ? fs.readFileSync(jgantts_com_Index_Path, 'utf8') : '';
+
+if (!hasBuiltAppHtml) {
+  console.warn(`Built app HTML not found at ${jgantts_com_Index_Path}; serving maintenance page.`);
+}
 
 const defaultPageMeta = {
   title: 'JGantts.com',
@@ -50,6 +51,19 @@ function escapeHtml(value) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 }
+
+const maintenanceHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Temporarily Unavailable</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body>
+    <main>${escapeHtml(maintenanceMessage)}</main>
+  </body>
+</html>`;
 
 function replaceTokenIfPresent(html, token, value) {
   if (!html.includes(token)) {
@@ -103,6 +117,10 @@ function getPageMeta(req) {
 }
 
 function renderAppHtml(req) {
+  if (!appHtmlTemplate) {
+    return maintenanceHtml;
+  }
+
   const pageMeta = getPageMeta(req);
   let html = appHtmlTemplate;
   const twitterCard = pageMeta.socialImage ? 'summary_large_image' : 'summary';
@@ -149,7 +167,12 @@ app.get('*', (req, res) => {
     return;
   }
 
-  res.type('html').send(renderAppHtml(req));
+  try {
+    res.type('html').send(renderAppHtml(req));
+  } catch (error) {
+    console.error('Failed to render app HTML:', error);
+    res.status(503).type('html').send(maintenanceHtml);
+  }
 });
 
 // Start the server

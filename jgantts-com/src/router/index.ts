@@ -8,6 +8,7 @@ import {
 
 import MainLayout from '@/layouts/MainLayout.vue'
 import HolmesLayout from '@/layouts/HolmesLayout.vue'
+import KovyaloLayout from '@/layouts/KovyaloLayout.vue'
 
 import WelcomePageVue from '@/views/WelcomePage.vue'
 /*import GettingStartedPageVue from '@/views/GettingStartedPage.vue'
@@ -15,6 +16,7 @@ import ServicesPageVue from '@/views/ServicesPage.vue'
 import AboutMePage from '@/views/about-me/AboutMePage.vue'
 import AboutMe2Page from '@/views/about-me/AboutMe2Page.vue'*/
 import HolmesPage from '@/views/HolmesPage.vue'
+import KovyaloPage from '@/views/KovyaloPage.vue'
 
 type AppRouteMeta = {
   title?: string
@@ -132,6 +134,25 @@ const router = createRouter({
           },
         },
       ],
+    },
+    {
+      path: '/kovyalo',
+      component: KovyaloLayout,
+      children: [
+        {
+          path: '',
+          name: 'Kovyalo',
+          component: KovyaloPage,
+        },
+      ],
+      meta: {
+        title: 'Kovyálo',
+        description: 'Years ago, a ship landed. We are their children.',
+        socialTitle: 'Kovyálo | JGantts',
+        socialDescription:
+          'JGantts\' Conworld of Kovyálo.',
+        socialImage: '/kovyalo-social-preview.svg',
+      },
     },
   ],
   scrollBehavior(

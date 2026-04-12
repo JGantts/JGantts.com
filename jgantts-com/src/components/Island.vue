@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted, defineProps, } from 'vue';
+import { ref, onMounted, defineProps, inject } from 'vue';
+import GlassPanel from './GlassPanel.vue';
 
 const props = defineProps<{
   cornerRadius: String;
 }>()
+
 </script>
 
 <template>
-  <div class="main shadow" :style="{ borderRadius: props.cornerRadius + '' }">
+  <GlassPanel :style="{ '--glass-radius': props.cornerRadius }">
     <slot />
-  </div>
+  </GlassPanel>
 </template>
 
 <style scoped>

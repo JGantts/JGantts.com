@@ -6,6 +6,7 @@
   "author": "JGantts",
   "license": "none",
   "scripts": {
+    "check": "node --check serve.js",
     "start": "node serve.js",
     "dev": "nodemon serve.js"
   },

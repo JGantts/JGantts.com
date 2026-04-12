@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Holmes, Zachary social preview</title>
+  <desc id="desc">A neon desert scene with a profile card for Holmes, Zachary and link chips for his guide and social links.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#120219" />
+      <stop offset="48%" stop-color="#2c1243" />
+      <stop offset="76%" stop-color="#591a4f" />
+      <stop offset="100%" stop-color="#ff7a36" />
+    </linearGradient>
+    <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff6dc" />
+      <stop offset="38%" stop-color="#ffbf52" />
+      <stop offset="100%" stop-color="#ff5d21" />
+    </radialGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f0b2e" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#2e123f" stop-opacity="0.92" />
+    </linearGradient>
+    <linearGradient id="duneBack" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ff7b38" />
+      <stop offset="100%" stop-color="#ff2bb4" />
+    </linearGradient>
+    <linearGradient id="duneFront" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffcc5d" />
+      <stop offset="100%" stop-color="#ff7d2e" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#sky)" />
+  <circle cx="930" cy="126" r="82" fill="url(#sun)" filter="url(#glow)" />
+  <ellipse cx="600" cy="525" rx="690" ry="120" fill="url(#duneBack)" opacity="0.92" transform="rotate(-2 600 525)" />
+  <ellipse cx="620" cy="600" rx="760" ry="140" fill="url(#duneFront)" transform="rotate(2 620 600)" />
+  <ellipse cx="570" cy="484" rx="620" ry="42" fill="#45ddff" opacity="0.24" />
+
+  <rect x="180" y="92" width="840" height="390" rx="34" fill="url(#panel)" stroke="#88fbff" stroke-opacity="0.72" />
+  <rect x="210" y="122" width="780" height="150" rx="26" fill="#090717" fill-opacity="0.3" stroke="#ffffff" stroke-opacity="0.08" />
+
+  <text x="600" y="165" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" letter-spacing="6" fill="#a9feff">DOWN THE COLORADO RIVER</text>
+  <text x="600" y="220" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700" fill="#2dffff" filter="url(#glow)">HOLMES</text>
+  <text x="600" y="270" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="700" fill="#fff7ea">, ZACHARY</text>
+  <text x="600" y="328" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" fill="#ffe79d">PROFESSIONAL TOUR GUIDE</text>
+  <text x="600" y="365" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#fff7ea">Night trails. Neon horizons. Zero wrong turns.</text>
+
+  <rect x="240" y="405" width="220" height="48" rx="16" fill="#111e34" fill-opacity="0.82" stroke="#65ecff" stroke-opacity="0.4" />
+  <rect x="490" y="405" width="220" height="48" rx="16" fill="#23112d" fill-opacity="0.82" stroke="#ff8ee0" stroke-opacity="0.4" />
+  <rect x="740" y="405" width="220" height="48" rx="16" fill="#112c24" fill-opacity="0.82" stroke="#9cffcf" stroke-opacity="0.4" />
+
+  <text x="350" y="435" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f3fdff">Instagram</text>
+  <text x="600" y="435" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f3fdff">Desert Adventures</text>
+  <text x="850" y="435" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#f3fdff">Tip Me</text>
+
+  <text x="350" y="516" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#d7fbff">seniorwhoopy</text>
+  <text x="600" y="516" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#d7fbff">desert-adventures.com</text>
+  <text x="850" y="516" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#d7fbff">Cash App, Venmo, PayPal</text>
+  <text x="600" y="566" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" letter-spacing="2" fill="#ffe3ab">JGANTTS.COM / HOLMES</text>
+</svg>

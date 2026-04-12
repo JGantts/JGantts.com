@@ -134,6 +134,14 @@ const router = createRouter({
           },
         },
       ],
+        meta: {
+          title: 'Holmes, Zachary',
+          description: 'Professional tour guide at Desert Adventures. Find Zachary Holmes on social, maps, and tip links.',
+          socialTitle: 'Holmes, Zachary | Desert Adventures',
+          socialDescription:
+            'Professional tour guide. Follow Zachary Holmes, get directions, and find tip links in one place.',
+          socialImage: '/holmes-social-preview.svg',
+        },
     },
     {
       path: '/kovyalo',
@@ -141,8 +149,20 @@ const router = createRouter({
       children: [
         {
           path: '',
+          alias: 'dev',
           name: 'Kovyalo',
           component: KovyaloPage,
+            props: (route) => ({
+            dev: route.path === '/kovyalo/dev',
+          }),
+          meta: {
+            title: 'Kovyálo',
+            description: 'Years ago, a ship landed. We are their children.',
+            socialTitle: 'Kovyálo | JGantts',
+            socialDescription:
+              'JGantts\' Conworld of Kovyálo.',
+            socialImage: '/kovyalo-social-preview.svg',
+          },
         },
       ],
       meta: {

@@ -18,6 +18,7 @@
     "async-mutex": "^0.4.1",
     "dotenv": "^16.0.3",
     "leaflet": "^1.9.4",
+    "maplibre-gl": "^5.22.0",
     "mount-vue-component": "^0.10.2",
     "sass": "^1.76.0",
     "vue": "^3.2.45",

@@ -50,7 +50,7 @@ const selectedEdge = ref<EdgeKey | null>(null)
 const regionOverlayOpacity = computed(() => (props.dev ? 0.5 : 1))
 const regions = shallowRef<ManagedRegion[]>([])
 
-const polarExtents = 85.05113
+const polarExtents = 89.99 //85.05113
 
 const worldBounds: BoundsTuple = [
   [-polarExtents, -180],
@@ -73,7 +73,6 @@ const regionConfigs: RegionConfig[] = [
       {
         id: 'base',
         imageUrl: '/assets/kovyalo/map/regional/kovyalo.png',
-        opacity: 0.5,
       },
     ],
   },
@@ -85,7 +84,7 @@ const regionConfigs: RegionConfig[] = [
       [14.54625, -32.5872],
     ],
     minZoom: -1.5,
-    maxZoom: 3,
+    maxZoom: 24,
     fadeRange: 2,
     parentId: 'kovyalo',
     layers: [
@@ -138,14 +137,21 @@ function clamp(value: number, min: number, max: number): number {
 function isRegionInView(region: RegionConfig): boolean {
   if (!map) return false
 
-  const b = map.getBounds()
-  const [[top, left], [bottom, right]] = normalizeBounds(region.bounds)
+  const screenBounds = map.getBounds()
+  const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
+
+  const center = map.getCenter()
 
   return !(
-    right < b.getWest() ||
-    left > b.getEast() ||
-    bottom < b.getSouth() ||
-    top > b.getNorth()
+    regionRight < screenBounds.getWest() ||
+    regionLeft > screenBounds.getEast() ||
+    regionBottom > screenBounds.getNorth() ||
+    regionTop < screenBounds.getSouth()
+  ) || (
+    center.lat >= regionBottom &&
+    center.lat <= regionTop &&
+    center.lng >= regionLeft &&
+    center.lng <= regionRight
   )
 }
 
@@ -355,9 +361,9 @@ onMounted(() => {
       layers: [],
     },
     center: [0, 0],
-    zoom: -4,
-    minZoom: -5,
-    maxZoom: 5,
+    zoom: 3,
+    minZoom: 2,
+    maxZoom: 12,
     attributionControl: false,
     renderWorldCopies: false,
   })

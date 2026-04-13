@@ -50,7 +50,7 @@ const selectedEdge = ref<EdgeKey | null>(null)
 const regionOverlayOpacity = computed(() => (props.dev ? 0.5 : 1))
 const regions = shallowRef<ManagedRegion[]>([])
 
-const polarExtents = 89.99 //85.05113
+const polarExtents = 85.05113
 
 const worldBounds: BoundsTuple = [
   [-polarExtents, -180],
@@ -71,8 +71,12 @@ const regionConfigs: RegionConfig[] = [
     parentId: null,
     layers: [
       {
+        id: "background",
+        imageUrl: '/assets/kovyalo/map/kovyalo/background.png'
+      },
+      {
         id: 'base',
-        imageUrl: '/assets/kovyalo/map/regional/kovyalo.png',
+        imageUrl: '/assets/kovyalo/map/kovyalo/0.png',
       },
     ],
   },
@@ -89,16 +93,20 @@ const regionConfigs: RegionConfig[] = [
     parentId: 'kovyalo',
     layers: [
       {
+        id: "background",
+        imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/background.png'
+      },
+      {
         id: 'base',
-        imageUrl: '/assets/kovyalo/map/regional/ziemund.png',
+        imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/0.png',
       },
       {
         id: 'rivers',
-        imageUrl: '/assets/kovyalo/map/regional/ziemund-rivers.png',
+        imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/rivers.png',
       },
       {
         id: 'borders',
-        imageUrl: '/assets/kovyalo/map/regional/ziemund-borders.png',
+        imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/borders.png',
       },
     ],
   },
@@ -130,10 +138,6 @@ function getRegionById(id: string | null | undefined): ManagedRegion | undefined
   return regions.value.find((r) => r.id === id)
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value))
-}
-
 function isRegionInView(region: RegionConfig): boolean {
   if (!map) return false
 
@@ -155,39 +159,33 @@ function isRegionInView(region: RegionConfig): boolean {
   )
 }
 
-function isRegionEligible(region: RegionConfig): boolean {
+function shouldRegionBackgroundBeVisible(region: RegionConfig): boolean {
   if (!map) return false
-  const zoom = map.getZoom()
 
-  return (
-    zoom >= region.minZoom &&
-    zoom <= region.maxZoom &&
-    isRegionInView(region)
+  const screenBounds = map.getBounds()
+  const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
+
+  const percentageOfScreen = 0.75
+
+  const regionWidthIsLargeComparedToScreen = (
+    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * percentageOfScreen)
   )
-}
 
-function getBaseRegionOpacity(region: RegionConfig): number {
-  if (!map) return 0
-  if (!isRegionEligible(region)) return 0
+  if (regionWidthIsLargeComparedToScreen) return true
 
-  const zoom = map.getZoom()
-  const fadeRange = region.fadeRange ?? 0
-
-  if (fadeRange <= 0) return 1
-  if (zoom < region.minZoom - fadeRange) return 0
-  if (zoom >= region.minZoom) return 1
-
-  return clamp(
-    (zoom - (region.minZoom - fadeRange)) / fadeRange,
-    0,
-    1,
+  const regionHeightIsLargeComparedToScreen = (
+    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * percentageOfScreen)
   )
+  
+  if (regionHeightIsLargeComparedToScreen) return true
+
+  return false
 }
 
 function syncRegions(): void {
   if (!map) return
 
-  const directlyEligible = regions.value.filter(isRegionEligible)
+  const directlyEligible = regions.value.filter(isRegionInView)
   const visibleIds = new Set(directlyEligible.map((r) => r.id))
 
   for (const region of directlyEligible) {
@@ -203,19 +201,24 @@ function syncRegions(): void {
     const shouldBeVisible = visibleIds.has(region.id)
     region.active = shouldBeVisible
 
+    const backgroundShouldBeVisible = shouldRegionBackgroundBeVisible(region)
+
     for (const layer of region.layers) {
       const layerId = `region-${region.id}-${layer.id}`
 
       if (!map.getLayer(layerId)) continue
 
+      if (layer.id === 'background' && !backgroundShouldBeVisible) {
+        map.setPaintProperty(
+          `region-${region.id}-${layer.id}`,
+          'raster-opacity',
+          0,
+        )
+        continue
+      }
+
       const opacity = shouldBeVisible
-        ? (
-            directlyEligible.includes(region)
-              ? getBaseRegionOpacity(region)
-              : 1
-          ) *
-          regionOverlayOpacity.value *
-          (layer.opacity ?? 1)
+        ? regionOverlayOpacity.value
         : 0
 
       map.setPaintProperty(layerId, 'raster-opacity', opacity)

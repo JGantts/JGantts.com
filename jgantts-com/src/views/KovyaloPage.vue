@@ -172,53 +172,63 @@ function shouldRegionBackgroundBeVisible(region: RegionConfig): boolean {
   return false
 }
 
-function syncRegions(): void {
-  if (!map) return
+let syncScheduled = false
 
-  const directlyEligible = regions.value.filter(isRegionInView)
-  const visibleIds = new Set(directlyEligible.map((r) => r.id))
+function requestSync() {
+  if (syncScheduled) return
+  syncScheduled = true
 
-  for (const region of directlyEligible) {
-    let parentId = region.parentId
+  function syncRegions(): void {
+    if (!map) return
 
-    while (parentId) {
-      visibleIds.add(parentId)
-      parentId = getRegionById(parentId)?.parentId ?? null
-    }
-  }
+    const directlyEligible = regions.value.filter(isRegionInView)
+    const visibleIds = new Set(directlyEligible.map((r) => r.id))
 
-  for (const region of regions.value) {
-    const shouldBeVisible = visibleIds.has(region.id)
-    region.active = shouldBeVisible
+    for (const region of directlyEligible) {
+      let parentId = region.parentId
 
-    const backgroundShouldBeVisible = shouldRegionBackgroundBeVisible(region)
-
-    for (const layer of region.layers) {
-      const layerId = `region-${region.id}-${layer.id}`
-
-      if (!map.getLayer(layerId)) continue
-
-      if (layer.id === 'background' && !backgroundShouldBeVisible) {
-        map.setPaintProperty(
-          `region-${region.id}-${layer.id}`,
-          'raster-opacity',
-          0,
-        )
-        continue
+      while (parentId) {
+        visibleIds.add(parentId)
+        parentId = getRegionById(parentId)?.parentId ?? null
       }
+    }
 
-      const opacity = shouldBeVisible
-        ? regionOverlayOpacity.value
-        : 0
+    for (const region of regions.value) {
+      const shouldBeVisible = visibleIds.has(region.id)
+      region.active = shouldBeVisible
 
-      map.setPaintProperty(layerId, 'raster-opacity', opacity)
+      const backgroundShouldBeVisible = shouldRegionBackgroundBeVisible(region)
+
+      for (const layer of region.layers) {
+        const layerId = `region-${region.id}-${layer.id}`
+
+        if (!map.getLayer(layerId)) continue
+
+        if (layer.id === 'background' && !backgroundShouldBeVisible) {
+          map.setPaintProperty(
+            `region-${region.id}-${layer.id}`,
+            'raster-opacity',
+            0,
+          )
+          continue
+        }
+
+        const opacity = shouldBeVisible
+          ? regionOverlayOpacity.value
+          : 0
+
+        map.setPaintProperty(layerId, 'raster-opacity', opacity)
+      }
     }
   }
+
+  requestAnimationFrame(() => {
+    syncScheduled = false
+    syncRegions()
+  })
 }
 
-function syncAll(): void {
-  syncRegions()
-}
+
 
 function remapEquirectToMercator(
   srcCtx: CanvasRenderingContext2D,
@@ -543,13 +553,13 @@ onMounted(() => {
           'text-halo-width': 2,
         },
       })
-      syncAll()
+      requestSync()
     } catch (error) {
       console.error('Failed to initialize map sources:', error)
     }
   })
 
-  function updateMouseOnMove(e: maplibregl.MapMouseEvent|undefined) {
+  function updateMouseOnMove(e: maplibregl.MapMouseEvent|null) {
     if (!e) return
     e = e!
     cursorCoords.value = {
@@ -564,17 +574,17 @@ onMounted(() => {
 
   map.on('mousemove', (e) => {
     updateMouseOnMove(e)
-    syncRegions()
+    requestSync()
   })
 
   map!.on('zoom', () => {
     updateOnZoom()
-    syncRegions()
+    requestSync()
   })
 
-  updateMouseOnMove()
+  updateMouseOnMove(null)
   updateOnZoom()
-  syncRegions()
+  requestSync()
 
 })
 

@@ -296,6 +296,9 @@ function requestSync() {
         map.setPaintProperty(layerId, 'raster-opacity', opacity)
       }
     }
+
+    scheduleRecompute()
+    updateVisibleTownSource()
   }
 
   requestAnimationFrame(() => {
@@ -457,10 +460,10 @@ function scheduleRecompute() {
         ['literal', 1_000]
       ],
       0, 14,
-      1, 16,
-      10, 18,
+      1, 18,
+      10, 24,
       100, 36,
-      1_000, 72,
+      1_000, 64,
     ]
 
     try {
@@ -475,6 +478,30 @@ function scheduleRecompute() {
   })
 }
 
+function updateVisibleTownSource() {
+  if (!map) return
+
+  const bounds = map.getBounds()
+  const visible = getVisibleTowns(bounds)
+
+  const data: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: visible.map(t => ({
+      type: 'Feature',
+      properties: {
+        name: t.name,
+        population: t.population,
+      },
+      geometry: {
+        type: 'Point',
+        coordinates: t.coordinates,
+      }
+    }))
+  }
+
+  const src = map.getSource('towns') as maplibregl.GeoJSONSource
+  src.setData(data)
+}
 
 onMounted(() => {
   if (!mapEl.value) return
@@ -535,18 +562,6 @@ onMounted(() => {
           'raster-fade-duration': 0,
         },
       })
-
-      function onHighResReady() {
-        map = map!
-        map.setPaintProperty('world-high', 'raster-opacity', 1)
-        map.setPaintProperty('world-low', 'raster-opacity', 0)
-
-        setTimeout(() => {
-          map = map!
-          map.removeLayer('world-low')
-          map.removeSource('world-low')
-        }, 300) // match fade duration
-      }
 
       // =========================
       // RASTER REGIONS (unchanged)
@@ -614,26 +629,6 @@ onMounted(() => {
             ],
           },
         })
-
-        // towns
-        for (const ds of region.dataSources ?? []) {
-          if (ds.kind === 'towns') {
-            for (const p of ds.points) {
-              towns.features.push({
-                type: 'Feature',
-                properties: {
-                  name: p.name,
-                  priority: 1,
-                  population: p.population,
-                },
-                geometry: {
-                  type: 'Point',
-                  coordinates: p.coordinates,
-                },
-              })
-            }
-          }
-        }
       }
 
       // =========================
@@ -690,7 +685,7 @@ onMounted(() => {
           'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
           'text-radial-offset': 0.6,
           'text-justify': 'auto',
-          'symbol-sort-key': ['get', 'priority'],
+          'symbol-sort-key': ['*', ['get', 'population'], ['literal', -1]],
         },
         paint: {
           'text-color': '#fff',
@@ -706,7 +701,6 @@ onMounted(() => {
     updateMouseOnMove()
     updateOnZoom()
     requestSync()
-    scheduleRecompute()
   })
 
   function updateMouseOnMove(e: maplibregl.MapMouseEvent|null = null) {

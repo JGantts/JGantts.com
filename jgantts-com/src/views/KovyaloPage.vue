@@ -3,18 +3,16 @@ import { computed, onMounted, onBeforeUnmount, ref, shallowRef } from 'vue'
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-const props = defineProps<{
-  dev?: boolean
-}>()
+const props = defineProps<{ dev?: boolean }>()
 
 type BoundsTuple = [[number, number], [number, number]]
-type EdgeKey = 'top' | 'right' | 'bottom' | 'left'
 
 type RegionLayerConfig = {
   id: string
   imageUrl: string
-  opacity?: number
 }
+
+type DataSourceKind = 'towns-large'
 
 type RegionConfig = {
   id: string
@@ -22,18 +20,15 @@ type RegionConfig = {
   bounds: BoundsTuple
   minZoom: number
   maxZoom: number
-  fadeRange?: number
   parentId?: string | null
   layers: RegionLayerConfig[]
   dataSources?: {
-    id: string
+    kind: DataSourceKind
     points: { name: string; coordinates: [number, number] }[]
   }[]
 }
 
-type ManagedRegion = RegionConfig & {
-  active: boolean
-}
+type ManagedRegion = RegionConfig & { active: boolean }
 
 type ImageCoordinates = [
   [number, number],
@@ -61,24 +56,17 @@ const worldBounds: BoundsTuple = [
 const regionConfigs: RegionConfig[] = [
   {
     id: 'kovyalo',
-    title: 'Kovyalo',
+    title: 'Kovyálo',
     bounds: [
       [14.596875, -49.32],
       [-3.645, -22.68],
     ],
     minZoom: -30,
     maxZoom: 12,
-    fadeRange: 2,
     parentId: null,
     layers: [
-      {
-        id: "background",
-        imageUrl: '/assets/kovyalo/map/kovyalo/background.png'
-      },
-      {
-        id: 'base',
-        imageUrl: '/assets/kovyalo/map/kovyalo/0.png',
-      },
+      { id: 'background', imageUrl: '/assets/kovyalo/map/kovyalo/background.png' },
+      { id: 'base', imageUrl: '/assets/kovyalo/map/kovyalo/0.png' },
     ],
   },
   {
@@ -90,29 +78,14 @@ const regionConfigs: RegionConfig[] = [
     ],
     minZoom: -1.5,
     maxZoom: 24,
-    fadeRange: 2,
     parentId: 'kovyalo',
     layers: [
-      {
-        id: "background",
-        imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/background.png'
-      },
-      {
-        id: 'base',
-        imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/0.png',
-      },
-      {
-        id: 'rivers',
-        imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/rivers.png',
-      },
-      {
-        id: 'borders',
-        imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/borders.png',
-      },
+      { id: 'background', imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/background.png' },
+      { id: 'base', imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/0.png' },
     ],
     dataSources: [
       {
-        id: 'towns',
+        kind: 'towns-large',
         points: [
           { name: 'Roçyáboe', coordinates: [-32.95, 9.76] },
           { name: 'Embua', coordinates: [-34.39, 11.85] },
@@ -134,7 +107,6 @@ function normalizeBounds(bounds: BoundsTuple): BoundsTuple {
 
 function boundsToImageCoordinates(bounds: BoundsTuple): ImageCoordinates {
   const [[top, left], [bottom, right]] = normalizeBounds(bounds)
-
   return [
     [left, top],
     [right, top],
@@ -242,23 +214,6 @@ function syncRegions(): void {
       map.setPaintProperty(layerId, 'raster-opacity', opacity)
     }
   }
-}
-
-function zoomToRegion(region: ManagedRegion): void {
-  if (!map) return
-
-  const [[top, left], [bottom, right]] = normalizeBounds(region.bounds)
-
-  map.fitBounds(
-    [
-      [left, bottom],
-      [right, top],
-    ],
-    {
-      padding: 24,
-      duration: 500,
-    },
-  )
 }
 
 function syncAll(): void {
@@ -376,11 +331,7 @@ onMounted(() => {
 
   map = new maplibregl.Map({
     container: mapEl.value,
-    style: {
-      version: 8,
-      sources: {},
-      layers: [],
-    },
+    style: { version: 8, sources: {}, layers: [] },
     center: [0, 0],
     zoom: 3,
     minZoom: 2,
@@ -390,9 +341,7 @@ onMounted(() => {
   })
 
   map.on('style.load', () => {
-    map!.setProjection({
-      type: 'globe',
-    })
+    map!.setProjection({ type: 'globe' })
   })
 
   map.on('load', async () => {
@@ -441,15 +390,9 @@ onMounted(() => {
         }, 300) // match fade duration
       }
 
-      function handleSource(e: any) {
-        if (e.sourceId === 'world-high' && e.isSourceLoaded) {
-          map!.off('sourcedata', handleSource)
-          onHighResReady()
-        }
-      }
-
-      map!.on('sourcedata', handleSource)
-
+      // =========================
+      // RASTER REGIONS (unchanged)
+      // =========================
       for (const config of regionConfigs) {
         const region: ManagedRegion = {
           ...config,
@@ -472,94 +415,152 @@ onMounted(() => {
             type: 'raster',
             source: sourceId,
             paint: {
-              'raster-opacity': 0,
-              'raster-fade-duration': 0,
+              'raster-opacity': 1,
             },
-          })
-        }
-
-        for (const dataSource of region.dataSources ?? []) {
-          const dataSourceId = `region-data-src-${region.id}-${dataSource.id}`
-
-          map!.addSource(dataSourceId, {
-            type: 'geojson',
-            data: {
-              type: 'FeatureCollection',
-              features: dataSource.points.map((point) => ({
-                type: 'Feature',
-                properties: { name: point.name },
-                geometry: {
-                  type: 'Point',
-                  coordinates: point.coordinates,
-                },
-              })),
-            },
-          })
-
-          map!.addLayer({
-            id: `layer-${dataSourceId}`,
-            type: 'symbol',
-            source: dataSourceId,
-            layout: {
-              'text-field': ['get', 'name'],
-              'text-size': 20,
-              'text-anchor': 'right'
-            },
-            paint: {
-              'text-color': '#ffffff',
-              'text-halo-color': '#000000',
-              'text-halo-width': 2
-            }
           })
         }
 
         regions.value.push(region)
       }
+
+      // =========================
+      // BUILD LABEL DATA (NEW)
+      // =========================
+      const regionLabels: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: [],
+      }
+
+      const townsLarge: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: [],
+      }
+
+      for (const region of regions.value) {
+        const b = normalizeBounds(region.bounds)
+
+        // region label
+        regionLabels.features.push({
+          type: 'Feature',
+          properties: {
+            name: region.title,
+            priority: 1,
+          },
+          geometry: {
+            type: 'Point',
+            coordinates: [
+              b[0][1] + (b[1][1] - b[0][1]) / 2,
+              b[0][0] + (b[1][0] - b[0][0]) / 2,
+            ],
+          },
+        })
+
+        // towns
+        for (const ds of region.dataSources ?? []) {
+          if (ds.kind === 'towns-large') {
+            for (const p of ds.points) {
+              townsLarge.features.push({
+                type: 'Feature',
+                properties: {
+                  name: p.name,
+                  priority: 10,
+                },
+                geometry: {
+                  type: 'Point',
+                  coordinates: p.coordinates,
+                },
+              })
+            }
+          }
+        }
+      }
+
+      // =========================
+      // SOURCES (ONCE)
+      // =========================
+      map!.addSource('regions-labels', {
+        type: 'geojson',
+        data: regionLabels,
+      })
+
+      map!.addSource('towns-large', {
+        type: 'geojson',
+        data: townsLarge,
+      })
+
+      // =========================
+      // LAYERS (ORDER = PRIORITY)
+      // =========================
+
+      // regions (low priority)
+      map!.addLayer({
+        id: 'regions-labels-layer',
+        type: 'symbol',
+        source: 'regions-labels',
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-size': [
+            'interpolate', ['linear'], ['zoom'],
+            2, 12,
+            6, 18,
+            10, 32,
+            14, 64
+          ],
+          'text-variable-anchor': ['center', 'top', 'bottom', 'left', 'right'],
+          'text-radial-offset': 0.5,
+          'text-justify': 'auto',
+          'symbol-sort-key': ['get', 'priority'],
+        },
+        paint: {
+          'text-color': '#fff',
+          'text-halo-color': '#000',
+          'text-halo-width': 2,
+        },
+      })
+
+      // towns (high priority)
+      map!.addLayer({
+        id: 'towns-large-layer',
+        type: 'symbol',
+        source: 'towns-large',
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-size': [
+            'interpolate', ['linear'], ['zoom'],
+            2, 8,
+            6, 14,
+            10, 24,
+            14, 40
+          ],
+          'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
+          'text-radial-offset': 0.6,
+          'text-justify': 'auto',
+          'symbol-sort-key': ['get', 'priority'],
+        },
+        paint: {
+          'text-color': '#fff',
+          'text-halo-color': '#000',
+          'text-halo-width': 2,
+        },
+      })
       syncAll()
     } catch (error) {
-      console.error('Failed to initialize warped map sources:', error)
+      console.error('Failed to initialize map sources:', error)
     }
   })
 
-  map.on('mousemove', (e) => {
-    cursorCoords.value = {
-      x: e.lngLat.lng,
-      y: e.lngLat.lat,
-    }
+  map!.on('zoom', () => {
+    zoomCurrent.value = map!.getZoom()
   })
-
-  map.on('zoom', () => {
-    if (!map) return
-    zoomCurrent.value = map.getZoom()
-    syncRegions()
-  })
-
-  map.on('move', syncRegions)
 })
 
 onBeforeUnmount(() => {
   map?.remove()
   map = null
-  warpedImageUrlCache.clear()
 })
 </script>
 
 <template>
-  <div v-if="props.dev" class="toolbar">
-
-    <div>
-      {{
-        cursorCoords
-          ? `Cursor: (x: ${cursorCoords.x.toFixed(4)}, y: ${cursorCoords.y.toFixed(4)})`
-          : 'Move cursor over map'
-      }}
-    </div>
-
-    <div>
-      Zoom: {{ zoomCurrent.toFixed(2) }}
-    </div>
-  </div>
-
   <div class="fantasy-map-root">
     <div ref="mapEl" class="fantasy-map" />
   </div>
@@ -570,26 +571,9 @@ onBeforeUnmount(() => {
   width: 100vw;
   height: 100vh;
 }
-
 .fantasy-map {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   background: #111;
-}
-
-.toolbar {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.toolbar-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-:deep(.maplibregl-canvas) {
-  outline: none;
 }
 </style>

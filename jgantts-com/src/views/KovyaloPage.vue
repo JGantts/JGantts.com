@@ -5,6 +5,13 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 
 const props = defineProps<{ dev?: boolean }>()
 
+const SAVE_KEY = 'fantasy-map-state'
+
+type MapSaveState = {
+  center: [number, number]
+  zoom: number
+}
+
 type BoundsTuple = [[number, number], [number, number]]
 
 type RegionLayerConfig = {
@@ -179,6 +186,7 @@ function shouldRegionBackgroundBeVisible(
 let syncScheduled = false
 
 function requestSync() {
+  
   if (syncScheduled) return
   syncScheduled = true
 
@@ -338,14 +346,43 @@ async function addWarpedImageSource(
   })
 }
 
+let saveTimeout: number | null = null
+
+function saveMapState() {
+  if (!map) return
+
+  const state: MapSaveState = {
+    center: [map.getCenter().lng, map.getCenter().lat],
+    zoom: map.getZoom(),
+  }
+
+  localStorage.setItem(SAVE_KEY, JSON.stringify(state))
+}
+
+function scheduleSave() {
+  if (saveTimeout) window.clearTimeout(saveTimeout)
+
+  saveTimeout = window.setTimeout(() => {
+    saveMapState()
+  }, 200)
+}
+
 onMounted(() => {
   if (!mapEl.value) return
+
+  const saved = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null') as MapSaveState | null
+    } catch {
+      return null
+    }
+  })()
 
   map = new maplibregl.Map({
     container: mapEl.value,
     style: { version: 8, sources: {}, layers: [] },
-    center: [0, 0],
-    zoom: 3,
+    center: saved?.center ?? [0, 0],
+    zoom: saved?.zoom ?? 3,
     minZoom: 2,
     maxZoom: 12,
     attributionControl: false,
@@ -604,11 +641,13 @@ onMounted(() => {
   map.on('mousemove', (e) => {
     updateMouseOnMove(e)
     requestSync()
+    scheduleSave()
   })
 
   map!.on('zoom', () => {
     updateOnZoom()
     requestSync()
+    scheduleSave()
   })
 
   updateMouseOnMove()

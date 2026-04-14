@@ -89,10 +89,13 @@ const regionConfigs: RegionConfig[] = [
       {
         kind: 'towns',
         points: [
-          { name: 'Roçyáboe', coordinates: [-32.95, 9.76], population: 1000 },
-          { name: 'Embua', coordinates: [-34.39, 11.85], population: 2000 },
-          { name: 'Sáelo', coordinates: [-34.05, 13.51], population: 1500 },
+          { name: 'Roçyáboe', coordinates: [-32.95, 9.76], population: 2500 },
+          { name: 'Embua', coordinates: [-34.39, 11.85], population: 20000 },
+          { name: 'Sáelo', coordinates: [-34.05, 13.51], population: 100 },
           { name: 'Tíe\'er', coordinates: [-33.52, 11.25], population: 800 },
+          { name: 'Çabuóe', coordinates: [-34.18, 12.21], population: 200 },
+          { name: 'Uómby', coordinates: [-33.47, 12.27], population: 200 },
+          { name: 'Ual', coordinates: [-34.73, 11.48], population: 10 },
         ],
       },
     ],

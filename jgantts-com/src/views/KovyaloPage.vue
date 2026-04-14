@@ -25,6 +25,10 @@ type RegionConfig = {
   fadeRange?: number
   parentId?: string | null
   layers: RegionLayerConfig[]
+  dataSources?: {
+    id: string
+    points: { name: string; coordinates: [number, number] }[]
+  }[]
 }
 
 type ManagedRegion = RegionConfig & {
@@ -43,9 +47,6 @@ let map: MapLibreMap | null = null
 
 const cursorCoords = ref<{ x: number; y: number } | null>(null)
 const zoomCurrent = ref(0)
-
-const selectedRegionId = ref<string | null>(null)
-const selectedEdge = ref<EdgeKey | null>(null)
 
 const regionOverlayOpacity = computed(() => (props.dev ? 0.5 : 1))
 const regions = shallowRef<ManagedRegion[]>([])
@@ -109,6 +110,15 @@ const regionConfigs: RegionConfig[] = [
         imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/borders.png',
       },
     ],
+    dataSources: [
+      {
+        id: 'towns',
+        points: [
+          { name: 'Roçyáboe', coordinates: [-32.95, 9.76] },
+          { name: 'Embua', coordinates: [-34.39, 11.85] },
+        ],
+      },
+    ],
   },
 ]
 
@@ -165,19 +175,27 @@ function shouldRegionBackgroundBeVisible(region: RegionConfig): boolean {
   const screenBounds = map.getBounds()
   const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
 
-  const percentageOfScreen = 0.75
+  const percentageOfScreenMin = 0.75
+  const percentageOfScreenMax = 1.50
 
-  const regionWidthIsLargeComparedToScreen = (
-    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * percentageOfScreen)
-  )
+  const regionWidthIsLargeEnoughComparedToScreen = () => { return (
+    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * percentageOfScreenMin)
+  ) }
 
-  if (regionWidthIsLargeComparedToScreen) return true
-
-  const regionHeightIsLargeComparedToScreen = (
-    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * percentageOfScreen)
-  )
+  const regionHeightIsLargeEnoughComparedToScreen = () => { return (
+    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * percentageOfScreenMin)
+  ) }
   
-  if (regionHeightIsLargeComparedToScreen) return true
+  const regionWidthIsToLargeComparedToScreen = () => { return (
+    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * percentageOfScreenMax)
+  ) }
+
+  const regionHeightIsToLargeComparedToScreen = () => { return (
+    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * percentageOfScreenMax)
+  ) }
+
+  if (regionWidthIsLargeEnoughComparedToScreen() && !regionWidthIsToLargeComparedToScreen()) return true
+  if (regionHeightIsLargeEnoughComparedToScreen() && !regionHeightIsToLargeComparedToScreen()) return true
 
   return false
 }
@@ -460,10 +478,43 @@ onMounted(() => {
           })
         }
 
+        for (const dataSource of region.dataSources ?? []) {
+          const dataSourceId = `region-data-src-${region.id}-${dataSource.id}`
+
+          map!.addSource(dataSourceId, {
+            type: 'geojson',
+            data: {
+              type: 'FeatureCollection',
+              features: dataSource.points.map((point) => ({
+                type: 'Feature',
+                properties: { name: point.name },
+                geometry: {
+                  type: 'Point',
+                  coordinates: point.coordinates,
+                },
+              })),
+            },
+          })
+
+          map!.addLayer({
+            id: `layer-${dataSourceId}`,
+            type: 'symbol',
+            source: dataSourceId,
+            layout: {
+              'text-field': ['get', 'name'],
+              'text-size': 20,
+              'text-anchor': 'right'
+            },
+            paint: {
+              'text-color': '#ffffff',
+              'text-halo-color': '#000000',
+              'text-halo-width': 2
+            }
+          })
+        }
+
         regions.value.push(region)
       }
-
-      selectedRegionId.value = regions.value[0]?.id ?? null
       syncAll()
     } catch (error) {
       console.error('Failed to initialize warped map sources:', error)
@@ -472,8 +523,8 @@ onMounted(() => {
 
   map.on('mousemove', (e) => {
     cursorCoords.value = {
-      x: Math.round(e.lngLat.lng),
-      y: Math.round(e.lngLat.lat),
+      x: e.lngLat.lng,
+      y: e.lngLat.lat,
     }
   })
 
@@ -495,26 +546,11 @@ onBeforeUnmount(() => {
 
 <template>
   <div v-if="props.dev" class="toolbar">
-    <label class="toolbar-row">
-      Region
-      <select
-        :value="selectedRegionId ?? ''"
-        @change="selectedRegionId = ($event.target as HTMLSelectElement).value"
-      >
-        <option
-          v-for="region in regions"
-          :key="region.id"
-          :value="region.id"
-        >
-          {{ region.title }}
-        </option>
-      </select>
-    </label>
 
     <div>
       {{
         cursorCoords
-          ? `Cursor: (x: ${cursorCoords.x}, y: ${cursorCoords.y})`
+          ? `Cursor: (x: ${cursorCoords.x.toFixed(4)}, y: ${cursorCoords.y.toFixed(4)})`
           : 'Move cursor over map'
       }}
     </div>

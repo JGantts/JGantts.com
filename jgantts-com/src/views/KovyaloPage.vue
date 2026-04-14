@@ -138,8 +138,6 @@ let allTowns = regionConfigs.reduce<Town[]>(
   []
 )
 
-console.log(allTowns)
-
 const townIndex = new KDBush(allTowns.length)
 
 for (const town of allTowns) {
@@ -151,15 +149,7 @@ townIndex.finish()
 
 
 function getVisibleTowns(bounds: maplibregl.LngLatBounds) {
-  console.log(bounds.getWest())
-  console.log(bounds.getEast())
-
-  console.log(bounds.getSouth())
-  console.log(bounds.getNorth())
-
   const foundIds = townIndex.range(bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth());
-
-  console.log(foundIds)
 
   const foundItems = foundIds.map(i => allTowns[i]);
 
@@ -171,8 +161,6 @@ function computeVisiblePopulation() {
 
   const bounds = map.getBounds()
   const towns = getVisibleTowns(bounds)
-
-  console.log(towns)
 
   let total = 0
   for (const t of towns) {
@@ -457,44 +445,61 @@ function scheduleRecompute() {
     rafPending = false
     visiblePopulation.value = computeVisiblePopulation()
 
-      const newExpression = [
-    'interpolate', ['linear'],
-    [
-      '+',
+    let newExpression = [
+      'interpolate', ['linear'],
       [
-        'interpolate', ['linear'],
+        '+',
         [
-          '*',
+          'interpolate', ['linear'],
           [
-            'interpolate', ['linear'], ['get', 'population'],
-            10, 0.03,
-            100, 0.1,
-            1000, 0.2,
-            10000, 0.4,
-            100000, 0.7,
-            1000000, 1
+            '*',
+            [
+              'interpolate', ['linear'], ['get', 'population'],
+              10, 0.03,
+              100, 0.1,
+              1000, 0.2,
+              10000, 0.4,
+              100000, 0.7,
+              1000000, 1
+            ],
+            ['literal', visiblePopulation.value]
           ],
-          ['literal', 1 / visiblePopulation.value]
+          0, 1,
+          0.1, 10,
+          0.2, 10,
+          0.5, 100,
+          1, 1000
         ],
-        0, 1,
-        1, 12
+        [
+          'interpolate', ['linear'],
+          ['/', ['get', 'population'], ['get', 'worldPopulation']],
+          0.000001, 0,
+          0.0001, 0.5,
+          0.01, 1
+        ]
       ],
-      [
-        'interpolate', ['linear'],
-        ['/', ['get', 'population'], ['get', 'worldPopulation']],
-        0.000001, 0,
-        0.0001, 0.5,
-        0.01, 1
-      ]
-    ],
-    0, 10,
-    2, 40
-  ]
+      0, 10,
+      2, 40
+    ]
+
+    newExpression = [
+      'interpolate', ['linear'],
+      visiblePopulation.value,
+      0, 8,
+      100, 10,
+      1000, 20,
+      10000, 36,
+
+    ]
 
   console.log(visiblePopulation.value)
+  console.log(newExpression)
 
   try {
-    if (!map.getLayer('towns-layer')) return
+    if (!map.getLayer('towns-layer')) {
+      console.warn('Failed to update text-size dynamically')
+      return
+    }
     map.setLayoutProperty('towns-layer', 'text-size', newExpression)
   } catch (e) {
     console.warn('Failed to update text-size dynamically', e)

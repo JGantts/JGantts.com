@@ -228,52 +228,6 @@ function requestSync() {
   })
 }
 
-
-
-function remapEquirectToMercator(
-  srcCtx: CanvasRenderingContext2D,
-  dstCtx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-): void {
-  const srcImage = srcCtx.getImageData(0, 0, width, height)
-  const dstImage = dstCtx.createImageData(width, height)
-
-  const src = srcImage.data
-  const dst = dstImage.data
-
-  const maxLat = polarExtents
-  const maxMerc = Math.log(Math.tan(Math.PI / 4 + (maxLat * Math.PI / 180) / 2))
-
-  function mercatorVToSourceY(vMerc: number): number {
-    const yMerc = (1 - 2 * vMerc) * maxMerc
-    const latRad = 2 * Math.atan(Math.exp(yMerc)) - Math.PI / 2
-    const latDeg = (latRad * 180) / Math.PI
-    const vEq = (90 - latDeg) / 180
-    return vEq * (height - 1)
-  }
-
-  for (let y = 0; y < height; y++) {
-    const vMerc = y / (height - 1)
-    const srcY = mercatorVToSourceY(vMerc)
-    const y0 = Math.floor(srcY)
-    const y1 = Math.min(y0 + 1, height - 1)
-    const t = srcY - y0
-
-    for (let x = 0; x < width; x++) {
-      const iDst = (y * width + x) * 4
-      const i0 = (y0 * width + x) * 4
-      const i1 = (y1 * width + x) * 4
-
-      for (let c = 0; c < 4; c++) {
-        dst[iDst + c] = Math.round(src[i0 + c] * (1 - t) + src[i1 + c] * t)
-      }
-    }
-  }
-
-  dstCtx.putImageData(dstImage, 0, 0)
-}
-
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -309,6 +263,50 @@ async function createMercatorWarpedImageUrl(url: string): Promise<string> {
     const dstCtx = dstCanvas.getContext('2d')
     if (!dstCtx) {
       throw new Error(`Could not get 2D context for destination canvas: ${url}`)
+    }
+
+    function remapEquirectToMercator(
+      srcCtx: CanvasRenderingContext2D,
+      dstCtx: CanvasRenderingContext2D,
+      width: number,
+      height: number,
+    ): void {
+      const srcImage = srcCtx.getImageData(0, 0, width, height)
+      const dstImage = dstCtx.createImageData(width, height)
+
+      const src = srcImage.data
+      const dst = dstImage.data
+
+      const maxLat = polarExtents
+      const maxMerc = Math.log(Math.tan(Math.PI / 4 + (maxLat * Math.PI / 180) / 2))
+
+      function mercatorVToSourceY(vMerc: number): number {
+        const yMerc = (1 - 2 * vMerc) * maxMerc
+        const latRad = 2 * Math.atan(Math.exp(yMerc)) - Math.PI / 2
+        const latDeg = (latRad * 180) / Math.PI
+        const vEq = (90 - latDeg) / 180
+        return vEq * (height - 1)
+      }
+
+      for (let y = 0; y < height; y++) {
+        const vMerc = y / (height - 1)
+        const srcY = mercatorVToSourceY(vMerc)
+        const y0 = Math.floor(srcY)
+        const y1 = Math.min(y0 + 1, height - 1)
+        const t = srcY - y0
+
+        for (let x = 0; x < width; x++) {
+          const iDst = (y * width + x) * 4
+          const i0 = (y0 * width + x) * 4
+          const i1 = (y1 * width + x) * 4
+
+          for (let c = 0; c < 4; c++) {
+            dst[iDst + c] = Math.round(src[i0 + c] * (1 - t) + src[i1 + c] * t)
+          }
+        }
+      }
+
+      dstCtx.putImageData(dstImage, 0, 0)
     }
 
     remapEquirectToMercator(srcCtx, dstCtx, img.width, img.height)

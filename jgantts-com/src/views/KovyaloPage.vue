@@ -107,7 +107,7 @@ const regionConfigs: RegionConfig[] = [
         kind: 'towns',
         points: [
           { name: 'Roçyáboe', coordinates: [-32.95, 9.76], population: 2500 },
-          { name: 'Embua', coordinates: [-34.39, 11.85], population: 20000 },
+          { name: 'Embua', coordinates: [-34.39, 11.85], population: 5200 },
           { name: 'Sáelo', coordinates: [-34.05, 13.51], population: 100 },
           { name: 'Tíe\'er', coordinates: [-33.52, 11.25], population: 800 },
           { name: 'Çabuóe', coordinates: [-34.18, 12.21], population: 200 },
@@ -448,62 +448,30 @@ function scheduleRecompute() {
     let newExpression = [
       'interpolate', ['linear'],
       [
-        '+',
+        '*',
         [
-          'interpolate', ['linear'],
-          [
-            '*',
-            [
-              'interpolate', ['linear'], ['get', 'population'],
-              10, 0.03,
-              100, 0.1,
-              1000, 0.2,
-              10000, 0.4,
-              100000, 0.7,
-              1000000, 1
-            ],
-            ['literal', visiblePopulation.value]
-          ],
-          0, 1,
-          0.1, 10,
-          0.2, 10,
-          0.5, 100,
-          1, 1000
+          '/',
+          ['get', 'population'],
+          visiblePopulation.value
         ],
-        [
-          'interpolate', ['linear'],
-          ['/', ['get', 'population'], ['get', 'worldPopulation']],
-          0.000001, 0,
-          0.0001, 0.5,
-          0.01, 1
-        ]
+        ['literal', 1_000]
       ],
-      0, 10,
-      2, 40
+      0, 14,
+      1, 16,
+      10, 18,
+      100, 36,
+      1_000, 72,
     ]
 
-    newExpression = [
-      'interpolate', ['linear'],
-      visiblePopulation.value,
-      0, 8,
-      100, 10,
-      1000, 20,
-      10000, 36,
-
-    ]
-
-  console.log(visiblePopulation.value)
-  console.log(newExpression)
-
-  try {
-    if (!map.getLayer('towns-layer')) {
-      console.warn('Failed to update text-size dynamically')
-      return
+    try {
+      if (!map.getLayer('towns-layer')) {
+        console.warn('Failed to update text-size dynamically', 'towns-layer not found')
+        return
+      }
+      map.setLayoutProperty('towns-layer', 'text-size', newExpression)
+    } catch (e) {
+      console.warn('Failed to update text-size dynamically', e)
     }
-    map.setLayoutProperty('towns-layer', 'text-size', newExpression)
-  } catch (e) {
-    console.warn('Failed to update text-size dynamically', e)
-  }
   })
 }
 
@@ -636,13 +604,7 @@ onMounted(() => {
           properties: {
             name: region.title,
             priority: 1,
-            textSize: [
-              'interpolate', ['linear'], ['zoom'],
-              2, 10,
-              6, 16,
-              10, 28,
-              14, 48
-            ],
+            textSize: 24,
           },
           geometry: {
             type: 'Point',
@@ -663,7 +625,6 @@ onMounted(() => {
                   name: p.name,
                   priority: 1,
                   population: p.population,
-                  worldPopulation: 1_000_000,
                 },
                 geometry: {
                   type: 'Point',
@@ -741,6 +702,11 @@ onMounted(() => {
     } catch (error) {
       console.error('Failed to initialize map sources:', error)
     }
+
+    updateMouseOnMove()
+    updateOnZoom()
+    requestSync()
+    scheduleRecompute()
   })
 
   function updateMouseOnMove(e: maplibregl.MapMouseEvent|null = null) {
@@ -772,12 +738,6 @@ onMounted(() => {
     scheduleSave()
     scheduleRecompute()
   })
-
-  updateMouseOnMove()
-  updateOnZoom()
-  requestSync()
-  scheduleRecompute()
-
 })
 
 onBeforeUnmount(() => {

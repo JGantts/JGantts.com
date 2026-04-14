@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, shallowRef } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import KDBush from 'kdbush';
 
 const props = defineProps<{ dev?: boolean }>()
 
@@ -20,6 +21,15 @@ type RegionLayerConfig = {
 }
 
 type DataSourceKind = 'towns'
+
+type TownIndexItem = {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+  name: string
+  population: number
+}
 
 type RegionConfig = {
   id: string
@@ -108,6 +118,69 @@ const regionConfigs: RegionConfig[] = [
     ],
   },
 ]
+
+type Town = {
+  name: string
+  coordinates: [number, number]
+  population: number
+}
+
+let allTowns = regionConfigs.reduce<Town[]>(
+  (prev, curr) => {
+    return [
+      ...prev,
+      ...((curr.dataSources ?? []).reduce<Town[]>((acc, d) => {
+        if (d.kind === 'towns') acc.push(...d.points)
+        return acc
+      }, []))
+    ]
+  },
+  []
+)
+
+console.log(allTowns)
+
+const townIndex = new KDBush(allTowns.length)
+
+for (const town of allTowns) {
+  const [lat, lng] = town.coordinates
+  townIndex.add(lat, lng)
+}
+
+townIndex.finish()
+
+
+function getVisibleTowns(bounds: maplibregl.LngLatBounds) {
+  console.log(bounds.getWest())
+  console.log(bounds.getEast())
+
+  console.log(bounds.getSouth())
+  console.log(bounds.getNorth())
+
+  const foundIds = townIndex.range(bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth());
+
+  console.log(foundIds)
+
+  const foundItems = foundIds.map(i => allTowns[i]);
+
+  return foundItems
+}
+
+function computeVisiblePopulation() {
+  if (!map) return 1
+
+  const bounds = map.getBounds()
+  const towns = getVisibleTowns(bounds)
+
+  console.log(towns)
+
+  let total = 0
+  for (const t of towns) {
+    total += t.population
+  }
+
+  return total || 1
+}
 
 const warpedImageUrlCache = new Map<string, Promise<string>>()
 
@@ -370,6 +443,66 @@ function scheduleSave() {
   }, 200)
 }
 
+let visiblePopulation = ref(1)
+
+let rafPending = false
+
+function scheduleRecompute() {
+  if (rafPending) return
+  rafPending = true
+
+  requestAnimationFrame(() => {
+    if (!map) return
+    map = map!
+    rafPending = false
+    visiblePopulation.value = computeVisiblePopulation()
+
+      const newExpression = [
+    'interpolate', ['linear'],
+    [
+      '+',
+      [
+        'interpolate', ['linear'],
+        [
+          '*',
+          [
+            'interpolate', ['linear'], ['get', 'population'],
+            10, 0.03,
+            100, 0.1,
+            1000, 0.2,
+            10000, 0.4,
+            100000, 0.7,
+            1000000, 1
+          ],
+          ['literal', 1 / visiblePopulation.value]
+        ],
+        0, 1,
+        1, 12
+      ],
+      [
+        'interpolate', ['linear'],
+        ['/', ['get', 'population'], ['get', 'worldPopulation']],
+        0.000001, 0,
+        0.0001, 0.5,
+        0.01, 1
+      ]
+    ],
+    0, 10,
+    2, 40
+  ]
+
+  console.log(visiblePopulation.value)
+
+  try {
+    if (!map.getLayer('towns-layer')) return
+    map.setLayoutProperty('towns-layer', 'text-size', newExpression)
+  } catch (e) {
+    console.warn('Failed to update text-size dynamically', e)
+  }
+  })
+}
+
+
 onMounted(() => {
   if (!mapEl.value) return
 
@@ -445,6 +578,7 @@ onMounted(() => {
       // =========================
       // RASTER REGIONS (unchanged)
       // =========================
+
       for (const config of regionConfigs) {
         const region: ManagedRegion = {
           ...config,
@@ -483,7 +617,7 @@ onMounted(() => {
         features: [],
       }
 
-      const townsLarge: GeoJSON.FeatureCollection = {
+      const towns: GeoJSON.FeatureCollection = {
         type: 'FeatureCollection',
         features: [],
       }
@@ -518,7 +652,7 @@ onMounted(() => {
         for (const ds of region.dataSources ?? []) {
           if (ds.kind === 'towns') {
             for (const p of ds.points) {
-              townsLarge.features.push({
+              towns.features.push({
                 type: 'Feature',
                 properties: {
                   name: p.name,
@@ -544,9 +678,9 @@ onMounted(() => {
         data: regionLabels,
       })
 
-      map!.addSource('towns-large', {
+      map!.addSource('towns', {
         type: 'geojson',
-        data: townsLarge,
+        data: towns,
       })
 
       // =========================
@@ -581,36 +715,12 @@ onMounted(() => {
 
       // towns (high priority)
       map!.addLayer({
-        id: 'towns-large-layer',
+        id: 'towns-layer',
         type: 'symbol',
-        source: 'towns-large',
+        source: 'towns',
         layout: {
           'text-field': ['get', 'name'],
-          'text-size': [
-  'interpolate', ['linear'], [
-  '+',
-
-  // local importance
-  [
-    'interpolate', ['linear'], ['get', 'population'],
-    1000, 0.2,
-    10000, 0.4,
-    100000, 0.7,
-    1000000, 1
-  ],
-
-  // relative importance
-  [
-    'interpolate', ['linear'],
-    ['/', ['get', 'population'], ['get', 'worldPopulation']],
-    0.000001, 0,
-    0.0001, 0.5,
-    0.01, 1
-  ]
-],
-  0, 10,
-  2, 40
-],
+          'text-size': 18,
           'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
           'text-radial-offset': 0.6,
           'text-justify': 'auto',
@@ -629,8 +739,8 @@ onMounted(() => {
   })
 
   function updateMouseOnMove(e: maplibregl.MapMouseEvent|null = null) {
-    if (!e) return
-    e = e!
+    e = e as maplibregl.MapMouseEvent | null
+    if (!e) { return }
     cursorCoords.value = {
       x: e.lngLat.lng,
       y: e.lngLat.lat,
@@ -642,20 +752,26 @@ onMounted(() => {
   }
 
   map.on('mousemove', (e) => {
-    updateMouseOnMove(e)
+    if (e) { updateMouseOnMove(e) }
+  })
+
+  map.on('move', () => {
     requestSync()
     scheduleSave()
+    scheduleRecompute()
   })
 
   map!.on('zoom', () => {
     updateOnZoom()
     requestSync()
     scheduleSave()
+    scheduleRecompute()
   })
 
   updateMouseOnMove()
   updateOnZoom()
   requestSync()
+  scheduleRecompute()
 
 })
 
@@ -666,22 +782,22 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <div>
     <div v-if="props.dev" class="toolbar">
-
-    <div>
-      {{
-        cursorCoords
-          ? `Cursor: (x: ${cursorCoords.x.toFixed(4)}, y: ${cursorCoords.y.toFixed(4)})`
-          : 'Move cursor over map'
-      }}
+      <div>
+        {{
+          cursorCoords
+            ? `Cursor: (x: ${cursorCoords.x.toFixed(4)}, y: ${cursorCoords.y.toFixed(4)})`
+            : 'Move cursor over map'
+        }}
+      </div>
+      <div>
+        Zoom: {{ zoomCurrent.toFixed(2) }}
+      </div>
     </div>
-
-    <div>
-      Zoom: {{ zoomCurrent.toFixed(2) }}
+    <div class="fantasy-map-root">
+      <div ref="mapEl" class="fantasy-map" />
     </div>
-  </div>
-  <div class="fantasy-map-root">
-    <div ref="mapEl" class="fantasy-map" />
   </div>
 </template>
 

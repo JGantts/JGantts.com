@@ -549,9 +549,33 @@ onMounted(() => {
     }
   })
 
-  map!.on('zoom', () => {
+  function updateMouseOnMove(e: maplibregl.MapMouseEvent|undefined) {
+    if (!e) return
+    e = e!
+    cursorCoords.value = {
+      x: e.lngLat.lng,
+      y: e.lngLat.lat,
+    }
+  }
+
+  function updateOnZoom() {
     zoomCurrent.value = map!.getZoom()
+  }
+
+  map.on('mousemove', (e) => {
+    updateMouseOnMove(e)
+    syncRegions()
   })
+
+  map!.on('zoom', () => {
+    updateOnZoom()
+    syncRegions()
+  })
+
+  updateMouseOnMove()
+  updateOnZoom()
+  syncRegions()
+
 })
 
 onBeforeUnmount(() => {
@@ -561,6 +585,20 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+    <div v-if="props.dev" class="toolbar">
+
+    <div>
+      {{
+        cursorCoords
+          ? `Cursor: (x: ${cursorCoords.x.toFixed(4)}, y: ${cursorCoords.y.toFixed(4)})`
+          : 'Move cursor over map'
+      }}
+    </div>
+
+    <div>
+      Zoom: {{ zoomCurrent.toFixed(2) }}
+    </div>
+  </div>
   <div class="fantasy-map-root">
     <div ref="mapEl" class="fantasy-map" />
   </div>

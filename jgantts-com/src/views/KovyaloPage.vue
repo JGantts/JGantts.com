@@ -149,8 +149,8 @@ function shouldRegionBackgroundBeVisible(region: RegionConfig): boolean {
   const screenBounds = map.getBounds()
   const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
 
-  const percentageOfScreenMin = 0.75
-  const percentageOfScreenMax = 1.50
+  const percentageOfScreenMin = 0.6
+  const percentageOfScreenMax = 1.4
 
   const regionWidthIsLargeEnoughComparedToScreen = () => { return (
     (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * percentageOfScreenMin)

@@ -12,7 +12,7 @@ type RegionLayerConfig = {
   imageUrl: string
 }
 
-type DataSourceKind = 'towns-large'
+type DataSourceKind = 'towns'
 
 type RegionConfig = {
   id: string
@@ -24,7 +24,7 @@ type RegionConfig = {
   layers: RegionLayerConfig[]
   dataSources?: {
     kind: DataSourceKind
-    points: { name: string; coordinates: [number, number] }[]
+    points: { name: string; coordinates: [number, number], population: number }[]
   }[]
 }
 
@@ -87,10 +87,12 @@ const regionConfigs: RegionConfig[] = [
     ],
     dataSources: [
       {
-        kind: 'towns-large',
+        kind: 'towns',
         points: [
-          { name: 'Roçyáboe', coordinates: [-32.95, 9.76] },
-          { name: 'Embua', coordinates: [-34.39, 11.85] },
+          { name: 'Roçyáboe', coordinates: [-32.95, 9.76], population: 1000 },
+          { name: 'Embua', coordinates: [-34.39, 11.85], population: 2000 },
+          { name: 'Sáelo', coordinates: [-34.05, 13.51], population: 1500 },
+          { name: 'Tíe\'er', coordinates: [-33.52, 11.25], population: 800 },
         ],
       },
     ],
@@ -143,29 +145,29 @@ function isRegionInView(region: RegionConfig): boolean {
   )
 }
 
-function shouldRegionBackgroundBeVisible(region: RegionConfig): boolean {
-  if (!map) return false
+function shouldRegionBackgroundBeVisible(
+  region: RegionConfig,
+  screenBounds: maplibregl.LngLatBounds,
+  percentMin: number = 0.6,
+  percentMax: number = 1.4,
+): boolean {
 
-  const screenBounds = map.getBounds()
   const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
 
-  const percentageOfScreenMin = 0.6
-  const percentageOfScreenMax = 1.4
-
   const regionWidthIsLargeEnoughComparedToScreen = () => { return (
-    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * percentageOfScreenMin)
+    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * percentMin)
   ) }
 
   const regionHeightIsLargeEnoughComparedToScreen = () => { return (
-    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * percentageOfScreenMin)
+    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * percentMin)
   ) }
   
   const regionWidthIsToLargeComparedToScreen = () => { return (
-    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * percentageOfScreenMax)
+    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * percentMax)
   ) }
 
   const regionHeightIsToLargeComparedToScreen = () => { return (
-    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * percentageOfScreenMax)
+    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * percentMax)
   ) }
 
   if (regionWidthIsLargeEnoughComparedToScreen() && !regionWidthIsToLargeComparedToScreen()) return true
@@ -199,7 +201,7 @@ function requestSync() {
       const shouldBeVisible = visibleIds.has(region.id)
       region.active = shouldBeVisible
 
-      const backgroundShouldBeVisible = shouldRegionBackgroundBeVisible(region)
+      const backgroundShouldBeVisible = shouldRegionBackgroundBeVisible(region, map.getBounds())
 
       for (const layer of region.layers) {
         const layerId = `region-${region.id}-${layer.id}`
@@ -455,6 +457,13 @@ onMounted(() => {
           properties: {
             name: region.title,
             priority: 1,
+            textSize: [
+              'interpolate', ['linear'], ['zoom'],
+              2, 10,
+              6, 16,
+              10, 28,
+              14, 48
+            ],
           },
           geometry: {
             type: 'Point',
@@ -467,13 +476,15 @@ onMounted(() => {
 
         // towns
         for (const ds of region.dataSources ?? []) {
-          if (ds.kind === 'towns-large') {
+          if (ds.kind === 'towns') {
             for (const p of ds.points) {
               townsLarge.features.push({
                 type: 'Feature',
                 properties: {
                   name: p.name,
-                  priority: 10,
+                  priority: 1,
+                  population: p.population,
+                  worldPopulation: 1_000_000,
                 },
                 geometry: {
                   type: 'Point',
@@ -510,11 +521,11 @@ onMounted(() => {
         layout: {
           'text-field': ['get', 'name'],
           'text-size': [
-            'interpolate', ['linear'], ['zoom'],
-            2, 12,
-            6, 18,
-            10, 32,
-            14, 64
+              'interpolate', ['linear'], ['zoom'],
+                2, 10,
+                6, 16,
+                10, 28,
+                14, 48
           ],
           'text-variable-anchor': ['center', 'top', 'bottom', 'left', 'right'],
           'text-radial-offset': 0.5,
@@ -536,12 +547,30 @@ onMounted(() => {
         layout: {
           'text-field': ['get', 'name'],
           'text-size': [
-            'interpolate', ['linear'], ['zoom'],
-            2, 8,
-            6, 14,
-            10, 24,
-            14, 40
-          ],
+  'interpolate', ['linear'], [
+  '+',
+
+  // local importance
+  [
+    'interpolate', ['linear'], ['get', 'population'],
+    1000, 0.2,
+    10000, 0.4,
+    100000, 0.7,
+    1000000, 1
+  ],
+
+  // relative importance
+  [
+    'interpolate', ['linear'],
+    ['/', ['get', 'population'], ['get', 'worldPopulation']],
+    0.000001, 0,
+    0.0001, 0.5,
+    0.01, 1
+  ]
+],
+  0, 10,
+  2, 40
+],
           'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
           'text-radial-offset': 0.6,
           'text-justify': 'auto',
@@ -559,7 +588,7 @@ onMounted(() => {
     }
   })
 
-  function updateMouseOnMove(e: maplibregl.MapMouseEvent|null) {
+  function updateMouseOnMove(e: maplibregl.MapMouseEvent|null = null) {
     if (!e) return
     e = e!
     cursorCoords.value = {
@@ -582,7 +611,7 @@ onMounted(() => {
     requestSync()
   })
 
-  updateMouseOnMove(null)
+  updateMouseOnMove()
   updateOnZoom()
   requestSync()
 

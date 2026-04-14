@@ -82,6 +82,8 @@ const regionConfigs: RegionConfig[] = [
     layers: [
       { id: 'background', imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/background.png' },
       { id: 'base', imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/0.png' },
+      { id: 'rivers', imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/rivers.png' },
+      { id: 'borders', imageUrl: '/assets/kovyalo/map/kovyalo/ziemund/borders.png' },
     ],
     dataSources: [
       {

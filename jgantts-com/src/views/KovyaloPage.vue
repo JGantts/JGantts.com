@@ -467,11 +467,11 @@ function scheduleRecompute() {
     ]
 
     try {
-      if (!map.getLayer('towns-layer')) {
-        console.warn('Failed to update text-size dynamically', 'towns-layer not found')
+      if (!map.getLayer('towns-layer-labels')) {
+        console.warn('Failed to update text-size dynamically', 'towns-layer-labels not found')
         return
       }
-      map.setLayoutProperty('towns-layer', 'text-size', newExpression)
+      map.setLayoutProperty('towns-layer-labels', 'text-size', newExpression)
     } catch (e) {
       console.warn('Failed to update text-size dynamically', e)
     }
@@ -676,7 +676,7 @@ onMounted(() => {
 
       // towns (high priority)
       map!.addLayer({
-        id: 'towns-layer',
+        id: 'towns-layer-labels',
         type: 'symbol',
         source: 'towns',
         layout: {
@@ -693,6 +693,25 @@ onMounted(() => {
           'text-halo-width': 2,
         },
       })
+
+      // town dots
+      map!.addLayer({
+        id: 'towns-layer-dots',
+        type: 'circle',
+        source: 'towns',
+        paint: {
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            3, 1,
+            6, 3,
+            10, 6
+          ],
+          'circle-color': '#ffffff',
+          'circle-stroke-color': '#000000',
+          'circle-stroke-width': 1,
+        }
+      })
+
       requestSync()
     } catch (error) {
       console.error('Failed to initialize map sources:', error)

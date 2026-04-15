@@ -46,8 +46,8 @@
           { "name": "Karáe", "coordinates": [-33.92, 12.88], "population": 1300},
           { "name": "Cáezoe", "coordinates": [-35.357, 11.216], "population": 678},
           { "name": "Táza", "coordinates": [-34.847, 11.841], "population": 432},
-          { "name": "Zíety", "coordinates": [-35.708, 11.774], "population": 318},
-          { "name": "Yite", "coordinates": [-35.753, 11.928], "population": 402}
+          { "name": "Zíety", "coordinates": [-34.708, 11.774], "population": 318},
+          { "name": "Yiepá", "coordinates": [-34.753, 11.928], "population": 402}
         ]
       }
     ]

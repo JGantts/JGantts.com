@@ -40,7 +40,8 @@
           { "name": "Tíe'er", "coordinates": [-33.52, 11.25], "population": 800 },
           { "name": "Çabuóe", "coordinates": [-34.18, 12.21], "population": 200 },
           { "name": "Uómby", "coordinates": [-33.47, 12.27], "population": 200 },
-          { "name": "Ual", "coordinates": [-34.73, 11.48], "population": 10 }
+          { "name": "Ual", "coordinates": [-34.73, 11.48], "population": 10 },
+          { "name": "Sabóe", "coordinates": [-33.75, 12.82], "population": 1200}
         ]
       }
     ]

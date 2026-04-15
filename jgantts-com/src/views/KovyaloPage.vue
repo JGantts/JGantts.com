@@ -22,15 +22,6 @@ type RegionLayerConfig = {
 
 type DataSourceKind = 'towns'
 
-type TownIndexItem = {
-  minX: number
-  minY: number
-  maxX: number
-  maxY: number
-  name: string
-  population: number
-}
-
 type RegionConfig = {
   id: string
   title: string
@@ -45,7 +36,7 @@ type RegionConfig = {
   }[]
 }
 
-type ManagedRegion = RegionConfig & { active: boolean }
+type ManagedRegion = RegionConfig & { active: boolean, townsActive: boolean }
 
 type ImageCoordinates = [
   [number, number],
@@ -125,12 +116,21 @@ type Town = {
   population: number
 }
 
-let allTowns = regionConfigs.reduce<Town[]>(
+type TownPlusRegion = Town & { regionId: string }
+
+let allTowns = regionConfigs.reduce<TownPlusRegion[]>(
   (prev, curr) => {
     return [
       ...prev,
-      ...((curr.dataSources ?? []).reduce<Town[]>((acc, d) => {
-        if (d.kind === 'towns') acc.push(...d.points)
+      ...((curr.dataSources ?? []).reduce<TownPlusRegion[]>((acc, d) => {
+        if (d.kind === 'towns') acc.push(...d.points.map(town => { 
+          return {
+            name: town.name,
+            coordinates: town.coordinates,
+            population: town.population,
+            regionId: curr.id,
+          };
+        }))
         return acc
       }, []))
     ]
@@ -148,19 +148,23 @@ for (const town of allTowns) {
 townIndex.finish()
 
 
-function getVisibleTowns(bounds: maplibregl.LngLatBounds) {
+function getVisibleTownsInActiveRegions(bounds: maplibregl.LngLatBounds) {
   const foundIds = townIndex.range(bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth());
 
   const foundItems = foundIds.map(i => allTowns[i]);
 
-  return foundItems
+  const activeTowns = foundItems.filter(town => {
+    return getRegionById(town.regionId)?.townsActive
+  })
+
+  return activeTowns
 }
 
 function computeVisiblePopulation() {
   if (!map) return 1
 
   const bounds = map.getBounds()
-  const towns = getVisibleTowns(bounds)
+  const towns = getVisibleTownsInActiveRegions(bounds)
 
   let total = 0
   for (const t of towns) {
@@ -199,7 +203,7 @@ function isRegionInView(region: RegionConfig): boolean {
   if (!map) return false
 
   const screenBounds = map.getBounds()
-  const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
+  const [[regionTop, regionLeft], [regionBottom, regionRight]] = region.bounds
 
   const center = map.getCenter()
 
@@ -216,36 +220,51 @@ function isRegionInView(region: RegionConfig): boolean {
   )
 }
 
-function shouldRegionBackgroundBeVisible(
-  region: RegionConfig,
-  screenBounds: maplibregl.LngLatBounds,
-  percentMin: number = 0.6,
-  percentMax: number = 1.4,
-): boolean {
+const regionPercentMin: number = 0.6
+const regionPercentMax: number = 1.4
 
+function isRegionBigEnoughToShow(region: RegionConfig, screenBounds: maplibregl.LngLatBounds): boolean {
   const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
 
   const regionWidthIsLargeEnoughComparedToScreen = () => { return (
-    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * percentMin)
+    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * regionPercentMin)
   ) }
 
   const regionHeightIsLargeEnoughComparedToScreen = () => { return (
-    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * percentMin)
+    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * regionPercentMin)
   ) }
   
+  return regionWidthIsLargeEnoughComparedToScreen() || regionHeightIsLargeEnoughComparedToScreen()
+}
+
+function isRegionTooBigToShow(region: RegionConfig, screenBounds: maplibregl.LngLatBounds): boolean {
+  const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
+
   const regionWidthIsToLargeComparedToScreen = () => { return (
-    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * percentMax)
+    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * regionPercentMax)
   ) }
 
   const regionHeightIsToLargeComparedToScreen = () => { return (
-    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * percentMax)
+    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * regionPercentMax)
   ) }
-
-  if (regionWidthIsLargeEnoughComparedToScreen() && !regionWidthIsToLargeComparedToScreen()) return true
-  if (regionHeightIsLargeEnoughComparedToScreen() && !regionHeightIsToLargeComparedToScreen()) return true
-
-  return false
+  
+  return regionWidthIsToLargeComparedToScreen() || regionHeightIsToLargeComparedToScreen()
 }
+
+function shouldRegionBackgroundBeVisible(
+  region: RegionConfig,
+  screenBounds: maplibregl.LngLatBounds
+): boolean {
+  return isRegionBigEnoughToShow(region, screenBounds) && !isRegionTooBigToShow(region, screenBounds)
+}
+
+function shouldRegionTownsBeVisible(
+  region: RegionConfig,
+  screenBounds: maplibregl.LngLatBounds
+): boolean {
+  return isRegionBigEnoughToShow(region, screenBounds)
+}
+
 
 let syncScheduled = false
 
@@ -275,6 +294,10 @@ function requestSync() {
 
       const backgroundShouldBeVisible = shouldRegionBackgroundBeVisible(region, map.getBounds())
 
+      const townsVisible = shouldRegionTownsBeVisible(region, map.getBounds())
+      region.townsActive = shouldBeVisible && townsVisible
+
+      
       for (const layer of region.layers) {
         const layerId = `region-${region.id}-${layer.id}`
 
@@ -482,7 +505,7 @@ function updateVisibleTownSource() {
   if (!map) return
 
   const bounds = map.getBounds()
-  const visible = getVisibleTowns(bounds)
+  const visible = getVisibleTownsInActiveRegions(bounds)
 
   const data: GeoJSON.FeatureCollection = {
     type: 'FeatureCollection',
@@ -524,6 +547,10 @@ onMounted(() => {
     attributionControl: false,
     renderWorldCopies: false,
   })
+
+  if (props.dev) {
+    map!.getCanvas().style.cursor = 'crosshair'
+  }
 
   map.on('style.load', () => {
     map!.setProjection({ type: 'globe' })
@@ -572,6 +599,7 @@ onMounted(() => {
           ...config,
           bounds: normalizeBounds(config.bounds),
           active: false,
+          townsActive: false,
         }
 
         for (const layer of region.layers) {
@@ -674,26 +702,6 @@ onMounted(() => {
         },
       })
 
-      // towns (high priority)
-      map!.addLayer({
-        id: 'towns-layer-labels',
-        type: 'symbol',
-        source: 'towns',
-        layout: {
-          'text-field': ['get', 'name'],
-          'text-size': 18,
-          'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
-          'text-radial-offset': 0.6,
-          'text-justify': 'auto',
-          'symbol-sort-key': ['*', ['get', 'population'], ['literal', -1]],
-        },
-        paint: {
-          'text-color': '#fff',
-          'text-halo-color': '#000',
-          'text-halo-width': 2,
-        },
-      })
-
       // town dots
       map!.addLayer({
         id: 'towns-layer-dots',
@@ -701,15 +709,43 @@ onMounted(() => {
         source: 'towns',
         paint: {
           'circle-radius': [
-            'interpolate', ['linear'], ['zoom'],
-            3, 1,
-            6, 3,
-            10, 6
+            'interpolate', ['linear'], ['get', 'population'],
+            1, 2,
+            100, 3,
+            1000, 6
           ],
           'circle-color': '#ffffff',
           'circle-stroke-color': '#000000',
           'circle-stroke-width': 1,
         }
+      })
+
+      // towns
+      map!.addLayer({
+        id: 'towns-layer-labels',
+        type: 'symbol',
+        source: 'towns',
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-size': 18,
+          'text-variable-anchor': [
+            'top-left',
+            'top-right',
+            'bottom-left',
+            'bottom-right',
+            'left',
+            'right',
+            'bottom',
+            'top'
+          ],
+          'text-radial-offset': 0.25,
+          'symbol-sort-key': ['*', ['get', 'population'], ['literal', -1]],
+        },
+        paint: {
+          'text-color': '#fff',
+          'text-halo-color': '#000',
+          'text-halo-width': 2,
+        },
       })
 
       requestSync()

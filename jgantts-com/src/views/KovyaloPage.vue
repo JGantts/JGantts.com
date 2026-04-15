@@ -69,11 +69,17 @@ type Town = {
 
 type TownPlusRegion = Town & { regionId: string }
 
-const regionConfigs: RegionConfig[] = JSON.parse(
-  await (await fetch('/assets/kovyalo/geo-data/regions.json')).text()
-) as RegionConfig[]
+const regionConfigs = shallowRef<RegionConfig[]>([])
 
-let allTowns = regionConfigs.reduce<TownPlusRegion[]>(
+const townIndex = shallowRef<KDBush>()
+const allTowns = shallowRef<TownPlusRegion[]>([])
+
+async function initMapData() {
+  regionConfigs.value = JSON.parse(
+    await (await fetch('/assets/kovyalo/geo-data/regions.json')).text()
+  ) as RegionConfig[]
+
+  allTowns.value = regionConfigs.value.reduce<TownPlusRegion[]>(
   (prev, curr) => {
     return [
       ...prev,
@@ -93,20 +99,23 @@ let allTowns = regionConfigs.reduce<TownPlusRegion[]>(
   []
 )
 
-const townIndex = new KDBush(allTowns.length)
+townIndex.value = new KDBush(allTowns.value.length)
 
-for (const town of allTowns) {
+for (const town of allTowns.value) {
   const [lat, lng] = town.coordinates
-  townIndex.add(lat, lng)
+  townIndex.value.add(lat, lng)
 }
 
-townIndex.finish()
+townIndex.value.finish()
+}
 
 
 function getVisibleTownsInActiveRegions(bounds: maplibregl.LngLatBounds) {
-  const foundIds = townIndex.range(bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth());
+  if (!townIndex.value) return []
 
-  const foundItems = foundIds.map(i => allTowns[i]);
+  const foundIds = townIndex.value.range(bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth());
+
+  const foundItems = foundIds.map(i => allTowns.value[i]);
 
   const activeTowns = foundItems.filter(town => {
     return getRegionById(town.regionId)?.townsActive
@@ -484,6 +493,8 @@ function updateVisibleTownSource() {
 onMounted(() => {
   if (!mapEl.value) return
 
+  initMapData()
+
   const saved = (() => {
     try {
       return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null') as MapSaveState | null
@@ -512,6 +523,8 @@ onMounted(() => {
   })
 
   map.on('load', async () => {
+    await initMapData()
+
     try {
       await addWarpedImageSource(
         'world-lowrez',
@@ -549,7 +562,7 @@ onMounted(() => {
       // RASTER REGIONS (unchanged)
       // =========================
 
-      for (const config of regionConfigs) {
+      for (const config of regionConfigs.value) {
         const region: ManagedRegion = {
           ...config,
           bounds: normalizeBounds(config.bounds),

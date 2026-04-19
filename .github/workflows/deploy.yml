@@ -31,3 +31,15 @@ jobs:
           port: 22
           source: './jgantts-server/*,./jgantts-com/dist/*,./jgantts-com/PUBLIC/*'
           target: '/home/jgantts-com/node-js/'
+
+      - name: Restart JGantts Server
+        uses: appleboy/ssh-action@v0.1.2
+        with:
+          host: ${{ secrets.LINODE_IP }}
+          username: ${{ secrets.LINODE_USER }}
+          password: ${{ secrets.LINODE_PASSWORD }}
+          port: 22
+          script: |
+            cd /home/jgantts-com/node-js/
+            npm install --production
+            pm2 restart jgantts-server

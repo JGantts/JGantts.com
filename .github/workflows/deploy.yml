@@ -40,6 +40,7 @@ jobs:
           password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
           script: |
+            whoami
             cd /home/jgantts-com/node-js/jgantts-server
             npm install --production
             pm2 restart jgantts-server

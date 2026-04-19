@@ -117,18 +117,25 @@ function getVisibleTownsInActiveRegions(bounds: maplibregl.LngLatBounds) {
 
   const foundItems = foundIds.map(i => allTowns.value[i]);
 
-  const activeTowns = foundItems.filter(town => {
+  const visibleTowns = foundItems.filter(town => {
     return getRegionById(town.regionId)?.townsActive
   })
 
-  return activeTowns
+  const visiblePopulation = computeVisiblePopulation(visibleTowns)
+
+  const activeTowns = visibleTowns.map(town => ({
+    ...town,
+    popTemp: town.population / visiblePopulation
+  })).filter(town => town.popTemp > 0.01)
+
+  return visibleTowns
 }
 
-function computeVisiblePopulation() {
+function computeVisiblePopulation(visibleTowns: TownPlusRegion[]|null = null) {
   if (!map) return 1
 
   const bounds = map.getBounds()
-  const towns = getVisibleTownsInActiveRegions(bounds)
+  const towns = visibleTowns || getVisibleTownsInActiveRegions(bounds)
 
   let total = 0
   for (const t of towns) {
@@ -187,46 +194,55 @@ function isRegionInView(region: RegionConfig): boolean {
 const regionPercentMin: number = 0.6
 const regionPercentMax: number = 1.4
 
-function isRegionBigEnoughToShow(region: RegionConfig, screenBounds: maplibregl.LngLatBounds): boolean {
+function isRegionWideEnoughToShow(region: RegionConfig, screenBounds: maplibregl.LngLatBounds): boolean {
   const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
-
-  const regionWidthIsLargeEnoughComparedToScreen = () => { return (
+ return (
     (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * regionPercentMin)
-  ) }
-
-  const regionHeightIsLargeEnoughComparedToScreen = () => { return (
+  )
+}
+function isRegionTooWideToShow(region: RegionConfig, screenBounds: maplibregl.LngLatBounds): boolean {
+  const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
+  return (
     (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * regionPercentMin)
-  ) }
-  
-  return regionWidthIsLargeEnoughComparedToScreen() || regionHeightIsLargeEnoughComparedToScreen()
+  )
 }
 
-function isRegionTooBigToShow(region: RegionConfig, screenBounds: maplibregl.LngLatBounds): boolean {
+function isRegionTallEnoughToShow(region: RegionConfig, screenBounds: maplibregl.LngLatBounds): boolean {
   const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
-
-  const regionWidthIsToLargeComparedToScreen = () => { return (
+  return (
     (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * regionPercentMax)
-  ) }
-
-  const regionHeightIsToLargeComparedToScreen = () => { return (
+  ) 
+}
+function isRegionTooTallToShow(region: RegionConfig, screenBounds: maplibregl.LngLatBounds): boolean {
+  const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
+  return (
     (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * regionPercentMax)
-  ) }
-  
-  return regionWidthIsToLargeComparedToScreen() || regionHeightIsToLargeComparedToScreen()
+  ) 
 }
 
 function shouldRegionBackgroundBeVisible(
   region: RegionConfig,
   screenBounds: maplibregl.LngLatBounds
 ): boolean {
-  return isRegionBigEnoughToShow(region, screenBounds) && !isRegionTooBigToShow(region, screenBounds)
+  return (
+    (
+      isRegionTallEnoughToShow(region, screenBounds)
+    && !isRegionTooTallToShow(region, screenBounds)
+    ) || (
+      isRegionWideEnoughToShow(region, screenBounds)
+    && !isRegionTooWideToShow(region, screenBounds)
+    )
+  )
 }
 
 function shouldRegionTownsBeVisible(
   region: RegionConfig,
   screenBounds: maplibregl.LngLatBounds
 ): boolean {
-  return isRegionBigEnoughToShow(region, screenBounds)
+  return (
+    isRegionTallEnoughToShow(region, screenBounds)
+    || isRegionWideEnoughToShow(region, screenBounds)
+  )
 }
 
 
@@ -454,11 +470,11 @@ function scheduleRecompute() {
     ]
 
     try {
-      if (!map.getLayer('towns-layer-labels')) {
-        console.warn('Failed to update text-size dynamically', 'towns-layer-labels not found')
+      if (!map.getLayer('towns-layer')) {
+        console.warn('Failed to update text-size dynamically', 'towns-layer not found')
         return
       }
-      map.setLayoutProperty('towns-layer-labels', 'text-size', newExpression)
+      map.setLayoutProperty('towns-layer', 'text-size', newExpression)
     } catch (e) {
       console.warn('Failed to update text-size dynamically', e)
     }
@@ -672,32 +688,33 @@ onMounted(() => {
       })
       */
 
-      // town dots
-      map!.addLayer({
-        id: 'towns-layer-dots',
-        type: 'circle',
-        source: 'towns',
-        paint: {
-          'circle-radius': [
-            'interpolate', ['linear'], ['get', 'population'],
-            1, 2,
-            100, 3,
-            1000, 6
-          ],
-          'circle-color': '#ffffff',
-          'circle-stroke-color': '#000000',
-          'circle-stroke-width': 1,
-        }
-      })
+      const size = 32
+      const canvas = document.createElement('canvas')
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext('2d')!
 
-      // towns
+      ctx.fillStyle = '#ffffff'
+      ctx.strokeStyle = '#000000'
+      ctx.lineWidth = 2
+
+      ctx.beginPath()
+      ctx.arc(size/2, size/2, size/4, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+      map!.addImage('town-dot', ctx.getImageData(0, 0, size, size))
+
       map!.addLayer({
-        id: 'towns-layer-labels',
+        id: 'towns-layer',
         type: 'symbol',
         source: 'towns',
+
         layout: {
+          // label
           'text-field': ['get', 'name'],
           'text-size': 18,
+
+          // allow smart placement
           'text-variable-anchor': [
             'top-left',
             'top-right',
@@ -709,8 +726,25 @@ onMounted(() => {
             'top'
           ],
           'text-radial-offset': 0.25,
-          'symbol-sort-key': ['*', ['get', 'population'], ['literal', -1]],
+
+          // dot (icon)
+          'icon-image': 'town-dot', // you must add this image
+          'icon-anchor': 'center',
+
+          // scale dot by population (replaces circle-radius)
+          'icon-size': [
+            'interpolate', ['linear'], ['get', 'population'],
+            1, 0.1,
+            100, 0.25,
+            1000, 0.5,
+            10000, 0.75,
+            100000, 1.0,
+          ],
+
+          // priority (higher = wins collisions)
+          'symbol-sort-key': ['get', 'population'],
         },
+
         paint: {
           'text-color': '#fff',
           'text-halo-color': '#000',

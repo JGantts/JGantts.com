@@ -35,6 +35,26 @@ export default defineConfig(({ command, mode, ssrBuild }) => {
     plugins: [
       vue(),
       svgLoader(),
+      {
+      name: 'watch-and-hmr',
+      configureServer(server) {
+        const dir = './PUBLIC/assets/kovyalo/'
+
+        server.watcher.add(dir)
+
+        server.watcher.on('change', (file) => {
+          if (file.includes('my-special-dir')) {
+            console.log('[hmr] changed:', file)
+
+            server.ws.send({
+              type: 'custom',
+              event: 'my-dir-update',
+              data: { file }
+            })
+          }
+        })
+      }
+    }
     ],
     resolve: {
       alias: {

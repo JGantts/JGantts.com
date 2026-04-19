@@ -43,4 +43,4 @@ jobs:
             whoami
             cd /home/jgantts-com/node-js/jgantts-server
             npm install --omit=dev
-            pm2 restart jgantts-server
+            sudo systemctl restart jgantts-server

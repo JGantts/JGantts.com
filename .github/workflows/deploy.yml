@@ -42,5 +42,5 @@ jobs:
           script: |
             whoami
             cd /home/jgantts-com/node-js/jgantts-server
-            npm install --production
+            npm install --omit=dev
             pm2 restart jgantts-server

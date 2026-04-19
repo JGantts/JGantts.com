@@ -801,7 +801,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div v-if="props.dev">
-    <h1>Dev Mode – test7</h1>
+    <h1>Dev Mode</h1>
   </div>
   <div>
     <div v-if="props.dev" class="toolbar">

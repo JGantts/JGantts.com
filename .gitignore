@@ -28,3 +28,6 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+/terrain-env
+/jgantts-com/PUBLIC/assets/kovyalo/map/*/*/height-tiles

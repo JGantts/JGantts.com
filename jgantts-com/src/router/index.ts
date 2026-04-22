@@ -154,15 +154,16 @@ const router = createRouter({
           component: KovyaloPage,
             props: (route) => ({
             dev: route.path === '/kovyalo/dev',
+          })
+        },
+        {
+          path: '',
+          alias: 'game',
+          name: 'Kovyalo',
+          component: KovyaloPage,
+            props: (route) => ({
+            game: route.path === '/kovyalo/game',
           }),
-          meta: {
-            title: 'Kovyálo',
-            description: 'Years ago, a ship landed. We are their children.',
-            socialTitle: 'Kovyálo | JGantts',
-            socialDescription:
-              'JGantts\' Conworld of Kovyálo.',
-            socialImage: '/kovyalo-social-preview.svg',
-          },
         },
       ],
       meta: {

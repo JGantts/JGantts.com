@@ -6,7 +6,7 @@ import mercantile
 # --------------------
 # CONFIG
 # --------------------
-INPUT = "./jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height.png"
+INPUT = "./jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height-eroded.png"
 OUT = "./jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height-tiles"
 
 MIN_ELEV = 750
@@ -64,28 +64,50 @@ def world_to_local(lon, lat):
 # TILE RENDER
 # --------------------
 def render_tile(z, x, y):
-    tile = np.zeros((TILE_SIZE, TILE_SIZE, 3), dtype=np.uint8)
-
     bounds = mercantile.bounds(x, y, z)
 
-    for py in range(TILE_SIZE):
-        for px in range(TILE_SIZE):
+    # Create normalized pixel grid [0,1)
+    px = np.linspace(0, 1, TILE_SIZE, endpoint=False, dtype=np.float32)
+    py = np.linspace(0, 1, TILE_SIZE, endpoint=False, dtype=np.float32)
+    px_grid, py_grid = np.meshgrid(px, py)
 
-            lon = bounds.west + (px / TILE_SIZE) * (bounds.east - bounds.west)
-            lat = bounds.north - (py / TILE_SIZE) * (bounds.north - bounds.south)
+    # Convert to lon/lat
+    lon = bounds.west + px_grid * (bounds.east - bounds.west)
+    lat = bounds.north - py_grid * (bounds.north - bounds.south)
 
-            # 🔥 FIXED: use bbox mapping, not fake global projection
-            nx, ny = world_to_local(lon, lat)
+    # Map to local heightmap space
+    nx = (lon - BBOX["west"]) / (BBOX["east"] - BBOX["west"])
+    ny = (BBOX["north"] - lat) / (BBOX["north"] - BBOX["south"])
 
-            # optional: clamp outside region
-            if nx < 0 or nx > 1 or ny < 0 or ny > 1:
-                tile[py, px] = (0, 0, 0)  # ocean / empty
-                continue
+    # Mask out-of-bounds
+    mask = (nx >= 0) & (nx <= 1) & (ny >= 0) & (ny <= 1)
 
-            hval = sample(nx, ny)
+    # Convert to pixel indices
+    ix = np.clip((nx * (w - 1)).astype(np.int32), 0, w - 1)
+    iy = np.clip((ny * (h - 1)).astype(np.int32), 0, h - 1)
 
-            elev = MIN_ELEV + (hval / 255.0) * (MAX_ELEV - MIN_ELEV)
-            tile[py, px] = encode_elevation(elev)
+    # Sample heightmap
+    hval = height[iy, ix]
+
+    # Convert to elevation
+    elev = MIN_ELEV + (hval / 255.0) * (MAX_ELEV - MIN_ELEV)
+
+    # Encode (Mapbox terrain RGB)
+    val = ((elev + 10000) * 10).astype(np.int32)
+
+    tile = np.zeros((TILE_SIZE, TILE_SIZE, 3), dtype=np.uint8)
+    tile[..., 0] = (val >> 16) & 255
+    tile[..., 1] = (val >> 8) & 255
+    tile[..., 2] = val & 255
+
+    # Apply mask (outside bbox = black)
+    # sea level (roughly)
+    val = int((0 + 10000) * 10)
+    tile[~mask] = [
+    (val >> 16) & 255,
+    (val >> 8) & 255,
+    val & 255
+    ]
 
     return tile
 

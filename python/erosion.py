@@ -1,0 +1,122 @@
+import numpy as np
+from PIL import Image
+from scipy.ndimage import gaussian_filter
+
+# -----------------------------
+# Load / Save
+# -----------------------------
+def load_heightmap(path):
+    img = Image.open(path).convert("L")
+    return np.array(img, dtype=np.float32) / 255.0
+
+def save_heightmap(arr, path):
+    arr = np.clip(arr, 0, 1)
+    Image.fromarray((arr * 255).astype(np.uint8)).save(path)
+
+# -----------------------------
+# Multi-pass Gaussian blur
+# -----------------------------
+def smooth(h, passes=3, sigma=1.0):
+    for _ in range(passes):
+        h = gaussian_filter(h, sigma=sigma)
+    return h
+
+# -----------------------------
+# Vectorized slope limiting
+# -----------------------------
+def limit_slope(h, max_slope=0.02, iterations=2):
+    for _ in range(iterations):
+        # Neighbor differences
+        up    = h - np.roll(h, -1, axis=0)
+        down  = h - np.roll(h,  1, axis=0)
+        left  = h - np.roll(h, -1, axis=1)
+        right = h - np.roll(h,  1, axis=1)
+
+        # Clamp diffs
+        up    = np.clip(up,   -max_slope, max_slope)
+        down  = np.clip(down, -max_slope, max_slope)
+        left  = np.clip(left, -max_slope, max_slope)
+        right = np.clip(right,-max_slope, max_slope)
+
+        # Reconstruct from neighbors (averaged)
+        h_new = (
+            np.roll(h + up,   1, axis=0) +
+            np.roll(h + down, -1, axis=0) +
+            np.roll(h + left, 1, axis=1) +
+            np.roll(h + right,-1, axis=1)
+        ) * 0.25
+
+        h = h_new
+
+    return h
+
+# -----------------------------
+# Vectorized thermal erosion
+# -----------------------------
+def thermal_erosion(h, talus=0.01, strength=0.25, iterations=30):
+    for _ in range(iterations):
+        h0 = h
+
+        # Neighbor differences
+        d_up    = h0 - np.roll(h0, -1, axis=0)
+        d_down  = h0 - np.roll(h0,  1, axis=0)
+        d_left  = h0 - np.roll(h0, -1, axis=1)
+        d_right = h0 - np.roll(h0,  1, axis=1)
+
+        # Only move material if above talus
+        f_up    = np.maximum(d_up   - talus, 0)
+        f_down  = np.maximum(d_down - talus, 0)
+        f_left  = np.maximum(d_left - talus, 0)
+        f_right = np.maximum(d_right- talus, 0)
+
+        # Clamp total movement (THIS is the important part)
+        total = f_up + f_down + f_left + f_right
+        total = np.minimum(total, strength)
+
+        # Avoid divide-by-zero
+        mask = total > 0
+
+        # Distribute proportionally
+        f_up[mask]    *= total[mask] / (f_up[mask] + f_down[mask] + f_left[mask] + f_right[mask])
+        f_down[mask]  *= total[mask] / (f_up[mask] + f_down[mask] + f_left[mask] + f_right[mask])
+        f_left[mask]  *= total[mask] / (f_up[mask] + f_down[mask] + f_left[mask] + f_right[mask])
+        f_right[mask] *= total[mask] / (f_up[mask] + f_down[mask] + f_left[mask] + f_right[mask])
+
+        # Apply
+        h = h0.copy()
+        h -= (f_up + f_down + f_left + f_right)
+
+        h += np.roll(f_up,    1, axis=0)
+        h += np.roll(f_down, -1, axis=0)
+        h += np.roll(f_left,  1, axis=1)
+        h += np.roll(f_right,-1, axis=1)
+
+    return h
+# -----------------------------
+# Normalize
+# -----------------------------
+def normalize(h):
+    return (h - h.min()) / (h.max() - h.min() + 1e-8)
+
+# -----------------------------
+# Pipeline
+# -----------------------------
+def process(input_path, output_path):
+    h = load_heightmap(input_path)
+
+    h = smooth(h, passes=3, sigma=1.0)
+    h = limit_slope(h, max_slope=0.02, iterations=2)
+    h = thermal_erosion(h, talus=0.01, iterations=30)
+    h = normalize(h)
+
+    save_heightmap(h, output_path)
+
+
+# -----------------------------
+# Run
+# -----------------------------
+INPUT = "./jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height.png"
+OUT = "./jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height-eroded.png"
+
+if __name__ == "__main__":
+    process(INPUT, OUT)

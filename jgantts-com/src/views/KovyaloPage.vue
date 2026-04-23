@@ -11,6 +11,8 @@ const SAVE_KEY = 'fantasy-map-state'
 type MapSaveState = {
   center: [number, number]
   zoom: number
+  pitch: number
+  bearing: number
 }
 
 type BoundsTuple = [[number, number], [number, number]]
@@ -424,6 +426,8 @@ function saveMapState() {
   const state: MapSaveState = {
     center: [map.getCenter().lng, map.getCenter().lat],
     zoom: map.getZoom(),
+    pitch: map.getPitch(),
+    bearing: map.getBearing(),
   }
 
   localStorage.setItem(SAVE_KEY, JSON.stringify(state))
@@ -528,6 +532,8 @@ onMounted(() => {
     maxZoom: 12,
     attributionControl: false,
     renderWorldCopies: false,
+    pitch: saved?.pitch ?? 60,
+    bearing: saved?.bearing ?? 0,
   })
 
   if (props.dev) {
@@ -536,6 +542,7 @@ onMounted(() => {
 
   map.on('style.load', () => {
     map!.setProjection({ type: 'globe' })
+    //map!.setProjection({ type: 'mercator' })
   })
 
   map.on('load', async () => {
@@ -605,6 +612,29 @@ onMounted(() => {
             },
           })
         }
+/*
+        map!.addSource(`region-src-${region.id}-rivers`, {
+          type: 'geojson',
+          data: '/assets/kovyalo/map/kovyalo/ziemund/rivers copy.geojson'
+        })
+
+        map!.addLayer({
+          id: `region-${region.id}-rivers`,
+          type: 'line',
+          source: `region-src-${region.id}-rivers`,
+          paint: {
+            'line-color': '#4aa3ff',
+            'line-width': [
+              'interpolate',
+              ['linear'],
+              ['get', 'width'],
+              0, 0.5,
+              10, 2,
+              50, 6
+            ],
+            'line-opacity': 0.8
+          }
+        })*/
 
         regions.value.push(region)
       }
@@ -646,6 +676,24 @@ onMounted(() => {
       // =========================
       // SOURCES (ONCE)
       // =========================
+      map!.addSource('terrain', {
+        type: 'raster-dem',
+        tiles: [
+          '/assets/kovyalo/map/kovyalo/ziemund/height-tiles/{z}/{x}/{y}.png'
+        ],
+        tileSize: 256,
+        encoding: 'mapbox' // important
+      })
+
+      map!.addSource('hillshade', {
+        type: 'raster-dem',
+        tiles: [
+          '/assets/kovyalo/map/kovyalo/ziemund/height-tiles/{z}/{x}/{y}.png'
+        ],
+        tileSize: 256,
+        encoding: 'mapbox'
+      })
+
       map!.addSource('regions-labels', {
         type: 'geojson',
         data: regionLabels,
@@ -659,6 +707,19 @@ onMounted(() => {
       // =========================
       // LAYERS (ORDER = PRIORITY)
       // =========================
+      map!.setTerrain({
+        source: 'terrain',
+        exaggeration: 40.0 // tweak this
+      })
+
+      map!.addLayer({
+        id: 'hillshade',
+        type: 'hillshade',
+        source: 'hillshade',
+        paint: {
+          'hillshade-exaggeration': 0.5
+        }
+      })
 
       /*
       // regions (low priority)

@@ -23,7 +23,7 @@ jobs:
         working-directory: ./jgantts-com/
 
       - name: Deploy JGantts Server
-        uses: appleboy/scp-action@v0.1.2
+        uses: appleboy/scp-action@v1.0
         with:
           host: ${{ secrets.LINODE_IP }}
           username: ${{ secrets.LINODE_USER }}

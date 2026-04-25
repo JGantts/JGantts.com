@@ -21,8 +21,10 @@ jobs:
       - name: Install PMTiles CLI
         run: |
           mkdir -p $HOME/.local/bin
-          curl -L https://github.com/protomaps/go-pmtiles/releases/latest/download/pmtiles-linux-amd64 -o $HOME/.local/bin/pmtiles
-          chmod +x $HOME/.local/bin/pmtiles
+          curl -fL https://github.com/protomaps/go-pmtiles/releases/download/v1.27.0/pmtiles_1.27.0_Linux_x86_64.tar.gz -o pmtiles.tar.gz
+          tar -xzf pmtiles.tar.gz
+          chmod +x pmtiles
+          mv pmtiles $HOME/.local/bin/pmtiles
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Verify tools

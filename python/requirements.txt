@@ -1,4 +1,5 @@
 numpy
-Pillow
+pillow
 scipy
 mercantile
+argparse

@@ -13,11 +13,38 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         
-      - name: run python scripts
+      - name: Install system deps
+        run: |
+          sudo apt update
+          sudo apt install -y gdal-bin python3-gdal python3-pip curl
+
+      - name: Install PMTiles CLI
+        run: |
+          mkdir -p $HOME/.local/bin
+          curl -L https://github.com/protomaps/go-pmtiles/releases/latest/download/pmtiles-linux-amd64 -o $HOME/.local/bin/pmtiles
+          chmod +x $HOME/.local/bin/pmtiles
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Verify tools
+        run: |
+          gdalwarp --version
+          gdal2tiles.py --help
+          pmtiles --help
+
+      - name: Install Python dependencies
         run: |
           python3 -m venv ./venv
           source ./venv/bin/activate
           python3 -m pip install -r requirements.txt
+          
+      - name: Build map
+        run: |
+          python3 tile_pm.py \
+            --input  ../jgantts-com/PUBLIC/assets/kovyalo/map/0.png \
+            --output ../jgantts-com/PUBLIC/assets/kovyalo/map/world.pmtiles \
+            --bounds -180 -85.05113 180 85.05113 \
+            --minzoom 0 \
+            --maxzoom 12
           python3 tile_dem.py
         working-directory: ./python/
 

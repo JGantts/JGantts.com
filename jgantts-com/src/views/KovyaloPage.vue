@@ -289,7 +289,7 @@ function requestSync() {
           map.setPaintProperty(
             `region-${region.id}-${layer.id}`,
             'raster-opacity',
-            0,
+            0.5,
           )
           continue
         }
@@ -608,7 +608,7 @@ onMounted(() => {
             type: 'raster',
             source: sourceId,
             paint: {
-              'raster-opacity': 1,
+              'raster-opacity': 0.5,
             },
           })
         }
@@ -685,15 +685,6 @@ onMounted(() => {
         encoding: 'mapbox' // important
       })
 
-      map!.addSource('hillshade', {
-        type: 'raster-dem',
-        tiles: [
-          '/assets/kovyalo/map/kovyalo/ziemund/height-tiles/{z}/{x}/{y}.png'
-        ],
-        tileSize: 256,
-        encoding: 'mapbox'
-      })
-
       map!.addSource('regions-labels', {
         type: 'geojson',
         data: regionLabels,
@@ -712,14 +703,7 @@ onMounted(() => {
         exaggeration: 40.0 // tweak this
       })
 
-      map!.addLayer({
-        id: 'hillshade',
-        type: 'hillshade',
-        source: 'hillshade',
-        paint: {
-          'hillshade-exaggeration': 0.5
-        }
-      })
+
 
       /*
       // regions (low priority)
@@ -811,6 +795,22 @@ onMounted(() => {
           'text-halo-color': '#000',
           'text-halo-width': 2,
         },
+      })
+
+
+
+      map!.addLayer({
+        id: 'hillshade',
+        type: 'hillshade',
+        source: 'terrain',
+        paint: {
+              'hillshade-method': 'standard',
+              'hillshade-illumination-direction': 315,
+              'hillshade-shadow-color': '#000000',
+              'hillshade-highlight-color': '#FFFFFF',
+              'hillshade-accent-color': '#000000',
+              'hillshade-exaggeration': 1.0
+        }
       })
 
       requestSync()

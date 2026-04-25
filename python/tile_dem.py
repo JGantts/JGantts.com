@@ -25,14 +25,57 @@ TILE_SIZE = 256
 # --------------------
 # LOAD HEIGHTMAP
 # --------------------
-img = Image.open(INPUT).convert("L")
-height = np.array(img, dtype=np.float32)
+# --------------------
+# LOAD HEIGHTMAP (SMART)
+# --------------------
+img = Image.open(INPUT)
+arr = np.array(img)
+
+if arr.ndim == 3:
+    # RGB / RGBA → assume terrain-rgb encoding
+    R = arr[:, :, 0].astype(np.float32)
+    G = arr[:, :, 1].astype(np.float32)
+    B = arr[:, :, 2].astype(np.float32)
+
+    height = (R * 256 * 256 + G * 256 + B) * 0.1 - 10000.0
+
+elif arr.dtype == np.uint16:
+    # true 16-bit grayscale
+    height = arr.astype(np.float32)
+
+else:
+    # fallback (you probably screwed up earlier)
+    height = arr.astype(np.float32)
 
 h, w = height.shape
+
+# normalize ONCE (optional, but consistent)
+h_min = height.min()
+h_max = height.max()
+height = (height - h_min) / (h_max - h_min + 1e-8)
 
 # --------------------
 # SAMPLE HEIGHTMAP
 # --------------------
+def sample_bilinear(nx, ny):
+    x = np.clip(nx * (w - 1), 0, w - 1)
+    y = np.clip(ny * (h - 1), 0, h - 1)
+
+    x0 = np.floor(x).astype(np.int32)
+    x1 = np.clip(x0 + 1, 0, w - 1)
+    y0 = np.floor(y).astype(np.int32)
+    y1 = np.clip(y0 + 1, 0, h - 1)
+
+    tx = x - x0
+    ty = y - y0
+
+    return (
+        height[y0, x0] * (1 - tx) * (1 - ty) +
+        height[y0, x1] * tx * (1 - ty) +
+        height[y1, x0] * (1 - tx) * ty +
+        height[y1, x1] * tx * ty
+    )
+
 def sample(x, y):
     x = np.clip(x, 0.0, 1.0)
     y = np.clip(y, 0.0, 1.0)
@@ -87,10 +130,10 @@ def render_tile(z, x, y):
     iy = np.clip((ny * (h - 1)).astype(np.int32), 0, h - 1)
 
     # Sample heightmap
-    hval = height[iy, ix]
+    hval = sample_bilinear(nx, ny)
 
     # Convert to elevation
-    elev = MIN_ELEV + (hval / 255.0) * (MAX_ELEV - MIN_ELEV)
+    elev = MIN_ELEV + hval * (MAX_ELEV - MIN_ELEV)
 
     # Encode (Mapbox terrain RGB)
     val = ((elev + 10000) * 10).astype(np.int32)

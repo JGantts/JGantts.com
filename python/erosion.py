@@ -3,15 +3,41 @@ from PIL import Image
 from scipy.ndimage import gaussian_filter
 
 # -----------------------------
-# Load / Save
+# Load / Save (16-bit safe)
 # -----------------------------
 def load_heightmap(path):
-    img = Image.open(path).convert("L")
-    return np.array(img, dtype=np.float32) / 255.0
+    img = Image.open(path).convert("RGBA")
+    arr = np.array(img, dtype=np.float32)
+
+    R = arr[:, :, 0]
+    G = arr[:, :, 1]
+    B = arr[:, :, 2]
+
+    # Mapbox terrain-rgb decode
+    h = (R * 256 * 256 + G * 256 + B) * 0.1 - 10000.0
+
+    # Normalize to 0–1 for your pipeline
+    h_min = h.min()
+    h_max = h.max()
+
+    return (h - h_min) / (h_max - h_min + 1e-8)
+
 
 def save_heightmap(arr, path):
     arr = np.clip(arr, 0, 1)
-    Image.fromarray((arr * 255).astype(np.uint8)).save(path)
+
+    # Convert back to actual elevation range
+    h = arr * 20000 - 10000  # adjust if needed
+
+    val = (h + 10000) / 0.1
+
+    R = np.floor(val / (256 * 256))
+    G = np.floor((val - R * 256 * 256) / 256)
+    B = np.floor(val - R * 256 * 256 - G * 256)
+
+    rgb = np.stack([R, G, B], axis=-1).astype(np.uint8)
+
+    Image.fromarray(rgb, mode="RGB").save(path)
 
 # -----------------------------
 # Multi-pass Gaussian blur
@@ -92,11 +118,6 @@ def thermal_erosion(h, talus=0.01, strength=0.25, iterations=30):
         h += np.roll(f_right,-1, axis=1)
 
     return h
-# -----------------------------
-# Normalize
-# -----------------------------
-def normalize(h):
-    return (h - h.min()) / (h.max() - h.min() + 1e-8)
 
 # -----------------------------
 # Pipeline
@@ -104,10 +125,10 @@ def normalize(h):
 def process(input_path, output_path):
     h = load_heightmap(input_path)
 
-    h = smooth(h, passes=3, sigma=1.0)
+    h = smooth(h, passes=30, sigma=1.0)
     h = limit_slope(h, max_slope=0.02, iterations=2)
     h = thermal_erosion(h, talus=0.01, iterations=30)
-    h = normalize(h)
+    h = smooth(h, passes=30, sigma=1.0)
 
     save_heightmap(h, output_path)
 

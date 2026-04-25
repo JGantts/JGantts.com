@@ -52,6 +52,8 @@ let map: MapLibreMap | null = null
 
 const cursorCoords = ref<{ x: number; y: number } | null>(null)
 const zoomCurrent = ref(0)
+const pitchCurrent = ref(0)
+const bearingCurrent = ref(0)
 
 const regionOverlayOpacity = computed(() => (props.dev ? 0.5 : 1))
 const regions = shallowRef<ManagedRegion[]>([])
@@ -526,13 +528,13 @@ onMounted(() => {
   map = new maplibregl.Map({
     container: mapEl.value,
     style: { version: 8, sources: {}, layers: [] },
-    center: saved?.center ?? [0, 0],
-    zoom: saved?.zoom ?? 3,
+    center: saved?.center ?? [-34.3927, 11.8405],
+    zoom: saved?.zoom ?? 6,
     minZoom: 2,
     maxZoom: 12,
     attributionControl: false,
     renderWorldCopies: false,
-    pitch: saved?.pitch ?? 60,
+    pitch: saved?.pitch ?? 0,
     bearing: saved?.bearing ?? 0,
   })
 
@@ -822,6 +824,7 @@ onMounted(() => {
     updateOnZoom()
     requestSync()
   })
+  
 
   function updateMouseOnMove(e: maplibregl.MapMouseEvent|null = null) {
     e = e as maplibregl.MapMouseEvent | null
@@ -834,6 +837,8 @@ onMounted(() => {
 
   function updateOnZoom() {
     zoomCurrent.value = map!.getZoom()
+    pitchCurrent.value = map!.getPitch()
+    bearingCurrent.value = map!.getBearing()
   }
 
   map.on('mousemove', (e) => {
@@ -852,11 +857,25 @@ onMounted(() => {
     scheduleSave()
     scheduleRecompute()
   })
-})
 
-onBeforeUnmount(() => {
-  map?.remove()
-  map = null
+  map!.on('rotate', () => {
+    updateOnZoom()
+    requestSync()
+    scheduleSave()
+    scheduleRecompute()
+  })
+
+  map!.on('pitch', () => {
+    updateOnZoom()
+    requestSync()
+    scheduleSave()
+    scheduleRecompute()
+  })
+
+  onBeforeUnmount(() => {
+    map?.remove()
+    map = null
+  })
 })
 </script>
 
@@ -875,6 +894,12 @@ onBeforeUnmount(() => {
       </div>
       <div>
         Zoom: {{ zoomCurrent.toFixed(2) }}
+      </div>
+      <div>
+        Pitch: {{ pitchCurrent.toFixed(2) }}
+      </div>
+      <div>
+        Bearing: {{ bearingCurrent.toFixed(2) }}
       </div>
     </div>
     <div class="fantasy-map-root">

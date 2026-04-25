@@ -12,11 +12,7 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: npm i
-        working-directory: ./jgantts-com/
-
+        
       - name: run python scripts
         run: |
           python3 -m venv ./venv
@@ -27,6 +23,7 @@ jobs:
 
       - name: build
         run: |
+          npm i
           npm run build
         working-directory: ./jgantts-com/
 

@@ -6,8 +6,8 @@ import mercantile
 # --------------------
 # CONFIG
 # --------------------
-INPUT = "./jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height-eroded.png"
-OUT = "./jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height-tiles"
+INPUT = "../jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height-eroded.png"
+OUT = "../jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height-tiles"
 
 MIN_ELEV = 750
 MAX_ELEV = 1500

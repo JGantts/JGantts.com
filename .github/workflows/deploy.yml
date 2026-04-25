@@ -17,11 +17,6 @@ jobs:
         run: npm i
         working-directory: ./jgantts-com/
 
-      - name: build
-        run: |
-          npm run build
-        working-directory: ./jgantts-com/
-
       - name: run python scripts
         run: |
           python3 -m venv ./venv
@@ -29,6 +24,11 @@ jobs:
           python3 -m pip install -r requirements.txt
           python3 tile_dem.py
         working-directory: ./python/
+
+      - name: build
+        run: |
+          npm run build
+        working-directory: ./jgantts-com/
 
       - name: Deploy JGantts Server
         uses: appleboy/scp-action@v1.0.0

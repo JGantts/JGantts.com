@@ -32,3 +32,4 @@ coverage
 /terrain-env
 /jgantts-com/PUBLIC/assets/kovyalo/map/*/*/height-tiles
 *.pmtiles
+/jgantts-com/PUBLIC/assets/maps

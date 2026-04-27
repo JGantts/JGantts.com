@@ -84,7 +84,7 @@ const mapReady: Ref<boolean> = ref(false)
 
 async function initMapData() {
   regionConfigs.value = JSON.parse(
-    await (await fetch('/assets/kovyalo/geo-data/regions.json')).text()
+    await (await fetch('/assets/maps/geo-data/regions.json')).text()
   ) as RegionConfig[]
 
   allTowns.value = regionConfigs.value.reduce<TownPlusRegion[]>(
@@ -596,7 +596,7 @@ onMounted(() => {
 
       map!.addSource('world-pmtiles', {
         type: 'raster',
-        url: 'pmtiles:///assets/kovyalo/map/world.pmtiles',
+        url: 'pmtiles:///assets/maps/maps/world.pmtiles',
         tileSize: 256,
         minzoom: 0,
         maxzoom: 12,
@@ -706,7 +706,7 @@ onMounted(() => {
       map!.addSource('terrain', {
         type: 'raster-dem',
         tiles: [
-          '/assets/kovyalo/map/kovyalo/ziemund/height-tiles/{z}/{x}/{y}.png'
+          '/assets/maps/maps/kovyalo/ziemund/height-tiles/{z}/{x}/{y}.png'
         ],
         tileSize: 256,
         encoding: 'mapbox' // important

@@ -6,12 +6,21 @@ on:
       - prod
 
 jobs:
-  deploy:
+  deploy-maps:
     runs-on: self-hosted
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            python:
+              - 'python/**'
+            maps-sources:
+              - 'jgantts-com/PUBLIC/assets/kovyalo/geo-data/**'
 
       - uses: actions/setup-python@v5
         with:
@@ -49,9 +58,33 @@ jobs:
           python3 -m venv ./venv
           source ./venv/bin/activate
           python3 make_all_tiles.py \
-          --regions ../jgantts-com/PUBLIC/assets/kovyalo/geo-data/regions.json \
-          --world ../jgantts-com/PUBLIC/assets/kovyalo/map/world.png 
+          --regions ../map-sources/geo-data/regions.json \
+          --world ../map-sources/map/world.png
         working-directory: ./python/
+
+      - name: Deploy Map
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.LINODE_IP }}
+          username: ${{ secrets.LINODE_USER }}
+          password: ${{ secrets.LINODE_PASSWORD }}
+          port: 22
+          source: './map-rendered/'
+          target: '/home/jgantts-com/node-js/jgantts-com/PUBLIC/assets/maps/'
+
+  deploy-site:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            website:
+              - 'jgantts-com/**'
 
       - name: build
         run: |

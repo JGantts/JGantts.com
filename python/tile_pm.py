@@ -181,7 +181,7 @@ def main():
 
     need("gdal_translate")
     need("gdalwarp")
-    need("rio")
+    need("rasterio.rio")
     need("pmtiles")
 
     src = Path(args.input).resolve()

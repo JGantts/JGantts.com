@@ -42,14 +42,9 @@ jobs:
           
       - name: Build map
         run: |
-          python3 tile_pm.py \
-            --input  ../jgantts-com/PUBLIC/assets/kovyalo/map/0.png \
-            --output ../jgantts-com/PUBLIC/assets/kovyalo/map/world.pmtiles \
-            --bounds -180 -85.05113 180 85.05113 \
-            --minzoom 0 \
-            --maxzoom 12
-          python3 tile_dem.py
-        working-directory: ./python/
+          python3 make_all_tiles.py
+          --regions ../jgantts-com/PUBLIC/assets/kovyalo/geo-data/regions.json
+          --world ../jgantts-com/PUBLIC/assets/kovyalo/map/world.png 
 
       - name: build
         run: |

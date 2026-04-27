@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, shallowRef, watch, type Ref } from 'vue'
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import KDBush from 'kdbush';
+import { Protocol } from 'pmtiles'
+import CompassView from './CompassView.vue'
 
 const props = defineProps<{ dev?: boolean }>()
 
@@ -77,6 +79,8 @@ const regionConfigs = shallowRef<RegionConfig[]>([])
 
 const townIndex = shallowRef<KDBush>()
 const allTowns = shallowRef<TownPlusRegion[]>([])
+
+const mapReady: Ref<boolean> = ref(false)
 
 async function initMapData() {
   regionConfigs.value = JSON.parse(
@@ -532,6 +536,8 @@ onMounted(() => {
     zoom: saved?.zoom ?? 6,
     minZoom: 2,
     maxZoom: 12,
+    minPitch: 0,
+    maxPitch: 85,
     attributionControl: false,
     renderWorldCopies: false,
     pitch: saved?.pitch ?? 0,
@@ -549,8 +555,10 @@ onMounted(() => {
 
   map.on('load', async () => {
     await initMapData()
-
+    mapReady.value = true
+    console.log('Map loaded, initializing sources and layers.')
     try {
+      /*
       await addWarpedImageSource(
         'world-lowrez',
         '/assets/kovyalo/map/0-lowrez.png',
@@ -581,6 +589,23 @@ onMounted(() => {
           'raster-opacity': 1,
           'raster-fade-duration': 0,
         },
+      })*/
+
+      const protocol = new Protocol()
+      maplibregl.addProtocol('pmtiles', protocol.tile)
+
+      map!.addSource('world-pmtiles', {
+        type: 'raster',
+        url: 'pmtiles:///assets/kovyalo/map/world.pmtiles',
+        tileSize: 256,
+        minzoom: 0,
+        maxzoom: 12,
+      })
+
+      map!.addLayer({
+        id: 'world',
+        type: 'raster',
+        source: 'world-pmtiles'
       })
 
       // =========================
@@ -789,7 +814,7 @@ onMounted(() => {
           ],
 
           // priority (higher = wins collisions)
-          'symbol-sort-key': ['get', 'population'],
+          'symbol-sort-key': ['*', ['literal', -1], ['get', 'population']],
         },
 
         paint: {
@@ -836,6 +861,7 @@ onMounted(() => {
   }
 
   function updateOnZoom() {
+    if (!map) return
     zoomCurrent.value = map!.getZoom()
     pitchCurrent.value = map!.getPitch()
     bearingCurrent.value = map!.getBearing()
@@ -845,27 +871,27 @@ onMounted(() => {
     if (e) { updateMouseOnMove(e) }
   })
 
-  map.on('move', () => {
+  map.on('moveend', () => {
     requestSync()
     scheduleSave()
     scheduleRecompute()
   })
 
-  map!.on('zoom', () => {
+  map!.on('zoomend', () => {
     updateOnZoom()
     requestSync()
     scheduleSave()
     scheduleRecompute()
   })
 
-  map!.on('rotate', () => {
+  map!.on('rotateend', () => {
     updateOnZoom()
     requestSync()
     scheduleSave()
     scheduleRecompute()
   })
 
-  map!.on('pitch', () => {
+  map!.on('pitchend', () => {
     updateOnZoom()
     requestSync()
     scheduleSave()
@@ -876,6 +902,91 @@ onMounted(() => {
     map?.remove()
     map = null
   })
+
+  const keys: { [key: string]: boolean } = {};
+  const moveSpeed = 300; // pixels/sec
+  const rotateSpeed = 90; // deg/sec
+  const tiltSpeed = 90; // deg/sec
+  const zoomSpeed = 1; // zoom levels/sec
+
+  window.addEventListener("keydown", (e) => {
+    keys[e.key.toLowerCase()] = true;
+  });
+
+  window.addEventListener("keyup", (e) => {
+    keys[e.key.toLowerCase()] = false;
+  });
+
+  let last = performance.now();
+
+  function loop(now: number) {
+    if(!map) requestAnimationFrame(loop);
+
+    const dt = (now - last) / 1000;
+    last = now;
+
+    const bearing = map!.getBearing();
+
+    let forward = 0;
+    let strafe = 0;
+
+    if (keys["w"]) forward += 1;
+    if (keys["s"]) forward -= 1;
+    if (keys["d"]) strafe += 1;
+    if (keys["a"]) strafe -= 1;
+
+    // movement (screen/view relative)
+    if (forward !== 0 || strafe !== 0) {
+      const len = Math.hypot(strafe, forward);
+      forward /= len;
+      strafe /= len;
+
+      const dx = strafe * moveSpeed * dt;
+      const dy = -forward * moveSpeed * dt;
+
+      map!.panBy([dx, dy], { animate: false });
+    }
+
+    // rotate
+    let newBearing = bearing;
+
+    if (keys["q"]) newBearing += rotateSpeed * dt;
+    if (keys["e"]) newBearing -= rotateSpeed * dt;
+
+    if (newBearing !== bearing) {
+      map!.rotateTo(newBearing, { animate: false });
+    }
+
+    // tilt / pitch
+    let pitch = map!.getPitch();
+    let newPitch = pitch;
+
+    if (keys["r"]) newPitch -= tiltSpeed * dt;
+    if (keys["f"]) newPitch += tiltSpeed * dt;
+
+    newPitch = Math.max(0, Math.min(85, newPitch));
+
+    if (newPitch !== pitch) {
+      map!.setPitch(newPitch);
+    }
+
+    // zoom
+    let zoom = map!.getZoom();
+    let newZoom = zoom;
+
+    if (keys["z"]) newZoom += zoomSpeed * dt;
+    if (keys["x"]) newZoom -= zoomSpeed * dt;
+
+    if (newZoom !== zoom) {
+      map!.zoomTo(newZoom, { animate: false });
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  //window.addEventListener("keydown", e => loop);
+
+  requestAnimationFrame(loop);
 })
 </script>
 
@@ -902,6 +1013,7 @@ onMounted(() => {
         Bearing: {{ bearingCurrent.toFixed(2) }}
       </div>
     </div>
+    <CompassView id="compass" :map="() => {return map}" :mapReady="mapReady" />
     <div class="fantasy-map-root">
       <div ref="mapEl" class="fantasy-map" />
     </div>

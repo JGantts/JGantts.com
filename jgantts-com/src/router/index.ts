@@ -16,7 +16,7 @@ import ServicesPageVue from '@/views/ServicesPage.vue'
 import AboutMePage from '@/views/about-me/AboutMePage.vue'
 import AboutMe2Page from '@/views/about-me/AboutMe2Page.vue'*/
 import HolmesPage from '@/views/HolmesPage.vue'
-import KovyaloPage from '@/views/KovyaloPage.vue'
+import KovyaloPage from '@/views/kovyalo/index.vue'
 
 type AppRouteMeta = {
   title?: string

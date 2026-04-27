@@ -1,45 +1,64 @@
 #!/usr/bin/env python3
 """
-tile_pm.py
+tile_map_fast.py
 
-Convert raster images into .pmtiles archives for MapLibre.
-
-REQUIRES:
-    pip install pillow
-    pmtiles CLI installed:
-        https://github.com/protomaps/go-pmtiles
-
-ALSO requires one tiler:
-    gdal2tiles.py   (recommended)
-OR
-    rio rgbify etc if DEM workflow
-
-USAGE:
-
-python make_pmtiles.py \
-  --input ./assets/world.png \
-  --output ./dist/world.pmtiles \
-  --bounds -180 -85.05113 180 85.05113 \
-  --minzoom 0 \
-  --maxzoom 6
-
-For a region:
-
-python make_pmtiles.py \
-  --input ./assets/ziemund.png \
-  --output ./dist/ziemund.pmtiles \
-  --bounds -40 10 -20 30 \
-  --minzoom 4 \
-  --maxzoom 10
+Adds:
+- timestamped logging
+- step timing
+- command timing
+- output file size
+- fail-fast readable errors
 """
 
 import argparse
-import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
+
+
+# ---------------------------------------------------
+# logging
+# ---------------------------------------------------
+
+START_TIME = time.time()
+
+
+def now():
+    return time.strftime("%H:%M:%S")
+
+
+def log(msg=""):
+    print(f"[{now()}] {msg}", flush=True)
+
+
+def section(title):
+    print()
+    log("=" * 60)
+    log(title)
+    log("=" * 60)
+
+
+def elapsed():
+    return f"{time.time() - START_TIME:.1f}s"
+
+
+def filesize(path: Path):
+    if not path.exists():
+        return "missing"
+
+    size = path.stat().st_size
+
+    units = ["B", "KB", "MB", "GB"]
+    i = 0
+
+    while size >= 1024 and i < len(units) - 1:
+        size /= 1024
+        i += 1
+
+    return f"{size:.1f}{units[i]}"
 
 
 # ---------------------------------------------------
@@ -47,62 +66,93 @@ from pathlib import Path
 # ---------------------------------------------------
 
 def run(cmd):
-    print(">", " ".join(cmd))
-    subprocess.run(cmd, check=True)
+    cmd_str = " ".join(map(str, cmd))
+    log(f"RUN: {cmd_str}")
+
+    t0 = time.time()
+
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        log(f"FAILED after {time.time() - t0:.1f}s")
+        raise e
+
+    log(f"OK ({time.time() - t0:.1f}s)")
 
 
-def require_binary(name):
+def need(name):
     if shutil.which(name) is None:
-        print(f"ERROR: Missing required executable: {name}")
+        log(f"Missing executable: {name}")
         sys.exit(1)
 
 
-def write_vrt_png(src_png: Path, vrt_path: Path, west, south, east, north):
-    """
-    Creates a georeferenced VRT for a plain PNG image.
-    """
-    from PIL import Image
+# ---------------------------------------------------
+# build helpers
+# ---------------------------------------------------
 
-    img = Image.open(src_png)
-    width, height = img.size
+def georef(src, out_tif, west, south, east, north):
+    section("STEP 1: GEOREFERENCE IMAGE")
 
-    pixel_x = (east - west) / width
-    pixel_y = (south - north) / height  # negative normally
+    run([
+        "gdal_translate",
+        "-of", "GTiff",
+        "-a_srs", "EPSG:4326",
+        "-a_ullr",
+        str(west), str(north),
+        str(east), str(south),
+        str(src),
+        str(out_tif)
+    ])
 
-    xml = f"""<VRTDataset rasterXSize="{width}" rasterYSize="{height}">
-  <SRS>EPSG:4326</SRS>
-  <GeoTransform>{west}, {pixel_x}, 0, {north}, 0, {pixel_y}</GeoTransform>
+    log(f"Created: {out_tif}")
+    log(f"Size: {filesize(out_tif)}")
 
-  <VRTRasterBand dataType="Byte" band="1">
-    <SimpleSource>
-      <SourceFilename relativeToVRT="1">{src_png.name}</SourceFilename>
-      <SourceBand>1</SourceBand>
-    </SimpleSource>
-  </VRTRasterBand>
 
-  <VRTRasterBand dataType="Byte" band="2">
-    <SimpleSource>
-      <SourceFilename relativeToVRT="1">{src_png.name}</SourceFilename>
-      <SourceBand>2</SourceBand>
-    </SimpleSource>
-  </VRTRasterBand>
+def mercator(src, out_tif):
+    section("STEP 2: WARP TO WEB MERCATOR")
 
-  <VRTRasterBand dataType="Byte" band="3">
-    <SimpleSource>
-      <SourceFilename relativeToVRT="1">{src_png.name}</SourceFilename>
-      <SourceBand>3</SourceBand>
-    </SimpleSource>
-  </VRTRasterBand>
+    run([
+        "gdalwarp",
+        "-multi",
+        "-dstalpha",
+        "-r", "bilinear",
+        "-t_srs", "EPSG:3857",
+        str(src),
+        str(out_tif)
+    ])
 
-  <VRTRasterBand dataType="Byte" band="4">
-    <SimpleSource>
-      <SourceFilename relativeToVRT="1">{src_png.name}</SourceFilename>
-      <SourceBand>4</SourceBand>
-    </SimpleSource>
-  </VRTRasterBand>
-</VRTDataset>
-"""
-    vrt_path.write_text(xml, encoding="utf-8")
+    log(f"Created: {out_tif}")
+    log(f"Size: {filesize(out_tif)}")
+
+
+def make_mbtiles(src_tif, out_mbtiles, zmin, zmax):
+    section(f"STEP 3: BUILD MBTILES ({zmin}-{zmax})")
+
+    run([
+        "rio",
+        "mbtiles",
+        str(src_tif),
+        str(out_mbtiles),
+        "--format", "PNG",
+        "--zoom-levels", f"{zmin}..{zmax}"
+    ])
+
+    log(f"Created: {out_mbtiles}")
+    log(f"Size: {filesize(out_mbtiles)}")
+
+
+def make_pmtiles(src_mbtiles, out_pmtiles):
+    section("STEP 4: CONVERT TO PMTILES")
+
+    run([
+        "pmtiles",
+        "convert",
+        str(src_mbtiles),
+        str(out_pmtiles)
+    ])
+
+    log(f"Created: {out_pmtiles}")
+    log(f"Size: {filesize(out_pmtiles)}")
 
 
 # ---------------------------------------------------
@@ -110,78 +160,61 @@ def write_vrt_png(src_png: Path, vrt_path: Path, west, south, east, north):
 # ---------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input", required=True, help="Input raster PNG/JPG")
-    parser.add_argument("--output", required=True, help="Output .pmtiles")
-    parser.add_argument(
+    p = argparse.ArgumentParser()
+
+    p.add_argument("--input", required=True)
+
+    p.add_argument(
         "--bounds",
         nargs=4,
         type=float,
-        metavar=("WEST", "SOUTH", "EAST", "NORTH"),
-        required=True
+        required=True,
+        metavar=("WEST", "SOUTH", "EAST", "NORTH")
     )
-    parser.add_argument("--minzoom", type=int, default=0)
-    parser.add_argument("--maxzoom", type=int, default=8)
-    parser.add_argument("--tilesize", type=int, default=256)
 
-    args = parser.parse_args()
+    p.add_argument("--minzoom", type=int, default=0)
+    p.add_argument("--maxzoom", type=int, default=12)
 
-    require_binary("gdalwarp")
-    require_binary("gdal2tiles.py")
-    require_binary("pmtiles")
+    args = p.parse_args()
+
+    section("CHECKING DEPENDENCIES")
+
+    need("gdal_translate")
+    need("gdalwarp")
+    need("rio")
+    need("pmtiles")
 
     src = Path(args.input).resolve()
-    out = Path(args.output).resolve()
+    output = src.with_suffix(".pmtiles")
 
     west, south, east, north = args.bounds
 
+    log(f"Input: {src}")
+    log(f"Output: {output}")
+    log(f"Bounds: {west}, {south}, {east}, {north}")
+    log(f"Zooms: {args.minzoom}-{args.maxzoom}")
+
     with tempfile.TemporaryDirectory() as td:
-        tmp = Path(td)
+        td = Path(td)
 
-        local_src = tmp / src.name
-        shutil.copy(src, local_src)
+        log(f"Temp dir: {td}")
 
-        vrt = tmp / "source.vrt"
-        merc = tmp / "mercator.tif"
-        tile_dir = tmp / "tiles"
+        geo = td / "geo.tif"
+        merc = td / "merc.tif"
 
-        print("Creating georeferenced VRT...")
-        write_vrt_png(local_src, vrt, west, south, east, north)
+        mb = td / "world.mbtiles"
+        pm = output
 
-        print("Warping to Web Mercator...")
-        run([
-            "gdalwarp",
-            "-t_srs", "EPSG:3857",
-            "-r", "bilinear",
-            "-dstalpha",
-            str(vrt),
-            str(merc)
-        ])
+        georef(src, geo, west, south, east, north)
+        mercator(geo, merc)
+        make_mbtiles(merc, mb, args.minzoom, args.maxzoom)
+        make_pmtiles(mb, pm)
 
-        print("Generating XYZ tiles...")
-        run([
-            "gdal2tiles.py",
-            "--xyz",
-            "--processes=4",
-            "--zoom", f"{args.minzoom}-{args.maxzoom}",
-            "--tilesize", str(args.tilesize),
-            str(merc),
-            str(tile_dir)
-        ])
+    section("DONE")
 
-        print("Packing PMTiles...")
-        out.parent.mkdir(parents=True, exist_ok=True)
-
-        run([
-            "pmtiles",
-            "convert",
-            str(tile_dir),
-            str(out)
-        ])
-
-    print()
-    print("Done:")
-    print(out)
+    log(f"Output: {pm}")
+    log(f"Size: {filesize(pm)}")
+    log(f"Total time: {elapsed()}")
 
 
 if __name__ == "__main__":

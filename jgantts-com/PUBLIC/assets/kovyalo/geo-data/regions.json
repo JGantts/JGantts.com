@@ -6,8 +6,8 @@
       [14.596875, -49.32],
       [-3.645, -22.68]
     ],
-    "minZoom": -30,
-    "maxZoom": 12,
+    "minZoom": 4,
+    "maxZoom": 7,
     "parentId": null,
     "layers": [
       { "id": "background", "imageUrl": "/assets/kovyalo/map/kovyalo/background.png" },
@@ -21,12 +21,13 @@
       [9.084375, -36.6552],
       [14.54625, -32.5872]
     ],
-    "minZoom": -1.5,
-    "maxZoom": 24,
+    "minZoom": 6,
+    "maxZoom": 12,
     "parentId": "kovyalo",
     "layers": [
       { "id": "background", "imageUrl": "/assets/kovyalo/map/kovyalo/ziemund/background.png" },
       { "id": "base", "imageUrl": "/assets/kovyalo/map/kovyalo/ziemund/0.png" },
+      { "id": "states", "imageUrl": "/assets/kovyalo/map/kovyalo/ziemund/states.png" },
       { "id": "rivers", "imageUrl": "/assets/kovyalo/map/kovyalo/ziemund/rivers.png" },
       { "id": "borders", "imageUrl": "/assets/kovyalo/map/kovyalo/ziemund/borders.png" }
     ],

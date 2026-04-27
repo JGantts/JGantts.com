@@ -26,11 +26,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install system deps
-        run: |
-          sudo apt update
-          sudo apt install -y gdal-bin python3-gdal python3-pip curl
-
       - name: Install PMTiles CLI
         run: |
           mkdir -p $HOME/.local/bin

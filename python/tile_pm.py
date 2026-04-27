@@ -129,6 +129,8 @@ def make_mbtiles(src_tif, out_mbtiles, zmin, zmax):
     section(f"STEP 3: BUILD MBTILES ({zmin}-{zmax})")
 
     run([
+        sys.executable,
+        "-m",
         "rasterio.rio",
         "mbtiles",
         str(src_tif),
@@ -136,7 +138,6 @@ def make_mbtiles(src_tif, out_mbtiles, zmin, zmax):
         "--format", "PNG",
         "--zoom-levels", f"{zmin}..{zmax}"
     ])
-
     log(f"Created: {out_mbtiles}")
     log(f"Size: {filesize(out_mbtiles)}")
 

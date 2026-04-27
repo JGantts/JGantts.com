@@ -12,7 +12,11 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Install system deps
         run: |
           sudo apt update
@@ -42,6 +46,8 @@ jobs:
 
       - name: Build map
         run: |
+          python3 -m venv ./venv
+          source ./venv/bin/activate
           python3 make_all_tiles.py \
           --regions ../jgantts-com/PUBLIC/assets/kovyalo/geo-data/regions.json \
           --world ../jgantts-com/PUBLIC/assets/kovyalo/map/world.png 

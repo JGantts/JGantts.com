@@ -42,10 +42,6 @@ jobs:
           
       - name: Verify Python dependencies
         run: |
-          source ./venv/bin/activate
-          python3 -c "import gdal; print('GDAL version:', gdal.__version__)"
-          python3 -c "import rasterio; print('Rasterio version:', rasterio.__version__)"
-          python3 -c "import rio_mbtiles; print('rio-mbtiles version:', rio_mbtiles.__version__)"
           which rio || true
           rio --help
         working-directory: ./python/

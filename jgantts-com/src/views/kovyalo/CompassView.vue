@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MapLibreMap } from "maplibre-gl";
+import { type MapLibreMap } from "maplibre-gl";
 import { onMounted, watch } from "vue";
 
 const props = defineProps<{

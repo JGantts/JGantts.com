@@ -4,3 +4,4 @@ scipy
 mercantile
 argparse
 rio-mbtiles
+rasterio

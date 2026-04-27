@@ -39,12 +39,6 @@ jobs:
           source ./venv/bin/activate
           python3 -m pip install -r requirements.txt
         working-directory: ./python/
-          
-      - name: Verify Python dependencies
-        run: |
-          which rio || true
-          rio --help
-        working-directory: ./python/
 
       - name: Build map
         run: |

@@ -3,4 +3,4 @@ pillow
 scipy
 mercantile
 argparse
-pil
+rio-mbtiles

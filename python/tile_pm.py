@@ -129,9 +129,7 @@ def make_mbtiles(src_tif, out_mbtiles, zmin, zmax):
     section(f"STEP 3: BUILD MBTILES ({zmin}-{zmax})")
 
     run([
-        sys.executable,
-        "-m",
-        "rasterio.rio",
+        str(Path(sys.executable).parent / "rio"),
         "mbtiles",
         str(src_tif),
         str(out_mbtiles),

@@ -45,6 +45,7 @@ jobs:
           python3 make_all_tiles.py
           --regions ../jgantts-com/PUBLIC/assets/kovyalo/geo-data/regions.json
           --world ../jgantts-com/PUBLIC/assets/kovyalo/map/world.png 
+        working-directory: ./python/
 
       - name: build
         run: |

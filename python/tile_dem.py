@@ -2,62 +2,23 @@ import os
 import numpy as np
 from PIL import Image
 import mercantile
-
-# --------------------
-# CONFIG
-# --------------------
-INPUT = "../jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height-eroded.png"
-OUT = "../jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height-tiles"
+import argparse
+from pathlib import Path
+import math
 
 MIN_ELEV = 750
 MAX_ELEV = 1500
 MAX_ZOOM = 12
 
-BBOX = {
-    "west": -36.6552,
-    "east": -32.5872,
-    "south": 9.084375,
-    "north": 14.54625
-}
-
 TILE_SIZE = 256
 
-# --------------------
-# LOAD HEIGHTMAP
-# --------------------
-# --------------------
-# LOAD HEIGHTMAP (SMART)
-# --------------------
-img = Image.open(INPUT)
-arr = np.array(img)
-
-if arr.ndim == 3:
-    # RGB / RGBA → assume terrain-rgb encoding
-    R = arr[:, :, 0].astype(np.float32)
-    G = arr[:, :, 1].astype(np.float32)
-    B = arr[:, :, 2].astype(np.float32)
-
-    height = (R * 256 * 256 + G * 256 + B) * 0.1 - 10000.0
-
-elif arr.dtype == np.uint16:
-    # true 16-bit grayscale
-    height = arr.astype(np.float32)
-
-else:
-    # fallback (you probably screwed up earlier)
-    height = arr.astype(np.float32)
-
-h, w = height.shape
-
-# normalize ONCE (optional, but consistent)
-h_min = height.min()
-h_max = height.max()
-height = (height - h_min) / (h_max - h_min + 1e-8)
+def mercator_to_lat(my):
+    return np.degrees(np.arctan(np.sinh(my / 6378137.0)))
 
 # --------------------
 # SAMPLE HEIGHTMAP
 # --------------------
-def sample_bilinear(nx, ny):
+def sample_bilinear(height, w, h, nx, ny):
     x = np.clip(nx * (w - 1), 0, w - 1)
     y = np.clip(ny * (h - 1), 0, h - 1)
 
@@ -76,7 +37,7 @@ def sample_bilinear(nx, ny):
         height[y1, x1] * tx * ty
     )
 
-def sample(x, y):
+def sample(height, x, y):
     x = np.clip(x, 0.0, 1.0)
     y = np.clip(y, 0.0, 1.0)
 
@@ -96,31 +57,28 @@ def encode_elevation(elev):
     return r, g, b
 
 # --------------------
-# MAP WORLD COORDS → LOCAL HEIGHTMAP SPACE
-# --------------------
-def world_to_local(lon, lat):
-    nx = (lon - BBOX["west"]) / (BBOX["east"] - BBOX["west"])
-    ny = (BBOX["north"] - lat) / (BBOX["north"] - BBOX["south"])
-    return nx, ny
-
-# --------------------
 # TILE RENDER
 # --------------------
-def render_tile(z, x, y):
-    bounds = mercantile.bounds(x, y, z)
+def render_tile(height, w, h, BBOX, z, x, y):
+    bounds_m = mercantile.xy_bounds(x, y, z)
 
-    # Create normalized pixel grid [0,1)
     px = np.linspace(0, 1, TILE_SIZE, endpoint=False, dtype=np.float32)
     py = np.linspace(0, 1, TILE_SIZE, endpoint=False, dtype=np.float32)
     px_grid, py_grid = np.meshgrid(px, py)
 
-    # Convert to lon/lat
-    lon = bounds.west + px_grid * (bounds.east - bounds.west)
-    lat = bounds.north - py_grid * (bounds.north - bounds.south)
+    # mercator meters
+    mx = bounds_m.left + px_grid * (bounds_m.right - bounds_m.left)
+    my = bounds_m.top - py_grid * (bounds_m.top - bounds_m.bottom)
+
+    # lon from mercator x
+    lon = mx * 180.0 / 20037508.34
+
+    # lat from mercator y
+    lat = mercator_to_lat(my)
 
     # Map to local heightmap space
     nx = (lon - BBOX["west"]) / (BBOX["east"] - BBOX["west"])
-    ny = (BBOX["north"] - lat) / (BBOX["north"] - BBOX["south"])
+    ny = 1.0 - ((lat - BBOX["south"]) / (BBOX["north"] - BBOX["south"]))
 
     # Mask out-of-bounds
     mask = (nx >= 0) & (nx <= 1) & (ny >= 0) & (ny <= 1)
@@ -130,7 +88,7 @@ def render_tile(z, x, y):
     iy = np.clip((ny * (h - 1)).astype(np.int32), 0, h - 1)
 
     # Sample heightmap
-    hval = sample_bilinear(nx, ny)
+    hval = sample_bilinear(height, w, h, nx, ny)
 
     # Convert to elevation
     elev = MIN_ELEV + hval * (MAX_ELEV - MIN_ELEV)
@@ -157,27 +115,89 @@ def render_tile(z, x, y):
 # --------------------
 # WRITE TILE
 # --------------------
-def write_tile(tile, z, x, y):
+def write_tile(OUT, tile, z, x, y):
     path = f"{OUT}/{z}/{x}"
     os.makedirs(path, exist_ok=True)
     Image.fromarray(tile, mode="RGB").save(f"{path}/{y}.png")
 
-# --------------------
-# GENERATE
-# --------------------
-for z in range(MAX_ZOOM + 1):
-    print(f"Generating zoom {z}...")
+def main():
+    p = argparse.ArgumentParser()
 
-    tiles = mercantile.tiles(
-        BBOX["west"],
-        BBOX["south"],
-        BBOX["east"],
-        BBOX["north"],
-        z
+    p.add_argument("--input", required=True)
+
+    p.add_argument("--output", required=True)
+
+    p.add_argument(
+        "--bounds",
+        nargs=4,
+        type=float,
+        required=True,
+        metavar=("WEST", "SOUTH", "EAST", "NORTH")
     )
 
-    for t in tiles:
-        img = render_tile(t.z, t.x, t.y)
-        write_tile(img, t.z, t.x, t.y)
+    args = p.parse_args()
 
-print("Done.")
+    INPUT = args.input # "../jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height-eroded.png"
+    OUT = args.output # "../jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height-tiles"
+
+    BBOX = {
+        "west": args.bounds[0],
+        "south": args.bounds[1],
+        "east": args.bounds[2],
+        "north": args.bounds[3]
+    }
+
+    # --------------------
+    # LOAD HEIGHTMAP
+    # --------------------
+    # --------------------
+    # LOAD HEIGHTMAP (SMART)
+    # --------------------
+    img = Image.open(INPUT)
+    arr = np.array(img)
+
+    if arr.ndim == 3:
+        # RGB / RGBA → assume terrain-rgb encoding
+        R = arr[:, :, 0].astype(np.float32)
+        G = arr[:, :, 1].astype(np.float32)
+        B = arr[:, :, 2].astype(np.float32)
+
+        height = (R * 256 * 256 + G * 256 + B) * 0.1 - 10000.0
+
+    elif arr.dtype == np.uint16:
+        # true 16-bit grayscale
+        height = arr.astype(np.float32)
+
+    else:
+        # fallback (you probably screwed up earlier)
+        height = arr.astype(np.float32)
+
+    h, w = height.shape
+
+    # normalize ONCE (optional, but consistent)
+    h_min = height.min()
+    h_max = height.max()
+    height = (height - h_min) / (h_max - h_min + 1e-8)
+
+    # --------------------
+    # GENERATE
+    # --------------------
+    for z in range(MAX_ZOOM + 1):
+        print(f"Generating zoom {z}...")
+
+        tiles = mercantile.tiles(
+            BBOX["west"],
+            BBOX["south"],
+            BBOX["east"],
+            BBOX["north"],
+            z
+        )
+
+        for t in tiles:
+            img = render_tile(height, w, h, BBOX, t.z, t.x, t.y)
+            write_tile(OUT, img, t.z, t.x, t.y)
+
+    print("Done.")
+
+if __name__ == "__main__":
+    main()

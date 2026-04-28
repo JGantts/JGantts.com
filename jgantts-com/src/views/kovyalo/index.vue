@@ -20,7 +20,6 @@ type MapSaveState = {
 type BoundsTuple = [[number, number], [number, number]]
 
 type RegionLayerConfig = {
-  id: string
   imageUrl: string
 }
 
@@ -33,7 +32,8 @@ type RegionConfig = {
   minZoom: number
   maxZoom: number
   parentId?: string | null
-  layers: RegionLayerConfig[]
+  base: RegionLayerConfig
+  layers: (RegionLayerConfig&{id: string})[]
   dataSources?: {
     kind: DataSourceKind
     points: { name: string; coordinates: [number, number], population: number }[]
@@ -596,10 +596,10 @@ onMounted(() => {
 
       map!.addSource('world-pmtiles', {
         type: 'raster',
-        url: 'pmtiles:///assets/maps/maps/world.pmtiles',
+        url: 'pmtiles:///assets/maps/world.pmtiles',
         tileSize: 256,
         minzoom: 0,
-        maxzoom: 12,
+        maxzoom: 6,
       })
 
       map!.addLayer({
@@ -618,6 +618,33 @@ onMounted(() => {
           bounds: normalizeBounds(config.bounds),
           active: false,
           townsActive: false,
+        }
+
+        console.log(region.base)
+        if (region.base) {
+          const sourceId = `region-src-${region.id}-base`
+          const layerId = `region-${region.id}-base`
+          const source = `pmtiles:///assets/maps/${region.base.imageUrl}.pmtiles`
+
+          console.log(source)
+
+          map!.addSource(sourceId, {
+            type: 'raster',
+            url: source,
+            minzoom: region.minZoom,
+            maxzoom: region.maxZoom,
+          })
+
+          map!.addLayer({
+            id: layerId,
+            type: 'raster',
+            source: sourceId,
+            paint: {
+              'raster-opacity': 1,
+            },
+          })
+
+          console.log(map?.getLayersOrder())
         }
 
         for (const layer of region.layers) {
@@ -706,7 +733,7 @@ onMounted(() => {
       map!.addSource('terrain', {
         type: 'raster-dem',
         tiles: [
-          '/assets/maps/maps/kovyalo/ziemund/height-tiles/{z}/{x}/{y}.png'
+          '/assets/maps/height-tiles/{z}/{x}/{y}.png'
         ],
         tileSize: 256,
         encoding: 'mapbox' // important
@@ -877,8 +904,11 @@ onMounted(() => {
     scheduleRecompute()
   })
 
+  map.on('zoom', (e) => {
+    if (e) { updateOnZoom() }
+  })
+
   map!.on('zoomend', () => {
-    updateOnZoom()
     requestSync()
     scheduleSave()
     scheduleRecompute()
@@ -920,67 +950,76 @@ onMounted(() => {
   let last = performance.now();
 
   function loop(now: number) {
-    if(!map) requestAnimationFrame(loop);
+    if(map) {
 
-    const dt = (now - last) / 1000;
-    last = now;
+      const dt = (now - last) / 1000;
+      last = now;
 
-    const bearing = map!.getBearing();
+      const bearing = map!.getBearing();
 
-    let forward = 0;
-    let strafe = 0;
+      let forward = 0;
+      let strafe = 0;
 
-    if (keys["w"]) forward += 1;
-    if (keys["s"]) forward -= 1;
-    if (keys["d"]) strafe += 1;
-    if (keys["a"]) strafe -= 1;
+    const hasModifier =
+      keys["shift"] ||
+      keys["control"] ||
+      keys["alt"] ||
+      keys["meta"];
 
-    // movement (screen/view relative)
-    if (forward !== 0 || strafe !== 0) {
-      const len = Math.hypot(strafe, forward);
-      forward /= len;
-      strafe /= len;
+      if (!hasModifier) {
 
-      const dx = strafe * moveSpeed * dt;
-      const dy = -forward * moveSpeed * dt;
+        if (keys["w"]) forward += 1;
+        if (keys["s"]) forward -= 1;
+        if (keys["d"]) strafe += 1;
+        if (keys["a"]) strafe -= 1;
 
-      map!.panBy([dx, dy], { animate: false });
+        // movement (screen/view relative)
+        if (forward !== 0 || strafe !== 0) {
+          const len = Math.hypot(strafe, forward);
+          forward /= len;
+          strafe /= len;
+
+          const dx = strafe * moveSpeed * dt;
+          const dy = -forward * moveSpeed * dt;
+
+          map!.panBy([dx, dy], { animate: false });
+        }
+
+        // rotate
+        let newBearing = bearing;
+
+        if (keys["q"]) newBearing += rotateSpeed * dt;
+        if (keys["e"]) newBearing -= rotateSpeed * dt;
+
+        if (newBearing !== bearing) {
+          map!.rotateTo(newBearing, { animate: false });
+        }
+
+        // tilt / pitch
+        let pitch = map!.getPitch();
+        let newPitch = pitch;
+
+        if (keys["r"]) newPitch -= tiltSpeed * dt;
+        if (keys["f"]) newPitch += tiltSpeed * dt;
+
+        newPitch = Math.max(0, Math.min(85, newPitch));
+
+        if (newPitch !== pitch) {
+          map!.setPitch(newPitch);
+        }
+
+        // zoom
+        let zoom = map!.getZoom();
+        let newZoom = zoom;
+
+        if (keys["z"]) newZoom += zoomSpeed * dt;
+        if (keys["x"]) newZoom -= zoomSpeed * dt;
+
+        if (newZoom !== zoom) {
+          map!.zoomTo(newZoom, { animate: false });
+        }
+      }
     }
-
-    // rotate
-    let newBearing = bearing;
-
-    if (keys["q"]) newBearing += rotateSpeed * dt;
-    if (keys["e"]) newBearing -= rotateSpeed * dt;
-
-    if (newBearing !== bearing) {
-      map!.rotateTo(newBearing, { animate: false });
-    }
-
-    // tilt / pitch
-    let pitch = map!.getPitch();
-    let newPitch = pitch;
-
-    if (keys["r"]) newPitch -= tiltSpeed * dt;
-    if (keys["f"]) newPitch += tiltSpeed * dt;
-
-    newPitch = Math.max(0, Math.min(85, newPitch));
-
-    if (newPitch !== pitch) {
-      map!.setPitch(newPitch);
-    }
-
-    // zoom
-    let zoom = map!.getZoom();
-    let newZoom = zoom;
-
-    if (keys["z"]) newZoom += zoomSpeed * dt;
-    if (keys["x"]) newZoom -= zoomSpeed * dt;
-
-    if (newZoom !== zoom) {
-      map!.zoomTo(newZoom, { animate: false });
-    }
-
     requestAnimationFrame(loop);
   }
 

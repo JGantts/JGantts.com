@@ -163,6 +163,8 @@ def main():
 
     p.add_argument("--input", required=True)
 
+    p.add_argument("--output", required=True)
+
     p.add_argument(
         "--bounds",
         nargs=4,
@@ -183,7 +185,10 @@ def main():
     need("pmtiles")
 
     src = Path(args.input).resolve()
-    output = src.with_suffix(".pmtiles")
+    out = Path(args.output).resolve()
+    out_dir = out.parent
+    out_dir.mkdir(parents=True, exist_ok=True)
+    output = out.with_suffix(".pmtiles")
 
     west, south, east, north = args.bounds
 

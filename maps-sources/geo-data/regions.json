@@ -9,27 +9,27 @@
     "minZoom": 4,
     "maxZoom": 7,
     "parentId": null,
+    "base": { "imageUrl": "kovyalo/0" },
     "layers": [
-      { "id": "background", "imageUrl": "/assets/kovyalo/map/kovyalo/background.png" },
-      { "id": "base", "imageUrl": "/assets/kovyalo/map/kovyalo/0.png" }
+      { "id": "background", "imageUrl": "kovyalo/background" }
     ]
   },
   {
     "id": "ziemund",
     "title": "Ziemúnd",
     "bounds": [
-      [9.084375, -36.6552],
-      [14.54625, -32.5872]
+      [14.54625, -36.6552],
+      [9.084375, -32.5872]
     ],
     "minZoom": 6,
     "maxZoom": 12,
     "parentId": "kovyalo",
+    "base": { "imageUrl": "kovyalo/ziemund/0" },
     "layers": [
-      { "id": "background", "imageUrl": "/assets/kovyalo/map/kovyalo/ziemund/background.png" },
-      { "id": "base", "imageUrl": "/assets/kovyalo/map/kovyalo/ziemund/0.png" },
-      { "id": "states", "imageUrl": "/assets/kovyalo/map/kovyalo/ziemund/states.png" },
-      { "id": "rivers", "imageUrl": "/assets/kovyalo/map/kovyalo/ziemund/rivers.png" },
-      { "id": "borders", "imageUrl": "/assets/kovyalo/map/kovyalo/ziemund/borders.png" }
+      { "id": "background", "imageUrl": "kovyalo/ziemund/background" },
+      { "id": "states", "imageUrl": "kovyalo/ziemund/states" },
+      { "id": "rivers", "imageUrl": "kovyalo/ziemund/rivers" },
+      { "id": "borders", "imageUrl": "kovyalo/ziemund/borders" }
     ],
     "dataSources": [
       {

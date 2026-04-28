@@ -22,6 +22,9 @@ import sys
 from pathlib import Path
 
 TILER = Path("./tile_pm.py").resolve()
+DEMMER = Path("./tile_dem.py").resolve()
+
+from path_constants import SRC_DIR, WORLD_IMAGE_IN, WORLD_ERODED_IN, WORLD_IMAGE_OUT, REGIONS_JSON_IN, OUTPUT_DIR, REGIONS_JSON_OUT
 
 # ---------------------------------------------------
 # helpers
@@ -30,25 +33,35 @@ TILER = Path("./tile_pm.py").resolve()
 def run(cmd):
     print(">", " ".join(cmd))
     subprocess.run(cmd, check=True, stdout=sys.stdout, stderr=sys.stderr)
+   
+def normalize_in_file_path(path):
+    p = Path(path)
+    if p.is_absolute():
+        return p
+    return SRC_DIR / p
 
-def normalize_file_path(path_str):
-    path = f"../jgantts-com/PUBLIC/{path_str}"
-    return path
+def make_normalize_out_file_path(args):
+    def normalize_out_file_path(path):
+        base = OUTPUT_DIR(args.dev)
+        p = Path(path)
+        if p.is_absolute():
+            return p
+        return base / p
+    return normalize_out_file_path
 
-def build(input_file, bounds, minzoom, maxzoom):
+def build(input_file, output_file, bounds, minzoom, maxzoom):
     west, south, east, north = bounds
 
     run([
         sys.executable,
         str(TILER),
         "--input", str(input_file),
-
+        "--output", str(output_file),
         "--bounds",
         str(west),
         str(south),
         str(east),
         str(north),
-
         "--minzoom", str(minzoom),
         "--maxzoom", str(maxzoom),
     ])
@@ -61,23 +74,32 @@ def build(input_file, bounds, minzoom, maxzoom):
 def main():
     p = argparse.ArgumentParser()
 
-    p.add_argument("--regions", required=True)
-
-    p.add_argument("--world", required=True)
+    p.add_argument("--dev", action="store_true")
 
     args = p.parse_args()
 
-    regions_json = Path(args.regions).resolve()
+    normalize_out_file_path = make_normalize_out_file_path(args)
+    
+    regions_json_in = Path(REGIONS_JSON_IN).resolve()
+    regions_json_out = Path(REGIONS_JSON_OUT(args.dev)).resolve()
 
     if not TILER.exists():
         print("Missing tiler:", TILER)
         sys.exit(1)
 
-    if not regions_json.exists():
-        print("Missing regions file:", regions_json)
+    if not regions_json_in.exists():
+        print("Missing regions file:", regions_json_in)
         sys.exit(1)
 
-    regions = json.loads(regions_json.read_text(encoding="utf-8"))
+    regions = json.loads(regions_json_in.read_text(encoding="utf-8"))
+
+
+    print("\n=== COPYING REGIONS GEOJSON ===")
+    #copy input regions geojson to output
+    regions_json_out.parent.mkdir(parents=True, exist_ok=True)
+    regions_json_out.write_text(regions_json_in.read_text(encoding="utf-8"), encoding="utf-8")
+
+
 
     # -------------------------------------------------
     # WORLD
@@ -85,14 +107,12 @@ def main():
 
     print("\n=== WORLD ===")
 
-
-    p = Path(args.world).resolve()
-
     build(
-        args.world,
+        WORLD_IMAGE_IN.with_suffix(".png"),
+        WORLD_IMAGE_OUT(args.dev).with_suffix(".pmtiles"),
         (-180, -85.05113, 180, 85.05113),
         0,
-        6
+        6 
     )
 
     # -------------------------------------------------
@@ -111,31 +131,45 @@ def main():
 
         bounds = (west, south, east, north)
 
-        base = None
-        for layer in region["layers"]:
-            if layer["id"] == "base":
-                base = layer
-                break
+        base = region.get("base")
 
-        if not base:
-            print(f"Skipping {region_id}: no base layer")
-            continue
+        if base:
+            relative_file = base["imageUrl"]
+            input_file = normalize_in_file_path(relative_file).with_suffix(".png")
+            output_file = normalize_out_file_path(relative_file).with_suffix(".pmtiles")
 
-        input_file = base["imageUrl"]
-        p = Path(input_file).resolve()
-        output_dir = p.with_suffix("").parent / f"{p.stem}_tiles/"
+            print(f"\n=== REGION {region_id} ===")
 
-        print(f"\n=== REGION {region_id} ===")
+            print(input_file)
 
-        print(input_file)
-        print(normalize_file_path(input_file))
+            build(
+                input_file,
+                output_file,
+                bounds,
+                region["minZoom"],
+                region["maxZoom"]
+            )
+        
 
-        build(
-            normalize_file_path(input_file),
-            bounds,
-            region["minZoom"],
-            region["maxZoom"]
-        )
+    relative_file = WORLD_ERODED_IN
+    input_file = normalize_in_file_path(relative_file).with_suffix(".png")
+    output_dir = normalize_out_file_path("height-tiles")
+
+    print(f"\n=== HEIGHT {region_id} ===")
+
+    print(input_file)
+
+    run([
+        sys.executable,
+        str(DEMMER),
+        "--input", str(input_file),
+        "--output", str(output_dir),
+        "--bounds",
+        str(west),
+        str(south),
+        str(east),
+        str(north)
+    ])
 
     print("\nDONE")
 

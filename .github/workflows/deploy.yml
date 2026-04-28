@@ -64,7 +64,7 @@ jobs:
           port: 22
           source: './maps-rendered/'
           target: '/home/jgantts-com/node-js/jgantts-com/PUBLIC/assets/maps/'
-          strip_components: 1
+          strip_components: 2
 
   deploy-site:
     runs-on: self-hosted

@@ -62,7 +62,7 @@ jobs:
           username: ${{ secrets.LINODE_USER }}
           password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
-          source: './map-rendered/'
+          source: './maps-rendered/'
           target: '/home/jgantts-com/node-js/jgantts-com/PUBLIC/assets/maps/'
 
   deploy-site:

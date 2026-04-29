@@ -20,6 +20,7 @@ type MapSaveState = {
 type BoundsTuple = [[number, number], [number, number]]
 
 type RegionLayerConfig = {
+  type: "tiled" | "single"
   imageUrl: string
 }
 
@@ -33,6 +34,7 @@ type RegionConfig = {
   maxZoom: number
   parentId?: string | null
   base: RegionLayerConfig
+  background: RegionLayerConfig
   layers: (RegionLayerConfig&{id: string})[]
   dataSources?: {
     kind: DataSourceKind
@@ -295,14 +297,14 @@ function requestSync() {
           map.setPaintProperty(
             `region-${region.id}-${layer.id}`,
             'raster-opacity',
-            0.5,
+            1,
           )
           continue
         }
 
         const opacity = shouldBeVisible
-          ? regionOverlayOpacity.value
-          : 0
+          ? 1
+          : 1
 
         map.setPaintProperty(layerId, 'raster-opacity', opacity)
       }
@@ -535,7 +537,7 @@ onMounted(() => {
     center: saved?.center ?? [-34.3927, 11.8405],
     zoom: saved?.zoom ?? 6,
     minZoom: 2,
-    maxZoom: 8,
+    maxZoom: 10,
     minPitch: 0,
     maxPitch: 75,
     attributionControl: false,
@@ -620,13 +622,12 @@ onMounted(() => {
           townsActive: false,
         }
 
-        console.log(region.base)
-        if (region.base) {
-          const sourceId = `region-src-${region.id}-base`
-          const layerId = `region-${region.id}-base`
-          const source = `pmtiles:///assets/maps/${region.base.imageUrl}.pmtiles`
+        if (region.background) {
+          const sourceId = `region-src-${region.id}-background`
+          const layerId = `region-${region.id}-background`
+          const source = `pmtiles:///assets/maps/${region.background.imageUrl}.pmtiles`
 
-          console.log(source)
+          console.log(`Adding background layer for region ${region.id} with source ${source}`)
 
           map!.addSource(sourceId, {
             type: 'raster',
@@ -643,18 +644,18 @@ onMounted(() => {
               'raster-opacity': 1,
             },
           })
-
-          console.log(map?.getLayersOrder())
         }
 
-        for (const layer of region.layers) {
-          const sourceId = `region-src-${region.id}-${layer.id}`
-          const layerId = `region-${region.id}-${layer.id}`
+        if (region.base) {
+          const sourceId = `region-src-${region.id}-base`
+          const layerId = `region-${region.id}-base`
+          const source = `pmtiles:///assets/maps/${region.base.imageUrl}.pmtiles`
 
           map!.addSource(sourceId, {
-            type: 'image',
-            url: layer.imageUrl,
-            coordinates: boundsToImageCoordinates(region.bounds),
+            type: 'raster',
+            url: source,
+            minzoom: region.minZoom,
+            maxzoom: region.maxZoom,
           })
 
           map!.addLayer({
@@ -662,9 +663,46 @@ onMounted(() => {
             type: 'raster',
             source: sourceId,
             paint: {
-              'raster-opacity': 0.5,
+              'raster-opacity': 1,
             },
           })
+        }
+
+        for (const layer of region.layers) {
+          const sourceId = `region-src-${region.id}-${layer.id}`
+          const layerId = `region-${region.id}-${layer.id}`
+          if (layer.type === 'tiled') {
+            const source = `pmtiles:///assets/maps/${layer.imageUrl}.pmtiles`
+
+            map!.addSource(sourceId, {
+              type: 'raster',
+              url: source,
+            })
+
+            map!.addLayer({
+              id: layerId,
+              type: 'raster',
+              source: sourceId,
+              paint: {
+                'raster-opacity': 1,
+              },
+            })
+          } else if (layer.type === 'single') {
+            map!.addSource(sourceId, {
+              type: 'image',
+              url: `/assets/maps/${layer.imageUrl}.png`,
+              coordinates: boundsToImageCoordinates(region.bounds),
+            })
+
+            map!.addLayer({
+              id: layerId,
+              type: 'raster',
+              source: sourceId,
+              paint: {
+                'raster-opacity': 1,
+              },
+            })
+          }
         }
 /*
         map!.addSource(`region-src-${region.id}-rivers`, {

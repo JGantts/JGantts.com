@@ -17,6 +17,7 @@ Builds:
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -131,10 +132,7 @@ def main():
 
         bounds = (west, south, east, north)
 
-        base = region.get("base")
-
-        if base:
-            relative_file = base["imageUrl"]
+        def convert_region_layer(relative_file):
             input_file = normalize_in_file_path(relative_file).with_suffix(".png")
             output_file = normalize_out_file_path(relative_file).with_suffix(".pmtiles")
 
@@ -149,6 +147,25 @@ def main():
                 region["minZoom"],
                 region["maxZoom"]
             )
+
+        background = region.get("background")
+        if background:
+            convert_region_layer(background["imageUrl"])
+
+        base = region.get("base")
+        if base:
+            convert_region_layer(base["imageUrl"])
+        
+        layers = region.get("layers", [])
+        for layer in layers:
+            layerType = layer.get("type")
+            if layerType == "tiled":
+                convert_region_layer(layer["imageUrl"])
+            elif layerType == "single":
+                # copy png file
+                input_file = normalize_in_file_path(layer["imageUrl"]).with_suffix(".png")
+                output_file = normalize_out_file_path(layer["imageUrl"]).with_suffix(".png")
+                shutil.copy(input_file, output_file)
         
 
     relative_file = WORLD_ERODED_IN

@@ -10,8 +10,8 @@
     "maxZoom": 7,
     "parentId": null,
     "base": { "imageUrl": "kovyalo/0" },
+    "background": { "imageUrl": "kovyalo/background" },
     "layers": [
-      { "id": "background", "imageUrl": "kovyalo/background" }
     ]
   },
   {
@@ -22,14 +22,14 @@
       [9.084375, -32.5872]
     ],
     "minZoom": 6,
-    "maxZoom": 12,
+    "maxZoom": 10,
     "parentId": "kovyalo",
     "base": { "imageUrl": "kovyalo/ziemund/0" },
+    "background": { "imageUrl": "kovyalo/ziemund/background" },
     "layers": [
-      { "id": "background", "imageUrl": "kovyalo/ziemund/background" },
-      { "id": "states", "imageUrl": "kovyalo/ziemund/states" },
-      { "id": "rivers", "imageUrl": "kovyalo/ziemund/rivers" },
-      { "id": "borders", "imageUrl": "kovyalo/ziemund/borders" }
+      { "id": "states", "type": "single", "imageUrl": "kovyalo/ziemund/states" },
+      { "id": "rivers", "type": "single", "imageUrl": "kovyalo/ziemund/rivers" },
+      { "id": "borders", "type": "single", "imageUrl": "kovyalo/ziemund/borders" }
     ],
     "dataSources": [
       {

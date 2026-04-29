@@ -8,7 +8,7 @@ import math
 
 MIN_ELEV = 750
 MAX_ELEV = 1500
-MAX_ZOOM = 12
+MAX_ZOOM = 8
 
 TILE_SIZE = 256
 

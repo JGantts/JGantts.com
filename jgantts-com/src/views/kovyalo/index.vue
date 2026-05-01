@@ -8,6 +8,10 @@ import CompassView from './CompassView.vue'
 
 const props = defineProps<{ dev?: boolean }>()
 
+
+let compassView = ref<InstanceType<typeof CompassView> | null>(null)
+
+
 const SAVE_KEY = 'fantasy-map-state'
 
 type MapSaveState = {
@@ -22,6 +26,7 @@ type BoundsTuple = [[number, number], [number, number]]
 type RegionLayerConfig = {
   type: "tiled" | "single"
   imageUrl: string
+  sort: "political" | "geographical"
 }
 
 type DataSourceKind = 'towns'
@@ -52,7 +57,7 @@ type ImageCoordinates = [
 ]
 
 const mapEl = ref<HTMLElement | null>(null)
-let map: MapLibreMap | null = null
+let map: Ref<MapLibreMap | null> = ref(null)
 
 const cursorCoords = ref<{ x: number; y: number } | null>(null)
 const zoomCurrent = ref(0)
@@ -105,18 +110,16 @@ async function initMapData() {
         return acc
       }, []))
     ]
-  },
-  []
-)
+  }, [])
 
-townIndex.value = new KDBush(allTowns.value.length)
+  townIndex.value = new KDBush(allTowns.value.length)
 
-for (const town of allTowns.value) {
-  const [lat, lng] = town.coordinates
-  townIndex.value.add(lat, lng)
-}
+  for (const town of allTowns.value) {
+    const [lat, lng] = town.coordinates
+    townIndex.value.add(lat, lng)
+  }
 
-townIndex.value.finish()
+  townIndex.value.finish()
 }
 
 
@@ -142,9 +145,9 @@ function getVisibleTownsInActiveRegions(bounds: maplibregl.LngLatBounds) {
 }
 
 function computeVisiblePopulation(visibleTowns: TownPlusRegion[]|null = null) {
-  if (!map) return 1
+  if (!map.value) return 1
 
-  const bounds = map.getBounds()
+  const bounds = map.value.getBounds()
   const towns = visibleTowns || getVisibleTownsInActiveRegions(bounds)
 
   let total = 0
@@ -181,12 +184,12 @@ function getRegionById(id: string | null | undefined): ManagedRegion | undefined
 }
 
 function isRegionInView(region: RegionConfig): boolean {
-  if (!map) return false
+  if (!map.value) return false
 
-  const screenBounds = map.getBounds()
+  const screenBounds = map.value.getBounds()
   const [[regionTop, regionLeft], [regionBottom, regionRight]] = region.bounds
 
-  const center = map.getCenter()
+  const center = map.value.getCenter()
 
   return !(
     regionRight < screenBounds.getWest() ||
@@ -264,7 +267,7 @@ function requestSync() {
   syncScheduled = true
 
   function syncRegions(): void {
-    if (!map) return
+    if (!map.value) return
 
     const directlyEligible = regions.value.filter(isRegionInView)
     const visibleIds = new Set(directlyEligible.map((r) => r.id))
@@ -282,19 +285,19 @@ function requestSync() {
       const shouldBeVisible = visibleIds.has(region.id)
       region.active = shouldBeVisible
 
-      const backgroundShouldBeVisible = shouldRegionBackgroundBeVisible(region, map.getBounds())
+      const backgroundShouldBeVisible = shouldRegionBackgroundBeVisible(region, map.value.getBounds())
 
-      const townsVisible = shouldRegionTownsBeVisible(region, map.getBounds())
+      const townsVisible = shouldRegionTownsBeVisible(region, map.value.getBounds())
       region.townsActive = shouldBeVisible && townsVisible
 
       
       for (const layer of region.layers) {
         const layerId = `region-${region.id}-${layer.id}`
 
-        if (!map.getLayer(layerId)) continue
+        if (!map.value.getLayer(layerId)) continue
 
         if (layer.id === 'background' && !backgroundShouldBeVisible) {
-          map.setPaintProperty(
+          map.value.setPaintProperty(
             `region-${region.id}-${layer.id}`,
             'raster-opacity',
             1,
@@ -306,7 +309,7 @@ function requestSync() {
           ? 1
           : 1
 
-        map.setPaintProperty(layerId, 'raster-opacity', opacity)
+        map.value.setPaintProperty(layerId, 'raster-opacity', opacity)
       }
     }
 
@@ -415,11 +418,12 @@ async function addWarpedImageSource(
   imageUrl: string,
   bounds: BoundsTuple,
 ): Promise<void> {
-  if (!map) return
+  let _map = map.value
+  if (!_map) return
 
   const warpedUrl = await createMercatorWarpedImageUrl(imageUrl)
 
-  map.addSource(sourceId, {
+  _map.addSource(sourceId, {
     type: 'image',
     url: warpedUrl,
     coordinates: boundsToImageCoordinates(bounds),
@@ -429,13 +433,14 @@ async function addWarpedImageSource(
 let saveTimeout: number | null = null
 
 function saveMapState() {
-  if (!map) return
+  if (!map.value) return
+  let _map = map.value
 
   const state: MapSaveState = {
-    center: [map.getCenter().lng, map.getCenter().lat],
-    zoom: map.getZoom(),
-    pitch: map.getPitch(),
-    bearing: map.getBearing(),
+    center: [_map.getCenter().lng, _map.getCenter().lat],
+    zoom: _map.getZoom(),
+    pitch: _map.getPitch(),
+    bearing: _map.getBearing(),
   }
 
   localStorage.setItem(SAVE_KEY, JSON.stringify(state))
@@ -457,9 +462,11 @@ function scheduleRecompute() {
   if (rafPending) return
   rafPending = true
 
+  let _map = map.value
+  if (!_map) return
+
   requestAnimationFrame(() => {
-    if (!map) return
-    map = map!
+    if (!_map) return
     rafPending = false
     visiblePopulation.value = computeVisiblePopulation()
 
@@ -482,11 +489,11 @@ function scheduleRecompute() {
     ]
 
     try {
-      if (!map.getLayer('towns-layer')) {
+      if (_map.getLayer('towns-layer')) {
         console.warn('Failed to update text-size dynamically', 'towns-layer not found')
         return
       }
-      map.setLayoutProperty('towns-layer', 'text-size', newExpression)
+      _map.setLayoutProperty('towns-layer', 'text-size', newExpression)
     } catch (e) {
       console.warn('Failed to update text-size dynamically', e)
     }
@@ -494,9 +501,9 @@ function scheduleRecompute() {
 }
 
 function updateVisibleTownSource() {
-  if (!map) return
+  if (!map.value) return
 
-  const bounds = map.getBounds()
+  const bounds = map.value.getBounds()
   const visible = getVisibleTownsInActiveRegions(bounds)
 
   const data: GeoJSON.FeatureCollection = {
@@ -514,7 +521,7 @@ function updateVisibleTownSource() {
     }))
   }
 
-  const src = map.getSource('towns') as maplibregl.GeoJSONSource
+  const src = map.value.getSource('towns') as maplibregl.GeoJSONSource
   src.setData(data)
 }
 
@@ -531,7 +538,7 @@ onMounted(() => {
     }
   })()
 
-  map = new maplibregl.Map({
+  let mapTemp = new maplibregl.Map({
     container: mapEl.value,
     style: { version: 8, sources: {}, layers: [] },
     center: saved?.center ?? [-34.3927, 11.8405],
@@ -545,17 +552,17 @@ onMounted(() => {
     pitch: saved?.pitch ?? 0,
     bearing: saved?.bearing ?? 0,
   })
-
+  
   if (props.dev) {
-    map!.getCanvas().style.cursor = 'crosshair'
+    mapTemp!.getCanvas().style.cursor = 'crosshair'
   }
 
-  map.on('style.load', () => {
-    map!.setProjection({ type: 'globe' })
+  mapTemp.on('style.load', () => {
+    mapTemp!.setProjection({ type: 'globe' })
     //map!.setProjection({ type: 'mercator' })
   })
 
-  map.on('load', async () => {
+  mapTemp.on('load', async () => {
     await initMapData()
     mapReady.value = true
     console.log('Map loaded, initializing sources and layers.')
@@ -596,7 +603,7 @@ onMounted(() => {
       const protocol = new Protocol()
       maplibregl.addProtocol('pmtiles', protocol.tile)
 
-      map!.addSource('world-pmtiles', {
+      mapTemp.addSource('world-pmtiles', {
         type: 'raster',
         url: 'pmtiles:///assets/maps/world.pmtiles',
         tileSize: 256,
@@ -604,7 +611,7 @@ onMounted(() => {
         maxzoom: 6,
       })
 
-      map!.addLayer({
+      mapTemp.addLayer({
         id: 'world',
         type: 'raster',
         source: 'world-pmtiles'
@@ -629,14 +636,14 @@ onMounted(() => {
 
           console.log(`Adding background layer for region ${region.id} with source ${source}`)
 
-          map!.addSource(sourceId, {
+          mapTemp.addSource(sourceId, {
             type: 'raster',
             url: source,
             minzoom: region.minZoom,
             maxzoom: region.maxZoom,
           })
 
-          map!.addLayer({
+          mapTemp.addLayer({
             id: layerId,
             type: 'raster',
             source: sourceId,
@@ -651,14 +658,14 @@ onMounted(() => {
           const layerId = `region-${region.id}-base`
           const source = `pmtiles:///assets/maps/${region.base.imageUrl}.pmtiles`
 
-          map!.addSource(sourceId, {
+          mapTemp.addSource(sourceId, {
             type: 'raster',
             url: source,
             minzoom: region.minZoom,
             maxzoom: region.maxZoom,
           })
 
-          map!.addLayer({
+          mapTemp.addLayer({
             id: layerId,
             type: 'raster',
             source: sourceId,
@@ -674,12 +681,12 @@ onMounted(() => {
           if (layer.type === 'tiled') {
             const source = `pmtiles:///assets/maps/${layer.imageUrl}.pmtiles`
 
-            map!.addSource(sourceId, {
+            mapTemp.addSource(sourceId, {
               type: 'raster',
               url: source,
             })
 
-            map!.addLayer({
+            mapTemp.addLayer({
               id: layerId,
               type: 'raster',
               source: sourceId,
@@ -688,13 +695,13 @@ onMounted(() => {
               },
             })
           } else if (layer.type === 'single') {
-            map!.addSource(sourceId, {
+            mapTemp.addSource(sourceId, {
               type: 'image',
               url: `/assets/maps/${layer.imageUrl}.png`,
               coordinates: boundsToImageCoordinates(region.bounds),
             })
 
-            map!.addLayer({
+            mapTemp.addLayer({
               id: layerId,
               type: 'raster',
               source: sourceId,
@@ -768,7 +775,7 @@ onMounted(() => {
       // =========================
       // SOURCES (ONCE)
       // =========================
-      map!.addSource('terrain', {
+      mapTemp.addSource('terrain', {
         type: 'raster-dem',
         tiles: [
           '/assets/maps/height-tiles/{z}/{x}/{y}.png'
@@ -777,12 +784,12 @@ onMounted(() => {
         encoding: 'mapbox' // important
       })
 
-      map!.addSource('regions-labels', {
+      mapTemp.addSource('regions-labels', {
         type: 'geojson',
         data: regionLabels,
       })
 
-      map!.addSource('towns', {
+      mapTemp.addSource('towns', {
         type: 'geojson',
         data: towns,
       })
@@ -790,7 +797,7 @@ onMounted(() => {
       // =========================
       // LAYERS (ORDER = PRIORITY)
       // =========================
-      map!.setTerrain({
+      mapTemp.setTerrain({
         source: 'terrain',
         exaggeration: 40.0 // tweak this
       })
@@ -799,7 +806,7 @@ onMounted(() => {
 
       /*
       // regions (low priority)
-      map!.addLayer({
+      mapTemp.addLayer({
         id: 'regions-labels-layer',
         type: 'symbol',
         source: 'regions-labels',
@@ -839,9 +846,9 @@ onMounted(() => {
       ctx.arc(size/2, size/2, size/4, 0, Math.PI * 2)
       ctx.fill()
       ctx.stroke()
-      map!.addImage('town-dot', ctx.getImageData(0, 0, size, size))
+      mapTemp.addImage('town-dot', ctx.getImageData(0, 0, size, size))
 
-      map!.addLayer({
+      mapTemp.addLayer({
         id: 'towns-layer',
         type: 'symbol',
         source: 'towns',
@@ -891,7 +898,7 @@ onMounted(() => {
 
 
 
-      map!.addLayer({
+      mapTemp.addLayer({
         id: 'hillshade',
         type: 'hillshade',
         source: 'terrain',
@@ -905,6 +912,7 @@ onMounted(() => {
         }
       })
 
+      map.value = mapTemp
       requestSync()
     } catch (error) {
       console.error('Failed to initialize map sources:', error)
@@ -926,40 +934,41 @@ onMounted(() => {
   }
 
   function updateOnZoom() {
-    if (!map) return
-    zoomCurrent.value = map!.getZoom()
-    pitchCurrent.value = map!.getPitch()
-    bearingCurrent.value = map!.getBearing()
+    let _map = map.value
+    if (!_map) return
+    zoomCurrent.value = _map.getZoom()
+    pitchCurrent.value = _map.getPitch()
+    bearingCurrent.value = _map.getBearing()
   }
 
-  map.on('mousemove', (e) => {
+  mapTemp.on('mousemove', (e) => {
     if (e) { updateMouseOnMove(e) }
   })
 
-  map.on('moveend', () => {
+  mapTemp.on('moveend', () => {
     requestSync()
     scheduleSave()
     scheduleRecompute()
   })
 
-  map.on('zoom', (e) => {
+  mapTemp.on('zoom', (e) => {
     if (e) { updateOnZoom() }
   })
 
-  map!.on('zoomend', () => {
+  mapTemp.on('zoomend', () => {
     requestSync()
     scheduleSave()
     scheduleRecompute()
   })
 
-  map!.on('rotateend', () => {
+  mapTemp.on('rotateend', () => {
     updateOnZoom()
     requestSync()
     scheduleSave()
     scheduleRecompute()
   })
 
-  map!.on('pitchend', () => {
+  mapTemp.on('pitchend', () => {
     updateOnZoom()
     requestSync()
     scheduleSave()
@@ -967,8 +976,10 @@ onMounted(() => {
   })
 
   onBeforeUnmount(() => {
-    map?.remove()
-    map = null
+    let _map = map.value
+    if (!_map) return
+    _map.remove()
+    map.value = null
   })
 
   const keys: { [key: string]: boolean } = {};
@@ -987,16 +998,41 @@ onMounted(() => {
 
   let last = performance.now();
 
-  function loop(now: number) {
-    if(map) {
+  let animationLoopBusy = false;
+  async function animationLoop() {
+    if (animationLoopBusy) return;
 
-      const dt = (now - last) / 1000;
+    animationLoopBusy = true;
+    let now = performance.now();
+    try {
+      await performLoop(now);
+    } finally {
       last = now;
+      animationLoopBusy = false;
+      requestAnimationFrame(animationLoop);
+    }
+  }
 
-      const bearing = map!.getBearing();
+  async function performLoop(now: number) {
+    await interfaceLoop(now);
+    await componentsLoop(now);
+  }
 
-      let forward = 0;
-      let strafe = 0;
+  async function componentsLoop(now: number) {
+    compassView.value?.updateCompass()
+  }
+
+  async function interfaceLoop(now: number) {
+    let _map = map.value
+    if (!_map) return
+
+    const dt = (now - last) / 1000;
+    last = now;
+
+    const bearing = _map.getBearing();
+
+    let forward = 0;
+    let strafe = 0;
 
     const hasModifier =
       keys["shift"] ||
@@ -1004,66 +1040,64 @@ onMounted(() => {
       keys["alt"] ||
       keys["meta"];
 
-      if (!hasModifier) {
+    if (!hasModifier) {
 
-        if (keys["w"]) forward += 1;
-        if (keys["s"]) forward -= 1;
-        if (keys["d"]) strafe += 1;
-        if (keys["a"]) strafe -= 1;
+      if (keys["w"]) forward += 1;
+      if (keys["s"]) forward -= 1;
+      if (keys["d"]) strafe += 1;
+      if (keys["a"]) strafe -= 1;
 
-        // movement (screen/view relative)
-        if (forward !== 0 || strafe !== 0) {
-          const len = Math.hypot(strafe, forward);
-          forward /= len;
-          strafe /= len;
+      // movement (screen/view relative)
+      if (forward !== 0 || strafe !== 0) {
+        const len = Math.hypot(strafe, forward);
+        forward /= len;
+        strafe /= len;
 
-          const dx = strafe * moveSpeed * dt;
-          const dy = -forward * moveSpeed * dt;
+        const dx = strafe * moveSpeed * dt;
+        const dy = -forward * moveSpeed * dt;
 
-          map!.panBy([dx, dy], { animate: false });
-        }
+        _map.panBy([dx, dy], { animate: false });
+      }
 
-        // rotate
-        let newBearing = bearing;
+      // rotate
+      let newBearing = bearing;
 
-        if (keys["q"]) newBearing += rotateSpeed * dt;
-        if (keys["e"]) newBearing -= rotateSpeed * dt;
+      if (keys["q"]) newBearing += rotateSpeed * dt;
+      if (keys["e"]) newBearing -= rotateSpeed * dt;
 
-        if (newBearing !== bearing) {
-          map!.rotateTo(newBearing, { animate: false });
-        }
+      if (newBearing !== bearing) {
+        _map.rotateTo(newBearing, { animate: false });
+      }
 
-        // tilt / pitch
-        let pitch = map!.getPitch();
-        let newPitch = pitch;
+      // tilt / pitch
+      let pitch = _map.getPitch();
+      let newPitch = pitch;
 
-        if (keys["r"]) newPitch -= tiltSpeed * dt;
-        if (keys["f"]) newPitch += tiltSpeed * dt;
+      if (keys["r"]) newPitch -= tiltSpeed * dt;
+      if (keys["f"]) newPitch += tiltSpeed * dt;
 
-        newPitch = Math.max(0, Math.min(85, newPitch));
+      newPitch = Math.max(0, Math.min(85, newPitch));
 
-        if (newPitch !== pitch) {
-          map!.setPitch(newPitch);
-        }
+      if (newPitch !== pitch) {
+        _map.setPitch(newPitch);
+      }
 
-        // zoom
-        let zoom = map!.getZoom();
-        let newZoom = zoom;
+      // zoom
+      let zoom = _map.getZoom();
+      let newZoom = zoom;
 
-        if (keys["z"]) newZoom += zoomSpeed * dt;
-        if (keys["x"]) newZoom -= zoomSpeed * dt;
+      if (keys["z"]) newZoom += zoomSpeed * dt;
+      if (keys["x"]) newZoom -= zoomSpeed * dt;
 
-        if (newZoom !== zoom) {
-          map!.zoomTo(newZoom, { animate: false });
-        }
+      if (newZoom !== zoom) {
+        _map.zoomTo(newZoom, { animate: false });
       }
     }
-    requestAnimationFrame(loop);
   }
 
   //window.addEventListener("keydown", e => loop);
 
-  requestAnimationFrame(loop);
+  requestAnimationFrame(animationLoop);
 })
 </script>
 
@@ -1090,7 +1124,7 @@ onMounted(() => {
         Bearing: {{ bearingCurrent.toFixed(2) }}
       </div>
     </div>
-    <CompassView id="compass" :map="() => {return map}" :mapReady="mapReady" />
+    <CompassView ref="compassView" id="compass" :map="map" />
     <div class="fantasy-map-root">
       <div ref="mapEl" class="fantasy-map" />
     </div>

@@ -1,53 +1,34 @@
 <script setup lang="ts">
 import type { Map as MapLibreMap } from "maplibre-gl"
-import { onMounted, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 
 const props = defineProps<{
-    map: () => MapLibreMap|null;
-    mapReady: boolean;
+    map: MapLibreMap|null;
 }>();
 
 defineExpose({
     updateCompass,
 });
 
-let compass: HTMLElement|null = null;
-let needle: HTMLElement|null = null;
+let needle = ref<HTMLElement|null>(null);
+
 let lastBearing: number = 0;
 let visualAngle: number = 0;
 
-let compassInitialized = false;
-
-function mapReady() {
-    console.log("Map is ready.");
-    if (compassInitialized) return
-    console.log("Initializing compass.")
-    const map = props.map()
-    if (!map) {
-        console.error("Map is not available.");
-        return
-    }
-    compassInitialized = true;
-    console.log("Map loaded, initializing compass.")
-    if(!map) return
-    compass = document.getElementById("compass");
-    needle = (compass?.querySelector(".needle") || null);
-    lastBearing = map?.getBearing() || 0;
-    visualAngle = -lastBearing;
-    requestAnimationFrame(loop);
-}
-
 onMounted(() => {
-    watch(() => props.mapReady, (ready) => {
-        if(ready) {
-            mapReady();
-        }
-    })
-
-    if(props.mapReady) {
+  watch(() => props.map, (map) => {
+    if(map) {
         mapReady();
     }
+  }, { immediate: true })
 })
+
+function mapReady() {
+  if(!props.map) return
+  lastBearing = props.map!.getBearing();
+  visualAngle = -lastBearing;
+  requestAnimationFrame(updateCompass);
+}
 
 function shortestDelta(from: number, to: number) {
   let delta = to - from;
@@ -56,33 +37,26 @@ function shortestDelta(from: number, to: number) {
   return delta;
 }
 
-function loop() {
-    updateCompass();
-    requestAnimationFrame(loop);
-}
-
 function updateCompass() {
-    console.log("updateCompass")
-    const map = props.map()
-    if(!map) return
-    if(!needle) return
-    const bearing = map!.getBearing();
+    if(!props.map) return
+    if(!needle.value) return
+    const bearing = props.map!.getBearing();
 
     // smooth across ±180 instead of snapping
     const delta = shortestDelta(lastBearing, bearing);
     visualAngle -= delta;
 
-    needle!.style.transform = `rotate(${visualAngle}deg)`;
+    needle.value.style.transform = `rotate(${visualAngle}deg)`;
 
     lastBearing = bearing;
-    }
+  }
 </script>
 
 <template>
-<div id="compass">
+<div>
     <div class="ring">
         <div class="ticks"></div>
-        <div class="needle">
+        <div ref="needle" class="needle">
             <div class="needle-north"></div>
             <div class="needle-south"></div>
         </div>

@@ -38,34 +38,47 @@ function shortestDelta(from: number, to: number) {
 }
 
 function updateCompass() {
-    if(!props.map) return
-    if(!needle.value) return
-    const bearing = props.map!.getBearing();
+  if(!props.map) return
+  if(!needle.value) return
+  const bearing = props.map!.getBearing();
 
-    // smooth across ±180 instead of snapping
-    const delta = shortestDelta(lastBearing, bearing);
-    visualAngle -= delta;
+  // smooth across ±180 instead of snapping
+  const delta = shortestDelta(lastBearing, bearing);
+  visualAngle -= delta;
 
-    needle.value.style.transform = `rotate(${visualAngle}deg)`;
+  needle.value.style.transform = `rotate(${visualAngle}deg)`;
 
-    lastBearing = bearing;
+  lastBearing = bearing;
+}
+
+const BEARING_MIN = 5
+function resetNorth() {
+  let _map = props.map
+  if(!_map) return
+  let bearing = _map.getBearing();
+  if (bearing < BEARING_MIN || bearing > (360-BEARING_MIN)) {
+    _map.resetNorthPitch();
+  } else {
+    console.log(bearing)
+    _map.resetNorth();
   }
+}
 </script>
 
 <template>
-<div>
-    <div class="ring">
-        <div class="ticks"></div>
-        <div ref="needle" class="needle">
-            <div class="needle-north"></div>
-            <div class="needle-south"></div>
-        </div>
-        <div class="label n">N</div>
-        <div class="label e">E</div>
-        <div class="label s">S</div>
-        <div class="label w">W</div>
-        <div class="center-dot"></div>
-    </div>
+<div @click="resetNorth" id="compass">
+  <div class="ring">
+      <div class="ticks"></div>
+      <div ref="needle" class="needle">
+          <div class="needle-north"></div>
+          <div class="needle-south"></div>
+      </div>
+      <div class="label n">N</div>
+      <div class="label e">E</div>
+      <div class="label s">S</div>
+      <div class="label w">W</div>
+      <div class="center-dot"></div>
+  </div>
 </div>
 </template>
 
@@ -78,8 +91,12 @@ function updateCompass() {
   width: 108px;
   height: 108px;
   z-index: 999;
-  pointer-events: none;
+  border-radius: 50%;
   filter: drop-shadow(0 10px 18px rgba(0,0,0,.45));
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 /* outer brass frame (slightly more contrast so it reads as metal) */

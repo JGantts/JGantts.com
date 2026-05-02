@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Map as MapLibreMap } from "maplibre-gl"
 import { onMounted, ref, watch } from "vue";
+import { useDarkMode } from "./common/DarkMode";
 
 const props = defineProps<{
     map: MapLibreMap|null;
@@ -9,6 +10,8 @@ const props = defineProps<{
 defineExpose({
     updateCompass,
 });
+
+const darkMode = useDarkMode()
 
 let needle = ref<HTMLElement|null>(null);
 
@@ -51,7 +54,7 @@ function updateCompass() {
   lastBearing = bearing;
 }
 
-const BEARING_MIN = 5
+const BEARING_MIN = 1
 function resetNorth() {
   let _map = props.map
   if(!_map) return
@@ -66,189 +69,196 @@ function resetNorth() {
 </script>
 
 <template>
-<div @click="resetNorth" id="compass">
-  <div class="ring">
-      <div class="ticks"></div>
-      <div ref="needle" class="needle">
-          <div class="needle-north"></div>
-          <div class="needle-south"></div>
-      </div>
-      <div class="label n">N</div>
-      <div class="label e">E</div>
-      <div class="label s">S</div>
-      <div class="label w">W</div>
-      <div class="center-dot"></div>
+<div ref="compass" id="compass" @click="resetNorth">
+
+  <!-- STATIC DIAL (NEVER ROTATES) -->
+  <div class="dial">
+    <svg v-if="darkMode.darkMode.value === 'dark'" viewBox="0 0 100 100">
+      <circle
+        cx="50"
+        cy="50"
+        r="48"
+        fill="none"
+        stroke="var(--compass-tick)"
+        stroke-width="5"
+        stroke-dasharray="calc(2*3.1415*48 * 1/128) calc(2*3.1415*48 * 7/128)"
+        transform="rotate(-1.40625 50 50)"
+      />
+    </svg>
+    <svg v-else viewBox="0 0 100 100">
+      <circle
+        cx="50"
+        cy="50"
+        r="48"
+        fill="none"
+        stroke="var(--compass-tick)"
+        stroke-width="5"
+        stroke-dasharray="calc(2*3.1415*48 * 1/4) calc(2*3.1415*48 * 1/4)"
+        transform="rotate(0 50 50)"
+      />
+    </svg>
+
+    <div class="label n">N</div>
+    <div class="label e">E</div>
+    <div class="label s">S</div>
+    <div class="label w">W</div>
+
+    <div class="center-dot"></div>
   </div>
+
+  <!-- ROTATING NEEDLE ONLY -->
+  <div ref="needle" class="needle">
+    <div class="needle-north"></div>
+    <div class="needle-south"></div>
+  </div>
+
 </div>
 </template>
 
-
 <style>
+:root {
+  /* DATA MODE */
+  --compass-bg: linear-gradient(145deg, #f7f8fb, #dfe6ee);
+  --compass-bg-2: #cfd8e3;
+  --compass-ring: #4b5a6a;
+  --compass-tick: rgba(40, 55, 70, 0.75);
+  --compass-tick-inset: 10px;
+  --compass-letters-ns-inset: 9px;
+  --compass-letters-we-inset: 13px;
+  --compass-letters-font-size: 18px;
+  --compass-text: #1f2a35;
+  --compass-north: #d64545;
+  --compass-needle-width: 4px;
+  --compass-shadow: 0 6px 12px rgba(0,0,0,.15);
+}
+
+.dark {
+  --compass-bg: radial-gradient(circle at 30% 25%, #4a3a24, #2a1e12 60%, #140d08 100%);
+  --compass-bg-2: #2a2a2a;
+  --compass-ring: #caa24a;
+  --compass-tick: rgba(255, 220, 160, 0.95);
+  --compass-tick-inset: 4px;
+  --compass-letters-ns-inset: 2px;
+  --compass-letters-we-inset: 4px;
+  --compass-letters-font-size: 11px;
+  --compass-text: #f0e0b8;
+  --compass-north: #ff6b5f;
+  --compass-needle-width: 9px;
+  --compass-shadow: 0 14px 24px rgba(0,0,0,.6);
+}
+
+/* ROOT */
 #compass {
   position: absolute;
   top: 18px;
   right: 18px;
   width: 108px;
   height: 108px;
-  z-index: 999;
   border-radius: 50%;
-  filter: drop-shadow(0 10px 18px rgba(0,0,0,.45));
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
+  z-index: 999;
+  filter: drop-shadow(var(--compass-shadow));
 }
 
-/* outer brass frame (slightly more contrast so it reads as metal) */
-#compass .ring {
-  position: relative;
-  width: 100%;
-  height: 100%;
+/* =========================
+   STATIC DIAL
+========================= */
+
+#compass .dial {
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 30% 25%, rgba(255,255,255,.28), transparent 30%),
-    radial-gradient(circle at center, #4a3a24 0%, #2a1e12 60%, #140d08 100%);
-  border: 2px solid #a8843a;
+  background: var(--compass-bg);
+  border: 2px solid var(--compass-ring);
 
   box-shadow:
-    inset 0 0 0 1px rgba(255,230,170,.25),
-    inset 0 0 14px rgba(0,0,0,.55),
-    inset 0 0 24px rgba(255,210,140,.06),
-    0 0 0 1px rgba(255,240,200,.12);
+    inset 0 0 0 1px rgba(255,255,255,.08),
+    inset 0 0 18px rgba(0,0,0,.4);
 }
 
-/* engraved face (reduce noise slightly so it doesn't muddy) */
-#compass .ring::before {
-  content:"";
-  position:absolute;
-  inset:8px;
-  border-radius:50%;
+/* engraved face */
+#compass .dial::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
   background:
     radial-gradient(circle, rgba(0,0,0,.12), rgba(0,0,0,.38)),
     repeating-conic-gradient(
       from 0deg,
-      rgba(214,180,110,.16) 0deg 6deg,
+      rgba(255,255,255,.08) 0deg 6deg,
       transparent 6deg 12deg
     );
-
-  border: 1px solid rgba(200,160,90,.35);
-
-  box-shadow:
-    inset 0 0 16px rgba(0,0,0,.45),
-    inset 0 0 6px rgba(255,215,140,.06);
 }
 
-/* ticks (increase readability; yours was slightly too faint) */
-#compass .ticks {
+/* labels */
+#compass .label {
   position: absolute;
-  inset: 10px;
-  border-radius: 50%;
-  background:
-    repeating-conic-gradient(
-      from 0deg,
-      rgba(230,200,140,.85) 0deg 1.2deg,
-      transparent 1.2deg 11.25deg
-    ),
-    repeating-conic-gradient(
-      from 5.625deg,
-      rgba(255,240,200,.5) 0deg .4deg,
-      transparent .4deg 22.5deg
-    );
-
-  mask: radial-gradient(circle, transparent 58%, black 59%);
-  opacity: .9;
+  font-family: system-ui, sans-serif;
+  font-size: var(--compass-letters-font-size);
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--compass-text);
+  background-color: var(--compass-bg);
 }
 
-/* needle container */
+#compass .n {
+  top: var(--compass-letters-ns-inset);
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--compass-north);
+}
+
+#compass .e { right: var(--compass-letters-we-inset); top: 50%; transform: translateY(-50%); }
+#compass .s { bottom: var(--compass-letters-ns-inset); left: 50%; transform: translateX(-50%); }
+#compass .w { left: var(--compass-letters-we-inset); top: 50%; transform: translateY(-50%); }
+
+/* center dot */
+#compass .center-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+
+  background: var(--compass-bg-2);
+  border: 1px solid var(--compass-ring);
+}
+
+/* =========================
+   NEEDLE (ONLY ROTATES)
+========================= */
+
 #compass .needle {
   position: absolute;
   inset: 16px;
-}
-
-/* north / south blades (make them read more like metal enamel, less “flat triangle”) */
-#compass .needle-north,
-#compass .needle-south {
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-  width:0;
-  height:0;
+  transform-origin: center;
+  will-change: transform;
 }
 
 #compass .needle-north {
-  top:0;
-  border-left:9px solid transparent;
-  border-right:9px solid transparent;
-  border-bottom:40px solid #a61f1f;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 0;
 
-  filter:
-    drop-shadow(0 0 3px rgba(255,70,70,.25));
+  border-left: var(--compass-needle-width) solid transparent;
+  border-right: var(--compass-needle-width) solid transparent;
+  border-bottom: 40px solid var(--compass-north);
+
+  filter: drop-shadow(0 0 4px rgba(255,80,80,.25));
 }
 
 #compass .needle-south {
-  bottom:0;
-  border-left:9px solid transparent;
-  border-right:9px solid transparent;
-  border-top:40px solid #d2c6b3;
-}
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
 
-/* pivot (tone it down so it doesn't scream “gem”) */
-#compass .center-dot {
-  position:absolute;
-  left:50%;
-  top:50%;
-  width:12px;
-  height:12px;
-  transform:translate(-50%,-50%);
-  border-radius:50%;
-
-  background:
-    radial-gradient(circle at 35% 35%, #dfe6ee, #6f7a86 60%, #2a313a 100%);
-
-  border: 1px solid rgba(220,200,150,.6);
-
-  box-shadow:
-    0 0 6px rgba(0,0,0,.4),
-    inset 0 0 4px rgba(255,255,255,.25);
-}
-
-/* labels (reduce “fantasy serif glow”, make them instrument-like) */
-#compass .label {
-  position:absolute;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size:11px;
-  font-weight:700;
-  letter-spacing:1px;
-  color:#e6d2a4;
-
-  text-shadow:
-    0 1px 0 rgba(0,0,0,.9),
-    0 0 2px rgba(0,0,0,.5);
-}
-
-/* north emphasis but not neon */
-#compass .n {
-  top:5px;
-  left:50%;
-  transform:translateX(-50%);
-  color:#f2b0a5;
-}
-
-#compass .e {
-  right:9px;
-  top:50%;
-  transform:translateY(-50%);
-}
-
-#compass .s {
-  bottom:5px;
-  left:50%;
-  transform:translateX(-50%);
-}
-
-#compass .w {
-  left:9px;
-  top:50%;
-  transform:translateY(-50%);
+  border-left: var(--compass-needle-width) solid transparent;
+  border-right: var(--compass-needle-width) solid transparent;
+  border-top: 40px solid var(--compass-text);
 }
 </style>

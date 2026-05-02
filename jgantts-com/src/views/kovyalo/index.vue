@@ -5,21 +5,14 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import KDBush from 'kdbush';
 import { Protocol } from 'pmtiles'
 import CompassView from './CompassView.vue'
+import GuiView from './GuiView.vue';
+import DarkModeButton from './DarkModeButton.vue';
+import { useSettings } from './common/settings';
 
 const props = defineProps<{ dev?: boolean }>()
 
 
 let compassView = ref<InstanceType<typeof CompassView> | null>(null)
-
-
-const SAVE_KEY = 'fantasy-map-state'
-
-type MapSaveState = {
-  center: [number, number]
-  zoom: number
-  pitch: number
-  bearing: number
-}
 
 type BoundsTuple = [[number, number], [number, number]]
 
@@ -135,11 +128,6 @@ function getVisibleTownsInActiveRegions(bounds: maplibregl.LngLatBounds) {
   })
 
   const visiblePopulation = computeVisiblePopulation(visibleTowns)
-
-  const activeTowns = visibleTowns.map(town => ({
-    ...town,
-    popTemp: town.population / visiblePopulation
-  })).filter(town => town.popTemp > 0.01)
 
   return visibleTowns
 }
@@ -436,14 +424,10 @@ function saveMapState() {
   if (!map.value) return
   let _map = map.value
 
-  const state: MapSaveState = {
-    center: [_map.getCenter().lng, _map.getCenter().lat],
-    zoom: _map.getZoom(),
-    pitch: _map.getPitch(),
-    bearing: _map.getBearing(),
-  }
-
-  localStorage.setItem(SAVE_KEY, JSON.stringify(state))
+  settings.center = [_map.getCenter().lng, _map.getCenter().lat]
+  settings.zoom = _map.getZoom()
+  settings.pitch = _map.getPitch()
+  settings.bearing = _map.getBearing()
 }
 
 function scheduleSave() {
@@ -525,32 +509,27 @@ function updateVisibleTownSource() {
   src.setData(data)
 }
 
-onMounted(() => {
+const settings = useSettings()
+
+
+onMounted(async () => {
   if (!mapEl.value) return
 
-  initMapData()
-
-  const saved = (() => {
-    try {
-      return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null') as MapSaveState | null
-    } catch {
-      return null
-    }
-  })()
+  await initMapData()
 
   let mapTemp = new maplibregl.Map({
     container: mapEl.value,
     style: { version: 8, sources: {}, layers: [] },
-    center: saved?.center ?? [-34.3927, 11.8405],
-    zoom: saved?.zoom ?? 6,
+    center: settings.center,
+    zoom: settings.zoom,
     minZoom: 2,
     maxZoom: 10,
     minPitch: 0,
     maxPitch: 75,
     attributionControl: false,
     renderWorldCopies: false,
-    pitch: saved?.pitch ?? 0,
-    bearing: saved?.bearing ?? 0,
+    pitch: settings.pitch,
+    bearing: settings.bearing,
   })
   
   if (props.dev) {
@@ -1124,6 +1103,8 @@ onMounted(() => {
         Bearing: {{ bearingCurrent.toFixed(2) }}
       </div>
     </div>
+    <DarkModeButton />
+    <GuiView :map="map" />
     <CompassView ref="compassView" id="compass" :map="map" />
     <div class="fantasy-map-root">
       <div ref="mapEl" class="fantasy-map" />

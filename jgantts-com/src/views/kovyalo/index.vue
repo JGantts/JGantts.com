@@ -7,7 +7,7 @@ import { Protocol } from 'pmtiles'
 import CompassView from './CompassView.vue'
 import GuiView from './GuiView.vue';
 import DarkModeButton from './DarkModeButton.vue';
-import { useSettings } from './common/settings';
+import { useSettings } from './common/Settings';
 
 const props = defineProps<{ dev?: boolean }>()
 

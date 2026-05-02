@@ -13,7 +13,6 @@ const darkMode: ComputedRef<"dark" | "light"> = computed(() => {
   }
 });
 
-
 watch(settings, () => {
     if (darkModeUser.value !== settings.darkMode) {
         darkModeUser.value = settings.darkMode

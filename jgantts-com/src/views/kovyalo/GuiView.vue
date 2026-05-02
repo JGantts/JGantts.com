@@ -142,51 +142,50 @@ const ticks = computed(() => {
 
 <style>
 :root {
-  /* LIGHT (DATA MODE — matches your compass) */
   --panel-bg:
-    linear-gradient(180deg, #f4f7fb, #dde6ef);
+    radial-gradient(circle at 30% 25%, #f6ecd2, #e2d2a8 60%, #c9ad78 100%);
 
-  --panel-border: #4b5a6a;
+  --panel-border: #5a3f1e;
 
   --panel-glow:
-    inset 0 0 0 1px rgba(255,255,255,.4),
-    inset 0 0 12px rgba(0,0,0,.15),
-    0 6px 14px rgba(0,0,0,.15);
+    inset 0 0 0 1px rgba(255,255,255,.35),
+    inset 0 0 14px rgba(60,40,20,.18),
+    0 8px 16px rgba(0,0,0,.18);
 
-  --panel-text: #1f2a35;
-  --panel-accent: #3b82f6;
+  --panel-text: #2a1b0f;
 
-  --panel-muted: rgba(30,40,55,.6);
+  --panel-accent: #7a1d1a;
 
-  --tick: rgba(40,55,70,.6);
+  --panel-muted: rgba(60,40,25,.6);
 
-  --button-bg: #e4ebf3;
-  --button-border: rgba(60,80,100,.25);
-  --button-active: #cfd8e3;
+  --tick: rgba(70,45,20,.65);
+
+  --button-bg: #e9dbc0;
+  --button-border: rgba(90,60,25,.25);
+  --button-active: #d6c19a;
 }
 
 .dark {
-  /* DARK (FANTASY MODE — keep your current feel) */
   --panel-bg:
-    radial-gradient(circle at 25% 20%, rgba(255,255,255,.15), transparent 40%),
-    linear-gradient(180deg, #3a2c1c, #1b140c);
+    radial-gradient(circle at 25% 20%, #4a3a24, #2a1e12 60%, #120b07 100%);
 
-  --panel-border: #a8843a;
+  --panel-border: #c2a15a;
 
   --panel-glow:
-    inset 0 0 0 1px rgba(255,230,170,.15),
-    inset 0 0 20px rgba(0,0,0,.5),
-    0 10px 18px rgba(0,0,0,.45);
+    inset 0 0 0 1px rgba(255,220,160,.15),
+    inset 0 0 18px rgba(0,0,0,.55),
+    0 10px 18px rgba(0,0,0,.5);
 
-  --panel-text: #e6d2a4;
-  --panel-accent: #f2d39a;
+  --panel-text: #f0e0b8;
 
-  --panel-muted: rgba(230,200,140,.6);
+  --panel-accent: #d4584f;
+
+  --panel-muted: rgba(230,200,140,.55);
 
   --tick: rgba(230,200,140,.6);
 
   --button-bg: #2a1e12;
-  --button-border: rgba(200,160,90,.3);
+  --button-border: rgba(200,160,90,.35);
   --button-active: #5a4424;
 }
 

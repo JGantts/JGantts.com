@@ -73,7 +73,7 @@ function resetNorth() {
 
   <!-- STATIC DIAL (NEVER ROTATES) -->
   <div class="dial">
-    <svg v-if="darkMode.darkMode.value === 'dark'" viewBox="0 0 100 100">
+    <svg viewBox="0 0 100 100">
       <circle
         cx="50"
         cy="50"
@@ -83,18 +83,6 @@ function resetNorth() {
         stroke-width="5"
         stroke-dasharray="calc(2*3.1415*48 * 1/128) calc(2*3.1415*48 * 7/128)"
         transform="rotate(-1.40625 50 50)"
-      />
-    </svg>
-    <svg v-else viewBox="0 0 100 100">
-      <circle
-        cx="50"
-        cy="50"
-        r="48"
-        fill="none"
-        stroke="var(--compass-tick)"
-        stroke-width="5"
-        stroke-dasharray="calc(2*3.1415*48 * 1/4) calc(2*3.1415*48 * 1/4)"
-        transform="rotate(0 50 50)"
       />
     </svg>
 
@@ -117,34 +105,53 @@ function resetNorth() {
 
 <style>
 :root {
-  /* DATA MODE */
-  --compass-bg: linear-gradient(145deg, #f7f8fb, #dfe6ee);
-  --compass-bg-2: #cfd8e3;
-  --compass-ring: #4b5a6a;
-  --compass-tick: rgba(40, 55, 70, 0.75);
-  --compass-tick-inset: 10px;
-  --compass-letters-ns-inset: 9px;
-  --compass-letters-we-inset: 13px;
-  --compass-letters-font-size: 18px;
-  --compass-text: #1f2a35;
-  --compass-north: #d64545;
-  --compass-needle-width: 4px;
-  --compass-shadow: 0 6px 12px rgba(0,0,0,.15);
+--compass-bg: radial-gradient(circle at 30% 25%, #f3e7c2, #d6c08a 55%, #a88952 100%);
+--compass-bg-2: #b89a63;
+
+--compass-ring: #5a3f1e;
+
+--compass-tick: rgba(70, 45, 20, 0.7);
+
+--compass-tick-inset: 5px;
+
+--compass-letters-ns-inset: 3px;
+--compass-letters-we-inset: 5px;
+--compass-letters-font-size: 12px;
+
+--compass-text: #2a1b0f;
+
+--compass-north: #7b1d1a;
+
+--compass-needle-width: 6px;
+
+--compass-shadow:
+  0 10px 18px rgba(0,0,0,.25),
+  inset 0 0 12px rgba(80,50,20,.18);
 }
 
 .dark {
-  --compass-bg: radial-gradient(circle at 30% 25%, #4a3a24, #2a1e12 60%, #140d08 100%);
-  --compass-bg-2: #2a2a2a;
-  --compass-ring: #caa24a;
-  --compass-tick: rgba(255, 220, 160, 0.95);
-  --compass-tick-inset: 4px;
-  --compass-letters-ns-inset: 2px;
-  --compass-letters-we-inset: 4px;
-  --compass-letters-font-size: 11px;
-  --compass-text: #f0e0b8;
-  --compass-north: #ff6b5f;
-  --compass-needle-width: 9px;
-  --compass-shadow: 0 14px 24px rgba(0,0,0,.6);
+--compass-bg: radial-gradient(circle at 30% 25%, #4a3a24, #2a1e12 60%, #120b07 100%);
+--compass-bg-2: #2a2218;
+
+--compass-ring: #c2a15a;
+
+--compass-tick: rgba(255, 220, 160, 0.75);
+
+--compass-tick-inset: 4px;
+
+--compass-letters-ns-inset: 2px;
+--compass-letters-we-inset: 4px;
+--compass-letters-font-size: 11px;
+
+--compass-text: #f0e0b8;
+
+--compass-north: #d4584f;
+
+--compass-needle-width: 8px;
+
+--compass-shadow:
+  0 14px 24px rgba(0,0,0,.65),
+  inset 0 0 14px rgba(0,0,0,.35);
 }
 
 /* ROOT */

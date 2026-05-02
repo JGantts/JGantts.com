@@ -1,26 +1,31 @@
 <script setup lang="ts">
+import { computed } from "vue"
 import { useDarkMode } from './common/DarkMode';
 
 const darkMode = useDarkMode()
+
+const themeLabel = computed(() => {
+  const v = darkMode.darkModeUser.value
+  if (v === "auto") return "Auto"
+  if (v === "dark") return "Dark"
+  return "Light"
+})
 </script>
 
 <template>
 <div id="overlay">
-    <button
-      @click="darkMode.toggleUserTheme"
-      style="margin-right: 8px;"
-    >
-      {{
-        darkMode.darkModeUser.value === 'auto' 
-          ? 'Auto' 
-          : darkMode.darkModeUser.value === 'dark' 
-            ? 'Dark' 
-            : 'Light'
-      }}
-    </button>
-    <button v-if="darkMode.darkModeUser.value !== 'auto'" @click="darkMode.clearUserTheme">
-      X
-    </button>
+  <button class="theme-btn" @click="darkMode.toggleUserTheme">
+    Theme: {{ themeLabel }}
+  </button>
+
+  <button
+    v-if="darkMode.darkModeUser.value !== 'auto'"
+    class="reset-btn"
+    @click="darkMode.clearUserTheme"
+    title="Reset to system theme"
+  >
+    Reset
+  </button>
 </div>
 </template>
 
@@ -59,7 +64,7 @@ button:active {
 }
 </style>
 
-<style>
+<style scoped>
 :root button {
   background:
     linear-gradient(180deg, #e9dbc0, #d8c08a);

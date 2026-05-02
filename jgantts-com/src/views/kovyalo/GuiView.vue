@@ -53,34 +53,34 @@ function toBase10Year(suazem: number) {
   return Math.round(suazem / SUAZEM_OVER_YEAR)
 }
 
-const SUAZEM_OVER_YEAR = 3/4; // in decimal years
+const SUAZEM_OVER_YEAR = 4/3; // in decimal years
 const eraSuazemBase12 = computed(() => toBase12Suazem(eraSuazem.value));
 const eraYearBase10 = computed(() => toBase10Year(eraSuazem.value));
 
-const startSuazem = 288;
-const endSuazem = 1500;
-const tickInterval = 144;
+const startSuazem = 144*3;
+const endSuazem = 144*16;
 
-// padding outside range
-const startOffset = 144;  // years before start
-const endOffset = 144;    // years after end
+const tickPlacements: {
+  suazem: string,
+  label: string
+}[] = [
+  { suazem: "526", label: "War of Plotto" },
+  { suazem: "864", label: "Age of Aegat" },
+  { suazem: "1400", label: "Modern"}
+]
 
-const visualStart = startSuazem - startOffset;
-const visualEnd = endSuazem + endOffset;
 
 /* ticks now fully dynamic with padding */
 const ticks = computed(() => {
   const out = [];
 
-  // align first tick to interval grid (important)
-  const firstTick =
-    Math.floor(visualStart / tickInterval) * tickInterval;
-
-  for (let y = firstTick; y <= visualEnd; y += tickInterval) {
+  for (let suazem of tickPlacements) {
+    let suazemDecimal = Number.parseInt(suazem.suazem, 12)
     out.push({
-      year: y,
-      label: toBase12Suazem(y),
-      pos: ((y - visualStart) / (visualEnd - visualStart)) * 100
+      year: suazemDecimal,
+      label: suazem.label,
+      hover: toBase12Suazem(suazemDecimal),
+      pos: ((suazemDecimal - startSuazem) / (endSuazem - startSuazem)) * 100
     });
   }
 
@@ -119,8 +119,8 @@ const ticks = computed(() => {
 
           <input
             type="range"
-            :min="visualStart"
-            :max="visualEnd"
+            :min="startSuazem"
+            :max="endSuazem"
             step="1"
             v-model="eraSuazem"
           />
@@ -141,6 +141,12 @@ const ticks = computed(() => {
 </template>
 
 <style>
+input[type="range"] {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 :root {
   --panel-bg:
     radial-gradient(circle at 30% 25%, #f6ecd2, #e2d2a8 60%, #c9ad78 100%);
@@ -272,7 +278,7 @@ const ticks = computed(() => {
 /* SLIDER */
 .slider-wrap {
   position: relative;
-  padding-top: 18px;
+  padding-top: 24px;
 }
 
 input[type="range"] {
@@ -286,8 +292,8 @@ input[type="range"] {
 .ticks {
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
+  left: 7px;   /* half thumb width */
+  right: 7px;  /* half thumb width */
   height: 18px;
 }
 
@@ -309,6 +315,34 @@ input[type="range"] {
   margin-top: 1px;
   opacity: 0.7;
   transform: scale(0.9);
+  max-width: 5em;
+}
+
+input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+}
+
+/* track */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 2px;
+  background: var(--tick);
+}
+
+/* thumb */
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+
+  background: var(--panel-accent);
+  border: 1px solid rgba(0,0,0,.2);
+
+  margin-top: -6px; /* 👈 THIS is the critical alignment fix */
 }
 
 /* MODE BUTTONS */

@@ -1,5 +1,5 @@
 import { computed, type ComputedRef, type Ref, ref, watch } from 'vue'
-import { useSettings } from './settings';
+import { useSettings } from './Settings';
 
 const settings = useSettings();
 

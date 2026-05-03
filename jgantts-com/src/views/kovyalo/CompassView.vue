@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 import { useDarkMode } from "./common/DarkMode";
-import { type JgMap } from "./maps/maps";
+import type { JgMap } from "./maps/maps";
 
 const props = defineProps<{
     map: JgMap|null;

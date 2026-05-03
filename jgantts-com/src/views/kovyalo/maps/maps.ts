@@ -47,13 +47,6 @@ type ImageCoordinates = [
 
 const regions: RegionConfig[] = []
 
-const polarExtents = 85.05113
-
-const worldBounds: BoundsTuple = [
-  [-polarExtents, -180],
-  [polarExtents, 180],
-]
-
 type Town = {
   name: string
   coordinates: [number, number]
@@ -63,8 +56,6 @@ type Town = {
 type TownPlusRegion = Town & { regionId: string }
 
 let regionConfigs: RegionConfig[] 
-
-const warpedImageUrlCache = new Map<string, Promise<string>>()
 
 function normalizeBounds(bounds: BoundsTuple): BoundsTuple {
   const [[y1, x1], [y2, x2]] = bounds
@@ -82,114 +73,6 @@ function boundsToImageCoordinates(bounds: BoundsTuple): ImageCoordinates {
     [right, bottom],
     [left, bottom],
   ]
-}
-
-function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error(`Failed to load image: ${url}`))
-    img.src = url
-  })
-}
-
-async function createMercatorWarpedImageUrl(url: string): Promise<string> {
-  const cached = warpedImageUrlCache.get(url)
-  if (cached) return cached
-
-  const promise = (async () => {
-    const img = await loadImage(url)
-
-    const srcCanvas = document.createElement('canvas')
-    srcCanvas.width = img.width
-    srcCanvas.height = img.height
-
-    const srcCtx = srcCanvas.getContext('2d', { willReadFrequently: true })
-    if (!srcCtx) {
-      throw new Error(`Could not get 2D context for source canvas: ${url}`)
-    }
-
-    srcCtx.drawImage(img, 0, 0)
-
-    const dstCanvas = document.createElement('canvas')
-    dstCanvas.width = img.width
-    dstCanvas.height = img.height
-
-    const dstCtx = dstCanvas.getContext('2d')
-    if (!dstCtx) {
-      throw new Error(`Could not get 2D context for destination canvas: ${url}`)
-    }
-
-    function remapEquirectToMercator(
-      srcCtx: CanvasRenderingContext2D,
-      dstCtx: CanvasRenderingContext2D,
-      width: number,
-      height: number,
-    ): void {
-      const srcImage = srcCtx.getImageData(0, 0, width, height)
-      const dstImage = dstCtx.createImageData(width, height)
-
-      const src = srcImage.data
-      const dst = dstImage.data
-
-      const maxLat = polarExtents
-      const maxMerc = Math.log(Math.tan(Math.PI / 4 + (maxLat * Math.PI / 180) / 2))
-
-      function mercatorVToSourceY(vMerc: number): number {
-        const yMerc = (1 - 2 * vMerc) * maxMerc
-        const latRad = 2 * Math.atan(Math.exp(yMerc)) - Math.PI / 2
-        const latDeg = (latRad * 180) / Math.PI
-        const vEq = (90 - latDeg) / 180
-        return vEq * (height - 1)
-      }
-
-      for (let y = 0; y < height; y++) {
-        const vMerc = y / (height - 1)
-        const srcY = mercatorVToSourceY(vMerc)
-        const y0 = Math.floor(srcY)
-        const y1 = Math.min(y0 + 1, height - 1)
-        const t = srcY - y0
-
-        for (let x = 0; x < width; x++) {
-          const iDst = (y * width + x) * 4
-          const i0 = (y0 * width + x) * 4
-          const i1 = (y1 * width + x) * 4
-
-          for (let c = 0; c < 4; c++) {
-            dst[iDst + c] = Math.round(src[i0 + c] * (1 - t) + src[i1 + c] * t)
-          }
-        }
-      }
-
-      dstCtx.putImageData(dstImage, 0, 0)
-    }
-
-    remapEquirectToMercator(srcCtx, dstCtx, img.width, img.height)
-
-    return dstCanvas.toDataURL('image/png')
-  })()
-
-  warpedImageUrlCache.set(url, promise)
-  return promise
-}
-
-async function addWarpedImageSource(
-    map: MapLibreMap | null,
-  sourceId: string,
-  imageUrl: string,
-  bounds: BoundsTuple,
-): Promise<void> {
-  let _map = map
-  if (!_map) return
-
-  const warpedUrl = await createMercatorWarpedImageUrl(imageUrl)
-
-  _map.addSource(sourceId, {
-    type: 'image',
-    url: warpedUrl,
-    coordinates: boundsToImageCoordinates(bounds),
-  })
 }
 
 let saveTimeout: number | null = null
@@ -212,10 +95,8 @@ function scheduleSave(map: MapLibreMap | null) {
   }, 200)
 }
 
-async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise<JgMap | null> {
-    regionConfigs = JSON.parse(
-        await (await fetch('/assets/maps/geo-data/regions.json')).text()
-    ) as RegionConfig[]
+async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
+    console.log('Map loaded, initializing sources and layers.')
 
     let allTowns = regionConfigs.reduce<TownPlusRegion[]>(
         (prev, curr) => {
@@ -235,39 +116,11 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
           ]
         }, [])
 
-    if (!mapEl) return null
-
-  let mapTemp = new maplibregl.Map({
-    container: mapEl,
-    style: { version: 8, sources: {}, layers: [] },
-    center: settings.center,
-    zoom: settings.zoom,
-    minZoom: 2,
-    maxZoom: 10,
-    minPitch: 0,
-    maxPitch: 75,
-    attributionControl: false,
-    renderWorldCopies: false,
-    pitch: settings.pitch,
-    bearing: settings.bearing,
-  })
-  
-  if (dev) {
-    mapTemp!.getCanvas().style.cursor = 'crosshair'
-  }
-
-  mapTemp.on('style.load', () => {
-    mapTemp!.setProjection({ type: 'globe' })
-    //map!.setProjection({ type: 'mercator' })
-  })
-
-  mapTemp.on('load', async () => {
-    console.log('Map loaded, initializing sources and layers.')
     try {
       const protocol = new Protocol()
       maplibregl.addProtocol('pmtiles', protocol.tile)
 
-      mapTemp.addSource('world-pmtiles', {
+      map.addSource('world-pmtiles', {
         type: 'raster',
         url: 'pmtiles:///assets/maps/world.pmtiles',
         tileSize: 256,
@@ -275,7 +128,7 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
         maxzoom: 6,
       })
 
-      mapTemp.addLayer({
+      map.addLayer({
         id: 'world',
         type: 'raster',
         source: 'world-pmtiles'
@@ -296,7 +149,7 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
         }))
       }
 
-      mapTemp.addSource('towns', {
+      map.addSource('towns', {
         type: 'geojson',
         data
       })
@@ -315,17 +168,19 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
 
           console.log(`Adding background layer for region ${region.id} with source ${source}`)
 
-          mapTemp.addSource(sourceId, {
+          map.addSource(sourceId, {
             type: 'raster',
             url: source,
             minzoom: region.minZoom,
             maxzoom: region.maxZoom,
           })
 
-          mapTemp.addLayer({
+          map.addLayer({
             id: layerId,
             type: 'raster',
             source: sourceId,
+            minzoom: region.minZoom,
+            maxzoom: region.maxZoom,
             paint: {
               'raster-opacity': 1,
             },
@@ -337,17 +192,19 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
           const layerId = `region-${region.id}-base`
           const source = `pmtiles:///assets/maps/${region.base.imageUrl}.pmtiles`
 
-          mapTemp.addSource(sourceId, {
+          map.addSource(sourceId, {
             type: 'raster',
             url: source,
             minzoom: region.minZoom,
             maxzoom: region.maxZoom,
           })
 
-          mapTemp.addLayer({
+          map.addLayer({
             id: layerId,
             type: 'raster',
             source: sourceId,
+            minzoom: region.minZoom,
+            maxzoom: region.maxZoom,
             paint: {
               'raster-opacity': 1,
             },
@@ -360,30 +217,34 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
           if (layer.type === 'tiled') {
             const source = `pmtiles:///assets/maps/${layer.imageUrl}.pmtiles`
 
-            mapTemp.addSource(sourceId, {
+            map.addSource(sourceId, {
               type: 'raster',
               url: source,
             })
 
-            mapTemp.addLayer({
+            map.addLayer({
               id: layerId,
               type: 'raster',
               source: sourceId,
+              minzoom: region.minZoom,
+              maxzoom: region.maxZoom,
               paint: {
                 'raster-opacity': 1,
               },
             })
           } else if (layer.type === 'single') {
-            mapTemp.addSource(sourceId, {
+            map.addSource(sourceId, {
               type: 'image',
               url: `/assets/maps/${layer.imageUrl}.png`,
               coordinates: boundsToImageCoordinates(region.bounds),
             })
 
-            mapTemp.addLayer({
+            map.addLayer({
               id: layerId,
               type: 'raster',
               source: sourceId,
+              minzoom: region.minZoom,
+              maxzoom: region.maxZoom,
               paint: {
                 'raster-opacity': 1,
               },
@@ -431,7 +292,7 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
       // =========================
       // SOURCES (ONCE)
       // =========================
-      mapTemp.addSource('terrain', {
+      map.addSource('terrain', {
         type: 'raster-dem',
         tiles: [
           '/assets/maps/height-tiles/{z}/{x}/{y}.png'
@@ -440,7 +301,7 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
         encoding: 'mapbox' // important
       })
 
-      mapTemp.addSource('regions-labels', {
+      map.addSource('regions-labels', {
         type: 'geojson',
         data: regionLabels,
       })
@@ -448,12 +309,12 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
       // =========================
       // LAYERS (ORDER = PRIORITY)
       // =========================
-      mapTemp.setTerrain({
+      map.setTerrain({
         source: 'terrain',
         exaggeration: 40.0 // tweak this
       })
 
-      mapTemp.addLayer({
+      map.addLayer({
         id: 'hillshade',
         type: 'hillshade',
         source: 'terrain',
@@ -481,9 +342,9 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
       ctx.arc(size/2, size/2, size/4, 0, Math.PI * 2)
       ctx.fill()
       ctx.stroke()
-      mapTemp.addImage('town-dot', ctx.getImageData(0, 0, size, size))
+      map.addImage('town-dot', ctx.getImageData(0, 0, size, size))
 
-      mapTemp.addLayer({
+      map.addLayer({
         id: 'towns-layer',
         type: 'symbol',
         source: 'towns',
@@ -536,12 +397,53 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
     } catch (error) {
       console.error('Failed to initialize map sources:', error)
     }
+}
 
-    
+async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise<JgMap | null> {
+    regionConfigs = JSON.parse(
+        await (await fetch('/assets/maps/geo-data/regions.json')).text()
+    ) as RegionConfig[]
+
+    if (!mapEl) return null
+
+  let mapTemp = new maplibregl.Map({
+    container: mapEl,
+    style: { version: 8, sources: {}, layers: [
+        {
+            "id": "background",
+            "type": "background",
+            "paint": {
+                "background-color": "rgba(0,0,0,0)"
+            }
+            }
+    ] },
+    center: settings.center,
+    zoom: settings.zoom,
+    minZoom: 2,
+    maxZoom: 10,
+    minPitch: 0,
+    maxPitch: 75,
+    attributionControl: false,
+    renderWorldCopies: false,
+    pitch: settings.pitch,
+    bearing: settings.bearing,
+  })
+  
+  if (dev) {
+    mapTemp!.getCanvas().style.cursor = 'crosshair'
+  }
+
+  mapTemp.on('style.load', () => {
+    mapTemp!.setProjection({ type: 'globe' })
+    //map!.setProjection({ type: 'mercator' })
+  })
+
+    mapTemp.on('load', async () => {
+        await internalInitMapSourcesAndLayers(mapTemp)
     });
     return {
         mlMap: mapTemp,
-        savePosition: () => saveMapState(mapTemp),
+        savePosition: () => scheduleSave(mapTemp),
         unmount: () => mapTemp.remove()
     }
 }

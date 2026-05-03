@@ -109,7 +109,11 @@ const ticks = computed(() => {
         <div class="era-readout">
           <div class="era-duo">{{ eraSuazemBase12}} PS*</div>
           <div class="era-dec">({{eraYearBase10}} Decimal Years)</div>
-          <div class="era-notes">*Potte Suázem <span class="ipa">/pat swazm̩/</span></div>
+          <div class="era-notes">
+            <span class="era-notes-header">*Potte Suázem</span> <span class="ipa">/pat swazm̩/</span><br />
+            <span class="era-notes-footer">Each Suázem is ~9 Earth months.</span><br />
+            <span class="era-notes-footer">Suázem are numbered in base 12.</span>
+          </div>
         </div>
 
         <div class="slider-wrap">
@@ -117,7 +121,7 @@ const ticks = computed(() => {
           <div class="ticks">
             <div
               v-for="t in ticks"
-              :key="t.year"
+              :key="t.pos"
               class="tick"
               :title="t.yearString"
               :style="{ left: t.pos + '%' }"
@@ -277,6 +281,10 @@ input[type="range"] {
 
 .era-notes {
   text-align: right;
+  line-height: 9px;
+}
+
+.era-notes-header {
   font-size: 10px;
   opacity: 0.8;
 }
@@ -285,6 +293,11 @@ input[type="range"] {
   font-family: "Lucida Sans Unicode", "DejaVu Sans", sans-serif;
   font-size: 10px;
   opacity: 0.6;
+}
+
+.era-notes-footer {
+  font-size: 8px;
+  opacity: 0.8;
 }
 
 /* SLIDER */

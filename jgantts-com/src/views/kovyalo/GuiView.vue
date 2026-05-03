@@ -65,10 +65,21 @@ const tickPlacements: {
   label: string
 }[] = [
   { suazem: "526", label: "War of Plotto" },
-  { suazem: "864", label: "Age of Aegat" },
+  { suazem: "8AB", label: "Age of Aegat" },
   { suazem: "1400", label: "Modern"}
 ]
 
+type TimeSpan = {
+  suazemStart: string,
+  suazemEnd: string
+  label: string
+} 
+
+const ages: TimeSpan[] = [
+  { suazemStart: "-1", suazemEnd: "526", label: "Age of the Unknowns"},
+  { suazemStart: "526", suazemEnd: "68E", label: "Age of Aegat"},
+  { suazemStart: "1400", suazemEnd: "-1", label: "Age of the Unknowns"}
+]
 
 /* ticks now fully dynamic with padding */
 const ticks = computed(() => {
@@ -77,9 +88,9 @@ const ticks = computed(() => {
   for (let suazem of tickPlacements) {
     let suazemDecimal = Number.parseInt(suazem.suazem, 12)
     out.push({
-      year: suazemDecimal,
-      label: suazem.label,
-      hover: toBase12Suazem(suazemDecimal),
+      yearNumber: suazemDecimal,
+      yearString: suazem.label,
+      yearTitle: toBase12Suazem(suazemDecimal),
       pos: ((suazemDecimal - startSuazem) / (endSuazem - startSuazem)) * 100
     });
   }
@@ -108,11 +119,12 @@ const ticks = computed(() => {
               v-for="t in ticks"
               :key="t.year"
               class="tick"
+              :title="t.yearString"
               :style="{ left: t.pos + '%' }"
             >
-              <button @click="eraSuazem = t.year">
+              <button @click="eraSuazem = t.yearNumber">
                 <div class="tick-line"></div>
-                <div class="tick-label">{{ t.label }}</div>
+                <div class="tick-label">{{ t.yearTitle }}</div>
               </button>
             </div>
           </div>
@@ -315,7 +327,6 @@ input[type="range"] {
   margin-top: 1px;
   opacity: 0.7;
   transform: scale(0.9);
-  max-width: 5em;
 }
 
 input[type="range"] {

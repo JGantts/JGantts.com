@@ -62,9 +62,7 @@ type Town = {
 
 type TownPlusRegion = Town & { regionId: string }
 
-let regionConfigs = JSON.parse(
-    await (await fetch('/assets/maps/geo-data/regions.json')).text()
-  ) as RegionConfig[]
+let regionConfigs: RegionConfig[] 
 
 const warpedImageUrlCache = new Map<string, Promise<string>>()
 
@@ -214,7 +212,10 @@ function scheduleSave(map: MapLibreMap | null) {
   }, 200)
 }
 
-function initMap(mapEl: HTMLElement | null, dev: boolean = false): JgMap | null {
+async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise<JgMap | null> {
+    regionConfigs = JSON.parse(
+        await (await fetch('/assets/maps/geo-data/regions.json')).text()
+    ) as RegionConfig[]
 
     let allTowns = regionConfigs.reduce<TownPlusRegion[]>(
         (prev, curr) => {

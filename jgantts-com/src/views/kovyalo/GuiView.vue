@@ -9,7 +9,7 @@ function toggleTheme() {
 
 const eraSuazem = ref(1200);
 
-const mode = ref<"political" | "physical" | "hybrid">("political");
+const mode = ref<"political" | "physical">("political");
 
 const overlays = ref({
   cities: true,
@@ -149,7 +149,6 @@ const ticks = computed(() => {
         <div class="segmented">
           <button :class="{active: mode==='political'}" @click="mode='political'">Political</button>
           <button :class="{active: mode==='physical'}" @click="mode='physical'">Physical</button>
-          <button :class="{active: mode==='hybrid'}" @click="mode='hybrid'">Hybrid</button>
         </div>
       </div>
     </div>

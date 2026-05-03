@@ -29,7 +29,7 @@ onMounted(async () => {
     }
   })
 
-  jgMap.value = initMap(mapEl.value)
+  jgMap.value = await initMap(mapEl.value)
 
   if (!jgMap) return
 

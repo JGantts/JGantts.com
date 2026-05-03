@@ -2,9 +2,10 @@
 import type { Map as MapLibreMap } from "maplibre-gl"
 import { onMounted, ref, watch } from "vue";
 import { useDarkMode } from "./common/DarkMode";
+import { type JgMap } from "./maps/maps";
 
 const props = defineProps<{
-    map: MapLibreMap|null;
+    map: JgMap|null;
 }>();
 
 defineExpose({
@@ -27,8 +28,8 @@ onMounted(() => {
 })
 
 function mapReady() {
-  if(!props.map) return
-  lastBearing = props.map!.getBearing();
+  if(!props.map?.mlMap) return
+  lastBearing = props.map.mlMap.getBearing();
   visualAngle = -lastBearing;
   requestAnimationFrame(updateCompass);
 }
@@ -41,9 +42,9 @@ function shortestDelta(from: number, to: number) {
 }
 
 function updateCompass() {
-  if(!props.map) return
+  if(!props.map?.mlMap) return
   if(!needle.value) return
-  const bearing = props.map!.getBearing();
+  const bearing = props.map.mlMap.getBearing();
 
   // smooth across ±180 instead of snapping
   const delta = shortestDelta(lastBearing, bearing);
@@ -56,7 +57,7 @@ function updateCompass() {
 
 const BEARING_MIN = 1
 function resetNorth() {
-  let _map = props.map
+  let _map = props.map?.mlMap
   if(!_map) return
   let bearing = _map.getBearing();
   if (bearing < BEARING_MIN || bearing > (360-BEARING_MIN)) {

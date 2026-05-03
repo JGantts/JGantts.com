@@ -1,13 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, shallowRef, watch, type Ref } from 'vue'
-import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
+import { onMounted, onBeforeUnmount, ref, type Ref } from 'vue'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import KDBush from 'kdbush';
-import { Protocol } from 'pmtiles'
 import CompassView from './CompassView.vue'
 import GuiView from './GuiView.vue';
 import DarkModeButton from './DarkModeButton.vue';
-import { useSettings } from './common/Settings';
 import { initMap, type JgMap } from './maps/maps';
 
 const props = defineProps<{ dev?: boolean }>()
@@ -22,263 +18,6 @@ const cursorCoords = ref<{ x: number; y: number } | null>(null)
 const zoomCurrent = ref(0)
 const pitchCurrent = ref(0)
 const bearingCurrent = ref(0)
-
-
-/*function getVisibleTownsInActiveRegions(bounds: maplibregl.LngLatBounds) {
-  if (!townIndex.value) return []
-
-  const foundIds = townIndex.value.range(bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth());
-
-  const foundItems = foundIds.map(i => allTowns.value[i]);
-
-  const visibleTowns = foundItems.filter(town => {
-    return getRegionById(town.regionId)?.townsActive
-  })
-
-  const visiblePopulation = computeVisiblePopulation(visibleTowns)
-
-  return visibleTowns
-}
-
-function computeVisiblePopulation(visibleTowns: TownPlusRegion[]|null = null) {
-  if (!map.value) return 1
-
-  const bounds = map.value.getBounds()
-  const towns = visibleTowns || getVisibleTownsInActiveRegions(bounds)
-
-  let total = 0
-  for (const t of towns) {
-    total += t.population
-  }
-
-  return total || 1
-}*/
-
-
-/*
-function getRegionById(id: string | null | undefined): ManagedRegion | undefined {
-  if (!id) return undefined
-  return regions.value.find((r) => r.id === id)
-}
-
-function isRegionInView(region: RegionConfig): boolean {
-  if (!map.value) return false
-
-  const screenBounds = map.value.getBounds()
-  const [[regionTop, regionLeft], [regionBottom, regionRight]] = region.bounds
-
-  const center = map.value.getCenter()
-
-  return !(
-    regionRight < screenBounds.getWest() ||
-    regionLeft > screenBounds.getEast() ||
-    regionBottom > screenBounds.getNorth() ||
-    regionTop < screenBounds.getSouth()
-  ) || (
-    center.lat >= regionBottom &&
-    center.lat <= regionTop &&
-    center.lng >= regionLeft &&
-    center.lng <= regionRight
-  )
-}
-
-const regionPercentMin: number = 0.6
-const regionPercentMax: number = 1.4
-
-function isRegionWideEnoughToShow(region: RegionConfig, screenBounds: maplibregl.LngLatBounds): boolean {
-  const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
- return (
-    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * regionPercentMin)
-  )
-}
-function isRegionTooWideToShow(region: RegionConfig, screenBounds: maplibregl.LngLatBounds): boolean {
-  const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
-  return (
-    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * regionPercentMin)
-  )
-}
-
-function isRegionTallEnoughToShow(region: RegionConfig, screenBounds: maplibregl.LngLatBounds): boolean {
-  const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
-  return (
-    (regionRight - regionLeft) > (screenBounds.getEast() - screenBounds.getWest() * regionPercentMax)
-  ) 
-}
-function isRegionTooTallToShow(region: RegionConfig, screenBounds: maplibregl.LngLatBounds): boolean {
-  const [[regionTop, regionLeft], [regionBottom, regionRight]] = normalizeBounds(region.bounds)
-  return (
-    (regionTop - regionBottom) > (screenBounds.getNorth() - screenBounds.getSouth() * regionPercentMax)
-  ) 
-}
-
-function shouldRegionBackgroundBeVisible(
-  region: RegionConfig,
-  screenBounds: maplibregl.LngLatBounds
-): boolean {
-  return (
-    (
-      isRegionTallEnoughToShow(region, screenBounds)
-    && !isRegionTooTallToShow(region, screenBounds)
-    ) || (
-      isRegionWideEnoughToShow(region, screenBounds)
-    && !isRegionTooWideToShow(region, screenBounds)
-    )
-  )
-}
-
-function shouldRegionTownsBeVisible(
-  region: RegionConfig,
-  screenBounds: maplibregl.LngLatBounds
-): boolean {
-  return (
-    isRegionTallEnoughToShow(region, screenBounds)
-    || isRegionWideEnoughToShow(region, screenBounds)
-  )
-}
-*/
-/*
-let syncScheduled = false
-
-function requestSync() {
-  
-  if (syncScheduled) return
-  syncScheduled = true
-
-  function syncRegions(): void {
-    if (!map.value) return
-
-    const directlyEligible = regions.value.filter(isRegionInView)
-    const visibleIds = new Set(directlyEligible.map((r) => r.id))
-
-    for (const region of directlyEligible) {
-      let parentId = region.parentId
-
-      while (parentId) {
-        visibleIds.add(parentId)
-        parentId = getRegionById(parentId)?.parentId ?? null
-      }
-    }
-
-    for (const region of regions.value) {
-      const shouldBeVisible = visibleIds.has(region.id)
-      region.active = shouldBeVisible
-
-      const backgroundShouldBeVisible = shouldRegionBackgroundBeVisible(region, map.value.getBounds())
-
-      const townsVisible = shouldRegionTownsBeVisible(region, map.value.getBounds())
-      region.townsActive = shouldBeVisible && townsVisible
-
-      
-      for (const layer of region.layers) {
-        const layerId = `region-${region.id}-${layer.id}`
-
-        if (!map.value.getLayer(layerId)) continue
-
-        if (layer.id === 'background' && !backgroundShouldBeVisible) {
-          map.value.setPaintProperty(
-            `region-${region.id}-${layer.id}`,
-            'raster-opacity',
-            1,
-          )
-          continue
-        }
-
-        const opacity = shouldBeVisible
-          ? 1
-          : 1
-
-        map.value.setPaintProperty(layerId, 'raster-opacity', opacity)
-      }
-    }
-
-    scheduleRecompute()
-    updateVisibleTownSource()
-  }
-
-  requestAnimationFrame(() => {
-    syncScheduled = false
-    syncRegions()
-  })
-}
-*/
-
-
-
-
-/*
-let visiblePopulation = ref(1)
-
-let rafPending = false
-
-function scheduleRecompute() {
-  if (rafPending) return
-  rafPending = true
-
-  let _map = map.value
-  if (!_map) return
-
-  requestAnimationFrame(() => {
-    if (!_map) return
-    rafPending = false
-    visiblePopulation.value = computeVisiblePopulation()
-
-    let newExpression = [
-      'interpolate', ['linear'],
-      [
-        '*',
-        [
-          '/',
-          ['get', 'population'],
-          visiblePopulation.value
-        ],
-        ['literal', 1_000]
-      ],
-      0, 14,
-      1, 18,
-      10, 24,
-      100, 36,
-      1_000, 64,
-    ]
-
-    try {
-      if (_map.getLayer('towns-layer')) {
-        console.warn('Failed to update text-size dynamically', 'towns-layer not found')
-        return
-      }
-      _map.setLayoutProperty('towns-layer', 'text-size', newExpression)
-    } catch (e) {
-      console.warn('Failed to update text-size dynamically', e)
-    }
-  })
-}*/
-
-/*
-function updateVisibleTownSource() {
-  if (!map.value) return
-
-  const bounds = map.value.getBounds()
-  const visible = getVisibleTownsInActiveRegions(bounds)
-
-  const data: GeoJSON.FeatureCollection = {
-    type: 'FeatureCollection',
-    features: visible.map(t => ({
-      type: 'Feature',
-      properties: {
-        name: t.name,
-        population: t.population,
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: t.coordinates,
-      }
-    }))
-  }
-
-  const src = map.value.getSource('towns') as maplibregl.GeoJSONSource
-  src.setData(data)
-}
-*/
-
 
 onMounted(async () => {
   if (!mapEl.value) return
@@ -321,9 +60,7 @@ onMounted(async () => {
   })
 
   mapTemp.on('moveend', () => {
-    // requestSync()
     jgMap.value?.savePosition()
-    // scheduleRecompute()
   })
 
   mapTemp.on('zoom', (e) => {
@@ -331,31 +68,22 @@ onMounted(async () => {
   })
 
   mapTemp.on('zoomend', () => {
-    //requestSync()
     jgMap.value?.savePosition()
-    //scheduleRecompute()
   })
 
   mapTemp.on('rotateend', () => {
     updateOnZoom()
-    // requestSync()
     jgMap.value?.savePosition()
-    // scheduleRecompute()
   })
 
   mapTemp.on('pitchend', () => {
     updateOnZoom()
-    // requestSync()
     jgMap.value?.savePosition()
-    // scheduleRecompute()
   })
 
     updateMouseOnMove()
     updateOnZoom()
-    // requestSync()
   })
-
-
 
 
   const keys: { [key: string]: boolean } = {};

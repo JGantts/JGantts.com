@@ -389,29 +389,6 @@ function initMap(mapEl: HTMLElement | null, dev: boolean = false): JgMap | null 
             })
           }
         }
-/*
-        map!.addSource(`region-src-${region.id}-rivers`, {
-          type: 'geojson',
-          data: '/assets/kovyalo/map/kovyalo/ziemund/rivers copy.geojson'
-        })
-
-        map!.addLayer({
-          id: `region-${region.id}-rivers`,
-          type: 'line',
-          source: `region-src-${region.id}-rivers`,
-          paint: {
-            'line-color': '#4aa3ff',
-            'line-width': [
-              'interpolate',
-              ['linear'],
-              ['get', 'width'],
-              0, 0.5,
-              10, 2,
-              50, 6
-            ],
-            'line-opacity': 0.8
-          }
-        })*/
 
         regions.push(region)
       }
@@ -488,34 +465,6 @@ function initMap(mapEl: HTMLElement | null, dev: boolean = false): JgMap | null 
               'hillshade-exaggeration': 1.0
         }
       })
-
-      /*
-      // regions (low priority)
-      mapTemp.addLayer({
-        id: 'regions-labels-layer',
-        type: 'symbol',
-        source: 'regions-labels',
-        layout: {
-          'text-field': ['get', 'name'],
-          'text-size': [
-              'interpolate', ['linear'], ['zoom'],
-                2, 10,
-                6, 16,
-                10, 28,
-                14, 48
-          ],
-          'text-variable-anchor': ['center', 'top', 'bottom', 'left', 'right'],
-          'text-radial-offset': 0.5,
-          'text-justify': 'auto',
-          'symbol-sort-key': ['get', 'priority'],
-        },
-        paint: {
-          'text-color': '#fff',
-          'text-halo-color': '#000',
-          'text-halo-width': 2,
-        },
-      })
-      */
 
       const size = 32
       const canvas = document.createElement('canvas')

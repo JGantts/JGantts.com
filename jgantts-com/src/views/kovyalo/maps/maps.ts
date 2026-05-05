@@ -147,20 +147,6 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
       const protocol = new Protocol()
       maplibregl.addProtocol('pmtiles', protocol.tile)
 
-      map.addSource('world-pmtiles', {
-        type: 'raster',
-        url: 'pmtiles:///assets/maps/world.pmtiles',
-        tileSize: 256,
-        minzoom: 0,
-        maxzoom: 6,
-      })
-
-      map.addLayer({
-        id: 'world',
-        type: 'raster',
-        source: 'world-pmtiles'
-      })
-
       const data: GeoJSON.FeatureCollection = {
         type: 'FeatureCollection',
         features: allTowns.map(t => ({

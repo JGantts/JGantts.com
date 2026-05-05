@@ -1,5 +1,19 @@
 [
   {
+    "id": "world",
+    "title": "World",
+    "bounds": [
+      [85.05113, -180],
+      [-85.05113, 180]
+    ],
+    "minZoom": 0,
+    "maxZoom": 6,
+    "parentId": null,
+    "base": { "imageUrl": "world", "hasDark": false},
+    "layers": [
+    ]
+  },
+  {
     "id": "kovyalo",
     "title": "Kovyálo",
     "bounds": [
@@ -8,7 +22,7 @@
     ],
     "minZoom": 4,
     "maxZoom": 7,
-    "parentId": null,
+    "parentId": "world",
     "base": { "imageUrl": "kovyalo/0", "hasDark": false},
     "background": { "imageUrl": "kovyalo/background", "hasDark": false },
     "layers": [

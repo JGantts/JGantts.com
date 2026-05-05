@@ -108,20 +108,6 @@ def main():
     regions = json.loads(regions_json_in.read_text(encoding="utf-8"))
 
     # -------------------------------------------------
-    # WORLD
-    # -------------------------------------------------
-
-    print("\n=== WORLD ===")
-
-    build(
-        WORLD_IMAGE_IN.with_suffix(".png"),
-        WORLD_IMAGE_OUT(args.dev).with_suffix(".pmtiles"),
-        (-180, -85.05113, 180, 85.05113),
-        0,
-        6 
-    )
-
-    # -------------------------------------------------
     # REGIONS
     # -------------------------------------------------
 

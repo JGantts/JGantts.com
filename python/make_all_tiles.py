@@ -123,6 +123,8 @@ def main():
     for region in regions:
         region_id = region["id"]
 
+        print(f"\n=== REGION {region_id} ===")
+
         bounds_raw = region["bounds"]
 
         north = bounds_raw[0][0]
@@ -132,11 +134,14 @@ def main():
 
         bounds = (west, south, east, north)
 
-        def convert_region_layer(relative_file):
+        def convert_region_layer(layer):
+            relative_file = layer.get("imageUrl")
+            if not relative_file:
+                print(f"\n=== file {relative_file} not found ===")
+                return
+
             input_file = normalize_in_file_path(relative_file).with_suffix(".png")
             output_file = normalize_out_file_path(relative_file).with_suffix(".pmtiles")
-
-            print(f"\n=== REGION {region_id} ===")
 
             print(input_file)
 
@@ -148,24 +153,43 @@ def main():
                 region["maxZoom"]
             )
 
+            if layer.get("hasDark"):
+                input_file_dark = normalize_in_file_path(relative_file + "-dark").with_suffix(".png")
+                output_file_dark = normalize_out_file_path(relative_file + "-dark").with_suffix(".pmtiles")
+
+                print(input_file_dark)
+
+                build(
+                    input_file_dark,
+                    output_file_dark,
+                    bounds,
+                    region["minZoom"],
+                    region["maxZoom"]
+                )
+
         background = region.get("background")
         if background:
-            convert_region_layer(background["imageUrl"])
+            convert_region_layer(background)
 
         base = region.get("base")
         if base:
-            convert_region_layer(base["imageUrl"])
+            convert_region_layer(base)
         
         layers = region.get("layers", [])
         for layer in layers:
             layerType = layer.get("type")
             if layerType == "tiled":
-                convert_region_layer(layer["imageUrl"])
+                convert_region_layer(layer)
             elif layerType == "single":
                 # copy png file
                 input_file = normalize_in_file_path(layer["imageUrl"]).with_suffix(".png")
                 output_file = normalize_out_file_path(layer["imageUrl"]).with_suffix(".png")
                 shutil.copy(input_file, output_file)
+                if layer.get("hasDark"):
+                    # copy dark png file
+                    input_file_dark = normalize_in_file_path(layer["imageUrl"]+"-dark").with_suffix(".png")
+                    output_file_dark = normalize_out_file_path(layer["imageUrl"]+"-dark").with_suffix(".png")
+                    shutil.copy(input_file_dark, output_file_dark)
         
 
     relative_file = WORLD_ERODED_IN

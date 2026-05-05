@@ -1,8 +1,10 @@
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import KDBush from 'kdbush';
 import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
+import type {  } from '../common/Settings';
+import { watch } from 'vue';
+import { effectiveDarkMode } from '../common/DarkMode';
 
 const settings = useSettings()
 
@@ -17,6 +19,7 @@ type BoundsTuple = [[number, number], [number, number]]
 type RegionLayerConfig = {
   type: "tiled" | "single"
   imageUrl: string
+  hasDark: boolean|null
   sort: "political" | "geographical"
 }
 
@@ -93,6 +96,30 @@ function scheduleSave(map: MapLibreMap | null) {
     if (!map) return
     saveMapState(map)
   }, 200)
+}
+
+function applyTheme(map: MapLibreMap) {
+  const layers = map.getStyle()?.layers || []
+
+  const UserTheme_SystemTheme = effectiveDarkMode.value
+
+  console.log(UserTheme_SystemTheme)
+
+  console.log("applyTheme")
+  console.log(layers)
+    
+  for (const layer of layers) {
+    const layerTheme = (layer.metadata as { theme?: string } | undefined)?.theme
+    console.log(layer.metadata)
+
+    if (!layerTheme) continue
+
+    map.setLayoutProperty(
+      layer.id,
+      'visibility',
+      layerTheme === UserTheme_SystemTheme ? 'visible' : 'none'
+    )
+  }
 }
 
 async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
@@ -212,43 +239,64 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
         }
 
         for (const layer of region.layers) {
-          const sourceId = `region-src-${region.id}-${layer.id}`
-          const layerId = `region-${region.id}-${layer.id}`
-          if (layer.type === 'tiled') {
-            const source = `pmtiles:///assets/maps/${layer.imageUrl}.pmtiles`
+          let addLayer = (dark: "single"|"dark"|"light") => {
+            const darkSuffix = dark == "dark" 
+              ? "-dark"
+              : ""
+              
+            const sourceId = `region-src-${region.id}-${layer.id}${darkSuffix}`
+            const layerId = `region-${region.id}-${layer.id}${darkSuffix}`
 
-            map.addSource(sourceId, {
-              type: 'raster',
-              url: source,
-            })
+            const metadata = dark == "dark" 
+            ? { "theme": "dark" }
+            : dark == "light"
+            ? { "theme": "light" }
+            : null
 
-            map.addLayer({
-              id: layerId,
-              type: 'raster',
-              source: sourceId,
-              minzoom: region.minZoom,
-              maxzoom: region.maxZoom,
-              paint: {
-                'raster-opacity': 1,
-              },
-            })
-          } else if (layer.type === 'single') {
-            map.addSource(sourceId, {
-              type: 'image',
-              url: `/assets/maps/${layer.imageUrl}.png`,
-              coordinates: boundsToImageCoordinates(region.bounds),
-            })
+            if (layer.type === 'tiled') {
+              const source = `pmtiles:///assets/maps/${layer.imageUrl}${darkSuffix}.pmtiles`
 
-            map.addLayer({
-              id: layerId,
-              type: 'raster',
-              source: sourceId,
-              minzoom: region.minZoom,
-              maxzoom: region.maxZoom,
-              paint: {
-                'raster-opacity': 1,
-              },
-            })
+              map.addSource(sourceId, {
+                type: 'raster',
+                url: source,
+              })
+
+              map.addLayer({
+                id: layerId,
+                type: 'raster',
+                source: sourceId,
+                minzoom: region.minZoom,
+                maxzoom: region.maxZoom,
+                paint: {
+                  'raster-opacity': 1,
+                },
+                metadata
+              })
+            } else if (layer.type === 'single') {
+              map.addSource(sourceId, {
+                type: 'image',
+                url: `/assets/maps/${layer.imageUrl}${darkSuffix}.png`,
+                coordinates: boundsToImageCoordinates(region.bounds),
+              })
+
+              map.addLayer({
+                id: layerId,
+                type: 'raster',
+                source: sourceId,
+                minzoom: region.minZoom,
+                maxzoom: region.maxZoom,
+                paint: {
+                  'raster-opacity': 1,
+                },
+                metadata
+              })
+            }
+          }
+          if (layer.hasDark) {
+            addLayer("light")
+            addLayer("dark")
+          } else {
+            addLayer("single")
           }
         }
 
@@ -392,7 +440,6 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
         },
       })
 
-
     //   requestSync()
     } catch (error) {
       console.error('Failed to initialize map sources:', error)
@@ -440,6 +487,16 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
 
     mapTemp.on('load', async () => {
         await internalInitMapSourcesAndLayers(mapTemp)
+        
+        watch(
+          effectiveDarkMode,
+          (newVal, oldVal) => {
+            if (newVal !== oldVal) {
+              applyTheme(mapTemp)
+            }
+          },
+          { immediate: true }
+        )
     });
     return {
         mlMap: mapTemp,

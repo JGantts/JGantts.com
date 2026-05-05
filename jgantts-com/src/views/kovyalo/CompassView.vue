@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
-import { useDarkMode } from "./common/DarkMode";
 import type { JgMap } from "./maps/maps";
 
 const props = defineProps<{
@@ -10,8 +9,6 @@ const props = defineProps<{
 defineExpose({
     updateCompass,
 });
-
-const darkMode = useDarkMode()
 
 let needle = ref<HTMLElement|null>(null);
 

@@ -228,7 +228,7 @@ onMounted(async () => {
       </div>
     </div>
     <DarkModeButton />
-    <GuiView />
+    <!-- <GuiView /> -->
     <CompassView ref="compassView" id="compass" :map="jgMap" />
     <div class="fantasy-map-root">
       <div ref="mapEl" class="fantasy-map" />

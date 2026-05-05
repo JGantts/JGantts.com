@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from "vue"
-import { useDarkMode } from './common/DarkMode';
+import { toggleUserTheme, clearUserTheme } from './common/DarkMode'
+import { useSettings } from './common/Settings'
 
-const darkMode = useDarkMode()
+const settings = useSettings()
 
+// label = what user selected, not effective mode
 const themeLabel = computed(() => {
-  const v = darkMode.darkModeUser.value
+  const v = settings.darkMode
   if (v === "auto") return "Auto"
   if (v === "dark") return "Dark"
   return "Light"
@@ -13,20 +15,20 @@ const themeLabel = computed(() => {
 </script>
 
 <template>
-<div id="overlay">
-  <button class="theme-btn" @click="darkMode.toggleUserTheme">
-    Theme: {{ themeLabel }}
-  </button>
+  <div id="overlay">
+    <button class="theme-btn" @click="toggleUserTheme">
+      Theme: {{ themeLabel }}
+    </button>
 
-  <button
-    v-if="darkMode.darkModeUser.value !== 'auto'"
-    class="reset-btn"
-    @click="darkMode.clearUserTheme"
-    title="Reset to system theme"
-  >
-    Reset
-  </button>
-</div>
+    <button
+      v-if="settings.darkMode !== 'auto'"
+      class="reset-btn"
+      @click="clearUserTheme"
+      title="Reset to system theme"
+    >
+      Reset
+    </button>
+  </div>
 </template>
 
 <style scoped>

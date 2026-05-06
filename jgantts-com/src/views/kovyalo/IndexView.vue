@@ -205,11 +205,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="props.dev">
-    <h1>Dev Mode</h1>
-  </div>
-  <div>
-    <div v-if="props.dev" class="toolbar">
+  <div id="main">
+    <div v-if="props.dev" id="toolbar">
+      <h1>Dev Mode</h1>
       <div>
         {{
           cursorCoords
@@ -227,23 +225,40 @@ onMounted(async () => {
         Bearing: {{ bearingCurrent.toFixed(2) }}
       </div>
     </div>
-    <DarkModeButton />
-    <!-- <GuiView /> -->
-    <CompassView ref="compassView" id="compass" :map="jgMap" />
-    <div class="fantasy-map-root">
-      <div ref="mapEl" class="fantasy-map" />
+    <div id="map-gui-holder">
+      <DarkModeButton />
+      <GuiView />
+      <CompassView ref="compassView" id="compass" :map="jgMap" />
+      <div class="fantasy-map-root">
+        <div ref="mapEl" class="fantasy-map" />
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.fantasy-map-root {
-  width: 100vw;
+#main {
+  display: flex;
+  flex-direction: column;
   height: 100vh;
 }
+
+#map-gui-holder {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative
+}
+
+.fantasy-map-root {
+  flex: 1;
+  min-height: 0;
+  background-color: black;
+}
+
 .fantasy-map {
   width: 100%;
   height: 100%;
-  background: #111;
 }
 </style>

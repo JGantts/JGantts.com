@@ -204,20 +204,20 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
         let addRegionLayer = (layer: RegionLayerConfig, id: string) => {
           console.log(region.id)
           console.log(id)
-          let zoom: { min: number, max: number}|null = null
+          let zoomTemp: { min: number, max: number}|null = null
           if (layer.zoom) {
-            zoom = layer.zoom
+            zoomTemp = layer.zoom
           } else {
-            zoom = region.zoom
+            zoomTemp = region.zoom
           }
-          zoom = zoom!
-          let zoomDisplay: ZoomConfig|null = null
+          let zoom = zoomTemp!
+          let zoomDisplayTemp: ZoomConfig|null = null
           if (layer.zoomDisplay) {
-            zoomDisplay = layer.zoomDisplay
+            zoomDisplayTemp = layer.zoomDisplay
           } else {
-            zoomDisplay = zoom
+            zoomDisplayTemp = zoom
           }
-          zoomDisplay = zoomDisplay!
+          let zoomDisplay = zoomDisplayTemp!
           let addLayer = (dark: "single"|"dark"|"light") => {
             const darkSuffix = dark == "dark" 
               ? "-dark"
@@ -241,9 +241,6 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
                 minzoom: zoom.min,
                 maxzoom: zoom.max,
               })
-
-              console.log(region.id + " " + layerId)
-              console.log(zoom.max)
 
               map.addLayer({
                 id: layerId,

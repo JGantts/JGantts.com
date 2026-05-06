@@ -210,12 +210,14 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
           } else {
             zoom = region.zoom
           }
+          zoom = zoom!
           let zoomDisplay: ZoomConfig|null = null
           if (layer.zoomDisplay) {
             zoomDisplay = layer.zoomDisplay
           } else {
             zoomDisplay = zoom
           }
+          zoomDisplay = zoomDisplay!
           let addLayer = (dark: "single"|"dark"|"light") => {
             const darkSuffix = dark == "dark" 
               ? "-dark"

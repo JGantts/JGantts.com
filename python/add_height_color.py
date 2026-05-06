@@ -65,72 +65,88 @@ DARK = {k: hex_to_rgb(v) for k, v in DARK.items()}
 SEA_LEVEL =   0.368625  # try 0.45 (more land) or 0.55 (more ocean)
 COAST_WIDTH = 0.000001  # thickness of beaches
 
-def colorize(height, palette):
-    """
-    height: 0.0 → 1.0
-    """
-    sea = SEA_LEVEL
-    coast = SEA_LEVEL + COAST_WIDTH
-
-    # Water
-    if height < sea:
-        t = height / sea if sea > 0 else 0
-        return lerp(palette["water_deep"], palette["water_shallow"], t)
-
-    # Coast
-    if height < coast:
-        return palette["coast"]
-
-    land_h = (height - coast) / (1.0 - coast)
-    land_h = np.clip(land_h, 0, 1)
-
-    # Land
-    low = 0
-    mid = 0.025
-    high = 0.03
-    mountain = 0.1
-    snow = 0.3
-    if land_h < mid:
-        t = smoothstep(low, mid, land_h)
-        return lerp(palette["low"], palette["mid"], t)
-
-    if land_h < high:
-        t = smoothstep(mid, high, land_h)
-        return lerp(palette["mid"], palette["high"], t)
-
-    if land_h < mountain:
-        t = smoothstep(high, mountain, land_h)
-        return lerp(palette["high"], palette["mountain"], t)
-
-    if land_h < snow:
-        t = smoothstep(mountain, snow, land_h)
-        return lerp(palette["mountain"], palette["snow"], t)
-    
-    return palette["snow"]
-
 
 # ----------------------------
 # Main
 # ----------------------------
 
+def render(height, palette):
+    sea = SEA_LEVEL
+    coast = SEA_LEVEL + COAST_WIDTH
+
+    h, w = height.shape
+    out = np.zeros((h, w, 3), dtype=np.float32)
+
+    # -------------------------
+    # WATER
+    # -------------------------
+    water_mask = height < sea
+    t = np.zeros_like(height)
+    t[water_mask] = np.divide(height[water_mask], sea, where=sea > 0)
+
+    water = lerp(palette["water_deep"], palette["water_shallow"], t[..., None])
+    out[water_mask] = water[water_mask]
+
+    # -------------------------
+    # LAND BASE
+    # -------------------------
+    land_mask = ~water_mask
+
+    land_h = np.zeros_like(height)
+    land_h[land_mask] = (height[land_mask] - coast) / (1.0 - coast)
+    land_h = np.clip(land_h, 0, 1)
+
+    # -------------------------
+    # COAST
+    # -------------------------
+    coast_mask = (height >= sea) & (height < coast)
+    out[coast_mask] = palette["coast"]
+
+    # -------------------------
+    # LOW → MID
+    # -------------------------
+    m1 = land_mask & (land_h < 0.025)
+    t = np.zeros_like(height)
+    t[m1] = smoothstep(0.0, 0.025, land_h[m1])
+    out[m1] = lerp(palette["low"], palette["mid"], t[m1][..., None])
+
+    # -------------------------
+    # MID → HIGH
+    # -------------------------
+    m2 = land_mask & (land_h >= 0.025) & (land_h < 0.03)
+    t = np.zeros_like(height)
+    t[m2] = smoothstep(0.025, 0.03, land_h[m2])
+    out[m2] = lerp(palette["mid"], palette["high"], t[m2][..., None])
+
+    # -------------------------
+    # HIGH → MOUNTAIN
+    # -------------------------
+    m3 = land_mask & (land_h >= 0.03) & (land_h < 0.1)
+    t = np.zeros_like(height)
+    t[m3] = smoothstep(0.03, 0.1, land_h[m3])
+    out[m3] = lerp(palette["high"], palette["mountain"], t[m3][..., None])
+
+    # -------------------------
+    # MOUNTAIN → SNOW
+    # -------------------------
+    m4 = land_mask & (land_h >= 0.1) & (land_h < 0.3)
+    t = np.zeros_like(height)
+    t[m4] = smoothstep(0.1, 0.3, land_h[m4])
+    out[m4] = lerp(palette["mountain"], palette["snow"], t[m4][..., None])
+
+    # -------------------------
+    # SNOW
+    # -------------------------
+    out[land_mask & (land_h >= 0.3)] = palette["snow"]
+
+    return np.clip(out, 0, 255).astype(np.uint8)
+
 def process(input_path):
     img = Image.open(input_path).convert("L")
     height = np.array(img).astype(np.float32) / 255.0
 
-    h, w = height.shape
-
-    def render(palette):
-        out = np.zeros((h, w, 3), dtype=np.float32)
-
-        for y in range(h):
-            for x in range(w):
-                c = colorize(height[y, x], palette)
-                out[y, x] = c
-
-        return np.clip(out, 0, 255).astype(np.uint8)
-
-    light_img = Image.fromarray(render(LIGHT))
-    dark_img = Image.fromarray(render(DARK))
+    light_img = Image.fromarray(render(height, LIGHT))
+    dark_img = Image.fromarray(render(height, DARK))
 
     base = input_path.rsplit(".", 1)[0]
     light_img.save(f"{base}_light.png")

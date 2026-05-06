@@ -18,19 +18,21 @@ type BoundsTuple = [[number, number], [number, number]]
 
 type RegionLayerConfig = {
   type: "tiled" | "single"
-  imageUrl: string
+  zoom: ZoomConfig|null
+  zoomDisplay: ZoomConfig|null
   hasDark: boolean|null
-  sort: "political" | "geographical"
+  sort: "political" | "geographical" | null
 }
 
 type DataSourceKind = 'towns'
+
+type ZoomConfig = { min: number, max: number }
 
 type RegionConfig = {
   id: string
   title: string
   bounds: BoundsTuple
-  minZoom: number
-  maxZoom: number
+  zoom: ZoomConfig
   parentId?: string | null
   base: RegionLayerConfig
   background: RegionLayerConfig
@@ -39,6 +41,11 @@ type RegionConfig = {
     kind: DataSourceKind
     points: { name: string; coordinates: [number, number], population: number }[]
   }[]
+}
+
+type WorldConfig = {
+  world: RegionConfig
+  regions: RegionConfig[]
 }
 
 type ImageCoordinates = [
@@ -59,6 +66,7 @@ type Town = {
 type TownPlusRegion = Town & { regionId: string }
 
 let regionConfigs: RegionConfig[] 
+let worldRegionConfig: RegionConfig 
 
 function normalizeBounds(bounds: BoundsTuple): BoundsTuple {
   const [[y1, x1], [y2, x2]] = bounds
@@ -123,7 +131,29 @@ function applyTheme(map: MapLibreMap) {
 }
 
 async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
-    console.log('Map loaded, initializing sources and layers.')
+  console.log('Map loaded, initializing sources and layers.')
+
+  let getLayerPath = (region: RegionConfig, layer_id: string) => {
+    let getRegionParent = (region: RegionConfig) => {
+      let getRegionById = (regionId: string|null) => {
+        if (!regionId) return null
+        return regionConfigs.filter((region: RegionConfig) => region.id === regionId)[0]
+      }
+      return getRegionById(region?.parentId ?? null)
+    } 
+    let parents: RegionConfig[] = []
+    let curr: RegionConfig|null = region
+    while (curr) {
+      console.log(parents)
+      console.log(curr)
+      parents.push(curr)
+      curr = getRegionParent(curr)
+    }
+    let path = parents.map(config => config?.id).reverse().join("/") + "/" + layer_id;
+
+    console.log(path)
+    return path
+  }
 
     let allTowns = regionConfigs.reduce<TownPlusRegion[]>(
         (prev, curr) => {
@@ -170,68 +200,29 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
       // ==============
       // RASTER REGIONS 
       // ==============
-
-      for (const region of regionConfigs) {
-
-
-        if (region.background) {
-          const sourceId = `region-src-${region.id}-background`
-          const layerId = `region-${region.id}-background`
-          const source = `pmtiles:///assets/maps/${region.background.imageUrl}.pmtiles`
-
-          console.log(`Adding background layer for region ${region.id} with source ${source}`)
-
-          map.addSource(sourceId, {
-            type: 'raster',
-            url: source,
-            minzoom: region.minZoom,
-            maxzoom: region.maxZoom,
-          })
-
-          map.addLayer({
-            id: layerId,
-            type: 'raster',
-            source: sourceId,
-            minzoom: region.minZoom,
-            maxzoom: region.maxZoom,
-            paint: {
-              'raster-opacity': 1,
-            },
-          })
-        }
-
-        if (region.base) {
-          const sourceId = `region-src-${region.id}-base`
-          const layerId = `region-${region.id}-base`
-          const source = `pmtiles:///assets/maps/${region.base.imageUrl}.pmtiles`
-
-          map.addSource(sourceId, {
-            type: 'raster',
-            url: source,
-            minzoom: region.minZoom,
-            maxzoom: region.maxZoom,
-          })
-
-          map.addLayer({
-            id: layerId,
-            type: 'raster',
-            source: sourceId,
-            minzoom: region.minZoom,
-            maxzoom: region.maxZoom,
-            paint: {
-              'raster-opacity': 1,
-            },
-          })
-        }
-
-        for (const layer of region.layers) {
+      let make_addRegionLayer = (region: RegionConfig) => {
+        let addRegionLayer = (layer: RegionLayerConfig, id: string) => {
+          console.log(region.id)
+          console.log(id)
+          let zoom: { min: number, max: number}|null = null
+          if (layer.zoom) {
+            zoom = layer.zoom
+          } else {
+            zoom = region.zoom
+          }
+          let zoomDisplay: ZoomConfig|null = null
+          if (layer.zoomDisplay) {
+            zoomDisplay = layer.zoomDisplay
+          } else {
+            zoomDisplay = zoom
+          }
           let addLayer = (dark: "single"|"dark"|"light") => {
             const darkSuffix = dark == "dark" 
               ? "-dark"
               : ""
               
-            const sourceId = `region-src-${region.id}-${layer.id}${darkSuffix}`
-            const layerId = `region-${region.id}-${layer.id}${darkSuffix}`
+            const sourceId = `region-src-${region.id}-${id}${darkSuffix}`
+            const layerId = `region-${region.id}-${id}${darkSuffix}`
 
             const metadata = dark == "dark" 
             ? { "theme": "dark" }
@@ -240,19 +231,24 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
             : null
 
             if (layer.type === 'tiled') {
-              const source = `pmtiles:///assets/maps/${layer.imageUrl}${darkSuffix}.pmtiles`
+              const source = `pmtiles:///assets/maps/${getLayerPath(region, id)}${darkSuffix}.pmtiles`
 
               map.addSource(sourceId, {
                 type: 'raster',
                 url: source,
+                minzoom: zoom.min,
+                maxzoom: zoom.max,
               })
+
+              console.log(region.id + " " + layerId)
+              console.log(zoom.max)
 
               map.addLayer({
                 id: layerId,
                 type: 'raster',
                 source: sourceId,
-                minzoom: region.minZoom,
-                maxzoom: region.maxZoom,
+                minzoom: zoomDisplay.min,
+                maxzoom: zoomDisplay.max,
                 paint: {
                   'raster-opacity': 1,
                 },
@@ -261,7 +257,7 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
             } else if (layer.type === 'single') {
               map.addSource(sourceId, {
                 type: 'image',
-                url: `/assets/maps/${layer.imageUrl}${darkSuffix}.png`,
+                url: `/assets/maps/${getLayerPath(region, id)}${darkSuffix}.png`,
                 coordinates: boundsToImageCoordinates(region.bounds),
               })
 
@@ -269,13 +265,15 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
                 id: layerId,
                 type: 'raster',
                 source: sourceId,
-                minzoom: region.minZoom,
-                maxzoom: region.maxZoom,
+                minzoom: zoom.min,
+                maxzoom: zoom.max,
                 paint: {
                   'raster-opacity': 1,
                 },
                 metadata
               })
+            } else {
+              throw `No layer type specified for region and layer: ${region.id} - ${layerId}`
             }
           }
           if (layer.hasDark) {
@@ -284,6 +282,29 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
           } else {
             addLayer("single")
           }
+        }
+
+        return addRegionLayer
+      }
+
+      let add_world_layer = make_addRegionLayer(worldRegionConfig)
+      add_world_layer(worldRegionConfig.base, "base")
+
+      for (const region of regionConfigs) {
+        console.log(region)
+
+        let addRegionLayer = make_addRegionLayer(region)
+
+        if (region.background) {
+          addRegionLayer(region.background, "background")
+        }
+
+        if (region.base) {
+          addRegionLayer(region.base, "base")
+        }
+
+        for (const layer of region.layers) {
+          addRegionLayer(layer, layer.id)
         }
 
         regions.push(region)
@@ -433,9 +454,12 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
 }
 
 async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise<JgMap | null> {
-    regionConfigs = JSON.parse(
+    let worldConfig = JSON.parse(
         await (await fetch('/assets/maps/geo-data/regions.json')).text()
-    ) as RegionConfig[]
+    ) as WorldConfig
+
+    regionConfigs = worldConfig.regions
+    worldRegionConfig = worldConfig.world
 
     if (!mapEl) return null
 

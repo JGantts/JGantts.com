@@ -33,6 +33,36 @@ from path_constants import SRC_DIR, WORLD_IMAGE_IN, WORLD_ERODED_IN, WORLD_IMAGE
 # helpers
 # ---------------------------------------------------
 
+
+
+def get_layer_path(region_configs, region, layer_id):
+    print(region_configs)
+    def get_region_by_id(region_id):
+        if not region_id:
+            return None
+        return next((r for r in region_configs if r["id"] == region_id), None)
+
+    def get_region_parent(region):
+        print(region["id"])
+        print(getattr(region, "parentId", None))
+        return get_region_by_id(region.get("parentId"))
+
+    parents = []
+    curr = region
+
+    while curr:
+        print(parents)
+        print(curr)
+        parents.append(curr)
+        curr = get_region_parent(curr)
+
+    print(parents)
+
+    path = "/".join(r["id"] for r in reversed(parents)) + "/" + layer_id
+
+    print(path)
+    return path
+
 def run(cmd):
     print(">", " ".join(cmd))
     subprocess.run(cmd, check=True, stdout=sys.stdout, stderr=sys.stderr)
@@ -78,6 +108,68 @@ def build(input_file, output_file, bounds, minzoom, maxzoom):
         "--maxzoom", str(maxzoom),
     ])
 
+def make_convert_region_layer(regions, region, temp_out_file_path):
+    bounds_raw_region = region.get("bounds")
+    zoom_region = region.get("zoom")
+
+    def convert_region_layer(layer, id):
+        def get_bounds_from_raw(raw):
+            north = raw[0][0]
+            west = raw[0][1]
+            south = raw[1][0]
+            east = raw[1][1]
+
+            bounds = (west, south, east, north)
+            return bounds
+        
+        bounds_raw_layer = layer.get("bounds")
+        bounds = None
+        if bounds_raw_layer:
+            bounds = get_bounds_from_raw(bounds_raw_layer)
+        else:
+            print(layer)
+            bounds = get_bounds_from_raw(bounds_raw_region)
+
+        zoom_layer = layer.get("zoom")
+        zoom = None
+        if zoom_layer:
+            zoom = zoom_layer
+        else:
+            zoom = zoom_region
+
+        relative_file = get_layer_path(regions, region, id)
+        if not relative_file:
+            print(f"\n=== file {relative_file} not found ===")
+            return
+
+        input_file = normalize_in_file_path(relative_file).with_suffix(".png")
+        output_file = temp_out_file_path(relative_file).with_suffix(".pmtiles")
+
+        print(input_file)
+
+        build(
+            input_file,
+            output_file,
+            bounds,
+            zoom["min"],
+            zoom["max"]
+        )
+
+        if layer.get("hasDark"):
+            input_file_dark = normalize_in_file_path(relative_file + "-dark").with_suffix(".png")
+            output_file_dark = temp_out_file_path(relative_file + "-dark").with_suffix(".pmtiles")
+
+            print(input_file_dark)
+
+            build(
+                input_file_dark,
+                output_file_dark,
+                bounds,
+                zoom["min"],
+                zoom["max"]
+            )
+
+    return convert_region_layer
 
 # ---------------------------------------------------
 # main
@@ -105,89 +197,70 @@ def main():
         print("Missing regions file:", regions_json_in)
         sys.exit(1)
 
-    regions = json.loads(regions_json_in.read_text(encoding="utf-8"))
+    world_file = json.loads(regions_json_in.read_text(encoding="utf-8"))
+
+    world = world_file["world"]
+    regions = world_file["regions"]
+
+    def make_convertLayer(convert_region_layer):
+        def convertLayer(layer, id):
+            layerType = layer.get("type")
+            if layerType == "tiled":
+                convert_region_layer(layer, id)
+            elif layerType == "single":
+                # copy png file
+                layerPath = get_layer_path(regions, region, id)
+                input_file = normalize_in_file_path(layerPath).with_suffix(".png")
+                output_file = temp_out_file_path(layerPath).with_suffix(".png")
+                os.makedirs(os.path.dirname(output_file), exist_ok=True)
+                shutil.copy(input_file, output_file)
+                if layer.get("hasDark"):
+                    # copy dark png file
+                    input_file_dark = normalize_in_file_path(layerPath+"-dark").with_suffix(".png")
+                    output_file_dark = temp_out_file_path(layerPath+"-dark").with_suffix(".png")
+                    shutil.copy(input_file_dark, output_file_dark)
+        return convertLayer
+
+    if world:
+        print(f"\n=== WORLD ===")
+
+        convert_region_layer = make_convert_region_layer(regions, world, temp_out_file_path)
+        convertLayer = make_convertLayer(convert_region_layer)
+        convertLayer(world["base"], "base")
+
+
+
 
     # -------------------------------------------------
     # REGIONS
     # -------------------------------------------------
 
     for region in regions:
+        convert_region_layer = make_convert_region_layer(regions, region, temp_out_file_path)
+        convertLayer = make_convertLayer(convert_region_layer)
         region_id = region["id"]
 
         print(f"\n=== REGION {region_id} ===")
-
-        bounds_raw = region["bounds"]
-
-        north = bounds_raw[0][0]
-        west = bounds_raw[0][1]
-        south = bounds_raw[1][0]
-        east = bounds_raw[1][1]
-
-        bounds = (west, south, east, north)
-
-        def convert_region_layer(layer):
-            relative_file = layer.get("imageUrl")
-            if not relative_file:
-                print(f"\n=== file {relative_file} not found ===")
-                return
-
-            input_file = normalize_in_file_path(relative_file).with_suffix(".png")
-            output_file = temp_out_file_path(relative_file).with_suffix(".pmtiles")
-
-            print(input_file)
-
-            build(
-                input_file,
-                output_file,
-                bounds,
-                region["minZoom"],
-                region["maxZoom"]
-            )
-
-            if layer.get("hasDark"):
-                input_file_dark = normalize_in_file_path(relative_file + "-dark").with_suffix(".png")
-                output_file_dark = temp_out_file_path(relative_file + "-dark").with_suffix(".pmtiles")
-
-                print(input_file_dark)
-
-                build(
-                    input_file_dark,
-                    output_file_dark,
-                    bounds,
-                    region["minZoom"],
-                    region["maxZoom"]
-                )
+     
+        convert_region_layer = make_convert_region_layer(regions, region, temp_out_file_path)
 
         background = region.get("background")
         if background:
-            convert_region_layer(background)
+            convertLayer(background, "background")
 
         base = region.get("base")
         if base:
-            convert_region_layer(base)
+            convertLayer(base, "base")
         
         layers = region.get("layers", [])
         for layer in layers:
-            layerType = layer.get("type")
-            if layerType == "tiled":
-                convert_region_layer(layer)
-            elif layerType == "single":
-                # copy png file
-                input_file = normalize_in_file_path(layer["imageUrl"]).with_suffix(".png")
-                output_file = temp_out_file_path(layer["imageUrl"]).with_suffix(".png")
-                shutil.copy(input_file, output_file)
-                if layer.get("hasDark"):
-                    # copy dark png file
-                    input_file_dark = normalize_in_file_path(layer["imageUrl"]+"-dark").with_suffix(".png")
-                    output_file_dark = temp_out_file_path(layer["imageUrl"]+"-dark").with_suffix(".png")
-                    shutil.copy(input_file_dark, output_file_dark)
-        
+            convertLayer(layer, layer["id"])
 
     relative_file = WORLD_ERODED_IN
     input_file = normalize_in_file_path(relative_file).with_suffix(".png")
     output_dir = temp_out_file_path("height-tiles")
 
-    print(f"\n=== HEIGHT {region_id} ===")
+    print(f"\n=== HEIGHT ===")
 
     print(input_file)
 
@@ -197,10 +270,10 @@ def main():
         "--input", str(input_file),
         "--output", str(output_dir),
         "--bounds",
-        str(west),
-        str(south),
-        str(east),
-        str(north)
+        str(-36.6552), #hardcoded for now, it's Ziemund
+        str(9.084375),
+        str(-32.5872),
+        str(14.54625)
     ])
 
     print("\n=== COPYING COMPILED IMAGES ===")

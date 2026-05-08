@@ -1,27 +1,36 @@
 #!/usr/bin/env python3
 """
-tile_map_fast.py
+tile_pm.py
 
-Adds:
-- timestamped logging
-- step timing
-- command timing
-- output file size
-- fail-fast readable errors
+Stable raster → PMTiles pipeline (REALISTIC TOOLCHAIN)
+
+Pipeline:
+PNG
+→ GeoTIFF (EPSG:4326)
+→ Web Mercator GeoTIFF (EPSG:3857)
+→ XYZ tiles (gdal2tiles)
+→ MBTiles (mb-util)
+→ PMTiles (pmtiles CLI)
+
+Why this exists:
+- pmtiles CLI ONLY accepts MBTiles (not directories)
+- gdal MBTiles driver is unreliable for pyramids
+- gdal2tiles ensures correct zoom coverage
 """
 
 import argparse
 import shutil
 import subprocess
-import sys
 import tempfile
 import time
 from pathlib import Path
 
+from osgeo import osr
+osr.UseExceptions()
 
-# ---------------------------------------------------
+# =========================================================
 # logging
-# ---------------------------------------------------
+# =========================================================
 
 START_TIME = time.time()
 
@@ -45,178 +54,186 @@ def elapsed():
     return f"{time.time() - START_TIME:.1f}s"
 
 
-def filesize(path: Path):
-    if not path.exists():
-        return "missing"
-
-    size = path.stat().st_size
-
-    units = ["B", "KB", "MB", "GB"]
-    i = 0
-
-    while size >= 1024 and i < len(units) - 1:
-        size /= 1024
-        i += 1
-
-    return f"{size:.1f}{units[i]}"
-
-
-# ---------------------------------------------------
-# helpers
-# ---------------------------------------------------
+# =========================================================
+# utils
+# =========================================================
 
 def run(cmd):
-    cmd_str = " ".join(map(str, cmd))
-    log(f"RUN: {cmd_str}")
-
+    log("RUN: " + " ".join(map(str, cmd)))
     t0 = time.time()
-
-    try:
-        subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as e:
-        log(f"FAILED after {time.time() - t0:.1f}s")
-        raise e
-
+    subprocess.run(
+        cmd,
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
     log(f"OK ({time.time() - t0:.1f}s)")
 
 
 def need(name):
     if shutil.which(name) is None:
-        log(f"Missing executable: {name}")
-        sys.exit(1)
+        raise RuntimeError(f"Missing dependency: {name}")
 
 
-# ---------------------------------------------------
-# build helpers
-# ---------------------------------------------------
+def validate_bounds(w, s, e, n):
+    if s >= n:
+        raise ValueError("south >= north")
+    if w >= e:
+        raise ValueError("west >= east")
 
-def georef(src, out_tif, west, south, east, north):
-    section("STEP 1: GEOREFERENCE IMAGE")
+
+# =========================================================
+# STEP 1: GEOREFERENCE
+# =========================================================
+
+def georef(src, out_tif, w, s, e, n):
+    section("STEP 1: GEOREFERENCE")
 
     run([
         "gdal_translate",
         "-of", "GTiff",
         "-a_srs", "EPSG:4326",
         "-a_ullr",
-        str(west), str(north),
-        str(east), str(south),
-        str(src),
-        str(out_tif)
+        str(w), str(n), str(e), str(s),
+        "-co", "TILED=YES",
+        "-co", "COMPRESS=DEFLATE",
+        src,
+        out_tif
     ])
 
-    log(f"Created: {out_tif}")
-    log(f"Size: {filesize(out_tif)}")
+    log(f"GeoTIFF: {out_tif}")
 
 
-def mercator(src, out_tif):
-    section("STEP 2: WARP TO WEB MERCATOR")
+# =========================================================
+# STEP 2: WARP
+# =========================================================
+
+def warp(src, out_tif):
+    section("STEP 2: WARP → WEB MERCATOR")
 
     run([
         "gdalwarp",
-        "-multi",
-        "-dstalpha",
-        "-r", "bilinear",
         "-t_srs", "EPSG:3857",
-        str(src),
-        str(out_tif)
+        "-r", "bilinear",
+        "-multi",
+        "-wo", "NUM_THREADS=ALL_CPUS",
+        "-dstalpha",
+        "-co", "TILED=YES",
+        "-co", "COMPRESS=DEFLATE",
+        src,
+        out_tif
     ])
 
-    log(f"Created: {out_tif}")
-    log(f"Size: {filesize(out_tif)}")
+    log(f"Warped: {out_tif}")
 
 
-def make_mbtiles(src_tif, out_mbtiles, zmin, zmax):
-    section(f"STEP 3: BUILD MBTILES ({zmin}-{zmax})")
+# =========================================================
+# STEP 3: XYZ tiles
+# =========================================================
+
+def make_xyz(src_tif, out_dir, zmin, zmax):
+    section("STEP 3: XYZ TILES")
 
     run([
-        str(Path(sys.executable).parent / "rio"),
-        "mbtiles",
-        str(src_tif),
-        str(out_mbtiles),
-        "--format", "PNG",
-        "--zoom-levels", f"{zmin}..{zmax}"
+        "gdal2tiles.py",
+        "--xyz",
+        "--processes=8",
+        "--zoom",
+        f"{zmin}-{zmax}",
+        src_tif,
+        out_dir
     ])
-    log(f"Created: {out_mbtiles}")
-    log(f"Size: {filesize(out_mbtiles)}")
+
+    log(f"XYZ tiles: {out_dir}")
 
 
-def make_pmtiles(src_mbtiles, out_pmtiles):
-    section("STEP 4: CONVERT TO PMTILES")
+# =========================================================
+# STEP 4: XYZ → MBTILES
+# =========================================================
+
+def xyz_to_mbtiles(xyz_dir, mbtiles_path):
+    section("STEP 4: MBTILES (mb-util)")
+
+    run([
+        "mb-util",
+        "--scheme=xyz",
+        str(xyz_dir),
+        str(mbtiles_path)
+    ])
+
+    log(f"MBTiles: {mbtiles_path}")
+
+
+# =========================================================
+# STEP 5: MBTILES → PMTILES
+# =========================================================
+
+def mbtiles_to_pmtiles(mbtiles_path, out_pmtiles):
+    section("STEP 5: PMTILES")
 
     run([
         "pmtiles",
         "convert",
-        str(src_mbtiles),
+        str(mbtiles_path),
         str(out_pmtiles)
     ])
 
-    log(f"Created: {out_pmtiles}")
-    log(f"Size: {filesize(out_pmtiles)}")
+    log(f"PMTiles: {out_pmtiles}")
 
 
-# ---------------------------------------------------
-# main
-# ---------------------------------------------------
+# =========================================================
+# MAIN
+# =========================================================
 
 def main():
     p = argparse.ArgumentParser()
 
     p.add_argument("--input", required=True)
-
     p.add_argument("--output", required=True)
-
-    p.add_argument(
-        "--bounds",
-        nargs=4,
-        type=float,
-        required=True,
-        metavar=("WEST", "SOUTH", "EAST", "NORTH")
-    )
-
+    p.add_argument("--bounds", nargs=4, type=float, required=True)
     p.add_argument("--minzoom", type=int, default=0)
-    p.add_argument("--maxzoom", type=int, default=12)
+    p.add_argument("--maxzoom", type=int, default=6)
 
     args = p.parse_args()
 
-    section("CHECKING DEPENDENCIES")
+    section("CHECK DEPENDENCIES")
 
     need("gdal_translate")
     need("gdalwarp")
+    need("gdal2tiles.py")
+    need("mb-util")
     need("pmtiles")
 
     src = Path(args.input).resolve()
     out = Path(args.output).resolve()
-    out_dir = out.parent
-    out_dir.mkdir(parents=True, exist_ok=True)
-    output = out.with_suffix(".pmtiles")
+    out.parent.mkdir(parents=True, exist_ok=True)
 
-    west, south, east, north = args.bounds
+    validate_bounds(*args.bounds)
+
+    w, s, e, n = args.bounds
 
     log(f"Input: {src}")
-    log(f"Output: {output}")
-    log(f"Bounds: {west}, {south}, {east}, {north}")
+    log(f"Bounds: {w}, {s}, {e}, {n}")
     log(f"Zooms: {args.minzoom}-{args.maxzoom}")
 
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
 
-        log(f"Temp dir: {td}")
-
         geo = td / "geo.tif"
-        merc = td / "merc.tif"
+        warped = td / "warped.tif"
+        xyz = td / "xyz"
+        mb = td / "tiles.mbtiles"
+        pm = out.with_suffix(".pmtiles")
 
-        mb = td / "world.mbtiles"
-        pm = output
+        georef(src, geo, w, s, e, n)
+        warp(geo, warped)
 
-        georef(src, geo, west, south, east, north)
-        mercator(geo, merc)
-        make_mbtiles(merc, mb, args.minzoom, args.maxzoom)
-        make_pmtiles(mb, pm)
+        make_xyz(warped, xyz, args.minzoom, args.maxzoom)
+        xyz_to_mbtiles(xyz, mb)
+        mbtiles_to_pmtiles(mb, pm)
 
     section("DONE")
-
     log(f"Output: {pm}")
-    log(f"Size: {filesize(pm)}")
     log(f"Total time: {elapsed()}")
 
 

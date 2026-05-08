@@ -3,7 +3,8 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
 import type {  } from '../common/Settings';
-import { watch } from 'vue';
+import { ref, watch } from 'vue';
+import type { Ref } from 'vue';
 import { effectiveDarkMode } from '../common/DarkMode';
 
 const settings = useSettings()
@@ -21,7 +22,8 @@ type RegionLayerConfig = {
   zoom: ZoomConfig|null
   zoomDisplay: ZoomConfig|null
   hasDark: boolean|null
-  sort: "political" | "geographical" | null
+  exclusivityGroup: string|null,
+  uiPath: string[]|null
 }
 
 type DataSourceKind = 'towns'
@@ -95,6 +97,13 @@ function saveMapState(map: MapLibreMap) {
   settings.zoom = _map.getZoom()
   settings.pitch = _map.getPitch()
   settings.bearing = _map.getBearing()
+
+  let layers = map.getStyle()?.layers 
+  let sources = map.getStyle()?.sources
+
+  console.log(sources)
+  console.log(layers)
+
 }
 
 function scheduleSave(map: MapLibreMap | null) {
@@ -110,15 +119,9 @@ function applyTheme(map: MapLibreMap) {
   const layers = map.getStyle()?.layers || []
 
   const UserTheme_SystemTheme = effectiveDarkMode.value
-
-  console.log(UserTheme_SystemTheme)
-
-  console.log("applyTheme")
-  console.log(layers)
     
   for (const layer of layers) {
     const layerTheme = (layer.metadata as { theme?: string } | undefined)?.theme
-    console.log(layer.metadata)
 
     if (!layerTheme) continue
 
@@ -128,6 +131,80 @@ function applyTheme(map: MapLibreMap) {
       layerTheme === UserTheme_SystemTheme ? 'visible' : 'none'
     )
   }
+}
+
+const guiRoot: Ref<GuiNode|null> = ref(null)
+
+type GuiNode = {
+  id: string
+  title: string
+
+  children?: Record<string, GuiNodeLeaf>
+}
+
+type GuiLeaf = {
+  layerId?: string
+  exclusivityGroup?: string | null
+  uiPathHash?: string
+  enabled?: boolean
+}
+
+type GuiNodeLeaf = GuiNode&GuiLeaf
+
+function initLayerGuiSettings(regions: RegionConfig[]) {
+  const root: GuiNodeLeaf = {
+    id: "root",
+    title: "Root",
+    children: {},
+  }
+
+  for (const region of regions) {
+    for (const layer of [{ ...region.base, id: "base"}, { ...region.background, id: "background"}, ...region.layers]) {
+      if (!layer || !layer.uiPath || layer.uiPath.length === 0) continue
+
+      let current = root
+
+      // build folder tree
+      for (const segment of layer.uiPath) {
+        current.children ??= {}
+        if (!current.children[segment]) {
+          current.children[segment] = {
+            id: segment
+              .toLowerCase()
+              .replace(/\s+/g, "-"),
+
+            title: segment,
+            children: {},
+          }
+        }
+
+        current = current.children[segment]
+      }
+
+      // final leaf node
+      current.children ??= {}
+
+      current.children[layer.id] = {
+        id: layer.id,
+        title:
+          (layer as any).title ??
+          layer.id
+            .replace(/[-_]/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase()),
+        uiPathHash: layer.uiPath.map(x => x.toLowerCase()).join("/"),
+        layerId: layer.id,
+
+        exclusivityGroup:
+          (layer as any).exclusivityGroup ??
+          (layer as any).exclusiveGroup ??
+          null,
+
+        enabled: false,
+      }
+    }
+  }
+
+  return root
 }
 
 async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
@@ -144,14 +221,11 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
     let parents: RegionConfig[] = []
     let curr: RegionConfig|null = region
     while (curr) {
-      console.log(parents)
-      console.log(curr)
       parents.push(curr)
       curr = getRegionParent(curr)
     }
     let path = parents.map(config => config?.id).reverse().join("/") + "/" + layer_id;
 
-    console.log(path)
     return path
   }
 
@@ -197,13 +271,15 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
         data
       })
 
+      map.setRenderWorldCopies(true)
+
       // ==============
       // RASTER REGIONS 
       // ==============
       let make_addRegionLayer = (region: RegionConfig) => {
+        console.log(region.id)
         let addRegionLayer = (layer: RegionLayerConfig, id: string) => {
-          console.log(region.id)
-          console.log(id)
+          console.log(region.id + "/" + id)
           let zoomTemp: { min: number, max: number}|null = null
           if (layer.zoom) {
             zoomTemp = layer.zoom
@@ -226,11 +302,19 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
             const sourceId = `region-src-${region.id}-${id}${darkSuffix}`
             const layerId = `region-${region.id}-${id}${darkSuffix}`
 
-            const metadata = dark == "dark" 
-            ? { "theme": "dark" }
-            : dark == "light"
-            ? { "theme": "light" }
-            : null
+            const metadata: any = {}
+
+            if (dark) {
+              if (dark == "dark") {
+                metadata.theme = "dark" 
+              } else if (dark == "light") {
+                metadata.theme = "light"
+              }
+            }
+
+            if (layer.uiPath) {
+              metadata.uiPathHash = layer.uiPath.map(x => x.toLowerCase()).join("/")
+            }
 
             if (layer.type === 'tiled') {
               const source = `pmtiles:///assets/maps/${getLayerPath(region, id)}${darkSuffix}.pmtiles`
@@ -240,6 +324,7 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
                 url: source,
                 minzoom: zoom.min,
                 maxzoom: zoom.max,
+                bounds: [region.bounds[0][1], region.bounds[1][0], region.bounds[1][1], region.bounds[0][0]]
               })
 
               map.addLayer({
@@ -250,6 +335,9 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
                 maxzoom: zoomDisplay.max,
                 paint: {
                   'raster-opacity': 1,
+                },
+                layout: {
+                  visibility: 'none'
                 },
                 metadata
               })
@@ -264,10 +352,13 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
                 id: layerId,
                 type: 'raster',
                 source: sourceId,
-                minzoom: zoom.min,
-                maxzoom: zoom.max,
+                minzoom: zoomDisplay.min,
+                maxzoom: zoomDisplay.max,
                 paint: {
                   'raster-opacity': 1,
+                },
+                layout: {
+                  visibility: 'none'
                 },
                 metadata
               })
@@ -286,12 +377,7 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
         return addRegionLayer
       }
 
-      let add_world_layer = make_addRegionLayer(worldRegionConfig)
-      add_world_layer(worldRegionConfig.base, "base")
-
-      for (const region of regionConfigs) {
-        console.log(region)
-
+      let makeRegion = (region: RegionConfig) => {
         let addRegionLayer = make_addRegionLayer(region)
 
         if (region.background) {
@@ -301,12 +387,16 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
         if (region.base) {
           addRegionLayer(region.base, "base")
         }
-
+        
         for (const layer of region.layers) {
           addRegionLayer(layer, layer.id)
         }
 
         regions.push(region)
+      }
+      makeRegion(worldRegionConfig)
+      for (const region of regionConfigs) {
+        makeRegion(region)
       }
 
       // =========================
@@ -323,7 +413,9 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
       }
 
       for (const region of regions) {
-        const b = normalizeBounds(region.bounds)
+        const b = region.bounds 
+          ? normalizeBounds(region.bounds)
+          : [[85.05113, -180], [-85.05113, 180]]
 
         // region label
         regionLabels.features.push({
@@ -460,39 +552,41 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
     regionConfigs = worldConfig.regions
     worldRegionConfig = worldConfig.world
 
+    guiRoot.value = initLayerGuiSettings([worldRegionConfig, ...regionConfigs])
+
     if (!mapEl) return null
 
-  let mapTemp = new maplibregl.Map({
-    container: mapEl,
-    style: { version: 8, sources: {}, layers: [
-        {
-            "id": "background",
-            "type": "background",
-            "paint": {
-                "background-color": "rgba(0,0,0,0)"
-            }
-            }
-    ] },
-    center: settings.center,
-    zoom: settings.zoom,
-    minZoom: 2,
-    maxZoom: 10,
-    minPitch: 0,
-    maxPitch: 75,
-    attributionControl: false,
-    renderWorldCopies: false,
-    pitch: settings.pitch,
-    bearing: settings.bearing,
-  })
-  
-  if (dev) {
-    mapTemp!.getCanvas().style.cursor = 'crosshair'
-  }
+    let mapTemp = new maplibregl.Map({
+      container: mapEl,
+      style: { version: 8, sources: {}, layers: [
+          {
+              "id": "background",
+              "type": "background",
+              "paint": {
+                  "background-color": "rgba(0,0,0,0)"
+              }
+              }
+      ] },
+      center: settings.center,
+      zoom: settings.zoom,
+      minZoom: 2,
+      maxZoom: 10,
+      minPitch: 0,
+      maxPitch: 75,
+      attributionControl: false,
+      renderWorldCopies: false,
+      pitch: settings.pitch,
+      bearing: settings.bearing,
+    })
 
-  mapTemp.on('style.load', () => {
-    mapTemp!.setProjection({ type: 'globe' })
-    //map!.setProjection({ type: 'mercator' })
-  })
+    if (dev) {
+      mapTemp!.getCanvas().style.cursor = 'crosshair'
+    }
+
+    mapTemp.on('style.load', () => {
+      mapTemp!.setProjection({ type: 'globe' })
+      //map!.setProjection({ type: 'mercator' })
+    })
 
     mapTemp.on('load', async () => {
         await internalInitMapSourcesAndLayers(mapTemp)

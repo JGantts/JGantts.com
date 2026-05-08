@@ -2,18 +2,72 @@
   "world": {
     "id": "world",
     "title": "World",
-    "zoom": { "min": 0, "max": 10 },
+    "zoom": { "min": 2, "max": 6 },
+    "zoomDisplay": { "min": 0, "max": 12 },
+    "bounds": [
+      [85.05113, -180],
+      [-85.05113, 180]
+    ],
     "base": {
       "type": "tiled",
-      "zoom": { "min": 2, "max": 5 },
-      "zoomDisplay": { "min": 0, "max": 12 },
-      "bounds": [
-        [85.05113, -180],
-        [-85.05113, 180]
-      ],
       "hasDark": true
     },
     "layers": [
+      { 
+        "id": "koppen",
+        "type": "tiled",
+        "bounds": [
+          [85.05113, -300],
+          [-85.05113, 60]
+        ],
+        "exclusiveGroup": "climate-overlay",
+        "uiPath": ["Physical", "Climate", "Köppen"],
+        "hasDark": false
+      },
+      { 
+        "id": "temp-january",
+        "type": "tiled",
+        "bounds": [
+          [85.05113, -300],
+          [-85.05113, 60]
+        ],
+        "exclusiveGroup": "climate-overlay",
+        "uiPath": ["Physical", "Climate", "Temperature", "January"],
+        "hasDark": false
+      },
+      { 
+        "id": "temp-july",
+        "type": "tiled",
+        "bounds": [
+          [85.05113, -300],
+          [-85.05113, 60]
+        ],
+        "exclusiveGroup": "climate-overlay",
+        "uiPath": ["Physical", "Climate", "Temperature", "July"],
+        "hasDark": false
+      },
+      { 
+        "id": "rain-january",
+        "type": "tiled",
+        "bounds": [
+          [85.05113, -300],
+          [-85.05113, 60]
+        ],
+        "exclusiveGroup": "climate-overlay",
+        "uiPath": ["Physical", "Climate", "Rain", "January"],
+        "hasDark": false
+      },
+      { 
+        "id": "rain-july",
+        "type": "tiled",
+        "bounds": [
+          [85.05113, -300],
+          [-85.05113, 60]
+        ],
+        "exclusiveGroup": "climate-overlay",
+        "uiPath": ["Physical", "Climate", "Rain", "July"],
+        "hasDark": false
+      }
     ]
   },
   "regions": [
@@ -43,9 +97,9 @@
       "base": { "type": "tiled", "hasDark": false },
       "background": { "type": "single", "hasDark": false },
       "layers": [
-        { "id": "states", "type": "single", "sort": "political", "hasDark": true },
-        { "id": "rivers", "type": "single", "sort": "physical", "hasDark": false },
-        { "id": "borders", "type": "single", "sort": "political" }
+        { "id": "states", "type": "single", "category": "political", "hasDark": true },
+        { "id": "rivers", "type": "single", "exclusivityGroup": "none", "uiPath": ["Physical", "Terrain", "Rivers"], "hasDark": false },
+        { "id": "borders", "type": "single", "category": "political" }
       ],
       "dataSources": [
         {

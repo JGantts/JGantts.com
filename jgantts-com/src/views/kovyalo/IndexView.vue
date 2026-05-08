@@ -37,7 +37,6 @@ onMounted(async () => {
 
   if (!mapTemp) return
 
-
   function updateMouseOnMove(e: maplibregl.MapMouseEvent|null = null) {
     e = e as maplibregl.MapMouseEvent | null
     if (!e) { return }
@@ -227,7 +226,7 @@ onMounted(async () => {
     </div>
     <div id="map-gui-holder">
       <DarkModeButton />
-      <GuiView />
+      <GuiView  />
       <CompassView ref="compassView" id="compass" :map="jgMap" />
       <div class="fantasy-map-root">
         <div ref="mapEl" class="fantasy-map" />

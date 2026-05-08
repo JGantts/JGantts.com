@@ -36,31 +36,23 @@ from path_constants import SRC_DIR, WORLD_IMAGE_IN, WORLD_ERODED_IN, WORLD_IMAGE
 
 
 def get_layer_path(region_configs, region, layer_id):
-    print(region_configs)
     def get_region_by_id(region_id):
         if not region_id:
             return None
         return next((r for r in region_configs if r["id"] == region_id), None)
 
     def get_region_parent(region):
-        print(region["id"])
-        print(getattr(region, "parentId", None))
         return get_region_by_id(region.get("parentId"))
 
     parents = []
     curr = region
 
     while curr:
-        print(parents)
-        print(curr)
         parents.append(curr)
         curr = get_region_parent(curr)
 
-    print(parents)
-
     path = "/".join(r["id"] for r in reversed(parents)) + "/" + layer_id
 
-    print(path)
     return path
 
 def run(cmd):
@@ -121,14 +113,15 @@ def make_convert_region_layer(regions, region, temp_out_file_path):
 
             bounds = (west, south, east, north)
             return bounds
-        
+
         bounds_raw_layer = layer.get("bounds")
         bounds = None
         if bounds_raw_layer:
             bounds = get_bounds_from_raw(bounds_raw_layer)
-        else:
-            print(layer)
+        elif bounds_raw_region:
             bounds = get_bounds_from_raw(bounds_raw_region)
+        else:
+            bounds = get_bounds_from_raw([[85.05113, -180], [-85.05113, 180]])
 
         zoom_layer = layer.get("zoom")
         zoom = None
@@ -221,21 +214,11 @@ def main():
                     shutil.copy(input_file_dark, output_file_dark)
         return convertLayer
 
-    if world:
-        print(f"\n=== WORLD ===")
-
-        convert_region_layer = make_convert_region_layer(regions, world, temp_out_file_path)
-        convertLayer = make_convertLayer(convert_region_layer)
-        convertLayer(world["base"], "base")
-
-
-
-
     # -------------------------------------------------
     # REGIONS
     # -------------------------------------------------
 
-    for region in regions:
+    def convertRegion(region):
         convert_region_layer = make_convert_region_layer(regions, region, temp_out_file_path)
         convertLayer = make_convertLayer(convert_region_layer)
         region_id = region["id"]
@@ -255,6 +238,11 @@ def main():
         layers = region.get("layers", [])
         for layer in layers:
             convertLayer(layer, layer["id"])
+
+    convertRegion(world)
+
+    for region in regions:
+        convertRegion(region)
 
     relative_file = WORLD_ERODED_IN
     input_file = normalize_in_file_path(relative_file).with_suffix(".png")

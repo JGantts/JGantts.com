@@ -25,9 +25,6 @@ import tempfile
 import time
 from pathlib import Path
 
-from osgeo import osr
-osr.UseExceptions()
-
 # =========================================================
 # logging
 # =========================================================

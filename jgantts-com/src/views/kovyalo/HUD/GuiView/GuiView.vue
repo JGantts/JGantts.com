@@ -1,15 +1,11 @@
 <script setup lang="ts">
-import { onMounted, watch } from "vue";
+import { watch } from "vue";
 import TreeNodeView from "./TreeNodeView.vue"
 import type { JgMap } from "../../maps/maps";
 
 const props = defineProps<{
   map: JgMap
 }>()
-
-onMounted(() => {
-  console.log(props.map.guiTree)
-})
 
 watch(props.map.guiTree, () => {
   console.log(props.map.guiTree
@@ -34,11 +30,7 @@ watch(props.map.guiTree, () => {
 <style scoped>
 /* ROOT */
 #overlay {
-  position: absolute;
-  top: 18px;
-  left: 18px;
   width: 240px;
-  z-index: 999;
   pointer-events: none;
   user-select: none;
 }

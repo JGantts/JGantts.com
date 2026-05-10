@@ -36,6 +36,8 @@ onMounted(async () => {
 
   if (!mapTemp) return
 
+  //mapTemp.setPadding({ left: 300 })
+
   function updateMouseOnMove(e: maplibregl.MapMouseEvent|null = null) {
     e = e as maplibregl.MapMouseEvent | null
     if (!e) { return }

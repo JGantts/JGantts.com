@@ -167,7 +167,6 @@ function hashTitleIntoId(title: string) {
 function initLayerGuiSettings(regions: RegionConfig[]) {
   for (const region of regions) {
     for (const layer of [{ ...region.base, id: "base"}, { ...region.background, id: "background"}, ...region.layers]) {
-      console.log(layer)
       if (!layer || !layer.uiPath || layer.uiPath.length === 0) continue
 
       let current: (GuiLeaf|GuiParent)
@@ -270,9 +269,9 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
       // RASTER REGIONS 
       // ==============
       let make_addRegionLayer = (region: RegionConfig) => {
-        console.log("region: " + region.id)
+        //console.log("region: " + region.id)
         let addRegionLayer = (layer: RegionLayerConfig, id: string) => {
-          console.log("layer: " + region.id + "/" + id)
+          //console.log("layer: " + region.id + "/" + id)
           let zoomRaw: ZoomConfig|null = null
           if (layer.zoom) {
             zoomRaw = layer.zoom
@@ -597,7 +596,6 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
           { immediate: true }
         )
     });
-    console.log(guiRoot)
     return {
         mlMap: mapTemp,
         guiTree: guiRoot,

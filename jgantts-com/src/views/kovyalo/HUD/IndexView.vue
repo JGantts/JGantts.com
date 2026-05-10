@@ -10,11 +10,42 @@ const props = defineProps<{
 </script>
 
 <template>
-     <DarkModeButton />
-      <GuiView :map="map" />
-      <CompassView ref="compassView" id="compass" :map="map" />
+    <div id="hud-holder">
+        <GuiView class="gui-view" :map="map" />
+        <div id="right-col">
+            <DarkModeButton class="dark-mode-button" />
+            <CompassView class="compass-view" :map="map" />
+        </div>
+    </div>
 </template>
 
 <style scoped>
+#hud-holder {
+    pointer-events: none;
 
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1em;
+    z-index: 999;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.gui-view {
+    top: 0;
+    left: 0;
+}
+
+#right-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+
+    gap: 1em;
+}
 </style>

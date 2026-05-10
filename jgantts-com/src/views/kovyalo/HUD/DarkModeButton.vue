@@ -33,14 +33,13 @@ const themeLabel = computed(() => {
 
 <style scoped>
 #overlay {
-  position: absolute;
-  bottom: 18px;
-  left: 18px;
-  width: 240px;
   z-index: 999;
-  pointer-events: none;
 
   user-select: none;
+
+  display: flex;
+  flex-direction: row;
+  gap: 0.5em;
 }
 
 /* shared button base (becomes “engraved metal plate”) */
@@ -48,7 +47,6 @@ button {
   pointer-events: auto;
 
   padding: 7px 12px;
-  margin-right: 8px;
 
   border-radius: 6px;
   cursor: pointer;
@@ -58,11 +56,6 @@ button {
   letter-spacing: 0.3px;
 
   transition: transform 0.08s ease, filter 0.15s ease;
-}
-
-/* click feel */
-button:active {
-  transform: translateY(1px);
 }
 </style>
 

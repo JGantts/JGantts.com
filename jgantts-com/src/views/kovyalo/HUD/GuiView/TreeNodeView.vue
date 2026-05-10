@@ -23,7 +23,6 @@ const props = defineProps<{
 //const settings = useSettings()
 
 const hasChildren = computed(() => {
-    console.log(props)
     return Object.keys(props.node.children).length > 0
 })
 
@@ -47,9 +46,13 @@ const isRoot = () => {
   return !props.node.parent
 }
 
-onMounted(() => {
-    console.log("here")
-})
+const toggleWhatever = () => {
+  if (isLeaf()) {
+    getLeaf().enabled = !getLeaf().enabled
+  } else {
+    toggleExpanded()
+  }
+}
 </script>
 
 <template>
@@ -59,6 +62,7 @@ onMounted(() => {
       <div
        v-if="!isRoot()"
        class="tree-row"
+       @click="toggleWhatever"
       >
   
         <TreeLeafCheckbox v-if="isLeaf()" :node="getLeaf()" />
@@ -67,7 +71,6 @@ onMounted(() => {
         <button
           v-else
           class="expand"
-          @click="toggleExpanded"
         >
           {{ expanded ? "▾" : "▸" }}
         </button>
@@ -119,6 +122,8 @@ onMounted(() => {
 
 /* ROW */
 .tree-row {
+  cursor: pointer;
+
   display: flex;
   gap: 0px;
   align-items: center;
@@ -156,8 +161,6 @@ onMounted(() => {
 
   background: #e9dbb8;
   color: #3b2a16;
-
-  cursor: pointer;
 
   font-weight: bold;
   line-height: 1;

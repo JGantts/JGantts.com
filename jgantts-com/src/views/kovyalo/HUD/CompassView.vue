@@ -67,7 +67,6 @@ function resetNorth() {
 
 <template>
 <div ref="compass" id="compass" @click="resetNorth">
-
   <!-- STATIC DIAL (NEVER ROTATES) -->
   <div class="dial">
     <svg viewBox="0 0 100 100">
@@ -153,14 +152,16 @@ function resetNorth() {
 
 /* ROOT */
 #compass {
-  position: absolute;
-  top: 18px;
-  right: 18px;
+  clip-path: circle(50% at 50% 50%);
+  pointer-events: all;
+  cursor: pointer;
+
+  position: relative;
   width: 108px;
   height: 108px;
+  flex: 0 0 auto;
   border-radius: 50%;
   user-select: none;
-  z-index: 999;
   filter: drop-shadow(var(--compass-shadow));
 }
 

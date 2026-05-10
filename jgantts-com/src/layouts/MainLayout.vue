@@ -33,6 +33,7 @@ const runningSecondary = ref(false)
           </main>
 
           <footer class="site-footer">
+            <p class="go-away">Shoo!</p>
             <p class="footer-meta">© 2026 Jacob Gantt</p>
           </footer>
         </VStack>
@@ -141,8 +142,15 @@ const runningSecondary = ref(false)
   display: block;
 }
 
+.go-away {
+  font-size: 1rem;
+  line-height: 1.35;
+  color: rgba(220, 228, 236, 0.84);
+}
+
 .site-footer {
   display: flex;
+  flex-direction: column;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;

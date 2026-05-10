@@ -16,7 +16,6 @@ defineExpose({
 const compass = ref<typeof CompassView | null>(null)
 
 function updateHud() {
-    console.log(compass.value)
     compass.value?.updateCompass()
 }
 </script>

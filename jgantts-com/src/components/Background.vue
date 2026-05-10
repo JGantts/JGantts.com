@@ -365,9 +365,6 @@ const emit = defineEmits([
 
 defineExpose({ pausePlay, getCanvas, getDom });
 
-onMounted(() => {
-  console.log("backgorund moyunted")
-})
 </script>
 
 <template>

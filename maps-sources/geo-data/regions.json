@@ -99,8 +99,8 @@
       "base": { "type": "tiled", "hasDark": false },
       "background": { "type": "single", "hasDark": false },
       "layers": [
-        { "id": "states", "type": "single", "uiPath": ["Political", "National", "Ziemúnd"], "hasDark": true },
-        { "id": "borders", "type": "single", "uiPath": ["Political", "National", "Ziemúnd"] },
+        { "id": "states", "type": "single", "exclusiveGroup": "nation", "uiPath": ["Political", "National", "Ziemúnd"], "hasDark": true },
+        { "id": "borders", "type": "single", "exclusiveGroup": "nation", "uiPath": ["Political", "National", "Ziemúnd"] },
         { "id": "rivers", "type": "single", "uiPath": ["Physical", "Terrain", "Rivers"], "hasDark": false }
       ],
       "dataSources": [

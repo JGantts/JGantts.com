@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue"
-import { toggleUserTheme, clearUserTheme } from './common/DarkMode'
-import { useSettings } from './common/Settings'
+import { toggleUserTheme, clearUserTheme } from '../common/DarkMode'
+import { useSettings } from '../common/Settings'
 
 const settings = useSettings()
 

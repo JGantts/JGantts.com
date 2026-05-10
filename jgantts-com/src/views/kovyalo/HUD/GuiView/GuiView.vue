@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, watch } from "vue";
 import TreeNodeView from "./TreeNodeView.vue"
-import type { JgMap } from "../maps/maps";
+import type { JgMap } from "../../maps/maps";
 
 const props = defineProps<{
   map: JgMap

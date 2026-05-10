@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance, onMounted, ref } from "vue";
-import { useSettings } from "../common/Settings";
+import { useSettings } from "../../common/Settings";
 import type { GuiLeaf, GuiNode } from "./types/gui"
 import TreeLeafCheckbox from "./TreeLeafCheckbox.vue";
 

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, type Ref } from 'vue'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import CompassView from './CompassView.vue'
-import GuiView from './GuiView/GuiView.vue';
-import DarkModeButton from './DarkModeButton.vue';
+import CompassView from './HUD/CompassView.vue'
+import GuiView from './HUD/GuiView/GuiView.vue';
+import DarkModeButton from './HUD/DarkModeButton.vue';
 import { initMap, type JgMap } from './maps/maps';
 
 const props = defineProps<{ dev?: boolean }>()

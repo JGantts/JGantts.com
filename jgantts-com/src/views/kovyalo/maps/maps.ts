@@ -6,7 +6,7 @@ import type {  } from '../common/Settings';
 import { reactive, ref, watch } from 'vue';
 import type { Ref } from 'vue';
 import { effectiveDarkMode } from '../common/DarkMode';
-import type { GuiNode, GuiLeaf, GuiParent, GuiChild, GuiTreeIdentifiable } from '../GuiView/types/gui';
+import type { GuiNode, GuiLeaf, GuiParent, GuiChild, GuiTreeIdentifiable } from '../HUD/GuiView/types/gui';
 
 const settings = useSettings()
 

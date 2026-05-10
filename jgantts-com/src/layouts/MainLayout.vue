@@ -33,12 +33,10 @@ const runningSecondary = ref(false)
           </main>
 
           <footer class="site-footer">
-            <p class="go-away">Shoo!</p>
             <p class="footer-meta">© 2026 Jacob Gantt</p>
           </footer>
         </VStack>
       </div>
-      <Background />
     </div>
   </div>
 </template>

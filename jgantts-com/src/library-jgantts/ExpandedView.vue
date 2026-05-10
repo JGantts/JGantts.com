@@ -8,7 +8,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, defineProps, computed, } from 'vue';
+import { ref, onMounted } from 'vue';
 
 import { Breakpoint } from "../common/Breakpoint"
 

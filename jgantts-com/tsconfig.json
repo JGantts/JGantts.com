@@ -1,15 +1,6 @@
 {
-  "extends": "@vue/tsconfig/tsconfig.web.json",
-  "include": [
-    "src/**/*",
-    "src/**/*.vue",
-    "src/types/**/*.d.ts",
-  ],
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
   "compilerOptions": {
-    "outDir": "./dist/",
-    "tsBuildInfoFile": "../dist/app/app.tsbuildinfo",
-    "composite": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }

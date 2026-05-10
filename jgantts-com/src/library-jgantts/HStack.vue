@@ -8,8 +8,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, defineProps, } from 'vue';
-
 const props = defineProps({
   padding: { type: String, default: "0" },
   spacing: { type: String, default: "0" },

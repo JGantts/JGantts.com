@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref, onMounted, defineProps, inject } from 'vue';
 import GlassPanel from './GlassPanel.vue';
 
 const props = defineProps<{

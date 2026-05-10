@@ -130,16 +130,14 @@ function applyTheme(map: MapLibreMap) {
     const layerTheme = (layer.metadata as { theme?: string } | undefined)?.theme
     const layerGuiPathHash = (layer.metadata as { uiPathHash?: string } | undefined)?.uiPathHash
 
-    let visible = true
+    let visible: boolean = true
 
     if (layerTheme) {
-      if (layerTheme === UserTheme_SystemTheme) {
-        visible = true
-      }
+      visible = visible && layerTheme === UserTheme_SystemTheme
     }
 
     if (layerGuiPathHash) {
-
+      visible = visible && guiHashes[layerGuiPathHash]
     }
 
     map.setLayoutProperty(
@@ -156,8 +154,11 @@ const guiRoot = reactive<GuiNode>({
   parent: null,
   children: {}
 })
+
+let guiHashes: Record<string, boolean> = {}
+
 function hashGuiPath(uiPath: string[]) {
-  return uiPath.map(x => x.toLowerCase()).join("/")
+  return encodeURIComponent(uiPath.map(x => x.toLowerCase()).join("*"))
 }
 
 function hashTitleIntoId(title: string) {
@@ -209,7 +210,7 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
         return regionConfigs.filter((region: RegionConfig) => region.id === regionId)[0]
       }
       return getRegionById(region?.parentId ?? null)
-    } 
+    }
     let parents: RegionConfig[] = []
     let curr: RegionConfig|null = region
     while (curr) {
@@ -309,7 +310,7 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
             }
 
             if (layer.uiPath) {
-              metadata.uiPathHash = layer.uiPath.map(x => x.toLowerCase()).join("/")
+              metadata.uiPathHash = hashGuiPath(layer.uiPath)
             }
 
             if (layer.type === 'tiled') {
@@ -578,6 +579,26 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
     if (dev) {
       mapTemp!.getCanvas().style.cursor = 'crosshair'
     }
+
+    watch(() => guiRoot, () => {
+      let hashesTemp: Record<string, boolean> = {}
+    
+      let doIt = (node: GuiNode|(GuiNode&GuiLeaf)) => {
+        for (const key in node.children) {
+          doIt(node.children[key])
+        }
+    
+        if ("uiPathHash" in node && "enabled" in node) {
+          hashesTemp[node.uiPathHash] = node.enabled
+        }
+      }
+      
+      doIt(guiRoot)
+    
+      guiHashes = hashesTemp
+    
+      applyTheme(mapTemp)
+    }, { deep: true, immediate: true })
 
     mapTemp.on('style.load', () => {
       mapTemp!.setProjection({ type: 'globe' })

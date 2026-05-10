@@ -18,8 +18,8 @@ const runningSecondary = ref(false)
               <span class="highlight" :class="{ mellow: runningSecondary }">JGantts</span>
               <span>.com</span>
             </p>
-            <p class="site-tagline">Jacob Gantt's personal website</p>
-            <p class="site-status">Currently available for new projects</p>
+            <p class="site-tagline">Currently available for new projects</p>
+            <p class="site-status">Jacob Gantt's personal website</p>
           </header>
 
           <main class="page-main">
@@ -28,14 +28,16 @@ const runningSecondary = ref(false)
                 name="fade"
                 mode="out-in"
               >
-                <component :is="Component" :ket="$route.path" />
+                <component :is="Component" :key="$route.path" />
               </transition>
             </router-view>
           </main>
 
-          <footer class="site-footer">
-            <p class="footer-meta">© 2026 Jacob Gantt</p>
-          </footer>
+          <GlassPanel>
+            <footer class="site-footer">
+              <p class="footer-meta">© 2026 Jacob Gantt</p>
+            </footer>
+          </GlassPanel>
         </VStack>
       </div>
       <Background />
@@ -70,8 +72,6 @@ const runningSecondary = ref(false)
   z-index: 2;
   pointer-events: none;
   background:
-    radial-gradient(circle at 22% 34%, rgba(5, 19, 44, 0.68), transparent 36%),
-    radial-gradient(circle at 70% 38%, rgba(5, 19, 44, 0.58), transparent 34%),
     linear-gradient(180deg, rgba(6, 23, 49, 0.7), rgba(6, 23, 49, 0.62));
 }
 
@@ -87,7 +87,6 @@ const runningSecondary = ref(false)
   .site-status,
   .footer-link {
     color: rgba(52, 66, 82, 0.9) !important;
-    text-shadow: none;
   }
 
   .mellow {
@@ -134,7 +133,6 @@ const runningSecondary = ref(false)
   font-size: 1rem;
   line-height: 1.35;
   color: rgba(220, 228, 236, 0.84);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .site-status {
@@ -143,7 +141,6 @@ const runningSecondary = ref(false)
   letter-spacing: 0.01em;
   text-transform: none;
   color: rgba(214, 223, 232, 0.78);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .page-main {
@@ -166,14 +163,12 @@ const runningSecondary = ref(false)
   color: rgba(206, 216, 226, 0.74);
   font-size: 0.9rem;
   line-height: 1.2;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .footer-meta {
   font-size: 0.9rem;
   line-height: 1.3;
   color: rgba(212, 221, 231, 0.76);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .mellow {

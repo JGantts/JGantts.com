@@ -28,65 +28,10 @@ async function copyEmail() {
 </script>
 
 <template>
-  <section class="hero">
-    <div class="hero-copy">
-      <p class="hero-kicker">Independent software engineering</p>
-      <h2 class="hero-title">
-        Hi, I'm <span class="highlight">Jacob</span>.<br />
-        I build <span class="highlight">production-ready</span><br />
-        software for teams that need<br />
-        reliable systems.
-      </h2>
-      <p class="hero-support">
-        Full-stack applications, internal tools, and durable workflows with
-        less fragility, less maintenance debt, and less guesswork.
-      </p>
-      <div class="hero-actions">
-        <div class="copy-action-wrap">
-          <button type="button" class="primary-action" @click="copyEmail">
-            Copy email
-          </button>
-          <transition name="popover-fade">
-            <span v-if="showPopover" class="copy-popover">{{ popoverMessage }}</span>
-          </transition>
-        </div>
-        <span class="secondary-action">{{ emailAddress }}</span>
-      </div>
-    </div>
-    <div class="hero-rail">
-      <div class="signal-card">
-        <p class="signal-label">What I build</p>
-        <p class="signal-value">Internal tools, business systems, and full-stack delivery.</p>
-      </div>
-      <div class="signal-card">
-        <p class="signal-label">How it should feel</p>
-        <p class="signal-value">
-          Calm, maintainable, and ready to survive real production use.
-        </p>
-      </div>
-      <p class="hero-note">
-        Placeholder proof copy for layout balance. Replace this with client work,
-        a short capabilities list, or a concise credibility statement.
-      </p>
-    </div>
-  </section>
+  <!-- to do -->
 </template>
 
 <style scoped>
-.hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(15rem, 0.72fr);
-  gap: clamp(1.5rem, 4vw, 3rem);
-  align-items: start;
-  width: 100%;
-  padding: clamp(0.5rem, 1.5vw, 1rem) 0;
-}
-
-.hero-copy {
-  display: grid;
-  gap: 1.1rem;
-  max-width: 38rem;
-}
 
 .hero-kicker {
   margin: 0;

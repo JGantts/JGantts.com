@@ -1,7 +1,7 @@
 const gaussianDistance = 20
 const MAGIC_NUMBER_A = 5.5
 
-function gaussians(count: number, variance: () => number, sumMin: number, sumMax: number) {
+function gaussian(count: number, variance: () => number, sumMin: number, sumMax: number) {
   let sumRange = sumMax - sumMin
   let sumMid = (sumMax + sumMin)/2
 
@@ -60,5 +60,5 @@ function gaussianDistributionAt(variance: number, oneOverSqrtTwoPiVariance: numb
 }
 
 export {
-  gaussians
+  gaussian
 }

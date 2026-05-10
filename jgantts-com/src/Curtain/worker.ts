@@ -1,4 +1,4 @@
-import { gaussians } from './gausians';
+import { gaussian } from './gaussian';
 
 let widthInSuperPixels = 0
 let heightInSuperPixels = 0
@@ -48,17 +48,17 @@ self.onmessage = async (event) => {
   widthInFinePixels = widthInLargePixels*PIXELATION_RATIO_LARGE_FINE
   heightInFinePixels = heightInLargePixels*PIXELATION_RATIO_LARGE_FINE
 
-  let gaussianSumsPixelsSuper: number[] = gaussians(
+  let gaussianSumsPixelsSuper: number[] = gaussian(
     widthInSuperPixels,
     () => {return Math.random()*90 + 10},
     0, 1
   )
-  let gaussianSumsPixelsLarge: number[] = gaussians(
+  let gaussianSumsPixelsLarge: number[] = gaussian(
     widthInLargePixels,
     () => {return Math.random()*90 + 10},
     0, 1
   )
-  let gaussianSumsPixelsFine: number[] = gaussians(
+  let gaussianSumsPixelsFine: number[] = gaussian(
     widthInFinePixels,
     () => {return Math.random()*90 + 10},
     0, 1

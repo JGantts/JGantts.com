@@ -9,7 +9,7 @@ import{ Smooth } from '../assets/Smooth'
 import type { Color, Rainbow } from './Types';
 import { BackgroundState, RainbowDirection } from './Types';
 
-import { gaussians } from './gausians';
+import { gaussian } from './gaussian';
 
 /*backgroundColors: [
   { stop: 0/6, color: hslToComponents(red.red9) },
@@ -24,11 +24,6 @@ import { gaussians } from './gausians';
 let PIXELATED_FINE_BOX_SIZE = 1
 let PIXELATED_LARGE_BOX_SIZE = 8
 let PIXELATED_SUPER_BOX_SIZE = 64
-let PIXELATION_RATIO_SUPER_LARGE = Math.floor(PIXELATED_SUPER_BOX_SIZE/PIXELATED_LARGE_BOX_SIZE)
-let PIXELATION_RATIO_LARGE_FINE = Math.floor(PIXELATED_LARGE_BOX_SIZE/PIXELATED_FINE_BOX_SIZE)
-let PIXELATION_RATIO_LARGE_SUPER = Math.ceil(PIXELATED_LARGE_BOX_SIZE/PIXELATED_LARGE_BOX_SIZE)
-
-
 
 let SMOOTHED_BOX_SIZE = 6
 
@@ -44,18 +39,22 @@ type ColorOffset = {
   lightness: number
 }
 
-type GaussianObject = {
-  position: number,
-  velocity: number,
-  acceleration: number,
-  jolt: number,
-}
-
 /*
   Initialize variables
 */
 
-let gaussianObjects: GaussianObject[]
+//let gaussianObjects: GaussianObject[]
+let gaussianObjects: {
+  positions: number[]
+  velocities: number[]
+  accelerations: number[]
+  jolts: number[]
+} = {
+  positions: [],
+  velocities: [],
+  accelerations: [],
+  jolts: []
+}
 
 let canvasContext: CanvasRenderingContext2D
 let canvasElement: HTMLCanvasElement
@@ -105,7 +104,7 @@ async function initializeBackground() {
 
   doneAnimatingCurtain = false
 
-  const ratio = window.devicePixelRatio || 1;
+  const ratio = 1/16 // window.devicePixelRatio || 1;
   if (canvasElement.width !== width * ratio || canvasElement.height !== height * ratio) {
     canvasElement.width = width * ratio;
     canvasElement.height = height * ratio;
@@ -117,6 +116,8 @@ async function initializeBackground() {
   let messageQueue: MessageEvent[] = [];
   let processingAllowed: boolean = false;
   let queueLock: Mutex = new Mutex()
+
+  buildGradientLUT()
 
   async function handleWorkerMessage(event: MessageEvent) {
       pixelColumnsSuper = event.data.pixelColumnsSuper
@@ -177,7 +178,7 @@ async function initializeBackground() {
 
 async function initializeCurtain() {
   doneAnimatingCurtain = false
-  const ratio = window.devicePixelRatio || 1;
+  const ratio = 1/16 //window.devicePixelRatio || 1;
   let countToAddSmoothed = ratio*widthInLargePixels*PIXELATED_LARGE_BOX_SIZE/SMOOTHED_BOX_SIZE
 
   let curve = {
@@ -187,35 +188,33 @@ async function initializeCurtain() {
       jolt: { low: -5, high: 5 },
     }
 
-  let gaussianSumsPosition: number[] = gaussians(
+  let gaussianSumsPosition: number[] = gaussian(
     countToAddSmoothed,
     () => {return Math.random()*90 + 10},
     curve.pos.low, curve.pos.high
   )
-  let gaussianSumsVelocity: number[] = gaussians(
+  let gaussianSumsVelocity: number[] = gaussian(
     countToAddSmoothed,
     () => {return Math.random()*90 + 10},
     curve.velo.low*(1/10), curve.velo.high*(1/10)
   )
-  let gaussianSumsAcceleration: number[] = gaussians(
+  let gaussianSumsAcceleration: number[] = gaussian(
     countToAddSmoothed,
     () => {return Math.random()*90 + 10},
     curve.acc.low*(1/1000), curve.acc.high*(1/1000)
   )
-  let gaussianSumsJolt: number[] = gaussians(
+  let gaussianSumsJolt: number[] = gaussian(
     countToAddSmoothed,
     () => {return Math.random()*90 + 10},
     curve.jolt.low*(1/1000000), curve.jolt.high*(1/1000000)
   )
 
-  gaussianObjects = []
+  //gaussianObjects = []
   for (let index=0; index < countToAddSmoothed; index++) {
-    gaussianObjects.push({
-        position: gaussianSumsPosition[index] - 500*(Math.abs(index-0.15*countToAddSmoothed))/countToAddSmoothed,
-        velocity: gaussianSumsVelocity[index],
-        acceleration: gaussianSumsAcceleration[index],
-        jolt: gaussianSumsJolt[index],
-      })
+    gaussianObjects.positions[index] = gaussianSumsPosition[index] - 500*(Math.abs(index-0.15*countToAddSmoothed))/countToAddSmoothed
+    gaussianObjects.velocities[index] = gaussianSumsVelocity[index]
+    gaussianObjects.accelerations[index] = gaussianSumsAcceleration[index]
+    gaussianObjects.jolts[index] = gaussianSumsJolt[index]
   }
 
   const { width, height } = getViewportSize()
@@ -228,6 +227,9 @@ async function initializeCurtain() {
 
 let clientWidthInitial = 0
 let clientHeightInitial = 0
+
+const positions = new Float32Array(gaussianObjects.positions.length)
+let smoothedY = new Float32Array(gaussianObjects.positions.length)
 
 let state: AnimationState|null = null
 async function renderLoop() {
@@ -273,7 +275,7 @@ enum AnimationState {
 let previousTime: number|null = null
 
 let doneAnimatingCurtain = false
-async function renderScene(state: AnimationState|null): Promise<AnimationState> {
+function renderScene(state: AnimationState|null): AnimationState {
   if (doneAnimatingCurtain) {
     return AnimationState.BelowBottom
   }
@@ -292,25 +294,26 @@ async function renderScene(state: AnimationState|null): Promise<AnimationState> 
     }
   }
 
-  for (let index=0; index < gaussianObjects.length; index++) {
-    gaussianObjects[index].acceleration += gaussianObjects[index].jolt * deltaTime
-    gaussianObjects[index].velocity += gaussianObjects[index].acceleration * deltaTime
+  for (let index=0; index < gaussianObjects.positions.length; index++) {
+    gaussianObjects.accelerations[index] += gaussianObjects.jolts[index] * deltaTime
+    gaussianObjects.velocities[index] += gaussianObjects.accelerations[index] * deltaTime
     //friction
-    gaussianObjects[index].velocity *= 0.999
-    gaussianObjects[index].position += gaussianObjects[index].velocity * deltaTime
+    gaussianObjects.velocities[index] *= 0.999
+    gaussianObjects.positions[index] += gaussianObjects.velocities[index] * deltaTime
+
+    positions[index] = gaussianObjects.positions[index]
   }
 
-  //@ts-ignore
-  let gaussionSmoothed = Smooth(gaussianObjects.map(objct => objct.position))
 
-  let smoothedY: number[] = []
+  //@ts-ignore
+  let gaussianSmoothed = Smooth(gaussianObjects.positions)
 
   let index=0
   let eachIsAbove = true
   let eachIsBelow = true
-  for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
+  for (; index < gaussianObjects.positions.length*SMOOTHED_BOX_SIZE; index++) {
     let smoothedIndex = index/SMOOTHED_BOX_SIZE
-    smoothedY[smoothedIndex] = gaussionSmoothed(smoothedIndex)
+    smoothedY[smoothedIndex] = gaussianSmoothed(smoothedIndex)
     if (smoothedY[smoothedIndex] >= -5 ) {
       eachIsAbove = false
     }
@@ -319,6 +322,7 @@ async function renderScene(state: AnimationState|null): Promise<AnimationState> 
     }
   }
 
+
   if (eachIsAbove) {
     return AnimationState.AboveTop
   }
@@ -326,7 +330,6 @@ async function renderScene(state: AnimationState|null): Promise<AnimationState> 
     canvasContext.clearRect(0, 0, canvasElement.width, canvasElement.height)
     canvasContext.fillStyle = backgroundPattern ?? "black"
     canvasContext.fillRect(0, 0, canvasElement.width, canvasElement.height)
-    emit("export-ready", canvasContext.getImageData(0, 0, canvasElement.width, canvasElement.height));
     playStateInternal = BackgroundState.AfterFirstPaused
     emit('curtainCall', '')
     doneAnimatingCurtain = true
@@ -337,7 +340,7 @@ async function renderScene(state: AnimationState|null): Promise<AnimationState> 
   index=0
   canvasContext.moveTo(index, smoothedY[0])
   index++
-  for (; index < gaussianObjects.length*SMOOTHED_BOX_SIZE; index++) {
+  for (; index < gaussianObjects.positions.length*SMOOTHED_BOX_SIZE; index++) {
     canvasContext.lineTo(index, smoothedY[index/SMOOTHED_BOX_SIZE]+16)
   }
   canvasContext.lineTo(clientWidthInitial, 0)
@@ -347,12 +350,10 @@ async function renderScene(state: AnimationState|null): Promise<AnimationState> 
   canvasContext.fillStyle = backgroundPattern ?? "black"
   canvasContext.fill()
 
-  emit("export-ready", canvasContext.getImageData(0, 0, canvasElement.width, canvasElement.height));
-
   return AnimationState.Inside
 }
 
-async function renderColumn(columnIndex: number) {
+function renderColumn(columnIndex: number) {
   let column = pixelColumnsFine[columnIndex]
   for (let boxIndex=0; boxIndex<column.length; boxIndex++) {
     tryRenderBox(columnIndex, boxIndex)
@@ -382,29 +383,44 @@ function renderPixel(
 
   //canvasPixelContext.clearRect(left, top, PIXELATED_FINE_BOX_SIZE, PIXELATED_FINE_BOX_SIZE)
 
-  let pixelColor = colorOffsetPlusThemePositionToHsl(
-    pixelData.color, 
-    {
-      x: pixelData.position.x/canvasElement.width,
-      y: pixelData.position.y/canvasElement.height
-    }
-  )
-  let rgb = HSLToRGB(pixelColor.hue, pixelColor.saturation, pixelColor.lightness)
+  let positionalPercentage: number
+
+  if (rainbow.dir == RainbowDirection.Regular) {
+    positionalPercentage = (
+      pixelData.position.x / canvasElement.width +
+      pixelData.position.y / canvasElement.height
+    ) * 0.5
+  } else {
+    positionalPercentage = (
+      1 - pixelData.position.x / canvasElement.width +
+      pixelData.position.y / canvasElement.height
+    ) * 0.5
+  }
+
+  if (positionalPercentage < 0) positionalPercentage = 0
+  if (positionalPercentage > 1) positionalPercentage = 1
+
+  const lutIndex =
+    Math.floor(positionalPercentage * (GRADIENT_LUT_SIZE - 1)) * 3
+
+  const r = gradientLUT[lutIndex + 0]
+  const g = gradientLUT[lutIndex + 1]
+  const b = gradientLUT[lutIndex + 2]
 
   let i = left + top * widthInFinePixels
   i *= 4
   //@ts-expect-error
-  renderedPixelsFine.data[i + 0] = rgb[0]
+  renderedPixelsFine.data[i + 0] = r
   //@ts-expect-error
-  renderedPixelsFineAlpha.data[i + 0] = rgb[0] * BORDER_MULTI
+  renderedPixelsFineAlpha.data[i + 0] = r * BORDER_MULTI
   //@ts-expect-error
-  renderedPixelsFine.data[i + 1] = rgb[1]
+  renderedPixelsFine.data[i + 1] = g
   //@ts-expect-error
-  renderedPixelsFineAlpha.data[i + 1] = rgb[1] * BORDER_MULTI
+  renderedPixelsFineAlpha.data[i + 1] = g * BORDER_MULTI
   //@ts-expect-error
-  renderedPixelsFine.data[i + 2] = rgb[2]
+  renderedPixelsFine.data[i + 2] = b
   //@ts-expect-error
-  renderedPixelsFineAlpha.data[i + 2] = rgb[2] * BORDER_MULTI
+  renderedPixelsFineAlpha.data[i + 2] = b * BORDER_MULTI
   //@ts-expect-error
   renderedPixelsFine.data[i + 3] = 256
   //@ts-expect-error
@@ -427,23 +443,29 @@ const HSLToRGB = (h, s, l) => {
   return [255 * f(0), 255 * f(8), 255 * f(4)];
 };
 
-function colorOffsetPlusThemePositionToHsl(offset: ColorOffset, position: Position): Color {
-  let positionalPercentage: number
-  if (rainbow.dir == RainbowDirection.Regular) {
-    positionalPercentage = (position.x + position.y)/2
-  } else {
-    positionalPercentage = (1-position.x + position.y)/2
+const GRADIENT_LUT_SIZE = 2048
+let gradientLUT = new Uint8ClampedArray(GRADIENT_LUT_SIZE * 3)
+
+function buildGradientLUT() {
+  gradientLUT = new Uint8ClampedArray(GRADIENT_LUT_SIZE * 3)
+
+  for (let i = 0; i < GRADIENT_LUT_SIZE; i++) {
+    const percentage = i / (GRADIENT_LUT_SIZE - 1)
+
+    const colorBase = gradientAtPercentage(percentage)
+
+    const rgb = HSLToRGB(
+      colorBase.hue,
+      colorBase.saturation,
+      colorBase.lightness
+    )
+
+    const idx = i * 3
+
+    gradientLUT[idx + 0] = rgb[0]
+    gradientLUT[idx + 1] = rgb[1]
+    gradientLUT[idx + 2] = rgb[2]
   }
-  if (positionalPercentage < 0) {
-    positionalPercentage = 0
-  }
-  let colorBase = gradientAtPercentage(positionalPercentage)
-  let color: Color = {
-    hue: jganttsHue(offset.lightness, positionalPercentage, colorBase),
-    saturation: jganttsSaturation(offset.saturation, positionalPercentage, colorBase),
-    lightness: jganttsLightness(offset.lightness, positionalPercentage, colorBase)
-  }
-  return color
 }
 
 function gradientAtPercentage(percentage: number): Color {
@@ -519,8 +541,6 @@ function jganttsSaturation(offset: number, positionalPercentage: number, colorBa
 }
 function jganttsLightness(offset: number, positionalPercentage: number, colorBase: Color): number {
   const toreturn = (colorBase.lightness + offset)// * positionalLightness
-  if (toreturn < 1)
-  console.log(`light: ${toreturn}`)
   return toreturn
 }
 
@@ -620,7 +640,6 @@ const play = async (): Promise<BackgroundState> => {
 const emit = defineEmits([
   'curtainCall',
   'stageEntrance',
-  'export-ready',
 ]);
 defineExpose({
   getCanvas,

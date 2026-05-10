@@ -11,6 +11,20 @@ import { BackgroundState, RainbowDirection } from './Types';
 
 import { gaussian } from './gaussian';
 
+const DEBUG = true
+
+const log = DEBUG
+  ? (...args: any[]) => console.log('[BG]', ...args)
+  : () => {}
+
+const warn = DEBUG
+  ? (...args: any[]) => console.warn('[BG]', ...args)
+  : () => {}
+
+const error = DEBUG
+  ? (...args: any[]) => console.error('[BG]', ...args)
+  : () => {}
+
 /*backgroundColors: [
   { stop: 0/6, color: hslToComponents(red.red9) },
   { stop: 1/6, color: hslToComponents(orange.orange9) },
@@ -100,11 +114,12 @@ let pixelColumnsFine: {saturation: number, lightness: number}[][] = []
   Rendering functions
 */
 async function initializeBackground() {
+  log("initializeBackground")
   const { width, height } = getViewportSize()
 
   doneAnimatingCurtain = false
 
-  const ratio = 1/16 // window.devicePixelRatio || 1;
+  const ratio = window.devicePixelRatio || 1;
   if (canvasElement.width !== width * ratio || canvasElement.height !== height * ratio) {
     canvasElement.width = width * ratio;
     canvasElement.height = height * ratio;
@@ -120,6 +135,7 @@ async function initializeBackground() {
   buildGradientLUT()
 
   async function handleWorkerMessage(event: MessageEvent) {
+      log("handleWorkerMessage")
       pixelColumnsSuper = event.data.pixelColumnsSuper
       pixelColumnsLarge = event.data.pixelColumnsLarge
       pixelColumnsFine = event.data.pixelColumnsFine
@@ -157,6 +173,7 @@ async function initializeBackground() {
   }, 3000);
 
   worker.onmessage = (event: MessageEvent): void => {
+    log("worker.onmessage")
     queueLock.runExclusive(async () => {
       if (processingAllowed) {
         // If processing is allowed, handle the message immediately
@@ -177,8 +194,9 @@ async function initializeBackground() {
 
 
 async function initializeCurtain() {
+  log("initializeCurtain")
   doneAnimatingCurtain = false
-  const ratio = 1/16 //window.devicePixelRatio || 1;
+  const ratio = window.devicePixelRatio || 1;
   let countToAddSmoothed = ratio*widthInLargePixels*PIXELATED_LARGE_BOX_SIZE/SMOOTHED_BOX_SIZE
 
   let curve = {
@@ -217,6 +235,9 @@ async function initializeCurtain() {
     gaussianObjects.jolts[index] = gaussianSumsJolt[index]
   }
 
+  positions = new Float32Array(gaussianObjects.positions.length)
+  smoothedY = new Float32Array(gaussianObjects.positions.length)
+
   const { width, height } = getViewportSize()
 
   if (clientWidthInitial !== width * ratio || clientHeightInitial !== height * ratio) {
@@ -228,8 +249,8 @@ async function initializeCurtain() {
 let clientWidthInitial = 0
 let clientHeightInitial = 0
 
-const positions = new Float32Array(gaussianObjects.positions.length)
-let smoothedY = new Float32Array(gaussianObjects.positions.length)
+let positions: Float32Array
+let smoothedY: Float32Array
 
 let state: AnimationState|null = null
 async function renderLoop() {
@@ -252,6 +273,7 @@ let renderedPixelsFine = null
 let renderedPixelsFineAlpha = null
 
 async function paintPixelsFine() {
+  log("paintPixelsFine")
   renderedPixelsFine = canvasContext.createImageData(widthInFinePixels, heightInFinePixels)
   renderedPixelsFineAlpha = canvasContext.createImageData(widthInFinePixels, heightInFinePixels)
   for (let key in pixelColumnsFine) {
@@ -275,7 +297,7 @@ enum AnimationState {
 let previousTime: number|null = null
 
 let doneAnimatingCurtain = false
-function renderScene(state: AnimationState|null): AnimationState {
+async function renderScene(state: AnimationState|null): Promise<AnimationState> {
   if (doneAnimatingCurtain) {
     return AnimationState.BelowBottom
   }
@@ -304,9 +326,9 @@ function renderScene(state: AnimationState|null): AnimationState {
     positions[index] = gaussianObjects.positions[index]
   }
 
-
   //@ts-ignore
   let gaussianSmoothed = Smooth(gaussianObjects.positions)
+
 
   let index=0
   let eachIsAbove = true
@@ -321,7 +343,6 @@ function renderScene(state: AnimationState|null): AnimationState {
       eachIsBelow = false
     }
   }
-
 
   if (eachIsAbove) {
     return AnimationState.AboveTop
@@ -353,7 +374,7 @@ function renderScene(state: AnimationState|null): AnimationState {
   return AnimationState.Inside
 }
 
-function renderColumn(columnIndex: number) {
+async function renderColumn(columnIndex: number) {
   let column = pixelColumnsFine[columnIndex]
   for (let boxIndex=0; boxIndex<column.length; boxIndex++) {
     tryRenderBox(columnIndex, boxIndex)
@@ -447,6 +468,7 @@ const GRADIENT_LUT_SIZE = 2048
 let gradientLUT = new Uint8ClampedArray(GRADIENT_LUT_SIZE * 3)
 
 function buildGradientLUT() {
+  log("buildGradientLUT")
   gradientLUT = new Uint8ClampedArray(GRADIENT_LUT_SIZE * 3)
 
   for (let i = 0; i < GRADIENT_LUT_SIZE; i++) {
@@ -577,7 +599,10 @@ const canvasHolderRef = ref<HTMLElement | null>(null)
 
 let rainbow: Rainbow
 
+let loadCurtainCalled = false
 const loadCurtain = async (rainbowIn: Rainbow) => {
+  if (loadCurtainCalled) return
+  loadCurtainCalled = true
   rainbow = rainbowIn
   //await wait(100)
   initializeBackground()

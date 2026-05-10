@@ -11,7 +11,7 @@ import { BackgroundState, RainbowDirection } from './Types';
 
 import { gaussian } from './gaussian';
 
-const DEBUG = true
+const DEBUG = false
 
 const log = DEBUG
   ? (...args: any[]) => console.log('[BG]', ...args)

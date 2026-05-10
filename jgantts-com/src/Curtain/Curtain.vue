@@ -11,7 +11,7 @@ import { BackgroundState, RainbowDirection } from './Types';
 
 import { gaussian } from './gaussian';
 
-const DEBUG = false
+const DEBUG = true
 
 const log = DEBUG
   ? (...args: any[]) => console.log('[BG]', ...args)
@@ -259,6 +259,7 @@ async function renderLoop() {
       return
     }
     do {
+      log(state)
       state = await renderScene(state)
     } while(state == null || state == AnimationState.AboveTop)
     if (state == AnimationState.Inside) {
@@ -301,6 +302,10 @@ async function renderScene(state: AnimationState|null): Promise<AnimationState> 
   if (doneAnimatingCurtain) {
     return AnimationState.BelowBottom
   }
+
+  log(gaussianObjects.positions.length)
+
+  if (!(gaussianObjects.positions.length > 2)) return AnimationState.AboveTop
 
   let deltaTime: number
   if (state != AnimationState.Inside) {

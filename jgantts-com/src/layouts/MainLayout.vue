@@ -18,8 +18,7 @@ const runningSecondary = ref(false)
               <span class="highlight" :class="{ mellow: runningSecondary }">JGantts</span>
               <span>.com</span>
             </p>
-            <p class="site-tagline">Currently available for new projects</p>
-            <p class="site-status">Jacob Gantt's personal website</p>
+            <p class="site-status">Nothing to see here. Move along please.</p>
           </header>
 
           <main class="page-main">
@@ -33,11 +32,9 @@ const runningSecondary = ref(false)
             </router-view>
           </main>
 
-          <GlassPanel>
-            <footer class="site-footer">
-              <p class="footer-meta">© 2026 Jacob Gantt</p>
-            </footer>
-          </GlassPanel>
+          <footer class="site-footer">
+            <p class="footer-meta">© 2026 Jacob Gantt</p>
+          </footer>
         </VStack>
       </div>
       <Background />
@@ -78,8 +75,6 @@ const runningSecondary = ref(false)
 @media (prefers-color-scheme: light) {
   .content-scrim {
     background:
-      radial-gradient(circle at 22% 34%, rgba(230, 239, 249, 0.54), transparent 40%),
-      radial-gradient(circle at 70% 38%, rgba(223, 234, 246, 0.46), transparent 38%),
       linear-gradient(180deg, rgba(214, 228, 244, 0.42), rgba(214, 228, 244, 0.32));
   }
 
@@ -132,7 +127,6 @@ const runningSecondary = ref(false)
 .site-tagline {
   font-size: 1rem;
   line-height: 1.35;
-  color: rgba(220, 228, 236, 0.84);
 }
 
 .site-status {
@@ -155,25 +149,11 @@ const runningSecondary = ref(false)
   gap: 0.6rem 1rem;
   margin-top: 1.5rem;
   padding-top: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.footer-link {
-  margin: 0;
-  color: rgba(206, 216, 226, 0.74);
-  font-size: 0.9rem;
-  line-height: 1.2;
 }
 
 .footer-meta {
   font-size: 0.9rem;
   line-height: 1.3;
-  color: rgba(212, 221, 231, 0.76);
-}
-
-.mellow {
-  color: var(--textBaseOnAccentLowContrast);
-  transition: color 3s ease-in-out 1.5s;
 }
 
 </style>

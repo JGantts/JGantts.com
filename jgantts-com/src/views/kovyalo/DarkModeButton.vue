@@ -34,7 +34,7 @@ const themeLabel = computed(() => {
 <style scoped>
 #overlay {
   position: absolute;
-  top: 18px;
+  bottom: 18px;
   left: 18px;
   width: 240px;
   z-index: 999;

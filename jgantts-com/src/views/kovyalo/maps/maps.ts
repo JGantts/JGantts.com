@@ -3,14 +3,16 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
 import type {  } from '../common/Settings';
-import { ref, watch } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import type { Ref } from 'vue';
 import { effectiveDarkMode } from '../common/DarkMode';
+import type { GuiNode, GuiLeaf, GuiParent, GuiChild, GuiTreeIdentifiable } from '../GuiView/types/gui';
 
 const settings = useSettings()
 
 type JgMap = {
     mlMap: MapLibreMap
+    guiTree: GuiNode
     savePosition: () => void
     unmount: () => void
 }
@@ -28,7 +30,11 @@ type RegionLayerConfig = {
 
 type DataSourceKind = 'towns'
 
-type ZoomConfig = { min: number, max: number }
+type Zoom = { min: number, max: number }
+
+type Zooms = {data: Zoom, display: Zoom}
+
+type ZoomConfig = Zoom|Zooms
 
 type RegionConfig = {
   id: string
@@ -122,89 +128,76 @@ function applyTheme(map: MapLibreMap) {
     
   for (const layer of layers) {
     const layerTheme = (layer.metadata as { theme?: string } | undefined)?.theme
+    const layerGuiPathHash = (layer.metadata as { uiPathHash?: string } | undefined)?.uiPathHash
 
-    if (!layerTheme) continue
+    let visible = true
+
+    if (layerTheme) {
+      if (layerTheme === UserTheme_SystemTheme) {
+        visible = true
+      }
+    }
+
+    if (layerGuiPathHash) {
+
+    }
 
     map.setLayoutProperty(
       layer.id,
       'visibility',
-      layerTheme === UserTheme_SystemTheme ? 'visible' : 'none'
+      visible ? 'visible' : 'none'
     )
   }
 }
 
-const guiRoot: Ref<GuiNode|null> = ref(null)
-
-type GuiNode = {
-  id: string
-  title: string
-
-  children?: Record<string, GuiNodeLeaf>
+const guiRoot = reactive<GuiNode>({
+  id: "root",
+  title: "Root",
+  parent: null,
+  children: {}
+})
+function hashGuiPath(uiPath: string[]) {
+  return uiPath.map(x => x.toLowerCase()).join("/")
 }
 
-type GuiLeaf = {
-  layerId?: string
-  exclusivityGroup?: string | null
-  uiPathHash?: string
-  enabled?: boolean
+function hashTitleIntoId(title: string) {
+  return encodeURIComponent(title.toLowerCase())
 }
-
-type GuiNodeLeaf = GuiNode&GuiLeaf
 
 function initLayerGuiSettings(regions: RegionConfig[]) {
-  const root: GuiNodeLeaf = {
-    id: "root",
-    title: "Root",
-    children: {},
-  }
-
   for (const region of regions) {
     for (const layer of [{ ...region.base, id: "base"}, { ...region.background, id: "background"}, ...region.layers]) {
+      console.log(layer)
       if (!layer || !layer.uiPath || layer.uiPath.length === 0) continue
 
-      let current = root
+      let current: (GuiLeaf|GuiParent)
+                    & GuiChild
+                    & GuiTreeIdentifiable 
+                    = guiRoot
 
       // build folder tree
       for (const segment of layer.uiPath) {
-        current.children ??= {}
-        if (!current.children[segment]) {
-          current.children[segment] = {
-            id: segment
-              .toLowerCase()
-              .replace(/\s+/g, "-"),
-
+        let segmentAsId = hashTitleIntoId(segment)
+        let next: GuiNode = current.children[segmentAsId]
+        if (!next) {
+          next = {
+            id: segmentAsId,
             title: segment,
-            children: {},
+            parent: current,
+            children: {}
           }
+          current.children[segmentAsId] = next
         }
-
-        current = current.children[segment]
+        current = next
       }
 
-      // final leaf node
-      current.children ??= {}
-
-      current.children[layer.id] = {
-        id: layer.id,
-        title:
-          (layer as any).title ??
-          layer.id
-            .replace(/[-_]/g, " ")
-            .replace(/\b\w/g, (c) => c.toUpperCase()),
-        uiPathHash: layer.uiPath.map(x => x.toLowerCase()).join("/"),
-        layerId: layer.id,
-
-        exclusivityGroup:
-          (layer as any).exclusivityGroup ??
-          (layer as any).exclusiveGroup ??
-          null,
-
-        enabled: false,
+      if (!("uiPathHash" in current)) {
+        const leaf = current as GuiLeaf
+        leaf.uiPathHash = hashGuiPath(layer.uiPath)
+        leaf.enabled = false
       }
     }
   }
-
-  return root
 }
 
 async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
@@ -277,23 +270,27 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
       // RASTER REGIONS 
       // ==============
       let make_addRegionLayer = (region: RegionConfig) => {
-        console.log(region.id)
+        console.log("region: " + region.id)
         let addRegionLayer = (layer: RegionLayerConfig, id: string) => {
-          console.log(region.id + "/" + id)
-          let zoomTemp: { min: number, max: number}|null = null
+          console.log("layer: " + region.id + "/" + id)
+          let zoomRaw: ZoomConfig|null = null
           if (layer.zoom) {
-            zoomTemp = layer.zoom
+            zoomRaw = layer.zoom
           } else {
-            zoomTemp = region.zoom
+            zoomRaw = region.zoom
           }
-          let zoom = zoomTemp!
-          let zoomDisplayTemp: ZoomConfig|null = null
-          if (layer.zoomDisplay) {
-            zoomDisplayTemp = layer.zoomDisplay
+          let zoomsFinal: Zooms|null = null
+          let zooms = zoomRaw as Zooms
+          let zoom = zoomRaw as Zoom
+          if ("display" in zoomRaw) {
+            zoomsFinal = zooms
           } else {
-            zoomDisplayTemp = zoom
+            zoomsFinal = {
+              data: zoom,
+              display: zoom
+            }
           }
-          let zoomDisplay = zoomDisplayTemp!
+
           let addLayer = (dark: "single"|"dark"|"light") => {
             const darkSuffix = dark == "dark" 
               ? "-dark"
@@ -322,8 +319,8 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
               map.addSource(sourceId, {
                 type: 'raster',
                 url: source,
-                minzoom: zoom.min,
-                maxzoom: zoom.max,
+                minzoom: zoomsFinal.data.min,
+                maxzoom: zoomsFinal.data.max,
                 bounds: [region.bounds[0][1], region.bounds[1][0], region.bounds[1][1], region.bounds[0][0]]
               })
 
@@ -331,8 +328,8 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
                 id: layerId,
                 type: 'raster',
                 source: sourceId,
-                minzoom: zoomDisplay.min,
-                maxzoom: zoomDisplay.max,
+                minzoom: zoomsFinal.display.min,
+                maxzoom: zoomsFinal.display.max,
                 paint: {
                   'raster-opacity': 1,
                 },
@@ -352,8 +349,8 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
                 id: layerId,
                 type: 'raster',
                 source: sourceId,
-                minzoom: zoomDisplay.min,
-                maxzoom: zoomDisplay.max,
+                minzoom: zoomsFinal.display.min,
+                maxzoom: zoomsFinal.display.max,
                 paint: {
                   'raster-opacity': 1,
                 },
@@ -552,7 +549,7 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
     regionConfigs = worldConfig.regions
     worldRegionConfig = worldConfig.world
 
-    guiRoot.value = initLayerGuiSettings([worldRegionConfig, ...regionConfigs])
+    initLayerGuiSettings([worldRegionConfig, ...regionConfigs])
 
     if (!mapEl) return null
 
@@ -590,7 +587,6 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
 
     mapTemp.on('load', async () => {
         await internalInitMapSourcesAndLayers(mapTemp)
-        
         watch(
           effectiveDarkMode,
           (newVal, oldVal) => {
@@ -601,8 +597,10 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
           { immediate: true }
         )
     });
+    console.log(guiRoot)
     return {
         mlMap: mapTemp,
+        guiTree: guiRoot,
         savePosition: () => scheduleSave(mapTemp),
         unmount: () => mapTemp.remove()
     }

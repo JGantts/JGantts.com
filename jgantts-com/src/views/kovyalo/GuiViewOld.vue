@@ -3,10 +3,6 @@ import { ref, watch, computed } from "vue";
 
 const theme = ref<"dark" | "light">("dark");
 
-function toggleTheme() {
-  theme.value = theme.value === "dark" ? "light" : "dark";
-}
-
 const eraSuazem = ref(1200);
 
 const mode = ref<"political" | "physical">("political");
@@ -27,10 +23,6 @@ const emit = defineEmits<{
 watch(eraSuazem, v => emit("update:eraSuazem", v));
 watch(mode, v => emit("update:mode", v));
 watch(overlays, v => emit("update:overlays", v), { deep: true });
-
-function toggle(obj: any, key: string) {
-  obj[key] = !obj[key];
-}
 
 /* ---------------- ERA FORMATTING ---------------- */
 
@@ -103,7 +95,7 @@ const ticks = computed(() => {
   <div id="overlay">
     <div class="panel">
       <!-- ERA -->
-      <div class="section">
+      <!-- <div class="section">
         <div class="title">ERA</div>
 
         <div class="era-readout">
@@ -117,7 +109,6 @@ const ticks = computed(() => {
         </div>
 
         <div class="slider-wrap">
-          <!-- ticks -->
           <div class="ticks">
             <div
               v-for="t in ticks"
@@ -141,7 +132,7 @@ const ticks = computed(() => {
             v-model="eraSuazem"
           />
         </div>
-      </div>
+      </div> -->
 
       <!-- MODE -->
       <div class="section">

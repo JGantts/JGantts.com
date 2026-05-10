@@ -130,6 +130,16 @@ def make_convert_region_layer(regions, region, temp_out_file_path):
         else:
             zoom = zoom_region
 
+        zooms = None
+        if zoom.get("data"):
+            zooms = zoom
+        else:
+            zooms = {
+                "data": zoom,
+                "display": zoom
+            }
+        print (zooms)
+
         relative_file = get_layer_path(regions, region, id)
         if not relative_file:
             print(f"\n=== file {relative_file} not found ===")
@@ -144,8 +154,8 @@ def make_convert_region_layer(regions, region, temp_out_file_path):
             input_file,
             output_file,
             bounds,
-            zoom["min"],
-            zoom["max"]
+            zooms["data"]["min"],
+            zooms["data"]["max"]
         )
 
         if layer.get("hasDark"):
@@ -158,8 +168,8 @@ def make_convert_region_layer(regions, region, temp_out_file_path):
                 input_file_dark,
                 output_file_dark,
                 bounds,
-                zoom["min"],
-                zoom["max"]
+                zooms["data"]["min"],
+                zooms["data"]["max"]
             )
 
     return convert_region_layer

@@ -2,7 +2,7 @@
 import { onMounted, onBeforeUnmount, ref, type Ref } from 'vue'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import CompassView from './CompassView.vue'
-import GuiView from './GuiView.vue';
+import GuiView from './GuiView/GuiView.vue';
 import DarkModeButton from './DarkModeButton.vue';
 import { initMap, type JgMap } from './maps/maps';
 
@@ -226,7 +226,7 @@ onMounted(async () => {
     </div>
     <div id="map-gui-holder">
       <DarkModeButton />
-      <GuiView  />
+      <GuiView v-if="jgMap" :map="jgMap" />
       <CompassView ref="compassView" id="compass" :map="jgMap" />
       <div class="fantasy-map-root">
         <div ref="mapEl" class="fantasy-map" />

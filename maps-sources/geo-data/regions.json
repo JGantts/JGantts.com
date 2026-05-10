@@ -2,8 +2,10 @@
   "world": {
     "id": "world",
     "title": "World",
-    "zoom": { "min": 2, "max": 6 },
-    "zoomDisplay": { "min": 0, "max": 12 },
+    "zoom": {
+      "data": { "min": 2, "max": 6 },
+      "display": { "min": 0, "max": 12 }
+    },
     "bounds": [
       [85.05113, -180],
       [-85.05113, 180]
@@ -97,9 +99,9 @@
       "base": { "type": "tiled", "hasDark": false },
       "background": { "type": "single", "hasDark": false },
       "layers": [
-        { "id": "states", "type": "single", "category": "political", "hasDark": true },
-        { "id": "rivers", "type": "single", "exclusivityGroup": "none", "uiPath": ["Physical", "Terrain", "Rivers"], "hasDark": false },
-        { "id": "borders", "type": "single", "category": "political" }
+        { "id": "states", "type": "single", "uiPath": ["Political", "National", "Ziemúnd"], "hasDark": true },
+        { "id": "borders", "type": "single", "uiPath": ["Political", "National", "Ziemúnd"] },
+        { "id": "rivers", "type": "single", "uiPath": ["Physical", "Terrain", "Rivers"], "hasDark": false }
       ],
       "dataSources": [
         {

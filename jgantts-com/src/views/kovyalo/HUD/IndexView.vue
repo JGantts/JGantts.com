@@ -3,10 +3,22 @@ import type { JgMap } from '../maps/maps';
 import DarkModeButton from './DarkModeButton.vue';
 import GuiView from './GuiView/GuiView.vue';
 import CompassView from './CompassView.vue';
+import { ref } from 'vue';
 
 const props = defineProps<{
   map: JgMap
 }>()
+
+defineExpose({
+    updateHud,
+});
+
+const compass = ref<typeof CompassView | null>(null)
+
+function updateHud() {
+    console.log(compass.value)
+    compass.value?.updateCompass()
+}
 </script>
 
 <template>
@@ -14,7 +26,7 @@ const props = defineProps<{
         <GuiView class="gui-view" :map="map" />
         <div id="right-col">
             <DarkModeButton class="dark-mode-button" />
-            <CompassView class="compass-view" :map="map" />
+            <CompassView ref="compass" class="compass-view" :map="map" />
         </div>
     </div>
 </template>

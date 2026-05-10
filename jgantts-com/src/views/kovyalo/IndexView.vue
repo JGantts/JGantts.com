@@ -7,7 +7,7 @@ import HudView from './HUD/IndexView.vue';
 
 const props = defineProps<{ dev?: boolean }>()
 
-let compassView = ref<InstanceType<typeof CompassView> | null>(null)
+let hudView = ref<InstanceType<typeof HudView> | null>(null)
 
 const jgMap: Ref<JgMap|null> = ref(null)
 
@@ -123,7 +123,7 @@ onMounted(async () => {
   }
 
   async function componentsLoop(now: number) {
-    compassView.value?.updateCompass()
+    hudView.value?.updateHud()
   }
 
   async function interfaceLoop(now: number) {
@@ -226,7 +226,7 @@ onMounted(async () => {
       </div>
     </div>
     <div id="map-gui-holder">
-      <HudView v-if="jgMap" :map="jgMap"/>
+      <HudView v-if="jgMap" ref="hudView" :map="jgMap"/>
       <div class="fantasy-map-root">
         <div ref="mapEl" class="fantasy-map" />
       </div>

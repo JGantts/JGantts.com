@@ -3,7 +3,7 @@ import { onMounted, ref, watch } from "vue";
 import type { JgMap } from "../maps/maps";
 
 const props = defineProps<{
-    map: JgMap|null;
+    map: JgMap;
 }>();
 
 defineExpose({

@@ -106,10 +106,6 @@ function saveMapState(map: MapLibreMap) {
 
   let layers = map.getStyle()?.layers 
   let sources = map.getStyle()?.sources
-
-  console.log(sources)
-  console.log(layers)
-
 }
 
 function scheduleSave(map: MapLibreMap | null) {

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, type Ref } from 'vue'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import CompassView from './HUD/CompassView.vue'
 import { initMap, type JgMap } from './maps/maps';
 import HudView from './HUD/IndexView.vue';
 

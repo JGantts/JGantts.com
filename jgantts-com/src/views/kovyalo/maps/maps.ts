@@ -103,9 +103,6 @@ function saveMapState(map: MapLibreMap) {
   settings.zoom = _map.getZoom()
   settings.pitch = _map.getPitch()
   settings.bearing = _map.getBearing()
-
-  let layers = map.getStyle()?.layers 
-  let sources = map.getStyle()?.sources
 }
 
 function scheduleSave(map: MapLibreMap | null) {

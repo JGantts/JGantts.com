@@ -3,8 +3,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
 import type {  } from '../common/Settings';
-import { reactive, ref, watch } from 'vue';
-import type { Ref } from 'vue';
+import { reactive, watch } from 'vue';
 import { effectiveDarkMode } from '../common/DarkMode';
 import type { GuiNode, GuiLeaf, GuiParent, GuiChild, GuiTreeIdentifiable } from '../HUD/GuiView/types/gui';
 
@@ -272,7 +271,7 @@ async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
           } else {
             zoomRaw = region.zoom
           }
-          let zoomsFinal: Zooms|null = null
+          let zoomsFinal: Zooms
           let zooms = zoomRaw as Zooms
           let zoom = zoomRaw as Zoom
           if ("display" in zoomRaw) {

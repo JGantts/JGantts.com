@@ -2,9 +2,11 @@
 </script>
 
 <template>
+  <div class="main">
     <header class="my-header"><span class="highlight">JGantts</span>.com</header>
     <router-view />
     <footer class="my-footer">© 2026 Jacob Gantt</footer>
+  </div>
 </template>
 
 <style>
@@ -32,9 +34,10 @@ html {
 </style>
 
 <style scoped>
-header {
-  text-align: center;
-  font-display: block;
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
 }
 
 .highlight {
@@ -43,6 +46,8 @@ header {
 
 .my-header {
   font-size: 4em;
+  text-align: center;
+  font-display: block;
 }
 
 .my-footer {

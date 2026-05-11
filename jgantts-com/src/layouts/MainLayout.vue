@@ -46,10 +46,11 @@ html {
 .main {
   display: flex;
   flex-direction: column;
-  gap: 1.5em;
 }
 
 .my-header {
+  margin: 2rem;
+
   font-size: 3em;
   text-align: center;
   font-display: block;
@@ -60,6 +61,8 @@ html {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+
+  margin: 1rem;
 
   text-align: center;
   color: var(--muted);

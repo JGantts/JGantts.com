@@ -5,7 +5,12 @@
   <div class="main">
     <header class="my-header"><span class="highlight">JGantts</span>.com</header>
     <router-view />
-    <footer class="my-footer">© 2026 Jacob Gantt</footer>
+    <footer class="my-footer">
+      <p>email: <span class="email">contact@jgantts.com</span></p>
+      <p class="copyright">
+      © 2026 Jacob Gantt
+      </p>
+    </footer>
   </div>
 </template>
 
@@ -31,27 +36,42 @@ html {
   background-color: var(--bg);
   color: var(--text);
 }
+
+.highlight {
+  color: var(--accent);
+}
 </style>
 
 <style scoped>
 .main {
   display: flex;
   flex-direction: column;
-  gap: 1em;
-}
-
-.highlight {
-  color: var(--accent);
+  gap: 1.5em;
 }
 
 .my-header {
-  font-size: 4em;
+  font-size: 3em;
   text-align: center;
   font-display: block;
+  font-weight: 400;
 }
 
 .my-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
   text-align: center;
-  color: var(--muted)
+  color: var(--muted);
+
+  user-select: none;
+}
+
+.email {
+  user-select: text;
+}
+
+.copyright {
+  font-size: 0.8rem;
 }
 </style>

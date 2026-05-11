@@ -73,4 +73,6 @@ button, input[type="submit"], input[type="reset"] {
 
 #app {
   font-family: 'Figtree', Arial, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 200;
 }

@@ -9,9 +9,9 @@ checkDarkMode(darkModePreference)
 
 function checkDarkMode(mediaMatch: MediaQueryList | MediaQueryListEvent) {
   if (mediaMatch.matches) {
-    document.body.classList.add('dark-theme')
+    document.body.classList.add('dark')
   } else {
-    document.body.classList.remove('dark-theme')
+    document.body.classList.remove('dark')
   }
 }
 

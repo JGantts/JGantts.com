@@ -23,8 +23,7 @@
     "rbush": "^4.0.1",
     "sass": "^1.76.0",
     "vue": "^3.2.45",
-    "vue-router": "^4.1.6",
-    "vuetify": "^4.0.7"
+    "vue-router": "^4.1.6"
   },
   "devDependencies": {
     "@rushstack/eslint-patch": "^1.1.4",

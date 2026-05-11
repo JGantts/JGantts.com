@@ -3,7 +3,7 @@
 </script>
 
 <template>
-  <!-- to do -->
+  <p class="my-paragraph">This site is unfinished.</p>
 </template>
 
 <style scoped>

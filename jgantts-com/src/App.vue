@@ -2,9 +2,6 @@
 import { RouterView } from 'vue-router'
 import { onBeforeUnmount } from 'vue'
 
-import { setCSSColors } from '@/Curtain/ThemeHandler'
-import { theme_dark, theme_light } from '@/Curtain/Themes'
-
 const darkModePreference = window.matchMedia('(prefers-color-scheme: dark)')
 
 darkModePreference.addEventListener('change', checkDarkMode)
@@ -16,8 +13,6 @@ function checkDarkMode(mediaMatch: MediaQueryList | MediaQueryListEvent) {
   } else {
     document.body.classList.remove('dark-theme')
   }
-
-  setCSSColors(mediaMatch.matches ? theme_dark : theme_light)
 }
 
 onBeforeUnmount(() => {

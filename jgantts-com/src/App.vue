@@ -8,10 +8,12 @@ darkModePreference.addEventListener('change', checkDarkMode)
 checkDarkMode(darkModePreference)
 
 function checkDarkMode(mediaMatch: MediaQueryList | MediaQueryListEvent) {
+  document.body.classList.remove('dark')
+  document.body.classList.remove('light')
   if (mediaMatch.matches) {
     document.body.classList.add('dark')
   } else {
-    document.body.classList.remove('dark')
+    document.body.classList.add('light')
   }
 }
 

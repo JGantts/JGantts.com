@@ -9,8 +9,10 @@ jobs:
   changes:
     runs-on: ubuntu-latest
 
-    outputs:
-      maps_sources: ${{ steps.filter.outputs.maps_sources }}
+  outputs:
+    maps_python: ${{ steps.filter.outputs.maps_python }}
+    maps_sources: ${{ steps.filter.outputs.maps_sources }}
+    website: ${{ steps.filter.outputs.website }}
 
     steps:
       - uses: actions/checkout@v4
@@ -28,7 +30,8 @@ jobs:
 
   deploy-maps:
     needs: changes
-    if: needs.changes.outputs.maps_python == 'true' ||
+    if: |
+      needs.changes.outputs.maps_python == 'true' ||
       needs.changes.outputs.maps_sources == 'true'
     runs-on: self-hosted
 

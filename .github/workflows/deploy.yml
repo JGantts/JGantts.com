@@ -19,8 +19,11 @@ jobs:
           filters: |
             python:
               - 'python/**'
-            maps-sources:
+            maps_sources:
               - 'jgantts-com/PUBLIC/assets/kovyalo/geo-data/**'
+
+      - if: steps.changes.outputs.python == 'true' |
+            || steps.changes.outputs.maps_sources == 'true'
 
       - uses: actions/setup-python@v5
         with:
@@ -80,6 +83,8 @@ jobs:
           filters: |
             website:
               - 'jgantts-com/**'
+
+      - if: steps.changes.outputs.website == 'true'
 
       - name: build
         run: |

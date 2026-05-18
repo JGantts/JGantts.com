@@ -32,6 +32,10 @@ jobs:
       needs.changes.outputs.maps_sources == 'true'
     runs-on: self-hosted
 
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -110,6 +114,7 @@ jobs:
           password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
           script: |
+            whoami
             cd /home/jgantts-com/node-js/jgantts-server
             npm install --omit=dev
             sudo systemctl restart jgantts-com-node-app

@@ -6,92 +6,13 @@ import type {  } from '../common/Settings';
 import { reactive, watch } from 'vue';
 import { effectiveDarkMode } from '../common/DarkMode';
 import type { GuiNode, GuiLeaf, GuiParent, GuiChild, GuiTreeIdentifiable } from '../HUD/GuiView/types/gui';
+import { initMapSourcesAndLayers } from './initSources';
+import type { RegionConfig, BoundsTuple, ImageCoordinates, JgMap, WorldConfig } from './types/maps'
+import { hashGuiPath, hashTitleIntoId } from './common/hashes';
 
 const settings = useSettings()
 
-type JgMap = {
-    mlMap: MapLibreMap
-    guiTree: GuiNode
-    savePosition: () => void
-    unmount: () => void
-}
-
-type BoundsTuple = [[number, number], [number, number]]
-
-type RegionLayerConfig = {
-  type: "tiled" | "single"
-  zoom: ZoomConfig|null
-  zoomDisplay: ZoomConfig|null
-  hasDark: boolean|null
-  exclusivityGroup: string|null,
-  uiPath: string[]|null
-}
-
-type DataSourceKind = 'towns'
-
-type Zoom = { min: number, max: number }
-
-type Zooms = {data: Zoom, display: Zoom}
-
-type ZoomConfig = Zoom|Zooms
-
-type RegionConfig = {
-  id: string
-  title: string
-  bounds: BoundsTuple
-  zoom: ZoomConfig
-  parentId?: string | null
-  base: RegionLayerConfig
-  background: RegionLayerConfig
-  layers: (RegionLayerConfig&{id: string})[]
-  dataSources?: {
-    kind: DataSourceKind
-    points: { name: string; coordinates: [number, number], population: number }[]
-  }[]
-}
-
-type WorldConfig = {
-  world: RegionConfig
-  regions: RegionConfig[]
-}
-
-type ImageCoordinates = [
-  [number, number],
-  [number, number],
-  [number, number],
-  [number, number],
-]
-
-const regions: RegionConfig[] = []
-
-type Town = {
-  name: string
-  coordinates: [number, number]
-  population: number
-}
-
-type TownPlusRegion = Town & { regionId: string }
-
-let regionConfigs: RegionConfig[] 
-let worldRegionConfig: RegionConfig 
-
-function normalizeBounds(bounds: BoundsTuple): BoundsTuple {
-  const [[y1, x1], [y2, x2]] = bounds
-  return [
-    [Math.max(y1, y2), Math.min(x1, x2)],
-    [Math.min(y1, y2), Math.max(x1, x2)],
-  ]
-}
-
-function boundsToImageCoordinates(bounds: BoundsTuple): ImageCoordinates {
-  const [[top, left], [bottom, right]] = normalizeBounds(bounds)
-  return [
-    [left, top],
-    [right, top],
-    [right, bottom],
-    [left, bottom],
-  ]
-}
+let regions: RegionConfig[] 
 
 let saveTimeout: number | null = null
 
@@ -149,14 +70,6 @@ const guiRoot = reactive<GuiNode>({
 
 let guiHashes: Record<string, boolean> = {}
 
-function hashGuiPath(uiPath: string[]) {
-  return encodeURIComponent(uiPath.map(x => x.toLowerCase()).join("*"))
-}
-
-function hashTitleIntoId(title: string) {
-  return encodeURIComponent(title.toLowerCase())
-}
-
 function initLayerGuiSettings(regions: RegionConfig[]) {
   for (const region of regions) {
     for (const layer of [{ ...region.base, id: "base"}, { ...region.background, id: "background"}, ...region.layers]) {
@@ -192,356 +105,21 @@ function initLayerGuiSettings(regions: RegionConfig[]) {
   }
 }
 
-async function internalInitMapSourcesAndLayers(map: MapLibreMap) {
-  console.log('Map loaded, initializing sources and layers.')
+async function loadConfigFile() {
+  return JSON.parse(
+    await (await fetch('/assets/maps/geo-data/regions.json')).text()
+) as WorldConfig
+}
 
-  let getLayerPath = (region: RegionConfig, layer_id: string) => {
-    let getRegionParent = (region: RegionConfig) => {
-      let getRegionById = (regionId: string|null) => {
-        if (!regionId) return null
-        return regionConfigs.filter((region: RegionConfig) => region.id === regionId)[0]
-      }
-      return getRegionById(region?.parentId ?? null)
-    }
-    let parents: RegionConfig[] = []
-    let curr: RegionConfig|null = region
-    while (curr) {
-      parents.push(curr)
-      curr = getRegionParent(curr)
-    }
-    let path = parents.map(config => config?.id).reverse().join("/") + "/" + layer_id;
-
-    return path
-  }
-
-    let allTowns = regionConfigs.reduce<TownPlusRegion[]>(
-        (prev, curr) => {
-          return [
-            ...prev,
-            ...((curr.dataSources ?? []).reduce<TownPlusRegion[]>((acc, d) => {
-              if (d.kind === 'towns') acc.push(...d.points.map(town => { 
-                return {
-                  name: town.name,
-                  coordinates: town.coordinates,
-                  population: town.population,
-                  regionId: curr.id,
-                };
-              }))
-              return acc
-            }, []))
-          ]
-        }, [])
-
-    try {
-      const protocol = new Protocol()
-      maplibregl.addProtocol('pmtiles', protocol.tile)
-
-      const data: GeoJSON.FeatureCollection = {
-        type: 'FeatureCollection',
-        features: allTowns.map(t => ({
-          type: 'Feature',
-          properties: {
-            name: t.name,
-            population: t.population,
-          },
-          geometry: {
-            type: 'Point',
-            coordinates: t.coordinates,
-          }
-        }))
-      }
-
-      map.addSource('towns', {
-        type: 'geojson',
-        data
-      })
-
-      map.setRenderWorldCopies(true)
-
-      // ==============
-      // RASTER REGIONS 
-      // ==============
-      let make_addRegionLayer = (region: RegionConfig) => {
-        //console.log("region: " + region.id)
-        let addRegionLayer = (layer: RegionLayerConfig, id: string) => {
-          //console.log("layer: " + region.id + "/" + id)
-          let zoomRaw: ZoomConfig|null = null
-          if (layer.zoom) {
-            zoomRaw = layer.zoom
-          } else {
-            zoomRaw = region.zoom
-          }
-          let zoomsFinal: Zooms
-          let zooms = zoomRaw as Zooms
-          let zoom = zoomRaw as Zoom
-          if ("display" in zoomRaw) {
-            zoomsFinal = zooms
-          } else {
-            zoomsFinal = {
-              data: zoom,
-              display: zoom
-            }
-          }
-
-          let addLayer = (dark: "single"|"dark"|"light") => {
-            const darkSuffix = dark == "dark" 
-              ? "-dark"
-              : ""
-              
-            const sourceId = `region-src-${region.id}-${id}${darkSuffix}`
-            const layerId = `region-${region.id}-${id}${darkSuffix}`
-
-            const metadata: any = {}
-
-            if (dark) {
-              if (dark == "dark") {
-                metadata.theme = "dark" 
-              } else if (dark == "light") {
-                metadata.theme = "light"
-              }
-            }
-
-            if (layer.uiPath) {
-              metadata.uiPathHash = hashGuiPath(layer.uiPath)
-            }
-
-            if (layer.type === 'tiled') {
-              const source = `pmtiles:///assets/maps/${getLayerPath(region, id)}${darkSuffix}.pmtiles`
-
-              map.addSource(sourceId, {
-                type: 'raster',
-                url: source,
-                minzoom: zoomsFinal.data.min,
-                maxzoom: zoomsFinal.data.max,
-                bounds: [region.bounds[0][1], region.bounds[1][0], region.bounds[1][1], region.bounds[0][0]]
-              })
-
-              map.addLayer({
-                id: layerId,
-                type: 'raster',
-                source: sourceId,
-                minzoom: zoomsFinal.display.min,
-                maxzoom: zoomsFinal.display.max,
-                paint: {
-                  'raster-opacity': 1,
-                },
-                layout: {
-                  visibility: 'none'
-                },
-                metadata
-              })
-            } else if (layer.type === 'single') {
-              map.addSource(sourceId, {
-                type: 'image',
-                url: `/assets/maps/${getLayerPath(region, id)}${darkSuffix}.png`,
-                coordinates: boundsToImageCoordinates(region.bounds),
-              })
-
-              map.addLayer({
-                id: layerId,
-                type: 'raster',
-                source: sourceId,
-                minzoom: zoomsFinal.display.min,
-                maxzoom: zoomsFinal.display.max,
-                paint: {
-                  'raster-opacity': 1,
-                },
-                layout: {
-                  visibility: 'none'
-                },
-                metadata
-              })
-            } else {
-              throw `No layer type specified for region and layer: ${region.id} - ${layerId}`
-            }
-          }
-          if (layer.hasDark) {
-            addLayer("light")
-            addLayer("dark")
-          } else {
-            addLayer("single")
-          }
-        }
-
-        return addRegionLayer
-      }
-
-      let makeRegion = (region: RegionConfig) => {
-        let addRegionLayer = make_addRegionLayer(region)
-
-        if (region.background) {
-          addRegionLayer(region.background, "background")
-        }
-
-        if (region.base) {
-          addRegionLayer(region.base, "base")
-        }
-        
-        for (const layer of region.layers) {
-          addRegionLayer(layer, layer.id)
-        }
-
-        regions.push(region)
-      }
-      makeRegion(worldRegionConfig)
-      for (const region of regionConfigs) {
-        makeRegion(region)
-      }
-
-      // =========================
-      // BUILD LABEL DATA (NEW)
-      // =========================
-      const regionLabels: GeoJSON.FeatureCollection = {
-        type: 'FeatureCollection',
-        features: [],
-      }
-
-      const towns: GeoJSON.FeatureCollection = {
-        type: 'FeatureCollection',
-        features: [],
-      }
-
-      for (const region of regions) {
-        const b = region.bounds 
-          ? normalizeBounds(region.bounds)
-          : [[85.05113, -180], [-85.05113, 180]]
-
-        // region label
-        regionLabels.features.push({
-          type: 'Feature',
-          properties: {
-            name: region.title,
-            priority: 1,
-            textSize: 24,
-          },
-          geometry: {
-            type: 'Point',
-            coordinates: [
-              b[0][1] + (b[1][1] - b[0][1]) / 2,
-              b[0][0] + (b[1][0] - b[0][0]) / 2,
-            ],
-          },
-        })
-      }
-
-      // =========================
-      // SOURCES (ONCE)
-      // =========================
-      map.addSource('terrain', {
-        type: 'raster-dem',
-        tiles: [
-          '/assets/maps/height-tiles/{z}/{x}/{y}.png'
-        ],
-        tileSize: 256,
-        encoding: 'mapbox' // important
-      })
-
-      map.addSource('regions-labels', {
-        type: 'geojson',
-        data: regionLabels,
-      })
-
-      // =========================
-      // LAYERS (ORDER = PRIORITY)
-      // =========================
-      map.setTerrain({
-        source: 'terrain',
-        exaggeration: 40.0 // tweak this
-      })
-
-      map.addLayer({
-        id: 'hillshade',
-        type: 'hillshade',
-        source: 'terrain',
-        paint: {
-              'hillshade-method': 'standard',
-              'hillshade-illumination-direction': 315,
-              'hillshade-shadow-color': '#000000',
-              'hillshade-highlight-color': '#FFFFFF',
-              'hillshade-accent-color': '#000000',
-              'hillshade-exaggeration': 1.0
-        }
-      })
-
-      const size = 32
-      const canvas = document.createElement('canvas')
-      canvas.width = size
-      canvas.height = size
-      const ctx = canvas.getContext('2d')!
-
-      ctx.fillStyle = '#ffffff'
-      ctx.strokeStyle = '#000000'
-      ctx.lineWidth = 2
-
-      ctx.beginPath()
-      ctx.arc(size/2, size/2, size/4, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.stroke()
-      map.addImage('town-dot', ctx.getImageData(0, 0, size, size))
-
-      map.addLayer({
-        id: 'towns-layer',
-        type: 'symbol',
-        source: 'towns',
-
-        layout: {
-          // label
-          'text-field': ['get', 'name'],
-          'text-size': 18,
-
-          // allow smart placement
-          'text-variable-anchor': [
-            'top-left',
-            'top-right',
-            'bottom-left',
-            'bottom-right',
-            'left',
-            'right',
-            'bottom',
-            'top'
-          ],
-          'text-radial-offset': 0.25,
-
-          // dot (icon)
-          'icon-image': 'town-dot', // you must add this image
-          'icon-anchor': 'center',
-
-          // scale dot by population (replaces circle-radius)
-          'icon-size': [
-            'interpolate', ['linear'], ['get', 'population'],
-            1, 0.1,
-            100, 0.25,
-            1000, 0.5,
-            10000, 0.75,
-            100000, 1.0,
-          ],
-
-          // priority (higher = wins collisions)
-          'symbol-sort-key': ['*', ['literal', -1], ['get', 'population']],
-        },
-
-        paint: {
-          'text-color': '#fff',
-          'text-halo-color': '#000',
-          'text-halo-width': 2,
-        },
-      })
-
-    //   requestSync()
-    } catch (error) {
-      console.error('Failed to initialize map sources:', error)
-    }
+function processConfigFile(worldConfig: WorldConfig) {
+  return [worldConfig.world, ...worldConfig.regions]
 }
 
 async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise<JgMap | null> {
-    let worldConfig = JSON.parse(
-        await (await fetch('/assets/maps/geo-data/regions.json')).text()
-    ) as WorldConfig
 
-    regionConfigs = worldConfig.regions
-    worldRegionConfig = worldConfig.world
+    regions = processConfigFile(await loadConfigFile())
 
-    initLayerGuiSettings([worldRegionConfig, ...regionConfigs])
+    initLayerGuiSettings(regions)
 
     if (!mapEl) return null
 
@@ -598,7 +176,7 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
     })
 
     mapTemp.on('load', async () => {
-        await internalInitMapSourcesAndLayers(mapTemp)
+        await initMapSourcesAndLayers(mapTemp, regions)
         watch(
           effectiveDarkMode,
           (newVal, oldVal) => {

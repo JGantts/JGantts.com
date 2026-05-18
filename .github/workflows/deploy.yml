@@ -9,10 +9,10 @@ jobs:
   changes:
     runs-on: ubuntu-latest
 
-  outputs:
-    maps_python: ${{ steps.filter.outputs.maps_python }}
-    maps_sources: ${{ steps.filter.outputs.maps_sources }}
-    website: ${{ steps.filter.outputs.website }}
+    outputs:
+      maps_python: ${{ steps.filter.outputs.maps_python }}
+      maps_sources: ${{ steps.filter.outputs.maps_sources }}
+      website: ${{ steps.filter.outputs.website }}
 
     steps:
       - uses: actions/checkout@v4

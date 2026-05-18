@@ -74,6 +74,19 @@
   },
   "regions": [
     {
+      "id": "vayaly",
+      "title": "Vayály",
+      "bounds": [
+        [-25.75, -11.64],
+        [-49.5, 38]
+      ],
+      "zoom": { "min": 4, "max": 7 },
+      "parentId": null,
+      "layers": [
+        { "id": "borders", "type": "single", "exclusiveGroup": "nation", "uiPath": ["Political", "National", "Vayály"] }
+      ]
+    },
+    {
       "id": "kovyalo",
       "title": "Kovyálo",
       "bounds": [

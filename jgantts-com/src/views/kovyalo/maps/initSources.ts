@@ -208,7 +208,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
             addRegionLayer(region.base, "base")
           }
           
-          for (const layer of region.layers) {
+          for (const layer of region.layers ?? []) {
             addRegionLayer(layer, layer.id)
           }
   
@@ -232,9 +232,9 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
         // =========================
         // LAYERS (ORDER = PRIORITY)
         // =========================
-        map.setTerrain({
+        /*map.setTerrain({
           source: 'terrain',
-          exaggeration: 40.0 // tweak this
+          exaggeration: 100.0 // tweak this
         })
   
         map.addLayer({
@@ -249,7 +249,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
                 'hillshade-accent-color': '#000000',
                 'hillshade-exaggeration': 1.0
           }
-        })
+        })*/
   
         const size = 32
         const canvas = document.createElement('canvas')

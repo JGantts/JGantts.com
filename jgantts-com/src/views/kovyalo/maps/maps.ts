@@ -72,7 +72,7 @@ let guiHashes: Record<string, boolean> = {}
 
 function initLayerGuiSettings(regions: RegionConfig[]) {
   for (const region of regions) {
-    for (const layer of [{ ...region.base, id: "base"}, { ...region.background, id: "background"}, ...region.layers]) {
+    for (const layer of [{ ...region.base, id: "base"}, { ...region.background, id: "background"}, ...(region.layers ?? [])]) {
       if (!layer || !layer.uiPath || layer.uiPath.length === 0) continue
 
       let current: (GuiLeaf|GuiParent)

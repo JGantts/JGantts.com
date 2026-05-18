@@ -33,7 +33,51 @@ from path_constants import SRC_DIR, WORLD_IMAGE_IN, WORLD_ERODED_IN, WORLD_IMAGE
 # helpers
 # ---------------------------------------------------
 
+def need(name):
+    if shutil.which(name) is None:
+        raise RuntimeError(f"Missing dependency: {name}")
 
+def warp(src, out_png, bounds):
+    west, south, east, north = bounds
+
+    with tempfile.TemporaryDirectory() as td:
+        georef_tif = Path(td) / "georef.tif"
+        warped_tif = Path(td) / "warped.tif"
+
+        # Attach geographic bounds to raw image
+        run([
+            "gdal_translate",
+            "-of", "GTiff",
+            "-a_srs", "EPSG:4326",
+            "-a_ullr",
+            str(west),
+            str(north),
+            str(east),
+            str(south),
+            str(src),
+            str(georef_tif)
+        ])
+
+        # Reproject into web mercator
+        run([
+            "gdalwarp",
+            "-t_srs", "EPSG:3857",
+            "-r", "bilinear",
+            "-multi",
+            "-wo", "NUM_THREADS=ALL_CPUS",
+            "-dstalpha",
+            "-overwrite",
+            str(georef_tif),
+            str(warped_tif)
+        ])
+
+        # Convert back to PNG
+        run([
+            "gdal_translate",
+            "-of", "PNG",
+            str(warped_tif),
+            str(out_png)
+        ])
 
 def get_layer_path(region_configs, region, layer_id):
     def get_region_by_id(region_id):
@@ -185,6 +229,8 @@ def main():
 
     args = p.parse_args()
 
+    need("gdalwarp")
+
     out_file_path = make_out_file_path(args)
     (temp_out_file_path, get_temp_dir) = make_temp_out_dir()
 
@@ -211,17 +257,48 @@ def main():
             if layerType == "tiled":
                 convert_region_layer(layer, id)
             elif layerType == "single":
-                # copy png file
                 layerPath = get_layer_path(regions, region, id)
+
                 input_file = normalize_in_file_path(layerPath).with_suffix(".png")
                 output_file = temp_out_file_path(layerPath).with_suffix(".png")
+
                 os.makedirs(os.path.dirname(output_file), exist_ok=True)
-                shutil.copy(input_file, output_file)
+
+                def get_bounds_from_raw(raw):
+                    north = raw[0][0]
+                    west = raw[0][1]
+                    south = raw[1][0]
+                    east = raw[1][1]
+
+                    return (west, south, east, north)
+
+                bounds_raw_layer = layer.get("bounds")
+                bounds_raw_region = region.get("bounds")
+
+                if bounds_raw_layer:
+                    bounds = get_bounds_from_raw(bounds_raw_layer)
+                elif bounds_raw_region:
+                    bounds = get_bounds_from_raw(bounds_raw_region)
+                else:
+                    bounds = (-180, -85.05113, 180, 85.05113)
+
+                print(f"Warping single image: {input_file}")
+
+                warp(
+                    str(input_file),
+                    str(output_file),
+                    bounds
+                )
+
                 if layer.get("hasDark"):
-                    # copy dark png file
-                    input_file_dark = normalize_in_file_path(layerPath+"-dark").with_suffix(".png")
-                    output_file_dark = temp_out_file_path(layerPath+"-dark").with_suffix(".png")
-                    shutil.copy(input_file_dark, output_file_dark)
+                    input_file_dark = normalize_in_file_path(layerPath + "-dark").with_suffix(".png")
+                    output_file_dark = temp_out_file_path(layerPath + "-dark").with_suffix(".png")
+
+                    warp(
+                        str(input_file_dark),
+                        str(output_file_dark),
+                        bounds
+                    )
         return convertLayer
 
     # -------------------------------------------------
@@ -262,17 +339,17 @@ def main():
 
     print(input_file)
 
-    run([
-        sys.executable,
-        str(DEMMER),
-        "--input", str(input_file),
-        "--output", str(output_dir),
-        "--bounds",
-        str(-36.6552), #hardcoded for now, it's Ziemund
-        str(9.084375),
-        str(-32.5872),
-        str(14.54625)
-    ])
+    # run([
+    #     sys.executable,
+    #     str(DEMMER),
+    #     "--input", str(input_file),
+    #     "--output", str(output_dir),
+    #     "--bounds",
+    #     str(-180), #hardcoded for now, it's Ziemund
+    #     str(-85.05113),
+    #     str(180),
+    #     str(85.05113)
+    # ])
 
     print("\n=== COPYING COMPILED IMAGES ===")
     #copy results

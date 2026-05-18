@@ -5,7 +5,7 @@ BASE_DIR = Path(__file__).resolve().parent
 # input data
 SRC_DIR = BASE_DIR / "../maps-sources"
 WORLD_IMAGE_IN = SRC_DIR / "world"
-WORLD_ERODED_IN = SRC_DIR / "height-eroded.png"
+WORLD_ERODED_IN = SRC_DIR / "world" / "height-grayscale.png"
 REGIONS_JSON_IN = SRC_DIR / "geo-data/regions.json"
 
 # outputs

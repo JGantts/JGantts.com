@@ -146,6 +146,8 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
       bearing: settings.bearing,
     })
 
+    //test
+
     if (dev) {
       mapTemp!.getCanvas().style.cursor = 'crosshair'
     }

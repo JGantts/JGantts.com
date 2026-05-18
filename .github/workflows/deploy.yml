@@ -6,7 +6,30 @@ on:
       - prod
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+
+    outputs:
+      maps_sources: ${{ steps.filter.outputs.maps_sources }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            maps_python:
+              - 'python/**'
+            maps_sources:
+              - 'maps-sources/**'
+            website:
+              - 'jgantts-com/**'
+
   deploy-maps:
+    needs: changes
+    if: needs.changes.outputs.maps_python == 'true' |
+      || eds.changes.outputs.maps_sources == 'true'
     runs-on: self-hosted
 
     steps:
@@ -71,6 +94,8 @@ jobs:
           rm: true
 
   deploy-site:
+    needs: changes
+    if: needs.changes.outputs.website == 'true'
     runs-on: self-hosted
 
     steps:

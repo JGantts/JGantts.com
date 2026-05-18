@@ -28,8 +28,8 @@ jobs:
 
   deploy-maps:
     needs: changes
-    if: needs.changes.outputs.maps_python == 'true' |
-      || needs.changes.outputs.maps_sources == 'true'
+    if: needs.changes.outputs.maps_python == 'true' ||
+      needs.changes.outputs.maps_sources == 'true'
     runs-on: self-hosted
 
     steps:

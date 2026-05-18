@@ -6,11 +6,6 @@ import type { JgMap } from "../../maps/maps";
 const props = defineProps<{
   map: JgMap
 }>()
-
-watch(props.map.guiTree, () => {
-  console.log(props.map.guiTree
-  )
-})
 </script>
 
 <template>

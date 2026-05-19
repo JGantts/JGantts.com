@@ -69,6 +69,44 @@
         "exclusiveGroup": "climate-overlay",
         "uiPath": ["Physical", "Climate", "Rain", "July"],
         "hasDark": false
+      },
+      {
+        "id": "water-movement-january",
+        "type": "tiled",
+        "bounds": [
+          [85.05113, -300],
+          [-85.05113, 60]
+        ],
+         "uiPath": ["Physical", "Terrain", "Water Movement", "January"],
+         "hasDark": false
+      },
+      {
+        "id": "water-movement-july",
+        "type": "tiled",
+        "bounds": [
+          [85.05113, -300],
+          [-85.05113, 60]
+        ], "uiPath": ["Physical", "Terrain", "Water Movement", "July"],
+        "hasDark": false 
+      },
+      {
+        "id": "farming-january",
+        "type": "tiled",
+        "bounds": [
+          [85.05113, -300],
+          [-85.05113, 60]
+        ],
+         "uiPath": ["Physical", "Terrain", "Farming", "January"],
+         "hasDark": false
+      },
+      {
+        "id": "farming-july",
+        "type": "tiled",
+        "bounds": [
+          [85.05113, -300],
+          [-85.05113, 60]
+        ], "uiPath": ["Physical", "Terrain", "Farming", "July"],
+        "hasDark": false 
       }
     ]
   },
@@ -84,6 +122,14 @@
       "parentId": null,
       "layers": [
         { "id": "borders", "type": "single", "exclusiveGroup": "nation", "uiPath": ["Political", "National", "Vayály"] }
+      ],
+      "dataSources": [
+        {
+          "kind": "towns",
+          "points": [
+            { "name": "Pavóe", "coordinates": [-5.45, -30.3], "population": 1500}
+          ]
+        }
       ]
     },
     {

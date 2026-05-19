@@ -251,7 +251,7 @@ def main():
     world = world_file["world"]
     regions = world_file["regions"]
 
-    def make_convertLayer(convert_region_layer):
+    def make_convertLayer(convert_region_layer, region):
         def convertLayer(layer, id):
             layerType = layer.get("type")
             if layerType == "tiled":
@@ -307,7 +307,7 @@ def main():
 
     def convertRegion(region):
         convert_region_layer = make_convert_region_layer(regions, region, temp_out_file_path)
-        convertLayer = make_convertLayer(convert_region_layer)
+        convertLayer = make_convertLayer(convert_region_layer, region)
         region_id = region["id"]
 
         print(f"\n=== REGION {region_id} ===")

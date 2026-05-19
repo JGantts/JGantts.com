@@ -180,7 +180,7 @@ const toggleWhatever = () => {
 }
 
 .children-margin {
-  margin-left: 1.2em;
+  margin-left: 0.2em;
   padding-left: 1em;
 }
 

@@ -3,7 +3,7 @@
     "id": "world",
     "title": "World",
     "zoom": {
-      "data": { "min": 2, "max": 6 },
+      "data": { "min": 0, "max": 4 },
       "display": { "min": 0, "max": 12 }
     },
     "bounds": [
@@ -118,7 +118,7 @@
         [-25.75, -11.64],
         [-49.5, 38]
       ],
-      "zoom": { "min": 4, "max": 7 },
+      "zoom": { "min": 2, "max": 7 },
       "parentId": null,
       "layers": [
         { "id": "borders", "type": "single", "exclusiveGroup": "nation", "uiPath": ["Political", "National", "Vayály"] }

@@ -16,7 +16,6 @@ import ServicesPageVue from '@/views/ServicesPage.vue'
 import AboutMePage from '@/views/about-me/AboutMePage.vue'
 import AboutMe2Page from '@/views/about-me/AboutMe2Page.vue'*/
 import HolmesPage from '@/views/HolmesPage.vue'
-import KovyaloPage from '@/views/kovyalo/IndexView.vue'
 
 type AppRouteMeta = {
   title?: string
@@ -151,7 +150,7 @@ const router = createRouter({
           path: '',
           alias: 'dev',
           name: 'Kovyalo Dev',
-          component: KovyaloPage,
+          component: () => import('@/views/kovyalo/IndexView.vue'),
             props: (route) => ({
             dev: route.path === '/kovyalo/dev',
           }),
@@ -168,7 +167,7 @@ const router = createRouter({
           path: '',
           alias: 'game',
           name: 'Kovyalo Game',
-          component: KovyaloPage,
+          component: () => import('@/views/kovyalo/IndexView.vue'),
             props: (route) => ({
             game: route.path === '/kovyalo/game',
           }),

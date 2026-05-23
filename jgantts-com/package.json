@@ -10,6 +10,7 @@
     "build": "vue-tsc --noEmit && vite build"
   },
   "dependencies": {
+    "@fontsource-variable/azeret-mono": "^5.2.11",
     "@mdi/font": "^7.4.47",
     "@radix-ui/colors": "^2.1.0",
     "@svgdotjs/svg.js": "^3.1.2",

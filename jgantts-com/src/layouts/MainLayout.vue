@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import '@fontsource-variable/azeret-mono/wght.css';
 </script>
 
 <template>
   <div class="main">
-    <header class="my-header"><span class="highlight">JGantts</span>.com</header>
+    <header class="my-header"><span class="my-header-highlight">JGantts</span>.com</header>
     <router-view />
     <footer class="my-footer">
       <p>email: <span class="email">contact@jgantts.com</span></p>
@@ -36,10 +37,6 @@ html {
   background-color: var(--bg);
   color: var(--text);
 }
-
-.highlight {
-  color: var(--accent);
-}
 </style>
 
 <style scoped>
@@ -57,6 +54,10 @@ html {
   font-weight: 400;
 }
 
+.my-header-highlight {
+  color: var(--accent);
+}
+
 .my-footer {
   display: flex;
   flex-direction: column;
@@ -66,13 +67,8 @@ html {
 
   text-align: center;
   color: var(--muted);
-
-  user-select: none;
 }
 
-.email {
-  user-select: text;
-}
 
 .copyright {
   font-size: 0.8rem;

@@ -51,12 +51,12 @@ const JgLink = defineComponent({
     <JgLink
       :header="'Southern Appalachians'"
       :href="'https://en.wikipedia.org/wiki/Johnson_City,_Tennessee'"
-      :subtext="['wikipedia.org', 'Johnson City, TN']"
+      :subtext="['wikipedia.org/', 'Johnson City, TN']"
     />
     <JgLink
       :header="'Professional Programmer'"
       :href="'https://github.com/JGantts'"
-      :subtext="['github.com', 'JGantts']"
+      :subtext="['github.com/', 'JGantts']"
     />
     <JgLink
       :header="'Amateur Photographer'"
@@ -65,7 +65,7 @@ const JgLink = defineComponent({
     <JgLink
       :header="'UTC -4/-5'"
       :href="'https://en.wikipedia.org/wiki/Eastern_Time_Zone'"
-      :subtext="['wikipedia.org', 'New York Timezone']"
+      :subtext="['wikipedia.org/', 'New York Timezone']"
     />
   </div>
 </template>

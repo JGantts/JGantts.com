@@ -51,7 +51,7 @@ const JgLink = defineComponent({
     <JgLink
       :header="'Southern Appalachians'"
       :href="'https://en.wikipedia.org/wiki/Johnson_City,_Tennessee'"
-      :subtext="['wikipedia.org', 'Johnson City TN']"
+      :subtext="['wikipedia.org', 'Johnson City, TN']"
     />
     <JgLink
       :header="'Professional Programmer'"

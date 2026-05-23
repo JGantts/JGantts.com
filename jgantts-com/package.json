@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fontsource-variable/azeret-mono": "^5.2.11",
+    "@fontsource-variable/figtree": "^5.2.10",
     "@mdi/font": "^7.4.47",
     "@radix-ui/colors": "^2.1.0",
     "@svgdotjs/svg.js": "^3.1.2",

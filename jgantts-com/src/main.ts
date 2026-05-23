@@ -10,6 +10,9 @@ import '@radix-ui/colors/slate-dark.css'
 import '@radix-ui/colors/tomato-dark.css'
 import '@radix-ui/colors/mauve-dark.css'
 
+import '@fontsource-variable/azeret-mono/wght.css';
+import '@fontsource-variable/figtree/wght.css';
+
 import { createApp } from 'vue'
 import App from './App.vue'
 const app = createApp(App)

@@ -55,16 +55,16 @@ export default defineConfig(({ command }) => {
       },
 
       // ONLY in build mode
-      ...(isBuild
+      /*...((isBuild)
         ? [
             visualizer({
               open: true,
               gzipSize: true,
               brotliSize: true,
-              filename: "stats.html",
+              filename: "./dist/stats.html",
             }),
           ]
-        : []),
+        : []),*/
     ],
 
     resolve: {

@@ -33,11 +33,17 @@ const JgLink = defineComponent({
         h(
           'div',
           { class: 'jg-link-subtext' },
-          props.subtext.map(subtext => {
+          props.subtext.map((subtext, index) => {
             return h(
               'p',
               { class: 'jg-link-subtext-item' },
-              subtext
+              subtext + (
+                props.subtext.length > 1 && index !== props.subtext.length - 1 
+                  ? '/' 
+                  : props.href
+                    ? '->'
+                    : ''
+              ),
             )
           }),
         ),
@@ -48,15 +54,17 @@ const JgLink = defineComponent({
 
 <template>
   <div class="i-am">
+    <p class="hey">Hey, I'm <span class="hey-highlight">Jacob Gantt</span>.</p>
+    <p class="intro">This is my website. I am</p>
     <JgLink
       :header="'Southern Appalachians'"
       :href="'https://en.wikipedia.org/wiki/Johnson_City,_Tennessee'"
-      :subtext="['wikipedia.org/', 'Johnson City, TN']"
+      :subtext="['wikipedia.org', 'Johnson City, TN, USA']"
     />
     <JgLink
       :header="'Professional Programmer'"
       :href="'https://github.com/JGantts'"
-      :subtext="['github.com/', 'JGantts']"
+      :subtext="['github.com', 'JGantts']"
     />
     <JgLink
       :header="'Amateur Photographer'"
@@ -65,7 +73,7 @@ const JgLink = defineComponent({
     <JgLink
       :header="'UTC -4/-5'"
       :href="'https://en.wikipedia.org/wiki/Eastern_Time_Zone'"
-      :subtext="['wikipedia.org/', 'New York Timezone']"
+      :subtext="['wikipedia.org', 'New York Timezone']"
     />
   </div>
 </template>
@@ -81,6 +89,22 @@ const JgLink = defineComponent({
   flex-direction: column;
   align-items: center;
   gap: 1rem;
+}
+
+.hey {
+  font-size: 1.5em;
+  font-weight: 100;
+  font-style: italic;
+}
+
+.hey-highlight {
+  font-weight: 900;
+  font-style: normal;
+}
+
+.intro {
+  font-size: 1.25em;
+  font-weight: 700;
 }
 
 .i-am :deep(.jg-link) {
@@ -132,16 +156,4 @@ const JgLink = defineComponent({
 .where {
   max-width: 100rem;
 }
-
-@media (min-width: 1025px) {
-  #text06 {
-    max-width: 400px;
-  }
-}
-
-.inline-img {
-  margin: 0.125rem;
-  border-radius: 0.5rem;
-}
-
 </style>

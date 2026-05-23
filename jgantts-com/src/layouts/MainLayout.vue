@@ -6,7 +6,7 @@
     <header class="my-header"><span class="my-header-highlight">JGantts</span>.com</header>
     <router-view />
     <footer class="my-footer">
-      <p>email: <span class="email">contact@jgantts.com</span></p>
+      <p class="email">contact@jgantts.com</p>
       <p class="copyright">
       © 2026 Jacob Gantt
       </p>
@@ -46,6 +46,7 @@ html {
 
 .my-header {
   margin: 2rem;
+  margin-bottom: 1rem;
 
   font-size: 3em;
   text-align: center;

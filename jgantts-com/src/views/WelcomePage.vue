@@ -107,7 +107,7 @@ const JgLink = defineComponent({
 }
 
 .i-am :deep(.jg-link .jg-link-header) {
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .i-am :deep(.jg-link .jg-link-subtext) {

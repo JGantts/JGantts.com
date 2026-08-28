@@ -96,21 +96,25 @@ const JgLink = defineComponent({
 }
 
 .intro {
+  color: var(--text);
   font-size: 1.25em;
   font-weight: 100;
 }
 
 .i-am :deep(.jg-link) {
+  color: var(--text);
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
 .i-am :deep(.jg-link .jg-link-header) {
+  color: var(--text);
   font-weight: 600;
 }
 
 .i-am :deep(.jg-link .jg-link-subtext) {
+  color: var(--text);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -121,7 +125,7 @@ const JgLink = defineComponent({
   text-decoration: none;
 }
 
-.i-am :deep(a:visited) {
+.i-am  :deep(a:visited) {
   color: var(--text);
   text-decoration: none;
 }

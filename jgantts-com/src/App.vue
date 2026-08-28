@@ -8,12 +8,12 @@ darkModePreference.addEventListener('change', checkDarkMode)
 checkDarkMode(darkModePreference)
 
 function checkDarkMode(mediaMatch: MediaQueryList | MediaQueryListEvent) {
-  document.body.classList.remove('dark')
-  document.body.classList.remove('light')
+  document.documentElement.classList.remove('dark')
+  document.documentElement.classList.remove('light')
   if (mediaMatch.matches) {
-    document.body.classList.add('dark')
+    document.documentElement.classList.add('dark')
   } else {
-    document.body.classList.add('light')
+    document.documentElement.classList.add('light')
   }
 }
 
@@ -25,3 +25,9 @@ onBeforeUnmount(() => {
 <template>
   <RouterView />
 </template>
+
+<style>
+  html {
+    color: var(--text)
+  }
+</style>

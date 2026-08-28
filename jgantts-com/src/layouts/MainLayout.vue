@@ -52,6 +52,7 @@ html {
   text-align: center;
   font-display: block;
   font-weight: 400;
+  color: var(--text)
 }
 
 .my-header-highlight {

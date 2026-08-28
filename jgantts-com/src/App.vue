@@ -28,6 +28,7 @@ onBeforeUnmount(() => {
 
 <style>
   html {
-    color: var(--text)
+    color: var(--text);
+    font-size: 1.75em;
   }
 </style>

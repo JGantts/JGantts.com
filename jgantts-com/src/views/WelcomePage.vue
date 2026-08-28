@@ -25,7 +25,6 @@ const JgLink = defineComponent({
       h(props.href ? 'a' : 'div',
         {
           href: props.href,
-          target: '_blank',
           rel: 'noopener noreferrer',
           class: 'jg-link'
         }, [
@@ -54,7 +53,7 @@ const JgLink = defineComponent({
 
 <template>
   <div class="i-am">
-    <p class="hey">Hey, I'm <span class="hey-highlight">Jacob Gantt</span>.</p>
+    <p class="intro">Hey, I'm <span class="hey-highlight">Jacob Gantt</span>.</p>
     <p class="intro">This is my website. I am</p>
     <JgLink
       :header="'Southern Appalachians'"
@@ -91,12 +90,6 @@ const JgLink = defineComponent({
   gap: 1rem;
 }
 
-.hey {
-  font-size: 1.5em;
-  font-weight: 100;
-  font-style: italic;
-}
-
 .hey-highlight {
   font-weight: 900;
   font-style: normal;
@@ -104,7 +97,7 @@ const JgLink = defineComponent({
 
 .intro {
   font-size: 1.25em;
-  font-weight: 700;
+  font-weight: 100;
 }
 
 .i-am :deep(.jg-link) {
@@ -114,6 +107,7 @@ const JgLink = defineComponent({
 }
 
 .i-am :deep(.jg-link .jg-link-header) {
+  font-weight: 500;
 }
 
 .i-am :deep(.jg-link .jg-link-subtext) {

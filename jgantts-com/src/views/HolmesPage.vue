@@ -86,15 +86,17 @@ const websiteBrowserIcon =
           <p class="tips-heading">Tip Me</p>
           <div class="tips-grid">
             <a class="link-card tip-card" href="https://cash.app/$eniorWhoopy" target="_blank" rel="noopener noreferrer">
-              <span class="link-title">
+              <div>
                 <img class="brand-logo" src="https://cdn.simpleicons.org/cashapp/ffffff" alt="Cash App logo" />
-                Cash App
-              </span>
+                <span class="link-title">
+                  Cash App
+                </span>
+              </div>
               <span class="link-meta">$eniorWhoopy</span>
             </a>
             <a class="link-card tip-card venmo" href="https://venmo.com/u/SeniorWhoopy" target="_blank" rel="noopener noreferrer">
+              <img class="brand-logo" src="https://cdn.simpleicons.org/venmo/ffffff" alt="Venmo logo" />
               <span class="link-title">
-                <img class="brand-logo" src="https://cdn.simpleicons.org/venmo/ffffff" alt="Venmo logo" />
                 Venmo
               </span>
               <span class="link-meta">@SeniorWhoopy</span>
@@ -125,8 +127,8 @@ const websiteBrowserIcon =
             <span class="link-meta">@seniorwhoopy</span>
           </a>
           <a class="link-card primary youtube" href="https://www.youtube.com/@SeniorWhoopyIRL" target="_blank" rel="noopener noreferrer">
+            <img class="brand-logo" src="https://cdn.simpleicons.org/youtube/ffffff" alt="YouTube logo" />
             <span class="link-title">
-              <img class="brand-logo" src="https://cdn.simpleicons.org/youtube/ffffff" alt="YouTube logo" />
               YouTube
             </span>
             <span class="link-meta">@SeniorWhoopyIRL</span>
@@ -185,8 +187,7 @@ const websiteBrowserIcon =
 <style scoped>
 .holmes-page {
   position: relative;
-  min-height: 100vh;
-  width: 100%;
+  width: calc(100vw - clamp(1.25rem, 4vw, 3rem)*2);
   overflow: hidden;
   display: grid;
   place-items: center;
@@ -230,7 +231,7 @@ const websiteBrowserIcon =
   left: 50%;
   bottom: 28%;
   transform: translateX(-50%);
-  width: min(820px, 120%);
+  width: min(820px, 100%);
   height: 16vh;
   border-radius: 50% 50% 0 0 / 100% 100% 0 0;
   background: linear-gradient(180deg, rgba(222, 221, 216, 0.24), rgba(103, 108, 120, 0.3));

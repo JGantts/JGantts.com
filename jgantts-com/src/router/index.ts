@@ -9,6 +9,7 @@ import {
 import MainLayout from '@/layouts/MainLayout.vue'
 import HolmesLayout from '@/layouts/HolmesLayout.vue'
 import KovyaloLayout from '@/layouts/KovyaloLayout.vue'
+import PhotosLayout from '@/layouts/PhotosLayout.vue'
 
 import WelcomePageVue from '@/views/WelcomePage.vue'
 /*import GettingStartedPageVue from '@/views/GettingStartedPage.vue'
@@ -151,6 +152,54 @@ const router = createRouter({
           alias: 'dev',
           name: 'Kovyalo Dev',
           component: () => import('@/views/kovyalo/IndexView.vue'),
+            props: (route) => ({
+            dev: route.path === '/kovyalo/dev',
+          }),
+          meta: {
+            title: 'Kovyálo',
+            description: 'Years ago, a ship landed. We are their children.',
+            socialTitle: 'Kovyálo | JGantts',
+            socialDescription:
+              'JGantts\' Conworld of Kovyálo.',
+            socialImage: '/kovyalo-social-preview.svg',
+          },
+        },
+        {
+          path: '',
+          alias: 'game',
+          name: 'Kovyalo Game',
+          component: () => import('@/views/kovyalo/IndexView.vue'),
+            props: (route) => ({
+            game: route.path === '/kovyalo/game',
+          }),
+          meta: {
+            title: 'Kovyálo',
+            description: 'Years ago, a ship landed. We are their children.',
+            socialTitle: 'Kovyálo | JGantts',
+            socialDescription:
+              'JGantts\' Conworld of Kovyálo.',
+            socialImage: '/kovyalo-social-preview.svg',
+          },
+        },
+      ],
+      meta: {
+        title: 'Kovyálo',
+        description: 'Years ago, a ship landed. We are their children.',
+        socialTitle: 'Kovyálo | JGantts',
+        socialDescription:
+          'JGantts\' Conworld of Kovyálo.',
+        socialImage: '/kovyalo-social-preview.svg',
+      },
+    },
+    {
+      path: '/photos',
+      component: PhotosLayout,
+      children: [
+        {
+          path: '',
+          alias: 'dev',
+          name: 'Kovyalo Dev',
+          component: () => import('@/views/photos/IndexView.vue'),
             props: (route) => ({
             dev: route.path === '/kovyalo/dev',
           }),

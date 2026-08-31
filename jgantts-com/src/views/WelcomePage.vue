@@ -95,6 +95,15 @@ const JgLink = defineComponent({
   font-style: normal;
 }
 
+.dark .hey-highlight {
+  font-weight: 800;
+}
+
+.hey-highlight {
+  font-weight: 900;
+  font-style: normal;
+}
+
 .intro {
   color: var(--text);
   font-size: 1.25em;

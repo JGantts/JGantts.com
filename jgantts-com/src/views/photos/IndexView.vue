@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import useEmblaCarousel from 'embla-carousel-vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import MediaCarousel from '@/components/MediaCarousel.vue'
 
 type MastodonAccount = {
@@ -99,22 +98,20 @@ const tootIds = [
 const activePostStorageKey = 'photos-active-post'
 const commentScrollStorageKey = 'photos-comment-scroll'
 
-const toots = ref<TootThread[]>([])
+const toots = ref<(TootThread | null)[]>(tootIds.map(() => null))
 const loading = ref(true)
 const error = ref<string | null>(null)
+const tootLoads = new Map<number, Promise<void>>()
 
-const [tootCarouselRef, tootCarouselApi] = useEmblaCarousel({
-  align: 'center',
-  containScroll: false,
-  loop: false,
-})
+const tootViewportRef = ref<HTMLElement | null>(null)
 const activeTootIndex = ref(0)
-const tootScrollSnaps = ref<number[]>([])
 const commentsSectionRef = ref<HTMLElement | null>(null)
 const hasMultipleToots = computed(() => toots.value.length > 1)
 const activeToot = computed(() => toots.value[activeTootIndex.value] ?? null)
+let tootObserver: IntersectionObserver | null = null
 let commentScrollPositions = loadCommentScrollPositions()
 let scrollSaveFrame: number | null = null
+let carouselScrollEnd: ReturnType<typeof setTimeout> | null = null
 
 const formatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
@@ -168,23 +165,13 @@ function handlePageScroll() {
   })
 }
 
-function syncCarouselState() {
-  const api = tootCarouselApi.value
-  if (!api) return
-
-  tootScrollSnaps.value = api.scrollSnapList()
-}
-
-async function handleTootSelection() {
-  const api = tootCarouselApi.value
-  if (!api) return
-
-  const nextIndex = api.selectedScrollSnap()
+async function selectToot(nextIndex: number) {
   if (nextIndex === activeTootIndex.value) return
 
   saveCommentPosition()
   activeTootIndex.value = nextIndex
 
+  await ensureTootLoaded(nextIndex)
   const postId = toots.value[nextIndex]?.post.id
   if (!postId) return
 
@@ -193,42 +180,90 @@ async function handleTootSelection() {
   restoreCommentPosition(postId)
 }
 
-function scrollToToot(index: number) {
-  tootCarouselApi.value?.scrollTo(index)
+function ensureTootLoaded(index: number): Promise<void> {
+  if (toots.value[index]) return Promise.resolve()
+
+  const existingLoad = tootLoads.get(index)
+  if (existingLoad) return existingLoad
+
+  const load = loadToot(tootIds[index])
+    .then((toot) => {
+      toots.value[index] = toot
+    })
+    .finally(() => tootLoads.delete(index))
+
+  tootLoads.set(index, load)
+  return load
+}
+
+function scrollToToot(index: number, behavior: ScrollBehavior = 'smooth') {
+  const viewport = tootViewportRef.value
+  const toot = viewport?.querySelectorAll<HTMLElement>('.toot-thread')[index]
+  if (!viewport || !toot) return
+
+  const left = toot.offsetLeft - (viewport.clientWidth - toot.offsetWidth) / 2
+  viewport.scrollTo({ left, behavior })
 }
 
 function scrollToPreviousToot() {
-  tootCarouselApi.value?.scrollPrev()
+  scrollToToot(Math.max(0, activeTootIndex.value - 1))
 }
 
 function scrollToNextToot() {
-  tootCarouselApi.value?.scrollNext()
+  scrollToToot(Math.min(toots.value.length - 1, activeTootIndex.value + 1))
 }
 
-watch(
-  tootCarouselApi,
-  (api) => {
-    if (!api) return
+function syncNativeCarouselSelection() {
+  carouselScrollEnd = null
+  const viewport = tootViewportRef.value
+  if (!viewport) return
 
-    syncCarouselState()
-    api.on('reInit', syncCarouselState).on('select', handleTootSelection)
-  },
-  { immediate: true },
-)
+  const viewportCenter = viewport.scrollLeft + viewport.clientWidth / 2
+  const tootElements = [...viewport.querySelectorAll<HTMLElement>('.toot-thread')]
+  const nextIndex = tootElements.reduce((nearest, toot, index) => {
+    const center = toot.offsetLeft + toot.offsetWidth / 2
+    const nearestCenter = tootElements[nearest].offsetLeft + tootElements[nearest].offsetWidth / 2
+    return Math.abs(center - viewportCenter) < Math.abs(nearestCenter - viewportCenter)
+      ? index
+      : nearest
+  }, 0)
+
+  void selectToot(nextIndex)
+}
+
+function handleCarouselScroll() {
+  if (carouselScrollEnd !== null) clearTimeout(carouselScrollEnd)
+  carouselScrollEnd = setTimeout(syncNativeCarouselSelection, 80)
+}
 
 onMounted(async () => {
   window.addEventListener('scroll', handlePageScroll, { passive: true })
 
   try {
-    toots.value = await Promise.all(tootIds.map(loadToot))
     const savedPostId = localStorage.getItem(activePostStorageKey)
-    const savedPostIndex = toots.value.findIndex(({ post }) => post.id === savedPostId)
+    const savedPostIndex = tootIds.indexOf(savedPostId ?? '')
 
     if (savedPostIndex >= 0) activeTootIndex.value = savedPostIndex
+    await ensureTootLoaded(activeTootIndex.value)
 
+    loading.value = false
     await nextTick()
-    tootCarouselApi.value?.reInit()
-    tootCarouselApi.value?.scrollTo(activeTootIndex.value, true)
+    scrollToToot(activeTootIndex.value, 'auto')
+
+    const viewport = tootViewportRef.value
+    if (viewport) {
+      tootObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return
+            const index = Number((entry.target as HTMLElement).dataset.tootIndex)
+            void ensureTootLoaded(index)
+          })
+        },
+        { root: viewport, rootMargin: '0px 75%', threshold: 0.01 },
+      )
+      viewport.querySelectorAll('.toot-thread').forEach((toot) => tootObserver?.observe(toot))
+    }
 
     const activePostId = activeToot.value?.post.id
     if (activePostId) restoreCommentPosition(activePostId)
@@ -241,8 +276,10 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   saveCommentPosition()
+  tootObserver?.disconnect()
   window.removeEventListener('scroll', handlePageScroll)
   if (scrollSaveFrame !== null) cancelAnimationFrame(scrollSaveFrame)
+  if (carouselScrollEnd !== null) clearTimeout(carouselScrollEnd)
 })
 
 async function loadToot(tootId: string): Promise<TootThread> {
@@ -358,10 +395,15 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
             </a>
           </header>
 
-          <div class="toot-viewport" ref="tootCarouselRef">
+          <div ref="tootViewportRef" class="toot-viewport" @scroll="handleCarouselScroll">
             <div class="toot-container">
-              <section v-for="toot in toots" :key="toot.post.id" class="toot-thread">
-        <article class="mastodon-post">
+              <section
+                v-for="(toot, index) in toots"
+                :key="toot?.post.id ?? tootIds[index]"
+                :data-toot-index="index"
+                class="toot-thread"
+              >
+        <article v-if="toot" class="mastodon-post">
           <header class="post-date-header">
             <a :href="postUrl(toot.post)" class="timestamp">{{ formatDate(toot.post.created_at) }}</a>
           </header>
@@ -406,6 +448,9 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
             <span>{{ formatCount(toot.post.favourites_count) }} favorites</span>
           </footer>
         </article>
+        <div v-else class="toot-placeholder" aria-label="Loading post">
+          <span>Loading post…</span>
+        </div>
 
               </section>
             </div>
@@ -423,7 +468,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
             </button>
             <div class="toot-carousel-dots" aria-label="Post selection">
               <button
-                v-for="(_, index) in tootScrollSnaps"
+                v-for="(_, index) in toots"
                 :key="index"
                 type="button"
                 class="toot-carousel-dot"
@@ -437,7 +482,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
               type="button"
               class="toot-carousel-control"
               aria-label="Next post"
-              :disabled="activeTootIndex === tootScrollSnaps.length - 1"
+              :disabled="activeTootIndex === toots.length - 1"
               @click="scrollToNextToot"
             >
               →
@@ -536,10 +581,12 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
 .conversation-shell {
   margin: 0 auto;
-  max-width: 60rem;
+  width: 100%;
 }
 
 .toot-carousel {
+  --toot-card-width: min(calc(68% - 0.75rem), 40rem);
+
   display: grid;
   gap: 1rem;
 }
@@ -549,29 +596,61 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   margin-left: calc(-1 * (var(--photos-gutter) + env(safe-area-inset-left, 0px)));
   margin-right: calc(-1 * (var(--photos-gutter) + env(safe-area-inset-right, 0px)));
   margin-top: calc(-1 * var(--photos-card-shadow-space));
-  overflow: hidden;
   padding-bottom: var(--photos-card-shadow-space);
   padding-top: var(--photos-card-shadow-space);
+
+  overscroll-behavior-x: contain;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.toot-viewport::-webkit-scrollbar {
+  display: none;
 }
 
 .toot-container {
   display: flex;
   gap: 1rem;
-  touch-action: pan-y pinch-zoom;
+  min-width: 100%;
+}
+
+.toot-container::before,
+.toot-container::after {
+  content: '';
+  flex: 0 0 max(0px, calc((100% - var(--toot-card-width)) / 2 - 1rem));
 }
 
 .toot-thread {
   display: grid;
-  flex: 0 0 calc(68% - 0.75rem);
+  flex: 0 0 var(--toot-card-width);
   gap: 0.75rem;
   margin-right: 0;
   min-width: 0;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+.toot-placeholder {
+  align-items: center;
+  background: var(--photos-panel);
+  border: 1px solid var(--photos-border);
+  border-radius: 10px;
+  color: var(--photos-muted);
+  display: flex;
+  justify-content: center;
+  min-height: 18rem;
 }
 
 .toot-carousel-controls {
   align-items: center;
   display: grid;
   grid-template-columns: 2rem 1fr 2rem;
+  margin-inline: auto;
+  max-width: 40rem;
+  width: 100%;
 }
 
 .toot-carousel-control,
@@ -668,7 +747,10 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   display: flex;
   gap: 0.75rem;
   justify-content: space-between;
+  margin-inline: auto;
+  max-width: 40rem;
   padding: 0 0.15rem;
+  width: 100%;
 }
 
 .post-date-header {
@@ -881,7 +963,10 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 .comments-section {
   display: grid;
   gap: 0.65rem;
+  margin-inline: auto;
   margin-top: 0.75rem;
+  max-width: 40rem;
+  width: 100%;
 }
 
 .comments-header {
@@ -919,9 +1004,15 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   padding: 0.75rem;
 }
 
+@media (max-width: 44rem) {
+  .comments-section {
+    max-width: none;
+  }
+}
+
 @media (max-width: 36rem) {
-  .toot-thread {
-    flex-basis: calc(88% - 0.5rem);
+  .toot-carousel {
+    --toot-card-width: calc(88% - 0.5rem);
   }
 
   .status-header {
@@ -948,8 +1039,8 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 @media (orientation: landscape) and (max-height: 36rem) and (max-width: 64rem) {
-  .toot-thread {
-    flex-basis: min(56%, 30rem);
+  .toot-carousel {
+    --toot-card-width: min(56%, 30rem);
   }
 }
 </style>

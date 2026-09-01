@@ -202,39 +202,20 @@ const router = createRouter({
             props: (route) => ({
             dev: route.path === '/kovyalo/dev',
           }),
-          meta: {
-            title: 'Kovyálo',
-            description: 'Years ago, a ship landed. We are their children.',
-            socialTitle: 'Kovyálo | JGantts',
-            socialDescription:
-              'JGantts\' Conworld of Kovyálo.',
-            socialImage: '/kovyalo-social-preview.svg',
-          },
-        },
-        {
-          path: '',
-          alias: 'game',
-          name: 'Kovyalo Game',
-          component: () => import('@/views/kovyalo/IndexView.vue'),
-            props: (route) => ({
-            game: route.path === '/kovyalo/game',
-          }),
-          meta: {
-            title: 'Kovyálo',
-            description: 'Years ago, a ship landed. We are their children.',
-            socialTitle: 'Kovyálo | JGantts',
-            socialDescription:
-              'JGantts\' Conworld of Kovyálo.',
-            socialImage: '/kovyalo-social-preview.svg',
-          },
+      meta: {
+        title: 'JGantts Photos',
+        description: '.',
+        socialTitle: 'Photos | JGantts',
+        socialDescription: 'Photos from JGantts',
+        socialImage: '/kovyalo-social-preview.svg',
+      },
         },
       ],
       meta: {
-        title: 'Kovyálo',
-        description: 'Years ago, a ship landed. We are their children.',
-        socialTitle: 'Kovyálo | JGantts',
-        socialDescription:
-          'JGantts\' Conworld of Kovyálo.',
+        title: 'JGantts Photos',
+        description: '.',
+        socialTitle: 'Photos | JGantts',
+        socialDescription: 'Photos from JGantts',
         socialImage: '/kovyalo-social-preview.svg',
       },
     },

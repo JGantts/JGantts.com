@@ -28,8 +28,13 @@ const emit = defineEmits<{
 const containerRef = ref<HTMLElement | null>(null)
 const dialogRef = ref<HTMLDialogElement | null>(null)
 const containerWidth = ref(0)
+const viewportHeight = ref(0)
 const activePhotoId = ref<string | null>(null)
 let resizeObserver: ResizeObserver | null = null
+
+function syncViewportHeight() {
+  viewportHeight.value = window.innerHeight
+}
 
 const gap = 10
 const columnCount = computed(() => {
@@ -38,6 +43,8 @@ const columnCount = computed(() => {
   if (containerWidth.value < 1240) return 18
   return 24
 })
+
+const targetGalleryHeight = computed(() => Math.max(420, viewportHeight.value - 170))
 
 const imageRecords = computed(() =>
   props.posts.flatMap((post, postIndex) =>
@@ -64,7 +71,13 @@ const cards = computed<PhotoCard[]>(() =>
 )
 
 const masonry = computed(() =>
-  calculatePhotoMasonry(cards.value, containerWidth.value, columnCount.value, gap),
+  calculatePhotoMasonry(
+    cards.value,
+    containerWidth.value,
+    columnCount.value,
+    gap,
+    targetGalleryHeight.value,
+  ),
 )
 
 const recordsById = computed(() => new Map(imageRecords.value.map((record) => [record.id, record])))
@@ -181,6 +194,9 @@ function handleDialogKeydown(event: KeyboardEvent) {
 }
 
 onMounted(() => {
+  syncViewportHeight()
+  window.addEventListener('resize', syncViewportHeight, { passive: true })
+
   resizeObserver = new ResizeObserver(([entry]) => {
     containerWidth.value = entry?.contentRect.width ?? 0
   })
@@ -189,6 +205,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
+  window.removeEventListener('resize', syncViewportHeight)
   document.documentElement.style.overflow = ''
 })
 </script>

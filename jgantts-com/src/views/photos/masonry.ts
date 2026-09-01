@@ -20,6 +20,11 @@ export type PlacedPhotoCluster = {
   cards: PlacedPhotoCard[]
 }
 
+export type PhotoMasonry = {
+  height: number
+  clusters: PlacedPhotoCluster[]
+}
+
 type GridCard = PhotoCard & { columnSpan: number; rowSpan: number }
 type GridPlacement = GridCard & { column: number; row: number }
 type ClusterShape = {
@@ -121,12 +126,12 @@ function pixelsForSpan(span: number, cellSize: number, gap: number) {
  * Photos occupy ratio-aware atomic regions inside their post. The completed post is then
  * packed as one skyline block, so posts stay clustered and no image is ever segmented.
  */
-export function calculatePhotoMasonry(
+function calculatePhotoMasonryAtDensity(
   cards: PhotoCard[],
   containerWidth: number,
   totalColumns: number,
   gap: number,
-): { height: number; clusters: PlacedPhotoCluster[] } {
+): PhotoMasonry {
   if (!cards.length || containerWidth <= 0 || totalColumns <= 0) {
     return { height: 0, clusters: [] }
   }
@@ -180,4 +185,70 @@ export function calculatePhotoMasonry(
     clusters,
     height: Math.max(0, ...clusters.map((cluster) => cluster.y + cluster.height)),
   }
+}
+
+function masonryScore(
+  masonry: PhotoMasonry,
+  containerWidth: number,
+  targetHeight: number,
+  preferredShortEdge: number,
+) {
+  const photoArea = masonry.clusters.reduce(
+    (total, cluster) =>
+      total + cluster.cards.reduce((clusterTotal, card) => clusterTotal + card.width * card.height, 0),
+    0,
+  )
+  const canvasArea = Math.max(1, containerWidth * masonry.height)
+  const emptyFraction = Math.max(0, 1 - photoArea / canvasArea)
+  const heightRatio = masonry.height / Math.max(1, targetHeight)
+  const underfill = Math.max(0, 1 - heightRatio)
+  const overflow = Math.max(0, heightRatio - 1)
+  const cards = masonry.clusters.flatMap((cluster) => cluster.cards)
+  const undersized = cards.length
+    ? cards.reduce((total, card) => {
+        const shortEdge = Math.min(card.width, card.height)
+        return total + Math.max(0, 1 - shortEdge / preferredShortEdge) ** 2
+      }, 0) / cards.length
+    : 0
+
+  // Missing the available page is conspicuous, while a little vertical overflow is harmless.
+  // EmptyFraction also steers the skyline toward densities that use the full page width.
+  return underfill * 7 + overflow * 1.15 + undersized * 5 + emptyFraction * 2.5
+}
+
+/**
+ * Select a grid density instead of making it a breakpoint constant. The selected density aims
+ * to give photos a generous short edge while using roughly one viewport of gallery space.
+ */
+export function calculatePhotoMasonry(
+  cards: PhotoCard[],
+  containerWidth: number,
+  maximumColumns: number,
+  gap: number,
+  targetHeight = containerWidth * 0.7,
+): PhotoMasonry {
+  if (!cards.length || containerWidth <= 0 || maximumColumns <= 0) {
+    return { height: 0, clusters: [] }
+  }
+
+  const minimumColumns = Math.min(6, maximumColumns)
+  const preferredShortEdge = Math.min(300, Math.max(150, containerWidth / 4.5))
+  let best = calculatePhotoMasonryAtDensity(cards, containerWidth, minimumColumns, gap)
+  let bestScore = masonryScore(best, containerWidth, targetHeight, preferredShortEdge)
+
+  for (let columns = minimumColumns + 1; columns <= maximumColumns; columns += 1) {
+    const candidate = calculatePhotoMasonryAtDensity(cards, containerWidth, columns, gap)
+    const candidateScore = masonryScore(
+      candidate,
+      containerWidth,
+      targetHeight,
+      preferredShortEdge,
+    )
+    if (candidateScore < bestScore) {
+      best = candidate
+      bestScore = candidateScore
+    }
+  }
+
+  return best
 }

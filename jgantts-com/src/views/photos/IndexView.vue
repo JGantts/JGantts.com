@@ -98,6 +98,7 @@ const tootIds = [
   '117193518181386825',
   '117181311875674440',
   '117181377440082771',
+  '117198059772006365'
 ]
 const activePostStorageKey = 'photos-active-post'
 
@@ -275,6 +276,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
           </header>
 
           <ClusteredPhotoMasonry
+            class="photo-gallery"
             :posts="toots.map((toot) => toot?.post ?? null)"
             :active-post-id="activeToot?.post.id"
             @select="selectToot"
@@ -801,6 +803,15 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 @media (max-width: 36rem) {
+  .photo-gallery {
+    margin-left: calc(-1 * (var(--photos-gutter) + env(safe-area-inset-left, 0px)));
+    margin-right: calc(-1 * (var(--photos-gutter) + env(safe-area-inset-right, 0px)));
+    width: calc(
+      100% + var(--photos-gutter) + var(--photos-gutter) +
+      env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px)
+    );
+  }
+
   .toot-carousel {
     --toot-card-width: calc(88% - 0.5rem);
   }

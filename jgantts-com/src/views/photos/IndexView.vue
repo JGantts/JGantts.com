@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import ClusteredPhotoMasonry from './ClusteredPhotoMasonry.vue'
 import MediaCarousel from '@/components/MediaCarousel.vue'
 
 type MastodonAccount = {
@@ -14,6 +15,9 @@ type MastodonAttachment = {
   blurhash?: string | null
   description?: string | null
   preview_url: string
+  meta?: {
+    original?: { aspect?: number; height?: number; width?: number }
+  } | null
   remote_url?: string | null
   type: 'audio' | 'gifv' | 'image' | 'unknown' | 'video'
   url: string
@@ -96,22 +100,14 @@ const tootIds = [
   '117181377440082771',
 ]
 const activePostStorageKey = 'photos-active-post'
-const commentScrollStorageKey = 'photos-comment-scroll'
 
 const toots = ref<(TootThread | null)[]>(tootIds.map(() => null))
 const loading = ref(true)
 const error = ref<string | null>(null)
 const tootLoads = new Map<number, Promise<void>>()
 
-const tootViewportRef = ref<HTMLElement | null>(null)
 const activeTootIndex = ref(0)
-const commentsSectionRef = ref<HTMLElement | null>(null)
-const hasMultipleToots = computed(() => toots.value.length > 1)
 const activeToot = computed(() => toots.value[activeTootIndex.value] ?? null)
-let tootObserver: IntersectionObserver | null = null
-let commentScrollPositions = loadCommentScrollPositions()
-let scrollSaveFrame: number | null = null
-let carouselScrollEnd: ReturnType<typeof setTimeout> | null = null
 
 const formatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
@@ -122,62 +118,14 @@ function postUrl(post: MastodonStatus): string {
   return post.url ?? `https://${host}/@${post.account.acct}/${post.id}`
 }
 
-function loadCommentScrollPositions(): Record<string, number> {
-  try {
-    const storedPositions = JSON.parse(localStorage.getItem(commentScrollStorageKey) ?? '{}')
-    return typeof storedPositions === 'object' && storedPositions !== null ? storedPositions : {}
-  } catch {
-    return {}
-  }
-}
-
-function saveCommentPosition() {
-  const postId = activeToot.value?.post.id
-  const commentsSection = commentsSectionRef.value
-  if (!postId || !commentsSection) return
-
-  const sectionTop = commentsSection.getBoundingClientRect().top + window.scrollY
-  if (window.scrollY < sectionTop - 1) return
-
-  commentScrollPositions[postId] = Math.max(0, window.scrollY - sectionTop)
-  localStorage.setItem(commentScrollStorageKey, JSON.stringify(commentScrollPositions))
-}
-
-function restoreCommentPosition(postId: string) {
-  const savedPosition = commentScrollPositions[postId]
-  if (savedPosition === undefined) return
-
-  requestAnimationFrame(() => {
-    const commentsSection = commentsSectionRef.value
-    if (!commentsSection) return
-
-    const sectionTop = commentsSection.getBoundingClientRect().top + window.scrollY
-    window.scrollTo({ top: sectionTop + savedPosition })
-  })
-}
-
-function handlePageScroll() {
-  if (scrollSaveFrame !== null) return
-
-  scrollSaveFrame = requestAnimationFrame(() => {
-    scrollSaveFrame = null
-    saveCommentPosition()
-  })
-}
-
-async function selectToot(nextIndex: number) {
+function selectToot(nextIndex: number) {
   if (nextIndex === activeTootIndex.value) return
 
-  saveCommentPosition()
   activeTootIndex.value = nextIndex
-
-  await ensureTootLoaded(nextIndex)
   const postId = toots.value[nextIndex]?.post.id
   if (!postId) return
 
   localStorage.setItem(activePostStorageKey, postId)
-  await nextTick()
-  restoreCommentPosition(postId)
 }
 
 function ensureTootLoaded(index: number): Promise<void> {
@@ -196,90 +144,20 @@ function ensureTootLoaded(index: number): Promise<void> {
   return load
 }
 
-function scrollToToot(index: number, behavior: ScrollBehavior = 'smooth') {
-  const viewport = tootViewportRef.value
-  const toot = viewport?.querySelectorAll<HTMLElement>('.toot-thread')[index]
-  if (!viewport || !toot) return
-
-  const left = toot.offsetLeft - (viewport.clientWidth - toot.offsetWidth) / 2
-  viewport.scrollTo({ left, behavior })
-}
-
-function scrollToPreviousToot() {
-  scrollToToot(Math.max(0, activeTootIndex.value - 1))
-}
-
-function scrollToNextToot() {
-  scrollToToot(Math.min(toots.value.length - 1, activeTootIndex.value + 1))
-}
-
-function syncNativeCarouselSelection() {
-  carouselScrollEnd = null
-  const viewport = tootViewportRef.value
-  if (!viewport) return
-
-  const viewportCenter = viewport.scrollLeft + viewport.clientWidth / 2
-  const tootElements = [...viewport.querySelectorAll<HTMLElement>('.toot-thread')]
-  const nextIndex = tootElements.reduce((nearest, toot, index) => {
-    const center = toot.offsetLeft + toot.offsetWidth / 2
-    const nearestCenter = tootElements[nearest].offsetLeft + tootElements[nearest].offsetWidth / 2
-    return Math.abs(center - viewportCenter) < Math.abs(nearestCenter - viewportCenter)
-      ? index
-      : nearest
-  }, 0)
-
-  void selectToot(nextIndex)
-}
-
-function handleCarouselScroll() {
-  if (carouselScrollEnd !== null) clearTimeout(carouselScrollEnd)
-  carouselScrollEnd = setTimeout(syncNativeCarouselSelection, 80)
-}
-
 onMounted(async () => {
-  window.addEventListener('scroll', handlePageScroll, { passive: true })
-
   try {
     const savedPostId = localStorage.getItem(activePostStorageKey)
     const savedPostIndex = tootIds.indexOf(savedPostId ?? '')
 
     if (savedPostIndex >= 0) activeTootIndex.value = savedPostIndex
-    await ensureTootLoaded(activeTootIndex.value)
+    await Promise.all(tootIds.map((_, index) => ensureTootLoaded(index)))
 
     loading.value = false
-    await nextTick()
-    scrollToToot(activeTootIndex.value, 'auto')
-
-    const viewport = tootViewportRef.value
-    if (viewport) {
-      tootObserver = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (!entry.isIntersecting) return
-            const index = Number((entry.target as HTMLElement).dataset.tootIndex)
-            void ensureTootLoaded(index)
-          })
-        },
-        { root: viewport, rootMargin: '0px 75%', threshold: 0.01 },
-      )
-      viewport.querySelectorAll('.toot-thread').forEach((toot) => tootObserver?.observe(toot))
-    }
-
-    const activePostId = activeToot.value?.post.id
-    if (activePostId) restoreCommentPosition(activePostId)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Could not load Mastodon conversation'
   } finally {
     loading.value = false
   }
-})
-
-onBeforeUnmount(() => {
-  saveCommentPosition()
-  tootObserver?.disconnect()
-  window.removeEventListener('scroll', handlePageScroll)
-  if (scrollSaveFrame !== null) cancelAnimationFrame(scrollSaveFrame)
-  if (carouselScrollEnd !== null) clearTimeout(carouselScrollEnd)
 })
 
 async function loadToot(tootId: string): Promise<TootThread> {
@@ -393,106 +271,18 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                 <span>@{{ activeToot.post.account.acct }}</span>
               </span>
             </a>
+            <a :href="postUrl(activeToot.post)" class="timestamp">{{ formatDate(activeToot.post.created_at) }}</a>
           </header>
 
-          <div ref="tootViewportRef" class="toot-viewport" @scroll="handleCarouselScroll">
-            <div class="toot-container">
-              <section
-                v-for="(toot, index) in toots"
-                :key="toot?.post.id ?? tootIds[index]"
-                :data-toot-index="index"
-                class="toot-thread"
-              >
-        <article v-if="toot" class="mastodon-post">
-          <header class="post-date-header">
-            <a :href="postUrl(toot.post)" class="timestamp">{{ formatDate(toot.post.created_at) }}</a>
-          </header>
-
-          <p v-if="toot.post.spoiler_text" class="content-warning">{{ toot.post.spoiler_text }}</p>
-
-          <div class="status-content" v-html="toot.post.content"></div>
-
-          <MediaCarousel
-            v-if="toot.post.media_attachments.length"
-            :attachments="toot.post.media_attachments"
-            label="Post media"
+          <ClusteredPhotoMasonry
+            :posts="toots.map((toot) => toot?.post ?? null)"
+            :active-post-id="activeToot?.post.id"
+            @select="selectToot"
           />
-
-          <div v-if="toot.post.poll" class="poll">
-            <div
-              v-for="option in toot.post.poll.options"
-              :key="option.title"
-              class="poll-option"
-            >
-              <span class="poll-bar" :style="{ width: `${pollOptionPercent(option, toot.post.poll)}%` }"></span>
-              <span class="poll-title">{{ option.title }}</span>
-              <span class="poll-percent">{{ pollOptionPercent(option, toot.post.poll) }}%</span>
-            </div>
-            <p class="poll-meta">
-              {{ formatCount(toot.post.poll.votes_count ?? 0) }} votes
-            </p>
-          </div>
-
-          <a v-if="toot.post.card" :href="toot.post.card.url" class="link-card">
-            <img v-if="toot.post.card.image" :src="toot.post.card.image" alt="" />
-            <span class="link-card-copy">
-              <span>{{ toot.post.card.provider_name }}</span>
-              <strong>{{ toot.post.card.title }}</strong>
-              <small>{{ toot.post.card.description }}</small>
-            </span>
-          </a>
-
-          <footer class="status-stats">
-            <span>{{ formatCount(toot.post.replies_count) }} replies</span>
-            <span>{{ formatCount(toot.post.reblogs_count) }} boosts</span>
-            <span>{{ formatCount(toot.post.favourites_count) }} favorites</span>
-          </footer>
-        </article>
-        <div v-else class="toot-placeholder" aria-label="Loading post">
-          <span>Loading post…</span>
-        </div>
-
-              </section>
-            </div>
-          </div>
-
-          <div v-if="hasMultipleToots" class="toot-carousel-controls">
-            <button
-              type="button"
-              class="toot-carousel-control"
-              aria-label="Previous post"
-              :disabled="activeTootIndex === 0"
-              @click="scrollToPreviousToot"
-            >
-              ←
-            </button>
-            <div class="toot-carousel-dots" aria-label="Post selection">
-              <button
-                v-for="(_, index) in toots"
-                :key="index"
-                type="button"
-                class="toot-carousel-dot"
-                :class="{ 'is-selected': index === activeTootIndex }"
-                :aria-label="`Show post ${index + 1}`"
-                :aria-current="index === activeTootIndex ? 'true' : undefined"
-                @click="scrollToToot(index)"
-              />
-            </div>
-            <button
-              type="button"
-              class="toot-carousel-control"
-              aria-label="Next post"
-              :disabled="activeTootIndex === toots.length - 1"
-              @click="scrollToNextToot"
-            >
-              →
-            </button>
-          </div>
 
           <section
             v-if="activeToot"
             :key="activeToot.post.id"
-            ref="commentsSectionRef"
             class="comments-section"
           >
             <header class="comments-header">

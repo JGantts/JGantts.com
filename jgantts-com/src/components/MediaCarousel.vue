@@ -149,7 +149,11 @@ onBeforeUnmount(() => {
         aria-label="Previous image"
         :disabled="activeImageIndex === 0"
         @click="showPreviousImage"
-      >‹</button>
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m15 18-6-6 6-6" />
+        </svg>
+      </button>
       <figure v-if="activeImage" class="lightbox-figure">
         <img :src="activeImage.url" :alt="activeImage.description || 'Expanded post image'" />
         <figcaption v-if="activeImage.description">{{ activeImage.description }}</figcaption>
@@ -161,7 +165,11 @@ onBeforeUnmount(() => {
         aria-label="Next image"
         :disabled="activeImageIndex === imageAttachments.length - 1"
         @click="showNextImage"
-      >›</button>
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m9 6 6 6-6 6" />
+        </svg>
+      </button>
     </dialog>
   </Teleport>
 </template>
@@ -305,11 +313,21 @@ button.media-tile {
 }
 
 .lightbox-nav {
-  font-size: 2.5rem;
   height: 3.25rem;
+  padding: 0;
   top: 50%;
   transform: translateY(-50%);
   width: 3.25rem;
+}
+
+.lightbox-nav svg {
+  fill: none;
+  height: 1.5rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  width: 1.5rem;
 }
 
 .lightbox-previous {

@@ -287,7 +287,6 @@ onBeforeUnmount(() => {
             />
           </g>
         </svg>
-        <span class="cluster-date">{{ formatClusterDate(recordsById.get(cluster.cards[0].id)!.post.created_at) }}</span>
       </section>
     </div>
 
@@ -398,20 +397,6 @@ onBeforeUnmount(() => {
   outline: 3px solid var(--photos-accent);
   outline-offset: 2px;
   z-index: 2;
-}
-
-.cluster-date {
-  background: color-mix(in srgb, var(--photos-media-bg) 82%, transparent);
-  border-radius: 999px;
-  bottom: 0.45rem;
-  color: #fff;
-  font-family: 'Azeret Mono Variable', monospace;
-  font-size: 0.62rem;
-  left: 0.45rem;
-  padding: 0.26rem 0.42rem;
-  pointer-events: none;
-  position: absolute;
-  z-index: 1;
 }
 
 .empty-gallery {

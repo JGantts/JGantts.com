@@ -115,10 +115,6 @@ const formatter = new Intl.DateTimeFormat(undefined, {
   timeStyle: 'short',
 })
 
-function postUrl(post: MastodonStatus): string {
-  return post.url ?? `https://${host}/@${post.account.acct}/${post.id}`
-}
-
 function selectToot(nextIndex: number) {
   if (nextIndex === activeTootIndex.value) return
 
@@ -272,11 +268,9 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                 <span>@{{ activeToot.post.account.acct }}</span>
               </span>
             </a>
-            <a :href="postUrl(activeToot.post)" class="timestamp">{{ formatDate(activeToot.post.created_at) }}</a>
           </header>
 
           <ClusteredPhotoMasonry
-            class="photo-gallery"
             :posts="toots.map((toot) => toot?.post ?? null)"
             :active-post-id="activeToot?.post.id"
             @select="selectToot"
@@ -803,15 +797,6 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 @media (max-width: 36rem) {
-  .photo-gallery {
-    margin-left: calc(-1 * (var(--photos-gutter) + env(safe-area-inset-left, 0px)));
-    margin-right: calc(-1 * (var(--photos-gutter) + env(safe-area-inset-right, 0px)));
-    width: calc(
-      100% + var(--photos-gutter) + var(--photos-gutter) +
-      env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px)
-    );
-  }
-
   .toot-carousel {
     --toot-card-width: calc(88% - 0.5rem);
   }

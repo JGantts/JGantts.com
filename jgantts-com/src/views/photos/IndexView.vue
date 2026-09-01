@@ -107,8 +107,11 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const tootLoads = new Map<number, Promise<void>>()
 
-const activeTootIndex = ref(0)
-const activeToot = computed(() => toots.value[activeTootIndex.value] ?? null)
+const activeTootIndex = ref<number | null>(null)
+const selectedPostVisible = ref(true)
+const activeToot = computed(() =>
+  activeTootIndex.value === null ? null : toots.value[activeTootIndex.value] ?? null,
+)
 
 const formatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
@@ -116,13 +119,28 @@ const formatter = new Intl.DateTimeFormat(undefined, {
 })
 
 function selectToot(nextIndex: number) {
-  if (nextIndex === activeTootIndex.value) return
-
   activeTootIndex.value = nextIndex
+  selectedPostVisible.value = true
   const postId = toots.value[nextIndex]?.post.id
   if (!postId) return
 
   localStorage.setItem(activePostStorageKey, postId)
+}
+
+function clearSelection() {
+  activeTootIndex.value = null
+  selectedPostVisible.value = true
+  localStorage.removeItem(activePostStorageKey)
+}
+
+function handlePageClick(event: MouseEvent) {
+  if (!activeToot.value) return
+
+  const target = event.target
+  if (!(target instanceof Element)) return
+  if (target.closest('.comments-section') || target.closest('.photo-card')) return
+
+  clearSelection()
 }
 
 function ensureTootLoaded(index: number): Promise<void> {
@@ -244,7 +262,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 </script>
 
 <template>
-  <main class="photos-page">
+  <main class="photos-page" @click="handlePageClick">
     <section class="conversation-shell" aria-live="polite">
       <div v-if="loading" class="loading-state">
         Loading Mastodon conversation...
@@ -260,31 +278,42 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
         class="toot-carousel"
         aria-label="Mastodon posts"
       >
-          <header v-if="activeToot" class="post-meta-header">
-            <a :href="activeToot.post.account.url" class="author-link">
-              <img :src="activeToot.post.account.avatar" alt="" class="avatar avatar-large" />
-              <span class="author-text">
-                <strong>{{ displayName(activeToot.post.account) }}</strong>
-                <span>@{{ activeToot.post.account.acct }}</span>
-              </span>
-            </a>
-          </header>
-
           <ClusteredPhotoMasonry
             :posts="toots.map((toot) => toot?.post ?? null)"
             :active-post-id="activeToot?.post.id"
             @select="selectToot"
+            @clear="clearSelection"
+            @visibility="selectedPostVisible = $event"
           />
 
           <section
             v-if="activeToot"
             :key="activeToot.post.id"
             class="comments-section"
+            :class="{ 'is-out-of-view': !selectedPostVisible }"
+            :aria-hidden="!selectedPostVisible"
           >
-            <header class="comments-header">
-              <h1>Comments</h1>
-              <span>{{ formatCount(countReplies(activeToot.comments)) }}</span>
-            </header>
+            <div class="comments-panel-heading">
+              <header class="post-meta-header">
+                <a :href="activeToot.post.account.url" class="author-link">
+                  <img :src="activeToot.post.account.avatar" alt="" class="avatar avatar-large" />
+                  <span class="author-text">
+                    <strong>{{ displayName(activeToot.post.account) }}</strong>
+                    <span>@{{ activeToot.post.account.acct }}</span>
+                  </span>
+                </a>
+              </header>
+
+              <div class="comments-post-text" v-html="activeToot.post.content"></div>
+              <time class="comments-post-date" :datetime="activeToot.post.created_at">
+                {{ formatDate(activeToot.post.created_at) }}
+              </time>
+
+              <header class="comments-header">
+                <h1>Comments</h1>
+                <span>{{ formatCount(countReplies(activeToot.comments)) }}</span>
+              </header>
+            </div>
 
             <ol v-if="activeToot.comments.length" class="comment-list">
               <li
@@ -372,9 +401,12 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
 .toot-carousel {
   --toot-card-width: min(calc(68% - 0.75rem), 40rem);
+  --comments-panel-gap: clamp(1.25rem, 2vw, 2rem);
 
+  box-sizing: border-box;
   display: grid;
   gap: 1rem;
+  padding-right: calc(22rem + var(--comments-panel-gap));
 }
 
 .toot-viewport {
@@ -747,12 +779,31 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .comments-section {
+  background: color-mix(in srgb, var(--photos-panel) 94%, transparent);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--photos-border);
+  border-radius: 12px;
+  bottom: calc(var(--photos-gutter) + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  box-shadow: var(--photos-card-shadow);
   display: grid;
   gap: 0.65rem;
-  margin-inline: auto;
-  margin-top: 0.75rem;
-  max-width: 40rem;
-  width: 100%;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: calc(100dvh - 9rem - var(--photos-gutter));
+  overflow: hidden;
+  padding: 0.85rem;
+  position: fixed;
+  right: calc(var(--photos-gutter) + env(safe-area-inset-right, 0px));
+  top: 8rem;
+  transition: opacity 180ms ease, transform 180ms ease;
+  width: min(22rem, calc(100vw - var(--photos-gutter) - var(--photos-gutter)));
+  z-index: 10;
+}
+
+.comments-section.is-out-of-view {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(0.75rem);
 }
 
 .comments-header {
@@ -760,6 +811,49 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   display: flex;
   justify-content: space-between;
   padding: 0 0.15rem;
+}
+
+.comments-panel-heading {
+  display: grid;
+  gap: 0.45rem;
+  min-height: 0;
+  padding: 0 0.15rem 0.2rem;
+}
+
+.comments-post-text {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  max-height: min(10rem, 22dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.comments-post-text :deep(p + p) {
+  margin-top: 0.65rem;
+}
+
+.comments-post-text :deep(a) {
+  color: var(--photos-accent);
+  text-decoration: none;
+}
+
+.comments-post-text :deep(img) {
+  height: 1em;
+  vertical-align: -0.1em;
+  width: 1em;
+}
+
+.comments-post-date {
+  color: color-mix(in srgb, var(--photos-muted) 62%, transparent);
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.62rem;
+  line-height: 1.3;
+}
+
+.comments-panel-heading .comments-header {
+  border-top: 1px solid color-mix(in srgb, var(--photos-border) 58%, transparent);
+  margin-top: 0.25rem;
+  padding-top: 0.65rem;
 }
 
 .comments-header h1 {
@@ -776,6 +870,10 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 .comment-list {
   display: grid;
   gap: 0.75rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.15rem;
+  scrollbar-width: thin;
 }
 
 .comment-item {
@@ -791,8 +889,27 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 @media (max-width: 44rem) {
+  .toot-carousel {
+    padding-right: 0;
+  }
+
   .comments-section {
-    max-width: none;
+    bottom: calc(var(--photos-gutter) + env(safe-area-inset-bottom, 0px));
+    left: calc(var(--photos-gutter) + env(safe-area-inset-left, 0px));
+    max-height: min(42dvh, 28rem);
+    right: calc(var(--photos-gutter) + env(safe-area-inset-right, 0px));
+    top: auto;
+    width: auto;
+  }
+
+  .comments-section.is-out-of-view {
+    transform: translateY(0.75rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comments-section {
+    transition: none;
   }
 }
 

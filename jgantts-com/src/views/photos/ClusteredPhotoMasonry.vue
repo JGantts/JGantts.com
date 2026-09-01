@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { calculatePhotoMasonry, type PhotoCard, type PlacedPhotoCard } from './masonry'
 
 type Attachment = {
@@ -23,6 +23,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   select: [postIndex: number]
+  clear: []
+  visibility: [isVisible: boolean]
 }>()
 
 const containerRef = ref<HTMLElement | null>(null)
@@ -30,7 +32,9 @@ const dialogRef = ref<HTMLDialogElement | null>(null)
 const containerWidth = ref(0)
 const viewportHeight = ref(0)
 const activePhotoId = ref<string | null>(null)
+const selectedPostVisible = ref(true)
 let resizeObserver: ResizeObserver | null = null
+let visibilityObserver: IntersectionObserver | null = null
 
 function syncViewportHeight() {
   viewportHeight.value = window.innerHeight
@@ -86,24 +90,46 @@ const activePhotoIndex = computed(() =>
 )
 const activePhoto = computed(() => imageRecords.value[activePhotoIndex.value] ?? null)
 
+async function observeSelectedPost() {
+  visibilityObserver?.disconnect()
+  visibilityObserver = null
+
+  if (!props.activePostId) {
+    selectedPostVisible.value = true
+    emit('visibility', true)
+    return
+  }
+
+  await nextTick()
+  const cluster = containerRef.value?.querySelector<HTMLElement>(
+    `[data-cluster-key="${CSS.escape(props.activePostId)}"]`,
+  )
+  if (!cluster) return
+
+  visibilityObserver = new IntersectionObserver(([entry]) => {
+    const isVisible = entry?.isIntersecting ?? false
+    selectedPostVisible.value = isVisible
+    emit('visibility', isVisible)
+  })
+  visibilityObserver.observe(cluster)
+}
+
+watch(() => props.activePostId, observeSelectedPost)
+
 function formatClusterDate(value: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value))
 }
 
-async function openPhoto(id: string) {
+function openPhoto(id: string) {
   const record = recordsById.value.get(id)
   if (!record) return
 
-  if (record.post.id !== props.activePostId) {
-    emit('select', record.postIndex)
+  if (record.post.id === props.activePostId) {
+    emit('clear')
     return
   }
 
   emit('select', record.postIndex)
-  activePhotoId.value = id
-  await nextTick()
-  dialogRef.value?.showModal()
-  document.documentElement.style.overflow = 'hidden'
 }
 
 function photoActionLabel(id: string): string {
@@ -111,7 +137,7 @@ function photoActionLabel(id: string): string {
   if (!record) return 'Select photo post'
   const date = formatClusterDate(record.post.created_at)
   return record.post.id === props.activePostId
-    ? `Open photo from ${date}`
+    ? `Clear selected post from ${date}`
     : `Select post from ${date}`
 }
 
@@ -201,10 +227,12 @@ onMounted(() => {
     containerWidth.value = entry?.contentRect.width ?? 0
   })
   if (containerRef.value) resizeObserver.observe(containerRef.value)
+  observeSelectedPost()
 })
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
+  visibilityObserver?.disconnect()
   window.removeEventListener('resize', syncViewportHeight)
   document.documentElement.style.overflow = ''
 })
@@ -220,8 +248,12 @@ onBeforeUnmount(() => {
       <section
         v-for="cluster in masonry.clusters"
         :key="cluster.key"
+        :data-cluster-key="cluster.key"
         class="photo-cluster"
-        :class="{ 'is-active': cluster.key === activePostId }"
+        :class="{
+          'is-active': cluster.key === activePostId,
+          'is-muted': activePostId && selectedPostVisible && cluster.key !== activePostId,
+        }"
         :style="{
           left: `${cluster.x}px`,
           top: `${cluster.y}px`,
@@ -344,7 +376,14 @@ onBeforeUnmount(() => {
 
 .photo-cluster {
   position: absolute;
-  transition: left 220ms ease, top 220ms ease;
+  transform-origin: center;
+  transition: filter 180ms ease, left 220ms ease, opacity 180ms ease, top 220ms ease, transform 180ms ease;
+}
+
+.photo-cluster.is-muted {
+  filter: saturate(0.32) brightness(0.84);
+  opacity: 0.58;
+  transform: scale(0.97);
 }
 
 .photo-card {
@@ -360,7 +399,7 @@ onBeforeUnmount(() => {
 }
 
 .photo-cluster.is-active .photo-card {
-  cursor: zoom-in;
+  cursor: pointer;
   z-index: 1;
 }
 

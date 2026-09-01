@@ -514,6 +514,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   --photos-poll-bg: #efe4d7;
   --photos-card-border: rgba(92, 72, 53, 0.22);
   --photos-card-shadow: 0 0 0.45rem rgba(74, 56, 40, 0.12), 0 0.4rem 1.1rem rgba(74, 56, 40, 0.14);
+  --photos-card-shadow-space: 1.5rem;
 
   background: linear-gradient(
     180deg,
@@ -544,9 +545,13 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .toot-viewport {
+  margin-bottom: calc(-1 * var(--photos-card-shadow-space));
   margin-left: calc(-1 * (var(--photos-gutter) + env(safe-area-inset-left, 0px)));
   margin-right: calc(-1 * (var(--photos-gutter) + env(safe-area-inset-right, 0px)));
+  margin-top: calc(-1 * var(--photos-card-shadow-space));
   overflow: hidden;
+  padding-bottom: var(--photos-card-shadow-space);
+  padding-top: var(--photos-card-shadow-space);
 }
 
 .toot-container {

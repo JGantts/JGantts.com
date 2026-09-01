@@ -24,7 +24,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   select: [postIndex: number]
   clear: []
-  visibility: [isVisible: boolean]
+  visibility: [visibility: number]
 }>()
 
 const containerRef = ref<HTMLElement | null>(null)
@@ -32,12 +32,14 @@ const dialogRef = ref<HTMLDialogElement | null>(null)
 const containerWidth = ref(0)
 const viewportHeight = ref(0)
 const activePhotoId = ref<string | null>(null)
-const selectedPostVisible = ref(true)
+const selectedPostVisibility = ref(1)
 let resizeObserver: ResizeObserver | null = null
-let visibilityObserver: IntersectionObserver | null = null
+let selectedPostElement: HTMLElement | null = null
+let visibilityFrame: number | null = null
 
 function syncViewportHeight() {
   viewportHeight.value = window.innerHeight
+  scheduleSelectedPostVisibilityUpdate()
 }
 
 const gap = 10
@@ -89,14 +91,16 @@ const activePhotoIndex = computed(() =>
   imageRecords.value.findIndex((record) => record.id === activePhotoId.value),
 )
 const activePhoto = computed(() => imageRecords.value[activePhotoIndex.value] ?? null)
+const effectiveActivePostId = computed(() =>
+  selectedPostVisibility.value > 0.01 ? props.activePostId : undefined,
+)
 
 async function observeSelectedPost() {
-  visibilityObserver?.disconnect()
-  visibilityObserver = null
+  selectedPostElement = null
 
   if (!props.activePostId) {
-    selectedPostVisible.value = true
-    emit('visibility', true)
+    selectedPostVisibility.value = 1
+    emit('visibility', 1)
     return
   }
 
@@ -106,12 +110,37 @@ async function observeSelectedPost() {
   )
   if (!cluster) return
 
-  visibilityObserver = new IntersectionObserver(([entry]) => {
-    const isVisible = entry?.isIntersecting ?? false
-    selectedPostVisible.value = isVisible
-    emit('visibility', isVisible)
-  })
-  visibilityObserver.observe(cluster)
+  selectedPostElement = cluster
+  updateSelectedPostVisibility()
+}
+
+function updateSelectedPostVisibility() {
+  visibilityFrame = null
+  if (!selectedPostElement) return
+
+  const bounds = selectedPostElement.getBoundingClientRect()
+  const isMobile = window.matchMedia('(max-width: 44rem)').matches
+  const commentsPanel = document.querySelector<HTMLElement>('.comments-section')
+  const mobilePanelBottom = isMobile && commentsPanel
+    ? window.innerHeight
+      - commentsPanel.offsetHeight
+      - (Number.parseFloat(getComputedStyle(commentsPanel).bottom) || 0)
+    : window.innerHeight
+  const visibleViewportBottom = Math.min(window.innerHeight, mobilePanelBottom)
+  const fadeDistance = Math.max(180, Math.min(360, window.innerHeight * 0.35))
+  const distancePastBoundary = bounds.bottom < 0
+    ? -bounds.bottom
+    : bounds.top > visibleViewportBottom
+      ? bounds.top - visibleViewportBottom
+      : 0
+  const visibility = Math.max(0, 1 - distancePastBoundary / fadeDistance)
+  selectedPostVisibility.value = visibility
+  emit('visibility', visibility)
+}
+
+function scheduleSelectedPostVisibilityUpdate() {
+  if (visibilityFrame !== null) return
+  visibilityFrame = requestAnimationFrame(updateSelectedPostVisibility)
 }
 
 watch(() => props.activePostId, observeSelectedPost)
@@ -120,15 +149,26 @@ function formatClusterDate(value: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value))
 }
 
-function openPhoto(id: string) {
+async function openPhoto(id: string) {
   const record = recordsById.value.get(id)
   if (!record) return
+  const activePostId = effectiveActivePostId.value
 
-  if (record.post.id === props.activePostId) {
+  if (record.post.id === activePostId) {
+    activePhotoId.value = id
+    await nextTick()
+    dialogRef.value?.showModal()
+    document.documentElement.style.overflow = 'hidden'
+    return
+  }
+
+  if (activePostId) {
     emit('clear')
     return
   }
 
+  selectedPostVisibility.value = 1
+  emit('visibility', 1)
   emit('select', record.postIndex)
 }
 
@@ -136,8 +176,9 @@ function photoActionLabel(id: string): string {
   const record = recordsById.value.get(id)
   if (!record) return 'Select photo post'
   const date = formatClusterDate(record.post.created_at)
-  return record.post.id === props.activePostId
-    ? `Clear selected post from ${date}`
+  if (record.post.id === effectiveActivePostId.value) return `Open photo from selected post dated ${date}`
+  return effectiveActivePostId.value
+    ? 'Clear selected post'
     : `Select post from ${date}`
 }
 
@@ -222,9 +263,11 @@ function handleDialogKeydown(event: KeyboardEvent) {
 onMounted(() => {
   syncViewportHeight()
   window.addEventListener('resize', syncViewportHeight, { passive: true })
+  window.addEventListener('scroll', scheduleSelectedPostVisibilityUpdate, { passive: true })
 
   resizeObserver = new ResizeObserver(([entry]) => {
     containerWidth.value = entry?.contentRect.width ?? 0
+    scheduleSelectedPostVisibilityUpdate()
   })
   if (containerRef.value) resizeObserver.observe(containerRef.value)
   observeSelectedPost()
@@ -232,8 +275,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
-  visibilityObserver?.disconnect()
+  if (visibilityFrame !== null) cancelAnimationFrame(visibilityFrame)
   window.removeEventListener('resize', syncViewportHeight)
+  window.removeEventListener('scroll', scheduleSelectedPostVisibilityUpdate)
   document.documentElement.style.overflow = ''
 })
 </script>
@@ -251,10 +295,11 @@ onBeforeUnmount(() => {
         :data-cluster-key="cluster.key"
         class="photo-cluster"
         :class="{
-          'is-active': cluster.key === activePostId,
-          'is-muted': activePostId && selectedPostVisible && cluster.key !== activePostId,
+          'is-active': cluster.key === effectiveActivePostId,
+          'is-muted': effectiveActivePostId && cluster.key !== effectiveActivePostId,
         }"
         :style="{
+          '--selection-emphasis': cluster.key !== effectiveActivePostId ? selectedPostVisibility : 0,
           left: `${cluster.x}px`,
           top: `${cluster.y}px`,
           width: `${cluster.width}px`,
@@ -283,18 +328,19 @@ onBeforeUnmount(() => {
             loading="lazy"
           />
         </button>
-        <svg
-          v-if="cluster.key === activePostId"
-          class="cluster-highlight"
-          :viewBox="`-8 -8 ${cluster.width + 16} ${cluster.height + 16}`"
-          :style="{
-            left: '-8px',
-            top: '-8px',
-            width: `${cluster.width + 16}px`,
-            height: `${cluster.height + 16}px`,
-          }"
-          aria-hidden="true"
-        >
+        <Transition name="cluster-selection">
+          <svg
+            v-if="cluster.key === effectiveActivePostId"
+            class="cluster-highlight"
+            :viewBox="`-8 -8 ${cluster.width + 16} ${cluster.height + 16}`"
+            :style="{
+              left: '-8px',
+              top: '-8px',
+              width: `${cluster.width + 16}px`,
+              height: `${cluster.height + 16}px`,
+            }"
+            aria-hidden="true"
+          >
           <defs>
             <filter
               :id="`post-highlight-${cluster.key}`"
@@ -318,7 +364,8 @@ onBeforeUnmount(() => {
               fill="currentColor"
             />
           </g>
-        </svg>
+          </svg>
+        </Transition>
       </section>
     </div>
 
@@ -381,9 +428,10 @@ onBeforeUnmount(() => {
 }
 
 .photo-cluster.is-muted {
-  filter: saturate(0.32) brightness(0.84);
-  opacity: 0.58;
-  transform: scale(0.97);
+  filter: saturate(calc(1 - (0.68 * var(--selection-emphasis))))
+    brightness(calc(1 - (0.16 * var(--selection-emphasis))));
+  opacity: calc(1 - (0.42 * var(--selection-emphasis)));
+  transform: scale(calc(1 - (0.03 * var(--selection-emphasis))));
 }
 
 .photo-card {
@@ -409,6 +457,16 @@ onBeforeUnmount(() => {
   pointer-events: none;
   position: absolute;
   z-index: 2;
+}
+
+.cluster-selection-enter-active,
+.cluster-selection-leave-active {
+  transition: opacity 320ms ease;
+}
+
+.cluster-selection-enter-from,
+.cluster-selection-leave-to {
+  opacity: 0;
 }
 
 .photo-card::after {
@@ -528,6 +586,8 @@ onBeforeUnmount(() => {
 .lightbox-next { right: max(1rem, env(safe-area-inset-right)); }
 
 @media (prefers-reduced-motion: reduce) {
+  .cluster-selection-enter-active,
+  .cluster-selection-leave-active,
   .photo-cluster,
   .photo-masonry,
   .photo-card img { transition: none; }

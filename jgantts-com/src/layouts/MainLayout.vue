@@ -114,6 +114,13 @@ body {
   margin-right: calc(1rem + env(safe-area-inset-right, 0px));
 }
 
+@media (max-width: 44rem) {
+  .layout--photos {
+    /* Blank runway after the footer for lifting the page bottom above mobile overlays. */
+    padding-bottom: max(min(42dvh, 28rem), env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .my-header {
   align-items: center;
   display: flex;

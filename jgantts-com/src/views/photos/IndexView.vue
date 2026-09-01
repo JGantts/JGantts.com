@@ -108,7 +108,7 @@ const error = ref<string | null>(null)
 const tootLoads = new Map<number, Promise<void>>()
 
 const activeTootIndex = ref<number | null>(null)
-const selectedPostVisible = ref(true)
+const selectedPostVisibility = ref(1)
 const activeToot = computed(() =>
   activeTootIndex.value === null ? null : toots.value[activeTootIndex.value] ?? null,
 )
@@ -120,7 +120,7 @@ const formatter = new Intl.DateTimeFormat(undefined, {
 
 function selectToot(nextIndex: number) {
   activeTootIndex.value = nextIndex
-  selectedPostVisible.value = true
+  selectedPostVisibility.value = 1
   const postId = toots.value[nextIndex]?.post.id
   if (!postId) return
 
@@ -129,7 +129,7 @@ function selectToot(nextIndex: number) {
 
 function clearSelection() {
   activeTootIndex.value = null
-  selectedPostVisible.value = true
+  selectedPostVisibility.value = 1
   localStorage.removeItem(activePostStorageKey)
 }
 
@@ -283,16 +283,18 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
             :active-post-id="activeToot?.post.id"
             @select="selectToot"
             @clear="clearSelection"
-            @visibility="selectedPostVisible = $event"
+            @visibility="selectedPostVisibility = $event"
           />
 
-          <section
-            v-if="activeToot"
-            :key="activeToot.post.id"
-            class="comments-section"
-            :class="{ 'is-out-of-view': !selectedPostVisible }"
-            :aria-hidden="!selectedPostVisible"
-          >
+          <Transition name="post-details">
+            <section
+              v-if="activeToot"
+              :key="activeToot.post.id"
+              class="comments-section"
+              :class="{ 'is-out-of-view': selectedPostVisibility <= 0.01 }"
+              :style="{ '--selected-post-visibility': selectedPostVisibility }"
+              :aria-hidden="selectedPostVisibility <= 0.01"
+            >
             <div class="comments-panel-heading">
               <header class="post-meta-header">
                 <a :href="activeToot.post.account.url" class="author-link">
@@ -352,7 +354,8 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
             </ol>
 
             <p v-else class="empty-state">No comments yet.</p>
-          </section>
+            </section>
+          </Transition>
       </section>
     </section>
   </main>
@@ -795,15 +798,25 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   position: fixed;
   right: calc(var(--photos-gutter) + env(safe-area-inset-right, 0px));
   top: 8rem;
-  transition: opacity 180ms ease, transform 180ms ease;
+  opacity: var(--selected-post-visibility, 1);
+  transform: translateX(calc((1 - var(--selected-post-visibility, 1)) * 0.75rem));
   width: min(22rem, calc(100vw - var(--photos-gutter) - var(--photos-gutter)));
   z-index: 10;
 }
 
 .comments-section.is-out-of-view {
-  opacity: 0;
   pointer-events: none;
-  transform: translateX(0.75rem);
+}
+
+.post-details-enter-active,
+.post-details-leave-active {
+  transition: opacity 320ms ease, transform 320ms ease;
+}
+
+.post-details-enter-from,
+.post-details-leave-to {
+  opacity: 0 !important;
+  transform: translateX(0.75rem) !important;
 }
 
 .comments-header {
@@ -900,15 +913,23 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     right: calc(var(--photos-gutter) + env(safe-area-inset-right, 0px));
     top: auto;
     width: auto;
+    transform: translateY(calc((1 - var(--selected-post-visibility, 1)) * 0.75rem));
   }
 
   .comments-section.is-out-of-view {
     transform: translateY(0.75rem);
   }
+
+  .post-details-enter-from,
+  .post-details-leave-to {
+    transform: translateY(0.75rem) !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .comments-section {
+  .comments-section,
+  .post-details-enter-active,
+  .post-details-leave-active {
     transition: none;
   }
 }

@@ -15,3 +15,17 @@ button, input[type="submit"], input[type="reset"] {
   font-size: 1.25rem;
   font-weight: 200;
 }
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}

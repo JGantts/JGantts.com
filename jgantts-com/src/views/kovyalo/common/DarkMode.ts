@@ -11,6 +11,10 @@ darkModeSystem.value = media.matches;
 
 media.addEventListener("change", (e) => {
   darkModeSystem.value = e.matches;
+
+  if (settings.darkMode !== "auto") {
+    applyDocumentTheme(settings.darkMode);
+  }
 });
 
 const effectiveDarkMode = computed(() => {
@@ -20,11 +24,15 @@ const effectiveDarkMode = computed(() => {
   return settings.darkMode;
 });
 
-// 👇 THIS is what MapLibre should depend on
+function applyDocumentTheme(mode: "light" | "dark") {
+  document.documentElement.classList.remove("dark", "light");
+  document.documentElement.classList.add(mode);
+}
+
 watch(
   effectiveDarkMode,
   (mode) => {
-    document.documentElement.classList.toggle("dark", mode === "dark");
+    applyDocumentTheme(mode);
   },
   { immediate: true }
 );

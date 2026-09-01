@@ -9,7 +9,6 @@ import {
 import MainLayout from '@/layouts/MainLayout.vue'
 import HolmesLayout from '@/layouts/HolmesLayout.vue'
 import KovyaloLayout from '@/layouts/KovyaloLayout.vue'
-import PhotosLayout from '@/layouts/PhotosLayout.vue'
 
 import WelcomePageVue from '@/views/WelcomePage.vue'
 /*import GettingStartedPageVue from '@/views/GettingStartedPage.vue'
@@ -193,7 +192,7 @@ const router = createRouter({
     },
     {
       path: '/photos',
-      component: PhotosLayout,
+      component: MainLayout,
       children: [
         {
           path: '',

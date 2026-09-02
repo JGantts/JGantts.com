@@ -2,6 +2,8 @@ export type PhotoCard = {
   id: string
   clusterKey: string
   aspectRatio: number
+  sourceWidth?: number
+  sourceHeight?: number
 }
 
 export type PlacedPhotoCard = PhotoCard & {
@@ -26,12 +28,6 @@ export type PhotoMasonry = {
 }
 
 type GridCard = PhotoCard & { columnSpan: number; rowSpan: number }
-type GridPlacement = GridCard & { column: number; row: number }
-type ClusterShape = {
-  columnSpan: number
-  rowSpan: number
-  cards: GridPlacement[]
-}
 
 const RATIO_TILES = [
   { columnSpan: 2, rowSpan: 6 },
@@ -43,79 +39,67 @@ const RATIO_TILES = [
   { columnSpan: 6, rowSpan: 2 },
 ] as const
 
-function tileSpan(card: PhotoCard, totalColumns: number) {
+function sourceArea(card: PhotoCard) {
+  if (!card.sourceWidth || !card.sourceHeight) return null
+  if (card.sourceWidth <= 0 || card.sourceHeight <= 0) return null
+  return card.sourceWidth * card.sourceHeight
+}
+
+function medianSourceArea(cards: PhotoCard[]) {
+  const areas = cards
+    .map(sourceArea)
+    .filter((area): area is number => area !== null)
+    .sort((a, b) => a - b)
+  if (!areas.length) return null
+
+  const middle = Math.floor(areas.length / 2)
+  return areas.length % 2 === 0
+    ? (areas[middle - 1]! + areas[middle]!) / 2
+    : areas[middle]!
+}
+
+function tileSpan(card: PhotoCard, totalColumns: number, referenceArea: number | null) {
   const ratio = Math.max(0.1, card.aspectRatio)
   const available = RATIO_TILES.filter((tile) => tile.columnSpan <= totalColumns)
+  if (!available.length) return { columnSpan: 1, rowSpan: 1 }
 
   // Log distance treats reciprocal portrait/landscape ratios symmetrically.
-  return available.reduce((closest, tile) => {
+  const ratioTile = available.reduce((closest, tile) => {
     const closestRatio = closest.columnSpan / closest.rowSpan
     const tileRatio = tile.columnSpan / tile.rowSpan
     return Math.abs(Math.log(ratio / tileRatio)) < Math.abs(Math.log(ratio / closestRatio))
       ? tile
       : closest
   })
-}
 
-function packAtWidth(cards: GridCard[], gridWidth: number): ClusterShape | null {
-  const occupied: boolean[][] = []
-  const placements: GridPlacement[] = []
+  const area = sourceArea(card)
+  if (!area || !referenceArea) return ratioTile
 
-  const fits = (card: GridCard, column: number, row: number) => {
-    if (column + card.columnSpan > gridWidth) return false
-    for (let y = row; y < row + card.rowSpan; y += 1) {
-      for (let x = column; x < column + card.columnSpan; x += 1) {
-        if (occupied[y]?.[x]) return false
-      }
-    }
-    return true
+  // A larger source earns a larger tile, but use a fourth root so resolution outliers do not
+  // dominate the page. This makes displayed area grow roughly with source linear resolution.
+  const scale = Math.min(1.5, Math.max(0.6, (area / referenceArea) ** 0.25))
+  const targetArea = ratioTile.columnSpan * ratioTile.rowSpan * scale ** 2
+  const maximumColumnSpan = Math.min(totalColumns, 8)
+  let best: { columnSpan: number; rowSpan: number } = {
+    columnSpan: ratioTile.columnSpan,
+    rowSpan: ratioTile.rowSpan,
   }
+  let bestScore = Number.POSITIVE_INFINITY
 
-  for (const card of cards) {
-    let placed: GridPlacement | null = null
-    for (let row = 0; !placed && row < 10_000; row += 1) {
-      for (let column = 0; column <= gridWidth - card.columnSpan; column += 1) {
-        if (!fits(card, column, row)) continue
-        placed = { ...card, column, row }
-        break
-      }
-    }
-    if (!placed) return null
-
-    placements.push(placed)
-    for (let y = placed.row; y < placed.row + placed.rowSpan; y += 1) {
-      occupied[y] ??= []
-      for (let x = placed.column; x < placed.column + placed.columnSpan; x += 1) {
-        occupied[y]![x] = true
+  for (let columnSpan = 1; columnSpan <= maximumColumnSpan; columnSpan += 1) {
+    for (let rowSpan = 1; rowSpan <= 8; rowSpan += 1) {
+      const candidateRatio = columnSpan / rowSpan
+      const ratioError = Math.abs(Math.log(ratio / candidateRatio))
+      const areaError = Math.abs(Math.log((columnSpan * rowSpan) / targetArea))
+      const score = ratioError * 2 + areaError
+      if (score < bestScore) {
+        best = { columnSpan, rowSpan }
+        bestScore = score
       }
     }
   }
 
-  const columnSpan = Math.max(...placements.map((card) => card.column + card.columnSpan))
-  const rowSpan = Math.max(...placements.map((card) => card.row + card.rowSpan))
-  return { columnSpan, rowSpan, cards: placements }
-}
-
-function chooseClusterShape(cards: PhotoCard[], totalColumns: number): ClusterShape {
-  const gridCards = cards.map((card) => ({ ...card, ...tileSpan(card, totalColumns) }))
-  const minimumWidth = Math.max(...gridCards.map((card) => card.columnSpan))
-  const maximumWidth = Math.min(totalColumns, Math.max(6, minimumWidth, cards.length * 3))
-  const totalArea = gridCards.reduce((area, card) => area + card.columnSpan * card.rowSpan, 0)
-
-  const candidates: ClusterShape[] = []
-  for (let width = minimumWidth; width <= maximumWidth; width += 1) {
-    const candidate = packAtWidth(gridCards, width)
-    if (candidate) candidates.push(candidate)
-  }
-
-  return candidates.reduce((best, candidate) => {
-    const bestWaste = best.columnSpan * best.rowSpan - totalArea
-    const candidateWaste = candidate.columnSpan * candidate.rowSpan - totalArea
-    const bestScore = best.rowSpan + best.columnSpan * 0.12 + bestWaste * 0.08
-    const candidateScore =
-      candidate.rowSpan + candidate.columnSpan * 0.12 + candidateWaste * 0.08
-    return candidateScore < bestScore ? candidate : best
-  })
+  return best
 }
 
 function pixelsForSpan(span: number, cellSize: number, gap: number) {
@@ -123,8 +107,8 @@ function pixelsForSpan(span: number, cellSize: number, gap: number) {
 }
 
 /**
- * Photos occupy ratio-aware atomic regions inside their post. The completed post is then
- * packed as one skyline block, so posts stay clustered and no image is ever segmented.
+ * Photos are placed independently on the skyline so smaller cards can fill space beside taller
+ * ones. Cards retain their post key and are regrouped after placement for selection and styling.
  */
 function calculatePhotoMasonryAtDensity(
   cards: PhotoCard[],
@@ -137,23 +121,23 @@ function calculatePhotoMasonryAtDensity(
   }
 
   const cellSize = (containerWidth - gap * (totalColumns - 1)) / totalColumns
-  const grouped = new Map<string, PhotoCard[]>()
+  const referenceArea = medianSourceArea(cards)
+  const gridCards: GridCard[] = cards.map((card) => ({
+    ...card,
+    ...tileSpan(card, totalColumns, referenceArea),
+  }))
+  const placedByCluster = new Map<string, PlacedPhotoCard[]>()
   for (const card of cards) {
-    const cluster = grouped.get(card.clusterKey)
-    if (cluster) cluster.push(card)
-    else grouped.set(card.clusterKey, [card])
+    if (!placedByCluster.has(card.clusterKey)) placedByCluster.set(card.clusterKey, [])
   }
 
   const skyline = new Array(totalColumns).fill(0) as number[]
-  const clusters: PlacedPhotoCluster[] = []
-
-  for (const [key, clusterCards] of grouped) {
-    const shape = chooseClusterShape(clusterCards, totalColumns)
+  for (const card of gridCards) {
     let bestColumn = 0
     let bestY = Number.POSITIVE_INFINITY
 
-    for (let column = 0; column <= totalColumns - shape.columnSpan; column += 1) {
-      const y = Math.max(...skyline.slice(column, column + shape.columnSpan))
+    for (let column = 0; column <= totalColumns - card.columnSpan; column += 1) {
+      const y = Math.max(...skyline.slice(column, column + card.columnSpan))
       if (y < bestY) {
         bestY = y
         bestColumn = column
@@ -161,29 +145,37 @@ function calculatePhotoMasonryAtDensity(
     }
 
     const x = bestColumn * (cellSize + gap)
-    const width = pixelsForSpan(shape.columnSpan, cellSize, gap)
-    const height = pixelsForSpan(shape.rowSpan, cellSize, gap)
-    const positionedCards = shape.cards.map((card) => ({
+    const width = pixelsForSpan(card.columnSpan, cellSize, gap)
+    const height = pixelsForSpan(card.rowSpan, cellSize, gap)
+    placedByCluster.get(card.clusterKey)!.push({
       id: card.id,
       clusterKey: card.clusterKey,
       aspectRatio: card.aspectRatio,
-      x: x + card.column * (cellSize + gap),
-      y: bestY + card.row * (cellSize + gap),
-      width: pixelsForSpan(card.columnSpan, cellSize, gap),
-      height: pixelsForSpan(card.rowSpan, cellSize, gap),
-    }))
-
-    clusters.push({ key, x, y: bestY, width, height, cards: positionedCards })
+      sourceWidth: card.sourceWidth,
+      sourceHeight: card.sourceHeight,
+      x,
+      y: bestY,
+      width,
+      height,
+    })
 
     const bottom = bestY + height + gap
-    for (let column = bestColumn; column < bestColumn + shape.columnSpan; column += 1) {
+    for (let column = bestColumn; column < bestColumn + card.columnSpan; column += 1) {
       skyline[column] = bottom
     }
   }
 
+  const clusters = Array.from(placedByCluster, ([key, clusterCards]) => {
+    const x = Math.min(...clusterCards.map((card) => card.x))
+    const y = Math.min(...clusterCards.map((card) => card.y))
+    const right = Math.max(...clusterCards.map((card) => card.x + card.width))
+    const bottom = Math.max(...clusterCards.map((card) => card.y + card.height))
+    return { key, x, y, width: right - x, height: bottom - y, cards: clusterCards }
+  })
+
   return {
     clusters,
-    height: Math.max(0, ...clusters.map((cluster) => cluster.y + cluster.height)),
+    height: Math.max(0, ...skyline) - gap,
   }
 }
 
@@ -210,10 +202,18 @@ function masonryScore(
         return total + Math.max(0, 1 - shortEdge / preferredShortEdge) ** 2
       }, 0) / cards.length
     : 0
+  const upscaled = cards.length
+    ? cards.reduce((total, card) => {
+        if (!card.sourceWidth || !card.sourceHeight) return total
+        const scale = Math.max(card.width / card.sourceWidth, card.height / card.sourceHeight)
+        return total + Math.max(0, scale - 1) ** 2
+      }, 0) / cards.length
+    : 0
 
   // Missing the available page is conspicuous, while a little vertical overflow is harmless.
-  // EmptyFraction also steers the skyline toward densities that use the full page width.
-  return underfill * 7 + overflow * 1.15 + undersized * 5 + emptyFraction * 2.5
+  // EmptyFraction steers the skyline toward densities that use the full page width, while the
+  // upscale penalty avoids choosing a density that stretches small source images unnecessarily.
+  return underfill * 7 + overflow * 1.15 + undersized * 5 + emptyFraction * 2.5 + upscaled * 2
 }
 
 /**

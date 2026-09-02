@@ -276,6 +276,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
       <section
         v-show="!loading && !error && toots.length"
         class="toot-carousel"
+        :class="{ 'has-active-post': activeToot }"
         aria-label="Mastodon posts"
       >
           <ClusteredPhotoMasonry
@@ -409,6 +410,9 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   box-sizing: border-box;
   display: grid;
   gap: 1rem;
+}
+
+.toot-carousel.has-active-post {
   padding-right: calc(22rem + var(--comments-panel-gap));
 }
 
@@ -902,7 +906,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 @media (max-width: 44rem) {
-  .toot-carousel {
+  .toot-carousel.has-active-post {
     padding-right: 0;
   }
 

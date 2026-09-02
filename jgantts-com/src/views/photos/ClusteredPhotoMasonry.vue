@@ -72,7 +72,13 @@ const cards = computed<PhotoCard[]>(() =>
     const aspectRatio =
       original?.aspect ??
       (original?.width && original.height ? original.width / original.height : 4 / 3)
-    return { id, clusterKey: post.id, aspectRatio }
+    return {
+      id,
+      clusterKey: post.id,
+      aspectRatio,
+      sourceWidth: original?.width,
+      sourceHeight: original?.height,
+    }
   }),
 )
 
@@ -422,6 +428,7 @@ onBeforeUnmount(() => {
 }
 
 .photo-cluster {
+  pointer-events: none;
   position: absolute;
   transform-origin: center;
   transition: filter 180ms ease, left 220ms ease, opacity 180ms ease, top 220ms ease, transform 180ms ease;
@@ -442,6 +449,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
   overflow: hidden;
   padding: 0;
+  pointer-events: auto;
   position: absolute;
   transition: box-shadow 160ms ease;
 }

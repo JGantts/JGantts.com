@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -9,9 +9,10 @@ const layoutClass = computed(() => ({
   'layout--photos': isPhotosPage.value,
 }))
 const shortCommitId = __APP_COMMIT__ === 'dev' ? __APP_COMMIT__ : __APP_COMMIT__.slice(0, 7)
-const commitUrl = __APP_COMMIT__ === 'dev'
-  ? undefined
-  : `https://github.com/JGantts/JGantts.com/commit/${__APP_COMMIT__}`
+const isCommitMessageVisible = ref(false)
+const versionText = computed(() =>
+  isCommitMessageVisible.value ? __APP_COMMIT_MESSAGE__ : shortCommitId,
+)
 
 const pageColors = computed(() =>
   route.path.startsWith('/photos')
@@ -56,8 +57,15 @@ onBeforeUnmount(() => {
       <p class="copyright">
       © 2026 Jacob Gantt
       </p>
-      <a v-if="commitUrl" class="version-tag" :href="commitUrl">{{ shortCommitId }}</a>
-      <span v-else class="version-tag">{{ shortCommitId }}</span>
+      <button
+        class="version-tag"
+        type="button"
+        :aria-expanded="isCommitMessageVisible"
+        :aria-label="isCommitMessageVisible ? 'Show commit ID' : 'Show commit message'"
+        @click="isCommitMessageVisible = !isCommitMessageVisible"
+      >
+        {{ versionText }}
+      </button>
     </footer>
   </div>
 </template>
@@ -184,10 +192,15 @@ body {
 }
 
 .version-tag {
+  align-self: center;
+  background: none;
+  border: 0;
   color: inherit;
+  cursor: pointer;
   font-family: 'Azeret Mono Variable', monospace;
   font-size: 0.62rem;
   opacity: 0.55;
+  padding: 0;
   text-decoration: none;
 }
 

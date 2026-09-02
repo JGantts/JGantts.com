@@ -20,8 +20,26 @@ function getCommitId() {
   }
 }
 
+function getCommitMessage(commitId: string) {
+  const environmentMessage =
+    process.env.VITE_COMMIT_MESSAGE ?? process.env.COMMIT_MESSAGE;
+  if (environmentMessage) return environmentMessage.trim();
+
+  if (commitId === "dev") return "Local development build";
+
+  try {
+    return execFileSync("git", ["log", "-1", "--format=%s", commitId], {
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      encoding: "utf8",
+    }).trim();
+  } catch {
+    return "Commit message unavailable";
+  }
+}
+
 export default defineConfig(({ command }) => {
   const isBuild = command === "build";
+  const commitId = getCommitId();
 
   let server: ServerOptions;
   let publicDir: string | boolean = "PUBLIC";
@@ -39,7 +57,8 @@ export default defineConfig(({ command }) => {
 
   return {
     define: {
-      __APP_COMMIT__: JSON.stringify(getCommitId()),
+      __APP_COMMIT__: JSON.stringify(commitId),
+      __APP_COMMIT_MESSAGE__: JSON.stringify(getCommitMessage(commitId)),
     },
     publicDir,
     server,

@@ -822,8 +822,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
 .comments-section {
   align-self: start;
-  background: color-mix(in srgb, var(--photos-panel) 94%, transparent);
-  backdrop-filter: blur(14px);
+  background: var(--photos-panel);
   border: 1px solid var(--photos-border);
   border-radius: 12px;
   box-sizing: border-box;

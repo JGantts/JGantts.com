@@ -310,18 +310,163 @@ function cardBorderRadius(card: PlacedPhotoCard, cards: PlacedPhotoCard[]) {
   return cornerRadii(card, cards).map((radius) => `${radius}px`).join(' ')
 }
 
-function highlightPath(card: PlacedPhotoCard, clusterX: number, clusterY: number) {
-  const x = card.x - clusterX
-  const y = card.y - clusterY
-  const width = card.width
-  const height = card.height
-  return [
-    `M ${x} ${y}`,
-    `H ${x + width}`,
-    `V ${y + height}`,
-    `H ${x}`,
+type HighlightPoint = { x: number; y: number }
+type HighlightEdge = {
+  direction: 0 | 1 | 2 | 3
+  end: HighlightPoint
+  start: HighlightPoint
+}
+
+const normalizedCoordinate = (value: number) => Math.round(value * 1000) / 1000
+const pointKey = (point: HighlightPoint) => `${point.x}:${point.y}`
+
+function roundedLoopPath(points: HighlightPoint[], radius = 10): string {
+  if (points.length < 3) return ''
+
+  let simplified = points
+  let changed = true
+  while (changed && simplified.length > 3) {
+    changed = false
+    const next = simplified.filter((point, index, allPoints) => {
+      const previous = allPoints[(index - 1 + allPoints.length) % allPoints.length]!
+      const following = allPoints[(index + 1) % allPoints.length]!
+      const isCollinear = Math.abs(
+        (point.x - previous.x) * (following.y - point.y)
+          - (point.y - previous.y) * (following.x - point.x),
+      ) < 0.001
+      if (isCollinear) changed = true
+      return !isCollinear
+    })
+    simplified = next
+  }
+
+  const corners = simplified.map((point, index) => {
+    const previous = simplified[(index - 1 + simplified.length) % simplified.length]!
+    const following = simplified[(index + 1) % simplified.length]!
+    const incomingLength = Math.hypot(point.x - previous.x, point.y - previous.y)
+    const outgoingLength = Math.hypot(following.x - point.x, following.y - point.y)
+    const cornerRadius = Math.min(radius, incomingLength / 2, outgoingLength / 2)
+    return {
+      point,
+      before: {
+        x: point.x + ((previous.x - point.x) / incomingLength) * cornerRadius,
+        y: point.y + ((previous.y - point.y) / incomingLength) * cornerRadius,
+      },
+      after: {
+        x: point.x + ((following.x - point.x) / outgoingLength) * cornerRadius,
+        y: point.y + ((following.y - point.y) / outgoingLength) * cornerRadius,
+      },
+    }
+  })
+  const formatPoint = (point: HighlightPoint) =>
+    `${normalizedCoordinate(point.x)} ${normalizedCoordinate(point.y)}`
+  const first = corners[0]!
+  const commands = [`M ${formatPoint(first.after)}`]
+
+  for (let index = 1; index < corners.length; index += 1) {
+    const corner = corners[index]!
+    commands.push(
+      `L ${formatPoint(corner.before)}`,
+      `Q ${formatPoint(corner.point)} ${formatPoint(corner.after)}`,
+    )
+  }
+  commands.push(
+    `L ${formatPoint(first.before)}`,
+    `Q ${formatPoint(first.point)} ${formatPoint(first.after)}`,
     'Z',
-  ].join(' ')
+  )
+  return commands.join(' ')
+}
+
+function clusterSilhouettePath(
+  cards: PlacedPhotoCard[],
+  clusterX: number,
+  clusterY: number,
+): string {
+  const expansion = gap / 2
+  const rectangles = cards.map((card) => ({
+    left: normalizedCoordinate(card.x - clusterX - expansion),
+    right: normalizedCoordinate(card.x - clusterX + card.width + expansion),
+    top: normalizedCoordinate(card.y - clusterY - expansion),
+    bottom: normalizedCoordinate(card.y - clusterY + card.height + expansion),
+  }))
+  const xs = [...new Set(rectangles.flatMap((rect) => [rect.left, rect.right]))].sort((a, b) => a - b)
+  const ys = [...new Set(rectangles.flatMap((rect) => [rect.top, rect.bottom]))].sort((a, b) => a - b)
+  const occupied = Array.from({ length: ys.length - 1 }, (_, row) =>
+    Array.from({ length: xs.length - 1 }, (_, column) => {
+      const centerX = (xs[column]! + xs[column + 1]!) / 2
+      const centerY = (ys[row]! + ys[row + 1]!) / 2
+      return rectangles.some((rect) =>
+        centerX > rect.left && centerX < rect.right
+          && centerY > rect.top && centerY < rect.bottom,
+      )
+    }),
+  )
+  const edges: HighlightEdge[] = []
+  const addEdge = (
+    start: HighlightPoint,
+    end: HighlightPoint,
+    direction: HighlightEdge['direction'],
+  ) => edges.push({ start, end, direction })
+
+  occupied.forEach((row, rowIndex) => {
+    row.forEach((isOccupied, columnIndex) => {
+      if (!isOccupied) return
+      const left = xs[columnIndex]!
+      const right = xs[columnIndex + 1]!
+      const top = ys[rowIndex]!
+      const bottom = ys[rowIndex + 1]!
+      if (!occupied[rowIndex - 1]?.[columnIndex]) {
+        addEdge({ x: left, y: top }, { x: right, y: top }, 0)
+      }
+      if (!occupied[rowIndex]?.[columnIndex + 1]) {
+        addEdge({ x: right, y: top }, { x: right, y: bottom }, 1)
+      }
+      if (!occupied[rowIndex + 1]?.[columnIndex]) {
+        addEdge({ x: right, y: bottom }, { x: left, y: bottom }, 2)
+      }
+      if (!occupied[rowIndex]?.[columnIndex - 1]) {
+        addEdge({ x: left, y: bottom }, { x: left, y: top }, 3)
+      }
+    })
+  })
+
+  const outgoingEdges = new Map<string, number[]>()
+  edges.forEach((edge, index) => {
+    const key = pointKey(edge.start)
+    outgoingEdges.set(key, [...(outgoingEdges.get(key) ?? []), index])
+  })
+  const unusedEdges = new Set(edges.map((_, index) => index))
+  const loops: HighlightPoint[][] = []
+  const turnRank = [1, 0, 3, 2]
+
+  while (unusedEdges.size) {
+    const firstEdgeIndex = unusedEdges.values().next().value as number
+    let currentEdgeIndex = firstEdgeIndex
+    const loop: HighlightPoint[] = [edges[firstEdgeIndex]!.start]
+
+    while (unusedEdges.has(currentEdgeIndex)) {
+      const currentEdge = edges[currentEdgeIndex]!
+      unusedEdges.delete(currentEdgeIndex)
+      loop.push(currentEdge.end)
+      if (pointKey(currentEdge.end) === pointKey(loop[0]!)) break
+
+      const candidates = (outgoingEdges.get(pointKey(currentEdge.end)) ?? [])
+        .filter((candidateIndex) => unusedEdges.has(candidateIndex))
+      if (!candidates.length) break
+      candidates.sort((leftIndex, rightIndex) => {
+        const leftTurn = (edges[leftIndex]!.direction - currentEdge.direction + 4) % 4
+        const rightTurn = (edges[rightIndex]!.direction - currentEdge.direction + 4) % 4
+        return turnRank.indexOf(leftTurn) - turnRank.indexOf(rightTurn)
+      })
+      currentEdgeIndex = candidates[0]!
+    }
+
+    if (pointKey(loop[0]!) === pointKey(loop[loop.length - 1]!)) loop.pop()
+    if (loop.length >= 3) loops.push(loop)
+  }
+
+  return loops.map((loop) => roundedLoopPath(loop)).filter(Boolean).join(' ')
 }
 
 // These decorations only change when the masonry geometry changes. Keeping them out of the
@@ -337,12 +482,9 @@ const cardBorderRadii = computed(() => {
 })
 
 const clusterHighlightPaths = computed(() => {
-  const paths = new Map<string, string[]>()
+  const paths = new Map<string, string>()
   masonry.value.clusters.forEach((cluster) => {
-    paths.set(
-      cluster.key,
-      cluster.cards.map((card) => highlightPath(card, cluster.x, cluster.y)),
-    )
+    paths.set(cluster.key, clusterSilhouettePath(cluster.cards, cluster.x, cluster.y))
   })
   return paths
 })
@@ -456,52 +598,16 @@ onBeforeUnmount(() => {
             }"
             aria-hidden="true"
           >
-          <defs>
-            <filter
-              :id="`post-highlight-${cluster.key}`"
-              x="-20%"
-              y="-20%"
-              width="140%"
-              height="140%"
-              color-interpolation-filters="sRGB"
-            >
-              <!-- Close the narrow masonry gutters so the post reads as one silhouette. -->
-              <feMorphology in="SourceAlpha" operator="dilate" radius="6" result="joined-expanded" />
-              <feMorphology in="joined-expanded" operator="erode" radius="6" result="joined" />
-
-              <!-- Move the contour to the middle of the 10px masonry gutter. -->
-              <feMorphology in="joined" operator="dilate" radius="5" result="midline-shape" />
-
-              <!-- Smooth the orthogonal union into consistently rounded inside and outside turns. -->
-              <feGaussianBlur in="midline-shape" stdDeviation="5" result="rounded-soft" />
-              <feComponentTransfer in="rounded-soft" result="rounded-shape">
-                <feFuncA type="discrete" tableValues="0 0 0 0 0 1 1 1 1 1" />
-              </feComponentTransfer>
-
-              <!-- A light inner band and dark outer band make the inside direction legible. -->
-              <feMorphology in="rounded-shape" operator="erode" radius="2.6" result="inner-edge" />
-              <feComposite in="rounded-shape" in2="inner-edge" operator="out" result="inner-band" />
-              <feMorphology in="rounded-shape" operator="dilate" radius="1.2" result="outer-edge" />
-              <feComposite in="outer-edge" in2="rounded-shape" operator="out" result="outer-band" />
-
-              <feFlood flood-color="#ffffff" flood-opacity="0.94" result="inner-color" />
-              <feComposite in="inner-color" in2="inner-band" operator="in" result="lit-inside" />
-              <feFlood flood-color="#080909" flood-opacity="0.86" result="outer-color" />
-              <feComposite in="outer-color" in2="outer-band" operator="in" result="dark-outside" />
-              <feMerge>
-                <feMergeNode in="dark-outside" />
-                <feMergeNode in="lit-inside" />
-              </feMerge>
-            </filter>
-          </defs>
-          <g :filter="`url(#post-highlight-${cluster.key})`">
-            <path
-              v-for="(path, pathIndex) in clusterHighlightPaths.get(cluster.key)"
-              :key="cluster.cards[pathIndex]!.id"
-              :d="path"
-              fill="currentColor"
-            />
-          </g>
+          <path
+            class="cluster-highlight-shadow"
+            :d="clusterHighlightPaths.get(cluster.key)"
+            vector-effect="non-scaling-stroke"
+          />
+          <path
+            class="cluster-highlight-line"
+            :d="clusterHighlightPaths.get(cluster.key)"
+            vector-effect="non-scaling-stroke"
+          />
           </svg>
       </section>
     </div>
@@ -603,6 +709,23 @@ onBeforeUnmount(() => {
 
 .cluster-highlight.is-visible {
   opacity: 1;
+}
+
+.cluster-highlight-shadow,
+.cluster-highlight-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cluster-highlight-shadow {
+  stroke: rgba(8, 9, 9, 0.86);
+  stroke-width: 5;
+}
+
+.cluster-highlight-line {
+  stroke: rgba(255, 255, 255, 0.94);
+  stroke-width: 2.4;
 }
 
 .photo-card::after {

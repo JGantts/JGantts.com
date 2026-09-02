@@ -327,6 +327,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
               }"
               :style="{ '--selected-post-visibility': selectedPostVisibility }"
               :aria-hidden="activeTootIndex !== tootIndex || selectedPostVisibility <= 0.01"
+              aria-label="Post comments"
             >
                 <div class="comments-panel-heading" v-memo="[toot.post.id]">
                   <header class="post-meta-header">
@@ -348,12 +349,22 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                   <time class="comments-post-date" :datetime="toot.post.created_at">
                     {{ formatDate(toot.post.created_at) }}
                   </time>
-
-                  <header class="comments-header">
-                    <h1>Comments</h1>
-                    <span>{{ formatCount(replyCountsByPostId.get(toot.post.id) ?? 0) }}</span>
-                  </header>
                 </div>
+
+                <header class="comments-header">
+                  <h1>Comments</h1>
+                  <span>{{ formatCount(replyCountsByPostId.get(toot.post.id) ?? 0) }}</span>
+                  <button
+                    type="button"
+                    class="comments-close"
+                    aria-label="Close comments"
+                    @click="clearSelection"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                      <path d="M6 6l12 12M18 6 6 18" />
+                    </svg>
+                  </button>
+                </header>
 
                 <ol
                   v-if="toot.comments.length"
@@ -840,14 +851,15 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   border-radius: 12px;
   box-sizing: border-box;
   box-shadow: var(--photos-card-shadow);
-  display: grid;
-  gap: 0.65rem;
-  grid-template-rows: auto minmax(0, 1fr);
   max-height: calc(100dvh - 9rem - var(--photos-gutter));
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0.85rem;
   grid-column: 2;
   position: sticky;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
   top: 8rem;
   opacity: var(--selected-post-visibility, 1);
   transform: translateX(calc((1 - var(--selected-post-visibility, 1)) * 0.75rem));
@@ -861,9 +873,18 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
 .comments-header {
   align-items: baseline;
-  display: flex;
-  justify-content: space-between;
-  padding: 0 0.15rem;
+  background: color-mix(in srgb, var(--photos-panel) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid color-mix(in srgb, var(--photos-border) 58%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--photos-border) 58%, transparent);
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  margin: 0.65rem -0.85rem 0.75rem;
+  padding: 0.65rem 0.85rem;
+  position: sticky;
+  top: -0.85rem;
+  z-index: 2;
 }
 
 .comments-panel-heading {
@@ -903,12 +924,6 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   line-height: 1.3;
 }
 
-.comments-panel-heading .comments-header {
-  border-top: 1px solid color-mix(in srgb, var(--photos-border) 58%, transparent);
-  margin-top: 0.25rem;
-  padding-top: 0.65rem;
-}
-
 .comments-header h1 {
   font-size: 1.05rem;
   font-weight: 800;
@@ -920,13 +935,44 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   font-size: 0.78rem;
 }
 
+.comments-close {
+  align-items: center;
+  align-self: center;
+  background: var(--photos-control);
+  border: 1px solid var(--photos-border);
+  border-radius: 50%;
+  color: var(--photos-text);
+  cursor: pointer;
+  display: inline-flex;
+  height: 1.75rem;
+  justify-content: center;
+  padding: 0;
+  width: 1.75rem;
+}
+
+.comments-close:hover {
+  background: var(--photos-control-hover);
+  border-color: var(--photos-accent);
+}
+
+.comments-close:focus-visible {
+  outline: 2px solid var(--photos-accent);
+  outline-offset: 2px;
+}
+
+.comments-close svg {
+  fill: none;
+  height: 0.9rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
+  width: 0.9rem;
+}
+
 .comment-list {
   display: grid;
   gap: 0.75rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   padding: 0.15rem;
-  scrollbar-width: thin;
 }
 
 .comment-item {
@@ -950,7 +996,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     bottom: calc(var(--photos-gutter) + env(safe-area-inset-bottom, 0px));
     grid-column: 1;
     left: calc(var(--photos-gutter) + env(safe-area-inset-left, 0px));
-    max-height: min(42dvh, 28rem);
+    max-height: min(64dvh, 32rem);
     position: fixed;
     right: calc(var(--photos-gutter) + env(safe-area-inset-right, 0px));
     top: auto;
@@ -1004,19 +1050,26 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   }
 
   .comments-section {
-    bottom: env(safe-area-inset-bottom, 0px);
+    bottom: auto;
     grid-column: 1;
     left: auto;
-    max-height: none;
+    max-height: calc(
+      100dvh
+      - max(0.75rem, env(safe-area-inset-top, 0px))
+      - max(0.75rem, env(safe-area-inset-bottom, 0px))
+    );
     position: fixed;
-    right: env(safe-area-inset-right, 0px);
-    top: env(safe-area-inset-top, 0px);
-    transform: translateX(calc((1 - var(--selected-post-visibility, 1)) * 0.75rem));
-    width: 50vw;
+    right: max(0.75rem, env(safe-area-inset-right, 0px));
+    top: 50%;
+    transform: translate(
+      calc((1 - var(--selected-post-visibility, 1)) * 0.75rem),
+      -50%
+    );
+    width: min(26rem, calc(52vw - 0.75rem));
   }
 
   .comments-section.is-out-of-view {
-    transform: translateX(0.75rem);
+    transform: translate(0.75rem, -50%);
   }
 }
 </style>

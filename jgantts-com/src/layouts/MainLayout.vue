@@ -9,11 +9,8 @@ const layoutClass = computed(() => ({
   'layout--photos': isPhotosPage.value,
 }))
 const shortCommitId = __APP_COMMIT__ === 'dev' ? __APP_COMMIT__ : __APP_COMMIT__.slice(0, 7)
+const commitMessage = __APP_COMMIT_MESSAGE__
 const isCommitMessageVisible = ref(false)
-const versionText = computed(() =>
-  isCommitMessageVisible.value ? __APP_COMMIT_MESSAGE__ : shortCommitId,
-)
-
 const pageColors = computed(() =>
   route.path.startsWith('/photos')
     ? { light: '#f4efe8', dark: '#111716' }
@@ -61,10 +58,15 @@ onBeforeUnmount(() => {
         class="version-tag"
         type="button"
         :aria-expanded="isCommitMessageVisible"
-        :aria-label="isCommitMessageVisible ? 'Show commit ID' : 'Show commit message'"
+        :aria-label="isCommitMessageVisible ? 'Show site build commit ID' : 'Show site build commit message'"
         @click="isCommitMessageVisible = !isCommitMessageVisible"
       >
-        {{ versionText }}
+        <span class="version-label">
+          {{ isCommitMessageVisible ? 'Build description' : 'Site build' }}
+        </span>
+        <span class="version-value">
+          {{ isCommitMessageVisible ? commitMessage : shortCommitId }}
+        </span>
       </button>
     </footer>
   </div>
@@ -192,21 +194,49 @@ body {
 }
 
 .version-tag {
+  align-items: baseline;
   align-self: center;
-  background: none;
-  border: 0;
+  background: color-mix(in srgb, currentColor 3%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  border-radius: 999px;
   color: inherit;
   cursor: pointer;
+  display: inline-flex;
+  gap: 0.35rem;
   font-family: 'Azeret Mono Variable', monospace;
-  font-size: 0.62rem;
-  opacity: 0.55;
-  padding: 0;
+  font-size: 0.55rem;
+  line-height: 1.35;
+  max-width: min(100%, 42rem);
+  opacity: 0.52;
+  padding: 0.2rem 0.42rem;
   text-decoration: none;
 }
 
 .version-tag:hover {
-  opacity: 1;
-  text-decoration: underline;
+  border-color: color-mix(in srgb, currentColor 38%, transparent);
+  opacity: 0.82;
+}
+
+.version-tag:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.version-label {
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.version-label::after {
+  content: ':';
+}
+
+.version-value {
+  opacity: 0.68;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 </style>
 

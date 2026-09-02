@@ -599,11 +599,6 @@ onBeforeUnmount(() => {
             aria-hidden="true"
           >
           <path
-            class="cluster-highlight-shadow"
-            :d="clusterHighlightPaths.get(cluster.key)"
-            vector-effect="non-scaling-stroke"
-          />
-          <path
             class="cluster-highlight-line"
             :d="clusterHighlightPaths.get(cluster.key)"
             vector-effect="non-scaling-stroke"
@@ -711,21 +706,16 @@ onBeforeUnmount(() => {
   opacity: 1;
 }
 
-.cluster-highlight-shadow,
 .cluster-highlight-line {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.cluster-highlight-shadow {
-  stroke: rgba(8, 9, 9, 0.86);
-  stroke-width: 5;
-}
-
 .cluster-highlight-line {
-  stroke: rgba(255, 255, 255, 0.94);
-  stroke-width: 2.4;
+  filter: drop-shadow(0 1px 3px var(--photos-highlight-shadow));
+  stroke: currentColor;
+  stroke-width: 3;
 }
 
 .photo-card::after {

@@ -416,6 +416,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   --photos-poll-bg: #efe4d7;
   --photos-card-border: rgba(92, 72, 53, 0.22);
   --photos-card-shadow: 0 0 0.45rem rgba(74, 56, 40, 0.12), 0 0.4rem 1.1rem rgba(74, 56, 40, 0.14);
+  --photos-highlight-shadow: rgba(47, 117, 104, 0.45);
   --photos-card-shadow-space: 1.5rem;
 
   background: linear-gradient(
@@ -1007,6 +1008,7 @@ html.dark .photos-page {
   --photos-poll-bg: #263330;
   --photos-card-border: rgba(202, 218, 211, 0.16);
   --photos-card-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.28), 0 0.45rem 1.3rem rgba(0, 0, 0, 0.34);
+  --photos-highlight-shadow: rgba(0, 0, 0, 0.75);
 
 }
 </style>

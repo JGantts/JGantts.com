@@ -32,10 +32,16 @@ const dialogRef = ref<HTMLDialogElement | null>(null)
 const containerWidth = ref(0)
 const viewportHeight = ref(0)
 const activePhotoId = ref<string | null>(null)
+const expandedPhotoUrl = ref('')
 const selectedPostVisibility = ref(1)
 let resizeObserver: ResizeObserver | null = null
 let selectedPostElement: HTMLElement | null = null
 let visibilityFrame: number | null = null
+let selectedPostSetupFrame: number | null = null
+let preloadFrame: number | null = null
+let fullSizeLoadToken = 0
+const originalPhotoPreloads = new Map<string, HTMLLinkElement>()
+const clusterDateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 
 function syncViewportHeight() {
   viewportHeight.value = window.innerHeight
@@ -101,23 +107,100 @@ const effectiveActivePostId = computed(() =>
   selectedPostVisibility.value > 0.01 ? props.activePostId : undefined,
 )
 
-async function observeSelectedPost() {
-  selectedPostElement = null
+function preloadActivePostPhotos() {
+  if (!props.activePostId) return
 
-  if (!props.activePostId) {
+  imageRecords.value
+    .filter((record) => record.post.id === props.activePostId)
+    .forEach((record) => {
+      if (originalPhotoPreloads.has(record.id) || !record.attachment.url) return
+
+      const preload = document.createElement('link')
+      preload.rel = 'preload'
+      preload.as = 'image'
+      preload.href = record.attachment.url
+      preload.setAttribute('fetchpriority', 'low')
+      document.head.appendChild(preload)
+      originalPhotoPreloads.set(record.id, preload)
+    })
+}
+
+function scheduleActivePostPhotoPreloads() {
+  if (preloadFrame !== null) return
+
+  // Give Safari one frame to paint the selection and comments panel before starting
+  // downloads for the lightbox originals.
+  preloadFrame = requestAnimationFrame(() => {
+    preloadFrame = requestAnimationFrame(() => {
+      preloadFrame = null
+      preloadActivePostPhotos()
+    })
+  })
+}
+
+function displayPhotoUrl(id: string) {
+  const record = recordsById.value.get(id)
+  if (!record) return ''
+  return record.attachment.preview_url
+    || record.attachment.url
+}
+
+function prepareExpandedPhoto(id: string) {
+  const record = recordsById.value.get(id)
+  if (!record) return
+
+  const previewUrl = record.attachment.preview_url || record.attachment.url
+  const originalUrl = record.attachment.url || previewUrl
+  const loadToken = ++fullSizeLoadToken
+  expandedPhotoUrl.value = previewUrl
+  if (!originalUrl || originalUrl === previewUrl) return
+
+  // Let the dialog paint its cached preview before asking Safari to decode the original.
+  requestAnimationFrame(() => {
+    if (loadToken !== fullSizeLoadToken) return
+    const image = new Image()
+    image.decoding = 'async'
+    image.onload = async () => {
+      try {
+        await image.decode()
+      } catch {
+        // The load event already guarantees a usable image on browsers that reject decode().
+      }
+      if (loadToken === fullSizeLoadToken) expandedPhotoUrl.value = originalUrl
+    }
+    image.src = originalUrl
+  })
+}
+
+async function observeSelectedPost() {
+  if (selectedPostSetupFrame !== null) {
+    cancelAnimationFrame(selectedPostSetupFrame)
+    selectedPostSetupFrame = null
+  }
+  selectedPostElement = null
+  const activePostId = props.activePostId
+
+  if (!activePostId) {
     selectedPostVisibility.value = 1
     emit('visibility', 1)
     return
   }
 
   await nextTick()
+  if (props.activePostId !== activePostId) return
   const cluster = containerRef.value?.querySelector<HTMLElement>(
-    `[data-cluster-key="${CSS.escape(props.activePostId)}"]`,
+    `[data-cluster-key="${CSS.escape(activePostId)}"]`,
   )
   if (!cluster) return
 
   selectedPostElement = cluster
-  updateSelectedPostVisibility()
+  // Layout reads here used to block the first selected-state paint on mobile Safari.
+  // A second animation frame preserves the visibility tracking without putting it on
+  // the tap-to-panel critical path.
+  selectedPostSetupFrame = requestAnimationFrame(() => {
+    selectedPostSetupFrame = null
+    scheduleSelectedPostVisibilityUpdate()
+  })
 }
 
 function updateSelectedPostVisibility() {
@@ -126,7 +209,7 @@ function updateSelectedPostVisibility() {
 
   const bounds = selectedPostElement.getBoundingClientRect()
   const isMobile = window.matchMedia('(max-width: 44rem)').matches
-  const commentsPanel = document.querySelector<HTMLElement>('.comments-section')
+  const commentsPanel = document.querySelector<HTMLElement>('.comments-section.is-active')
   const mobilePanelBottom = isMobile && commentsPanel
     ? window.innerHeight
       - commentsPanel.offsetHeight
@@ -150,9 +233,10 @@ function scheduleSelectedPostVisibilityUpdate() {
 }
 
 watch(() => props.activePostId, observeSelectedPost)
+watch([() => props.activePostId, imageRecords], scheduleActivePostPhotoPreloads, { immediate: true })
 
 function formatClusterDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value))
+  return clusterDateFormatter.format(new Date(value))
 }
 
 async function openPhoto(id: string) {
@@ -162,6 +246,7 @@ async function openPhoto(id: string) {
 
   if (record.post.id === activePostId) {
     activePhotoId.value = id
+    prepareExpandedPhoto(id)
     await nextTick()
     dialogRef.value?.showModal()
     document.documentElement.style.overflow = 'hidden'
@@ -239,7 +324,31 @@ function highlightPath(card: PlacedPhotoCard, clusterX: number, clusterY: number
   ].join(' ')
 }
 
+// These decorations only change when the masonry geometry changes. Keeping them out of the
+// render path means selecting a post does not recalculate every card corner and SVG outline.
+const cardBorderRadii = computed(() => {
+  const radii = new Map<string, string>()
+  masonry.value.clusters.forEach((cluster) => {
+    cluster.cards.forEach((card) => {
+      radii.set(card.id, cardBorderRadius(card, cluster.cards))
+    })
+  })
+  return radii
+})
+
+const clusterHighlightPaths = computed(() => {
+  const paths = new Map<string, string[]>()
+  masonry.value.clusters.forEach((cluster) => {
+    paths.set(
+      cluster.key,
+      cluster.cards.map((card) => highlightPath(card, cluster.x, cluster.y)),
+    )
+  })
+  return paths
+})
+
 function closePhoto() {
+  fullSizeLoadToken += 1
   dialogRef.value?.close()
   document.documentElement.style.overflow = ''
 }
@@ -252,6 +361,7 @@ function showPhoto(offset: number) {
   const nextPhoto = imageRecords.value[nextIndex]
   if (!nextPhoto) return
   activePhotoId.value = nextPhoto.id
+  prepareExpandedPhoto(nextPhoto.id)
   emit('select', nextPhoto.postIndex)
 }
 
@@ -274,8 +384,12 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  fullSizeLoadToken += 1
+  originalPhotoPreloads.forEach((preload) => preload.remove())
   resizeObserver?.disconnect()
   if (visibilityFrame !== null) cancelAnimationFrame(visibilityFrame)
+  if (selectedPostSetupFrame !== null) cancelAnimationFrame(selectedPostSetupFrame)
+  if (preloadFrame !== null) cancelAnimationFrame(preloadFrame)
   window.removeEventListener('resize', syncViewportHeight)
   window.removeEventListener('scroll', scheduleSelectedPostVisibilityUpdate)
   document.documentElement.style.overflow = ''
@@ -299,7 +413,9 @@ onBeforeUnmount(() => {
           'is-muted': effectiveActivePostId && cluster.key !== effectiveActivePostId,
         }"
         :style="{
-          '--selection-emphasis': cluster.key !== effectiveActivePostId ? selectedPostVisibility : 0,
+          '--selection-emphasis': effectiveActivePostId && cluster.key !== effectiveActivePostId
+            ? selectedPostVisibility
+            : 0,
           left: `${cluster.x}px`,
           top: `${cluster.y}px`,
           width: `${cluster.width}px`,
@@ -317,21 +433,20 @@ onBeforeUnmount(() => {
             top: `${card.y - cluster.y}px`,
             width: `${card.width}px`,
             height: `${card.height}px`,
-            borderRadius: cardBorderRadius(card, cluster.cards),
+            borderRadius: cardBorderRadii.get(card.id),
           }"
           :aria-label="photoActionLabel(card.id)"
           @click="openPhoto(card.id)"
         >
           <img
-            :src="recordsById.get(card.id)!.attachment.url || recordsById.get(card.id)!.attachment.preview_url"
+            :src="displayPhotoUrl(card.id)"
             :alt="recordsById.get(card.id)!.attachment.description || 'Mastodon post photo'"
             loading="lazy"
           />
         </button>
-        <Transition name="cluster-selection">
           <svg
-            v-if="cluster.key === effectiveActivePostId"
             class="cluster-highlight"
+            :class="{ 'is-visible': cluster.key === effectiveActivePostId }"
             :viewBox="`-8 -8 ${cluster.width + 16} ${cluster.height + 16}`"
             :style="{
               left: '-8px',
@@ -381,14 +496,13 @@ onBeforeUnmount(() => {
           </defs>
           <g :filter="`url(#post-highlight-${cluster.key})`">
             <path
-              v-for="card in cluster.cards"
-              :key="card.id"
-              :d="highlightPath(card, cluster.x, cluster.y)"
+              v-for="(path, pathIndex) in clusterHighlightPaths.get(cluster.key)"
+              :key="cluster.cards[pathIndex]!.id"
+              :d="path"
               fill="currentColor"
             />
           </g>
           </svg>
-        </Transition>
       </section>
     </div>
 
@@ -413,7 +527,7 @@ onBeforeUnmount(() => {
         >←</button>
         <figure v-if="activePhoto" class="lightbox-figure">
           <img
-            :src="activePhoto.attachment.url || activePhoto.attachment.preview_url"
+            :src="expandedPhotoUrl"
             :alt="activePhoto.attachment.description || 'Expanded Mastodon post photo'"
           />
           <figcaption>
@@ -445,15 +559,12 @@ onBeforeUnmount(() => {
 }
 
 .photo-cluster {
-  pointer-events: none;
-  position: absolute;
-  transition: filter 180ms ease, left 220ms ease, opacity 180ms ease, top 220ms ease;
-}
-
-.photo-cluster.is-muted {
   filter: saturate(calc(1 - (0.68 * var(--selection-emphasis))))
     brightness(calc(1 - (0.16 * var(--selection-emphasis))));
   opacity: calc(1 - (0.42 * var(--selection-emphasis)));
+  pointer-events: none;
+  position: absolute;
+  transition: filter 180ms ease, left 220ms ease, opacity 180ms ease, top 220ms ease;
 }
 
 .photo-card {
@@ -470,7 +581,7 @@ onBeforeUnmount(() => {
   transition: box-shadow 160ms ease, transform 180ms ease;
 }
 
-.photo-cluster.is-muted .photo-card {
+.photo-cluster .photo-card {
   transform: scale(calc(1 - (0.03 * var(--selection-emphasis))));
 }
 
@@ -481,20 +592,17 @@ onBeforeUnmount(() => {
 
 .cluster-highlight {
   color: var(--photos-accent);
+  opacity: 0;
   overflow: visible;
   pointer-events: none;
   position: absolute;
+  transition: opacity 120ms ease-out;
+  will-change: opacity;
   z-index: 2;
 }
 
-.cluster-selection-enter-active,
-.cluster-selection-leave-active {
-  transition: opacity 320ms ease;
-}
-
-.cluster-selection-enter-from,
-.cluster-selection-leave-to {
-  opacity: 0;
+.cluster-highlight.is-visible {
+  opacity: 1;
 }
 
 .photo-card::after {
@@ -614,8 +722,7 @@ onBeforeUnmount(() => {
 .lightbox-next { right: max(1rem, env(safe-area-inset-right)); }
 
 @media (prefers-reduced-motion: reduce) {
-  .cluster-selection-enter-active,
-  .cluster-selection-leave-active,
+  .cluster-highlight,
   .photo-cluster,
   .photo-masonry,
   .photo-card,

@@ -112,11 +112,27 @@ const selectedPostVisibility = ref(1)
 const activeToot = computed(() =>
   activeTootIndex.value === null ? null : toots.value[activeTootIndex.value] ?? null,
 )
+const photoPosts = computed(() => toots.value.map((toot) => toot?.post ?? null))
+const commentsByPostId = computed(() => {
+  const comments = new Map<string, DisplayStatus[]>()
+  toots.value.forEach((toot) => {
+    if (toot) comments.set(toot.post.id, flattenComments(toot.comments))
+  })
+  return comments
+})
+const replyCountsByPostId = computed(() => {
+  const counts = new Map<string, number>()
+  toots.value.forEach((toot) => {
+    if (toot) counts.set(toot.post.id, countReplies(toot.comments))
+  })
+  return counts
+})
 
 const formatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
   timeStyle: 'short',
 })
+const numberFormatter = new Intl.NumberFormat()
 
 function selectToot(nextIndex: number) {
   activeTootIndex.value = nextIndex
@@ -249,7 +265,7 @@ function formatDate(date: string): string {
 }
 
 function formatCount(value: number): string {
-  return new Intl.NumberFormat().format(value)
+  return numberFormatter.format(value)
 }
 
 function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): number {
@@ -279,83 +295,106 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
         aria-label="Mastodon posts"
       >
           <ClusteredPhotoMasonry
-            :posts="toots.map((toot) => toot?.post ?? null)"
+            :posts="photoPosts"
             :active-post-id="activeToot?.post.id"
             @select="selectToot"
             @clear="clearSelection"
             @visibility="selectedPostVisibility = $event"
           />
 
-          <Transition name="post-details">
+          <template
+            v-for="(toot, tootIndex) in toots"
+            :key="toot?.post.id ?? tootIds[tootIndex]"
+          >
             <section
-              v-if="activeToot"
-              :key="activeToot.post.id"
+              v-if="toot"
+              v-show="activeTootIndex === tootIndex"
               class="comments-section"
-              :class="{ 'is-out-of-view': selectedPostVisibility <= 0.01 }"
+              :class="{
+                'is-active': activeTootIndex === tootIndex,
+                'is-out-of-view': activeTootIndex === tootIndex && selectedPostVisibility <= 0.01,
+              }"
               :style="{ '--selected-post-visibility': selectedPostVisibility }"
-              :aria-hidden="selectedPostVisibility <= 0.01"
+              :aria-hidden="activeTootIndex !== tootIndex || selectedPostVisibility <= 0.01"
             >
-            <div class="comments-panel-heading">
-              <header class="post-meta-header">
-                <a :href="activeToot.post.account.url" class="author-link">
-                  <img :src="activeToot.post.account.avatar" alt="" class="avatar avatar-large" />
-                  <span class="author-text">
-                    <strong>{{ displayName(activeToot.post.account) }}</strong>
-                    <span>@{{ activeToot.post.account.acct }}</span>
-                  </span>
-                </a>
-              </header>
-
-              <div class="comments-post-text" v-html="activeToot.post.content"></div>
-              <time class="comments-post-date" :datetime="activeToot.post.created_at">
-                {{ formatDate(activeToot.post.created_at) }}
-              </time>
-
-              <header class="comments-header">
-                <h1>Comments</h1>
-                <span>{{ formatCount(countReplies(activeToot.comments)) }}</span>
-              </header>
-            </div>
-
-            <ol v-if="activeToot.comments.length" class="comment-list">
-              <li
-                v-for="comment in flattenComments(activeToot.comments)"
-                :key="comment.id"
-                :style="{ '--reply-depth': Math.min(comment.depth, 6) }"
-                class="comment-item"
-              >
-                <article class="comment" :class="{ 'is-reply': comment.depth > 0 }">
-                  <header class="status-header">
-                    <a :href="comment.account.url" class="author-link">
-                      <img :src="comment.account.avatar" alt="" class="avatar" />
+                <div class="comments-panel-heading" v-memo="[toot.post.id]">
+                  <header class="post-meta-header">
+                    <a :href="toot.post.account.url" class="author-link">
+                      <img
+                        :src="toot.post.account.avatar"
+                        alt=""
+                        class="avatar avatar-large"
+                        decoding="async"
+                      />
                       <span class="author-text">
-                        <strong>{{ displayName(comment.account) }}</strong>
-                        <span>@{{ comment.account.acct }}</span>
+                        <strong>{{ displayName(toot.post.account) }}</strong>
+                        <span>@{{ toot.post.account.acct }}</span>
                       </span>
                     </a>
-                    <a :href="comment.url ?? comment.uri" class="timestamp">{{ formatDate(comment.created_at) }}</a>
                   </header>
 
-                  <p v-if="comment.spoiler_text" class="content-warning">{{ comment.spoiler_text }}</p>
-                  <div class="status-content" v-html="comment.content"></div>
+                  <div class="comments-post-text" v-html="toot.post.content"></div>
+                  <time class="comments-post-date" :datetime="toot.post.created_at">
+                    {{ formatDate(toot.post.created_at) }}
+                  </time>
 
-                  <MediaCarousel
-                    v-if="comment.media_attachments.length"
-                    :attachments="comment.media_attachments"
-                    label="Reply media"
-                  />
+                  <header class="comments-header">
+                    <h1>Comments</h1>
+                    <span>{{ formatCount(replyCountsByPostId.get(toot.post.id) ?? 0) }}</span>
+                  </header>
+                </div>
 
-                  <footer class="comment-stats">
-                    <span>{{ formatCount(comment.reblogs_count) }} boosts</span>
-                    <span>{{ formatCount(comment.favourites_count) }} favorites</span>
-                  </footer>
-                </article>
-              </li>
-            </ol>
+                <ol
+                  v-if="toot.comments.length"
+                  v-memo="[toot.post.id]"
+                  class="comment-list"
+                >
+                  <li
+                    v-for="comment in commentsByPostId.get(toot.post.id) ?? []"
+                    :key="comment.id"
+                    :style="{ '--reply-depth': Math.min(comment.depth, 6) }"
+                    class="comment-item"
+                  >
+                    <article class="comment" :class="{ 'is-reply': comment.depth > 0 }">
+                      <header class="status-header">
+                        <a :href="comment.account.url" class="author-link">
+                          <img
+                            :src="comment.account.avatar"
+                            alt=""
+                            class="avatar"
+                            decoding="async"
+                            loading="lazy"
+                          />
+                          <span class="author-text">
+                            <strong>{{ displayName(comment.account) }}</strong>
+                            <span>@{{ comment.account.acct }}</span>
+                          </span>
+                        </a>
+                        <a :href="comment.url ?? comment.uri" class="timestamp">
+                          {{ formatDate(comment.created_at) }}
+                        </a>
+                      </header>
 
-            <p v-else class="empty-state">No comments yet.</p>
+                      <p v-if="comment.spoiler_text" class="content-warning">{{ comment.spoiler_text }}</p>
+                      <div class="status-content" v-html="comment.content"></div>
+
+                      <MediaCarousel
+                        v-if="comment.media_attachments.length"
+                        :attachments="comment.media_attachments"
+                        label="Reply media"
+                      />
+
+                      <footer class="comment-stats">
+                        <span>{{ formatCount(comment.reblogs_count) }} boosts</span>
+                        <span>{{ formatCount(comment.favourites_count) }} favorites</span>
+                      </footer>
+                    </article>
+                  </li>
+                </ol>
+
+                <p v-else class="empty-state" v-memo="[toot.post.id]">No comments yet.</p>
             </section>
-          </Transition>
+          </template>
       </section>
     </section>
   </main>
@@ -808,17 +847,6 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   pointer-events: none;
 }
 
-.post-details-enter-active,
-.post-details-leave-active {
-  transition: opacity 320ms ease, transform 320ms ease;
-}
-
-.post-details-enter-from,
-.post-details-leave-to {
-  opacity: 0 !important;
-  transform: translateX(0.75rem) !important;
-}
-
 .comments-header {
   align-items: baseline;
   display: flex;
@@ -922,16 +950,10 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     transform: translateY(0.75rem);
   }
 
-  .post-details-enter-from,
-  .post-details-leave-to {
-    transform: translateY(0.75rem) !important;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .comments-section,
-  .post-details-enter-active,
-  .post-details-leave-active {
+  .comments-section {
     transition: none;
   }
 }

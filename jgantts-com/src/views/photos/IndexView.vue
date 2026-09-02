@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import ClusteredPhotoMasonry from './ClusteredPhotoMasonry.vue'
 import MediaCarousel from '@/components/MediaCarousel.vue'
 
@@ -150,11 +150,16 @@ function clearSelection() {
 }
 
 function handlePageClick(event: MouseEvent) {
-  if (!activeToot.value) return
+  const activePostId = activeToot.value?.post.id
+  if (!activePostId) return
 
   const target = event.target
   if (!(target instanceof Element)) return
-  if (target.closest('.comments-section') || target.closest('.photo-card')) return
+  if (target.closest('.comments-section') || target.closest('.photo-lightbox')) return
+
+  const photoCard = target.closest('.photo-card')
+  const photoCluster = photoCard?.closest<HTMLElement>('[data-cluster-key]')
+  if (photoCluster?.dataset.clusterKey === activePostId) return
 
   clearSelection()
 }
@@ -176,6 +181,8 @@ function ensureTootLoaded(index: number): Promise<void> {
 }
 
 onMounted(async () => {
+  document.addEventListener('click', handlePageClick)
+
   try {
     const savedPostId = localStorage.getItem(activePostStorageKey)
     const savedPostIndex = tootIds.indexOf(savedPostId ?? '')
@@ -189,6 +196,10 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handlePageClick)
 })
 
 async function loadToot(tootId: string): Promise<TootThread> {
@@ -278,7 +289,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 </script>
 
 <template>
-  <main class="photos-page" @click="handlePageClick">
+  <main class="photos-page">
     <section class="conversation-shell" aria-live="polite">
       <div v-if="loading" class="loading-state">
         Loading Mastodon conversation...

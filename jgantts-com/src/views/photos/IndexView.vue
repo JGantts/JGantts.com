@@ -329,6 +329,17 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
               :aria-hidden="activeTootIndex !== tootIndex || selectedPostVisibility <= 0.01"
               aria-label="Post comments"
             >
+                <button
+                  type="button"
+                  class="comments-close"
+                  aria-label="Close comments"
+                  @click="clearSelection"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="M6 6l12 12M18 6 6 18" />
+                  </svg>
+                </button>
+
                 <div class="comments-panel-heading" v-memo="[toot.post.id]">
                   <header class="post-meta-header">
                     <a :href="toot.post.account.url" class="author-link">
@@ -354,16 +365,6 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                 <header class="comments-header">
                   <h1>Comments</h1>
                   <span>{{ formatCount(replyCountsByPostId.get(toot.post.id) ?? 0) }}</span>
-                  <button
-                    type="button"
-                    class="comments-close"
-                    aria-label="Close comments"
-                    @click="clearSelection"
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24">
-                      <path d="M6 6l12 12M18 6 6 18" />
-                    </svg>
-                  </button>
                 </header>
 
                 <ol
@@ -879,7 +880,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   border-top: 1px solid color-mix(in srgb, var(--photos-border) 58%, transparent);
   display: grid;
   gap: 0.65rem;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   margin: 0.65rem -0.85rem 0.75rem;
   padding: 0.65rem 0.85rem;
   position: sticky;
@@ -891,7 +892,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   display: grid;
   gap: 0.45rem;
   min-height: 0;
-  padding: 0 0.15rem 0.2rem;
+  padding: 0 2.75rem 0.2rem 0.15rem;
 }
 
 .comments-post-text {
@@ -947,7 +948,11 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   height: 1.75rem;
   justify-content: center;
   padding: 0;
+  position: absolute;
+  right: 0.85rem;
+  top: 0.85rem;
   width: 1.75rem;
+  z-index: 3;
 }
 
 .comments-close:hover {

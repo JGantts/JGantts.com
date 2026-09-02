@@ -991,6 +991,22 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   .toot-carousel {
     --toot-card-width: min(56%, 30rem);
   }
+
+  .comments-section {
+    bottom: env(safe-area-inset-bottom, 0px);
+    grid-column: 1;
+    left: auto;
+    max-height: none;
+    position: fixed;
+    right: env(safe-area-inset-right, 0px);
+    top: env(safe-area-inset-top, 0px);
+    transform: translateX(calc((1 - var(--selected-post-visibility, 1)) * 0.75rem));
+    width: 50vw;
+  }
+
+  .comments-section.is-out-of-view {
+    transform: translateX(0.75rem);
+  }
 }
 </style>
 

@@ -692,7 +692,7 @@ onBeforeUnmount(() => {
 }
 
 .cluster-highlight {
-  color: var(--photos-accent);
+  color: var(--photos-highlight-border);
   opacity: 0;
   overflow: visible;
   pointer-events: none;

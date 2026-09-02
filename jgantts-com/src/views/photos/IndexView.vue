@@ -276,7 +276,6 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
       <section
         v-show="!loading && !error && toots.length"
         class="toot-carousel"
-        :class="{ 'has-active-post': activeToot }"
         aria-label="Mastodon posts"
       >
           <ClusteredPhotoMasonry
@@ -409,11 +408,8 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
   box-sizing: border-box;
   display: grid;
-  gap: 1rem;
-}
-
-.toot-carousel.has-active-post {
-  padding-right: calc(22rem + var(--comments-panel-gap));
+  gap: 1rem var(--comments-panel-gap);
+  grid-template-columns: minmax(0, 1fr) 22rem;
 }
 
 .toot-viewport {
@@ -786,11 +782,11 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .comments-section {
+  align-self: start;
   background: color-mix(in srgb, var(--photos-panel) 94%, transparent);
   backdrop-filter: blur(14px);
   border: 1px solid var(--photos-border);
   border-radius: 12px;
-  bottom: calc(var(--photos-gutter) + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   box-shadow: var(--photos-card-shadow);
   display: grid;
@@ -799,12 +795,12 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   max-height: calc(100dvh - 9rem - var(--photos-gutter));
   overflow: hidden;
   padding: 0.85rem;
-  position: fixed;
-  right: calc(var(--photos-gutter) + env(safe-area-inset-right, 0px));
+  grid-column: 2;
+  position: sticky;
   top: 8rem;
   opacity: var(--selected-post-visibility, 1);
   transform: translateX(calc((1 - var(--selected-post-visibility, 1)) * 0.75rem));
-  width: min(22rem, calc(100vw - var(--photos-gutter) - var(--photos-gutter)));
+  width: 100%;
   z-index: 10;
 }
 
@@ -906,14 +902,16 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 @media (max-width: 44rem) {
-  .toot-carousel.has-active-post {
-    padding-right: 0;
+  .toot-carousel {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .comments-section {
     bottom: calc(var(--photos-gutter) + env(safe-area-inset-bottom, 0px));
+    grid-column: 1;
     left: calc(var(--photos-gutter) + env(safe-area-inset-left, 0px));
     max-height: min(42dvh, 28rem);
+    position: fixed;
     right: calc(var(--photos-gutter) + env(safe-area-inset-right, 0px));
     top: auto;
     width: auto;

@@ -1,8 +1,24 @@
+import { execFileSync } from "node:child_process";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig, type ServerOptions } from "vite";
 import vue from "@vitejs/plugin-vue";
 import svgLoader from "vite-svg-loader";
 import { visualizer } from "rollup-plugin-visualizer";
+
+function getCommitId() {
+  const environmentCommit =
+    process.env.VITE_COMMIT_SHA ?? process.env.GITHUB_SHA ?? process.env.COMMIT_SHA;
+  if (environmentCommit) return environmentCommit.trim();
+
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      encoding: "utf8",
+    }).trim();
+  } catch {
+    return "dev";
+  }
+}
 
 export default defineConfig(({ command }) => {
   const isBuild = command === "build";
@@ -22,6 +38,9 @@ export default defineConfig(({ command }) => {
   }
 
   return {
+    define: {
+      __APP_COMMIT__: JSON.stringify(getCommitId()),
+    },
     publicDir,
     server,
     build: {

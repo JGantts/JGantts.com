@@ -8,6 +8,10 @@ const isPhotosPage = computed(() => route.path.startsWith('/photos'))
 const layoutClass = computed(() => ({
   'layout--photos': isPhotosPage.value,
 }))
+const shortCommitId = __APP_COMMIT__ === 'dev' ? __APP_COMMIT__ : __APP_COMMIT__.slice(0, 7)
+const commitUrl = __APP_COMMIT__ === 'dev'
+  ? undefined
+  : `https://github.com/JGantts/JGantts.com/commit/${__APP_COMMIT__}`
 
 const pageColors = computed(() =>
   route.path.startsWith('/photos')
@@ -52,6 +56,8 @@ onBeforeUnmount(() => {
       <p class="copyright">
       © 2026 Jacob Gantt
       </p>
+      <a v-if="commitUrl" class="version-tag" :href="commitUrl">{{ shortCommitId }}</a>
+      <span v-else class="version-tag">{{ shortCommitId }}</span>
     </footer>
   </div>
 </template>
@@ -175,6 +181,19 @@ body {
 
 .copyright {
   font-size: 0.8rem;
+}
+
+.version-tag {
+  color: inherit;
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.62rem;
+  opacity: 0.55;
+  text-decoration: none;
+}
+
+.version-tag:hover {
+  opacity: 1;
+  text-decoration: underline;
 }
 </style>
 

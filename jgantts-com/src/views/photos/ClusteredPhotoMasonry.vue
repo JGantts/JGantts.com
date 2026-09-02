@@ -225,22 +225,16 @@ function cardBorderRadius(card: PlacedPhotoCard, cards: PlacedPhotoCard[]) {
   return cornerRadii(card, cards).map((radius) => `${radius}px`).join(' ')
 }
 
-function highlightPath(card: PlacedPhotoCard, cards: PlacedPhotoCard[], clusterX: number, clusterY: number) {
+function highlightPath(card: PlacedPhotoCard, clusterX: number, clusterY: number) {
   const x = card.x - clusterX
   const y = card.y - clusterY
   const width = card.width
   const height = card.height
-  const [topLeft, topRight, bottomRight, bottomLeft] = cornerRadii(card, cards)
   return [
-    `M ${x + topLeft} ${y}`,
-    `H ${x + width - topRight}`,
-    `Q ${x + width} ${y} ${x + width} ${y + topRight}`,
-    `V ${y + height - bottomRight}`,
-    `Q ${x + width} ${y + height} ${x + width - bottomRight} ${y + height}`,
-    `H ${x + bottomLeft}`,
-    `Q ${x} ${y + height} ${x} ${y + height - bottomLeft}`,
-    `V ${y + topLeft}`,
-    `Q ${x} ${y} ${x + topLeft} ${y}`,
+    `M ${x} ${y}`,
+    `H ${x + width}`,
+    `V ${y + height}`,
+    `H ${x}`,
     'Z',
   ].join(' ')
 }
@@ -356,17 +350,40 @@ onBeforeUnmount(() => {
               height="140%"
               color-interpolation-filters="sRGB"
             >
-              <feMorphology in="SourceAlpha" operator="dilate" radius="3" result="expanded" />
-              <feComposite in="expanded" in2="SourceAlpha" operator="out" result="outer-ring" />
-              <feFlood flood-color="currentColor" flood-opacity="0.9" result="ring-color" />
-              <feComposite in="ring-color" in2="outer-ring" operator="in" />
+              <!-- Close the narrow masonry gutters so the post reads as one silhouette. -->
+              <feMorphology in="SourceAlpha" operator="dilate" radius="6" result="joined-expanded" />
+              <feMorphology in="joined-expanded" operator="erode" radius="6" result="joined" />
+
+              <!-- Move the contour to the middle of the 10px masonry gutter. -->
+              <feMorphology in="joined" operator="dilate" radius="5" result="midline-shape" />
+
+              <!-- Smooth the orthogonal union into consistently rounded inside and outside turns. -->
+              <feGaussianBlur in="midline-shape" stdDeviation="5" result="rounded-soft" />
+              <feComponentTransfer in="rounded-soft" result="rounded-shape">
+                <feFuncA type="discrete" tableValues="0 0 0 0 0 1 1 1 1 1" />
+              </feComponentTransfer>
+
+              <!-- A light inner band and dark outer band make the inside direction legible. -->
+              <feMorphology in="rounded-shape" operator="erode" radius="2.6" result="inner-edge" />
+              <feComposite in="rounded-shape" in2="inner-edge" operator="out" result="inner-band" />
+              <feMorphology in="rounded-shape" operator="dilate" radius="1.2" result="outer-edge" />
+              <feComposite in="outer-edge" in2="rounded-shape" operator="out" result="outer-band" />
+
+              <feFlood flood-color="#ffffff" flood-opacity="0.94" result="inner-color" />
+              <feComposite in="inner-color" in2="inner-band" operator="in" result="lit-inside" />
+              <feFlood flood-color="#080909" flood-opacity="0.86" result="outer-color" />
+              <feComposite in="outer-color" in2="outer-band" operator="in" result="dark-outside" />
+              <feMerge>
+                <feMergeNode in="dark-outside" />
+                <feMergeNode in="lit-inside" />
+              </feMerge>
             </filter>
           </defs>
           <g :filter="`url(#post-highlight-${cluster.key})`">
             <path
               v-for="card in cluster.cards"
               :key="card.id"
-              :d="highlightPath(card, cluster.cards, cluster.x, cluster.y)"
+              :d="highlightPath(card, cluster.x, cluster.y)"
               fill="currentColor"
             />
           </g>
@@ -430,15 +447,13 @@ onBeforeUnmount(() => {
 .photo-cluster {
   pointer-events: none;
   position: absolute;
-  transform-origin: center;
-  transition: filter 180ms ease, left 220ms ease, opacity 180ms ease, top 220ms ease, transform 180ms ease;
+  transition: filter 180ms ease, left 220ms ease, opacity 180ms ease, top 220ms ease;
 }
 
 .photo-cluster.is-muted {
   filter: saturate(calc(1 - (0.68 * var(--selection-emphasis))))
     brightness(calc(1 - (0.16 * var(--selection-emphasis))));
   opacity: calc(1 - (0.42 * var(--selection-emphasis)));
-  transform: scale(calc(1 - (0.03 * var(--selection-emphasis))));
 }
 
 .photo-card {
@@ -451,7 +466,12 @@ onBeforeUnmount(() => {
   padding: 0;
   pointer-events: auto;
   position: absolute;
-  transition: box-shadow 160ms ease;
+  transform-origin: center;
+  transition: box-shadow 160ms ease, transform 180ms ease;
+}
+
+.photo-cluster.is-muted .photo-card {
+  transform: scale(calc(1 - (0.03 * var(--selection-emphasis))));
 }
 
 .photo-cluster.is-active .photo-card {
@@ -598,6 +618,7 @@ onBeforeUnmount(() => {
   .cluster-selection-leave-active,
   .photo-cluster,
   .photo-masonry,
+  .photo-card,
   .photo-card img { transition: none; }
 }
 

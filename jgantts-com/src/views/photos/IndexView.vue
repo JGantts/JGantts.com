@@ -105,7 +105,7 @@ const tootIds = [
 const props = defineProps<{
   postId?: string
 }>()
-const router = useRouter()
+const router = useRouter() 
 
 const toots = ref<(TootThread | null)[]>(tootIds.map(() => null))
 const loading = ref(true)

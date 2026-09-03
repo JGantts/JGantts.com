@@ -114,6 +114,27 @@ const tootLoads = new Map<number, Promise<void>>()
 
 const activeTootIndex = ref<number | null>(null)
 const selectedPostVisibility = ref(1)
+const commentsDrawerState = ref<0 | 1 | 2>(0)
+const commentsDrawerOpen = computed(() => commentsDrawerState.value > 0)
+const commentsDrawerFull = computed(() => commentsDrawerState.value === 2)
+const commentsDrawerDragging = ref(false)
+const commentsDrawerDragOffset = ref(0)
+const commentsDrawerDragProgress = ref(0)
+const commentsDrawerPreviewHeight = ref(0)
+const commentsDrawerPreviewWidth = computed(
+  () => `${91.111 + 8.889 * commentsDrawerDragProgress.value}%`,
+)
+const commentsDrawerPreviewFontSize = computed(
+  () => `${0.82 + 0.08 * commentsDrawerDragProgress.value}rem`,
+)
+const commentsDrawerPreviewLineHeight = computed(
+  () => `${1.35 + 0.13 * commentsDrawerDragProgress.value}`,
+)
+let commentsDrawerPointerStartY = 0
+let commentsDrawerPointerStartOffset = 0
+let commentsDrawerPointerStartedAt = 0
+let commentsDrawerPointerStartState: 0 | 1 | 2 = 0
+const commentsDrawerStateLabel = computed(() => ['Collapsed', 'Expanded', 'Fully expanded'][commentsDrawerState.value])
 const activeToot = computed(() =>
   activeTootIndex.value === null ? null : toots.value[activeTootIndex.value] ?? null,
 )
@@ -142,6 +163,8 @@ const numberFormatter = new Intl.NumberFormat()
 function selectToot(nextIndex: number) {
   activeTootIndex.value = nextIndex
   selectedPostVisibility.value = 1
+  commentsDrawerState.value = 0
+  commentsDrawerDragOffset.value = 0
   const postId = toots.value[nextIndex]?.post.id
   if (!postId) return
 
@@ -151,6 +174,8 @@ function selectToot(nextIndex: number) {
 function clearSelection() {
   activeTootIndex.value = null
   selectedPostVisibility.value = 1
+  commentsDrawerState.value = 0
+  commentsDrawerDragOffset.value = 0
   if (props.postId) void router.push('/photos')
 }
 
@@ -158,6 +183,110 @@ function syncSelectionFromRoute(postId = props.postId) {
   activeTootIndex.value = postId ? tootIds.indexOf(postId) : null
   if (activeTootIndex.value === -1) activeTootIndex.value = null
   selectedPostVisibility.value = 1
+  commentsDrawerState.value = 0
+  commentsDrawerDragOffset.value = 0
+}
+
+function isMobilePortraitDrawer() {
+  return window.matchMedia('(max-width: 44rem) and (orientation: portrait)').matches
+}
+
+function stepCommentsDrawer(direction: -1 | 1) {
+  commentsDrawerState.value = Math.min(
+    2,
+    Math.max(0, commentsDrawerState.value + direction),
+  ) as 0 | 1 | 2
+  commentsDrawerDragOffset.value = 0
+}
+
+function commentsDrawerOffsets(panel: HTMLElement) {
+  const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
+  const collapsedHeight = 6.25 * rootFontSize
+  const closed = Math.max(0, panel.offsetHeight - collapsedHeight)
+  return [closed, Math.min(closed, window.innerHeight * 0.22), 0] as const
+}
+
+function startCommentsDrawerDrag(event: PointerEvent) {
+  if (!isMobilePortraitDrawer() || (event.pointerType === 'mouse' && event.button !== 0)) return
+
+  const panel = (event.currentTarget as HTMLElement).closest<HTMLElement>('.comments-section')
+  if (!panel) return
+  const handle = panel.querySelector<HTMLElement>('.comments-drawer-handle')
+  if (!handle) return
+
+  commentsDrawerDragging.value = true
+  commentsDrawerPointerStartState = commentsDrawerState.value
+  commentsDrawerPointerStartY = event.clientY
+  commentsDrawerPointerStartOffset = commentsDrawerOffsets(panel)[commentsDrawerState.value]
+  commentsDrawerPointerStartedAt = performance.now()
+  commentsDrawerDragOffset.value = commentsDrawerPointerStartOffset
+  commentsDrawerDragProgress.value = commentsDrawerOpen.value ? 1 : 0
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+}
+
+function moveCommentsDrawer(event: PointerEvent) {
+  if (!commentsDrawerDragging.value) return
+
+  const panel = (event.currentTarget as HTMLElement).closest<HTMLElement>('.comments-section')
+  if (!panel) return
+  const handle = panel.querySelector<HTMLElement>('.comments-drawer-handle')
+  if (!handle) return
+
+  const [closedOffset] = commentsDrawerOffsets(panel)
+  commentsDrawerDragOffset.value = Math.min(
+    closedOffset,
+    Math.max(0, commentsDrawerPointerStartOffset + event.clientY - commentsDrawerPointerStartY),
+  )
+  commentsDrawerDragProgress.value = closedOffset
+    ? 1 - commentsDrawerDragOffset.value / closedOffset
+    : 1
+
+  const preview = panel.querySelector<HTMLElement>(
+    '.comments-drawer-preview',
+  )
+  if (preview) {
+    const collapsedHeight = Number.parseFloat(getComputedStyle(preview).lineHeight) * 3
+    const expandedHeight = Math.min(preview.scrollHeight, window.innerHeight * 0.4)
+    commentsDrawerPreviewHeight.value = collapsedHeight
+      + (expandedHeight - collapsedHeight) * commentsDrawerDragProgress.value
+  }
+}
+
+function finishCommentsDrawerDrag(event: PointerEvent) {
+  if (!commentsDrawerDragging.value) return
+
+  const panel = (event.currentTarget as HTMLElement).closest<HTMLElement>('.comments-section')
+  const handle = panel?.querySelector<HTMLElement>('.comments-drawer-handle')
+  if (!panel || !handle) return
+  const elapsed = Math.max(1, performance.now() - commentsDrawerPointerStartedAt)
+  const velocity = (event.clientY - commentsDrawerPointerStartY) / elapsed
+  const offsets = commentsDrawerOffsets(panel)
+
+  if (velocity < -0.35) {
+    commentsDrawerState.value = Math.min(2, commentsDrawerPointerStartState + 1) as 0 | 1 | 2
+  } else if (velocity > 0.35) {
+    commentsDrawerState.value = Math.max(0, commentsDrawerPointerStartState - 1) as 0 | 1 | 2
+  } else {
+    let nearestState: 0 | 1 | 2 = 0
+    offsets.forEach((offset, index) => {
+      if (
+        Math.abs(offset - commentsDrawerDragOffset.value)
+        < Math.abs(offsets[nearestState] - commentsDrawerDragOffset.value)
+      ) {
+        nearestState = index as 0 | 1 | 2
+      }
+    })
+    commentsDrawerState.value = nearestState
+  }
+  commentsDrawerDragging.value = false
+  commentsDrawerDragOffset.value = 0
+  commentsDrawerDragProgress.value = commentsDrawerState.value > 0 ? 1 : 0
+  commentsDrawerPreviewHeight.value = 0
+}
+
+function handleCommentsDrawerWheel(event: WheelEvent) {
+  if (!isMobilePortraitDrawer() || commentsDrawerFull.value) return
+  event.preventDefault()
 }
 
 async function scrollToRoutedPost(postId: string) {
@@ -361,11 +490,53 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
               :class="{
                 'is-active': activeTootIndex === tootIndex,
                 'is-out-of-view': activeTootIndex === tootIndex && selectedPostVisibility <= 0.01,
+                'is-drawer-open': commentsDrawerOpen,
+                'is-drawer-full': commentsDrawerFull,
+                'is-drawer-dragging': commentsDrawerDragging,
               }"
-              :style="{ '--selected-post-visibility': selectedPostVisibility }"
+              :style="{
+                '--selected-post-visibility': selectedPostVisibility,
+                '--drawer-drag-offset': `${commentsDrawerDragOffset}px`,
+                '--drawer-drag-progress': commentsDrawerDragProgress,
+                '--drawer-preview-height': `${commentsDrawerPreviewHeight}px`,
+                '--drawer-preview-width': commentsDrawerPreviewWidth,
+                '--drawer-preview-font-size': commentsDrawerPreviewFontSize,
+                '--drawer-preview-line-height': commentsDrawerPreviewLineHeight,
+              }"
               :aria-hidden="activeTootIndex !== tootIndex || selectedPostVisibility <= 0.01"
               aria-label="Post comments"
+              @wheel="handleCommentsDrawerWheel"
+              @pointerdown="commentsDrawerFull ? undefined : startCommentsDrawerDrag($event)"
+              @pointermove="commentsDrawerFull ? undefined : moveCommentsDrawer($event)"
+              @pointerup="commentsDrawerFull ? undefined : finishCommentsDrawerDrag($event)"
+              @pointercancel="commentsDrawerFull ? undefined : finishCommentsDrawerDrag($event)"
             >
+                <span
+                  class="comments-drawer-grabber"
+                  role="slider"
+                  tabindex="0"
+                  aria-label="Comments panel position"
+                  aria-valuemin="0"
+                  aria-valuemax="2"
+                  :aria-valuenow="commentsDrawerState"
+                  :aria-valuetext="commentsDrawerStateLabel"
+                  @keydown.up.prevent="stepCommentsDrawer(1)"
+                  @keydown.right.prevent="stepCommentsDrawer(1)"
+                  @keydown.down.prevent="stepCommentsDrawer(-1)"
+                  @keydown.left.prevent="stepCommentsDrawer(-1)"
+                  @pointerdown.stop="startCommentsDrawerDrag"
+                  @pointermove.stop="moveCommentsDrawer"
+                  @pointerup.stop="finishCommentsDrawerDrag"
+                  @pointercancel.stop="finishCommentsDrawerDrag"
+                ></span>
+
+              <div class="comments-drawer-scroll">
+                <div
+                  class="comments-drawer-handle"
+                >
+                  <div class="comments-drawer-preview" v-html="toot.post.content"></div>
+                </div>
+
                 <button
                   type="button"
                   class="comments-close"
@@ -453,6 +624,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                 </ol>
 
                 <p v-else class="empty-state" v-memo="[toot.post.id]">No comments yet.</p>
+              </div>
             </section>
           </template>
       </section>
@@ -909,6 +1081,14 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   pointer-events: none;
 }
 
+.comments-drawer-handle {
+  display: none;
+}
+
+.comments-drawer-scroll {
+  display: contents;
+}
+
 .comments-header {
   align-items: baseline;
   background: color-mix(in srgb, var(--photos-panel) 92%, transparent);
@@ -1033,23 +1213,199 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   .toot-carousel {
     grid-template-columns: minmax(0, 1fr);
   }
+}
 
+@media (max-width: 44rem) and (orientation: portrait) {
   .comments-section {
-    bottom: calc(var(--photos-gutter) + env(safe-area-inset-bottom, 0px));
+    --drawer-handle-height: 6.25rem;
+    --drawer-closed-offset: calc(100% - var(--drawer-handle-height) - env(safe-area-inset-bottom, 0px));
+
+    bottom: 0;
     grid-column: 1;
-    left: calc(var(--photos-gutter) + env(safe-area-inset-left, 0px));
-    max-height: min(64dvh, 32rem);
+    height: min(78dvh, 40rem);
+    left: max(0.5rem, env(safe-area-inset-left, 0px));
+    max-height: none;
+    padding: 0;
     position: fixed;
-    right: calc(var(--photos-gutter) + env(safe-area-inset-right, 0px));
+    right: max(0.5rem, env(safe-area-inset-right, 0px));
     top: auto;
+    overflow-y: hidden;
+    touch-action: none;
     width: auto;
-    transform: translateY(calc((1 - var(--selected-post-visibility, 1)) * 0.75rem));
+    transform: translateY(var(--drawer-closed-offset));
+    transition: transform 240ms cubic-bezier(0.22, 0.72, 0.22, 1), opacity 160ms ease;
+  }
+
+  .comments-section.is-drawer-open {
+    transform: translateY(min(22dvh, var(--drawer-closed-offset)));
+  }
+
+  .comments-section.is-drawer-full {
+    touch-action: pan-y;
+    transform: translateY(0);
+  }
+
+  .comments-drawer-scroll {
+    box-sizing: border-box;
+    display: block;
+    height: 100%;
+    overflow: hidden;
+    padding: 1rem 0.85rem 0.85rem;
+  }
+
+  .comments-section.is-drawer-full .comments-drawer-scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .comments-section.is-drawer-dragging {
+    transform: translateY(var(--drawer-drag-offset));
+    transition: none;
   }
 
   .comments-section.is-out-of-view {
-    transform: translateY(0.75rem);
+    opacity: 0;
+    pointer-events: none;
   }
 
+  .comments-drawer-handle {
+    background: color-mix(in srgb, var(--photos-panel) 94%, transparent);
+    border: 0;
+    border-bottom: 1px solid var(--photos-border);
+    color: var(--photos-text);
+    cursor: grab;
+    display: block;
+    margin: 0 -0.85rem 0.65rem;
+    min-height: calc(var(--drawer-handle-height) - 1rem);
+    padding: 0.15rem 1rem 0.75rem;
+    position: relative;
+    transition: padding 240ms cubic-bezier(0.22, 0.72, 0.22, 1);
+  }
+
+  .comments-drawer-grabber {
+    background: color-mix(in srgb, var(--photos-panel) 94%, transparent);
+    cursor: grab;
+    display: block;
+    height: 1rem;
+    left: 0;
+    margin: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    touch-action: none;
+    z-index: 5;
+  }
+
+  .comments-drawer-grabber:active {
+    cursor: grabbing;
+  }
+
+  .comments-drawer-grabber:focus-visible {
+    outline: 2px solid var(--photos-accent);
+    outline-offset: -2px;
+  }
+
+  .comments-drawer-grabber::after {
+    background: var(--photos-border);
+    border-radius: 999px;
+    content: '';
+    height: 0.28rem;
+    left: 50%;
+    position: absolute;
+    top: 0.37rem;
+    transform: translateX(-50%);
+    width: 2.5rem;
+  }
+
+  .comments-drawer-handle:focus-visible {
+    outline: 2px solid var(--photos-accent);
+    outline-offset: -3px;
+  }
+
+  .comments-drawer-preview {
+    box-sizing: border-box;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    margin-inline: auto;
+    max-height: 4.05em;
+    overflow: hidden;
+    padding-right: 0.2rem;
+    position: relative;
+    text-align: left;
+    transition: max-height 320ms cubic-bezier(0.22, 0.72, 0.22, 1),
+      font-size 240ms ease,
+      line-height 240ms ease,
+      width 240ms ease;
+    width: 91.111%;
+  }
+
+  .comments-drawer-preview::after {
+    background: linear-gradient(90deg, transparent, var(--photos-panel) 45%);
+    bottom: 0;
+    content: '\2026';
+    padding-left: 1.5rem;
+    position: absolute;
+    right: 0;
+  }
+
+  .comments-section.is-drawer-open .comments-drawer-handle {
+    cursor: grab;
+    min-height: 0;
+    padding-bottom: 1rem;
+    padding-top: 0.35rem;
+  }
+
+  .comments-section.is-drawer-open .comments-drawer-preview {
+    font-size: 0.9rem;
+    line-height: 1.48;
+    max-height: none;
+    overflow: visible;
+    width: 100%;
+  }
+
+  .comments-section.is-drawer-open .comments-drawer-preview::after {
+    opacity: 0;
+    transition: opacity 100ms ease;
+  }
+
+  .comments-section.is-drawer-dragging .comments-drawer-preview {
+    font-size: var(--drawer-preview-font-size);
+    line-height: var(--drawer-preview-line-height);
+    max-height: var(--drawer-preview-height);
+    transition: none;
+    width: var(--drawer-preview-width);
+  }
+
+  .comments-section.is-drawer-dragging .comments-drawer-preview::after {
+    opacity: calc(1 - var(--drawer-drag-progress));
+  }
+
+  .comments-drawer-preview :deep(p) {
+    display: inline;
+  }
+
+  .comments-drawer-preview :deep(p + p)::before {
+    content: ' ';
+  }
+
+  .comments-drawer-preview :deep(a) {
+    color: var(--photos-accent);
+    pointer-events: none;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--photos-accent) 35%, transparent);
+    text-underline-offset: 0.15em;
+  }
+
+  .comments-drawer-preview :deep(img) {
+    height: 1em;
+    vertical-align: -0.1em;
+    width: 1em;
+  }
+
+  .comments-panel-heading,
+  .comments-close {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

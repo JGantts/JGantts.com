@@ -195,13 +195,10 @@ const router = createRouter({
       component: MainLayout,
       children: [
         {
-          path: '',
-          alias: 'dev',
-          name: 'Kovyalo Dev',
+          path: ':postId?',
+          name: 'Photos',
           component: () => import('@/views/photos/IndexView.vue'),
-            props: (route) => ({
-            dev: route.path === '/kovyalo/dev',
-          }),
+          props: true,
       meta: {
         title: 'JGantts Photos',
         description: '.',
@@ -225,9 +222,14 @@ const router = createRouter({
     from: RouteLocationNormalized,
     savedPosition: ScrollBehaviorNormalized,
   ) {
-    // always scroll to top
     if (savedPosition) {
       return savedPosition
+    }
+
+    // Selecting a photo post changes its shareable URL without moving the gallery.
+    // Initial deep links are positioned after the asynchronously loaded masonry renders.
+    if (to.path.startsWith('/photos') && from.path.startsWith('/photos')) {
+      return false
     }
 
     return { top: 0 }

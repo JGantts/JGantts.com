@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import ClusteredPhotoMasonry from './ClusteredPhotoMasonry.vue'
 import MediaCarousel from '@/components/MediaCarousel.vue'
 
@@ -101,7 +102,10 @@ const tootIds = [
   '117198059772006365',
   '117204084325016679'
 ]
-const activePostStorageKey = 'photos-active-post'
+const props = defineProps<{
+  postId?: string
+}>()
+const router = useRouter()
 
 const toots = ref<(TootThread | null)[]>(tootIds.map(() => null))
 const loading = ref(true)
@@ -141,14 +145,46 @@ function selectToot(nextIndex: number) {
   const postId = toots.value[nextIndex]?.post.id
   if (!postId) return
 
-  localStorage.setItem(activePostStorageKey, postId)
+  if (props.postId !== postId) void router.push(`/photos/${postId}`)
 }
 
 function clearSelection() {
   activeTootIndex.value = null
   selectedPostVisibility.value = 1
-  localStorage.removeItem(activePostStorageKey)
+  if (props.postId) void router.push('/photos')
 }
+
+function syncSelectionFromRoute(postId = props.postId) {
+  activeTootIndex.value = postId ? tootIds.indexOf(postId) : null
+  if (activeTootIndex.value === -1) activeTootIndex.value = null
+  selectedPostVisibility.value = 1
+}
+
+async function scrollToRoutedPost(postId: string) {
+  await nextTick()
+
+  // ResizeObserver supplies the masonry width on the next frame. Retry briefly so
+  // direct links land correctly even when photos and layout initialize at once.
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    if (props.postId !== postId) return
+
+    const cluster = document.querySelector<HTMLElement>(
+      `[data-cluster-key="${CSS.escape(postId)}"]`,
+    )
+    if (cluster && cluster.offsetHeight > 0) {
+      const topBreathingRoom = Math.max(24, Math.min(48, window.innerHeight * 0.04))
+      window.scrollTo({
+        top: window.scrollY + cluster.getBoundingClientRect().top - topBreathingRoom,
+      })
+      return
+    }
+  }
+}
+
+watch(() => props.postId, (postId) => {
+  syncSelectionFromRoute(postId)
+})
 
 function handlePageClick(event: MouseEvent) {
   const activePostId = activeToot.value?.post.id
@@ -185,13 +221,13 @@ onMounted(async () => {
   document.addEventListener('click', handlePageClick)
 
   try {
-    const savedPostId = localStorage.getItem(activePostStorageKey)
-    const savedPostIndex = tootIds.indexOf(savedPostId ?? '')
-
-    if (savedPostIndex >= 0) activeTootIndex.value = savedPostIndex
+    syncSelectionFromRoute()
     await Promise.all(tootIds.map((_, index) => ensureTootLoaded(index)))
 
     loading.value = false
+    if (props.postId && tootIds.includes(props.postId)) {
+      await scrollToRoutedPost(props.postId)
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Could not load Mastodon conversation'
   } finally {

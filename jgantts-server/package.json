@@ -3,18 +3,28 @@
   "version": "1.0.0",
   "description": "JGantts site",
   "private": true,
+  "main": "dist/server.js",
   "author": "JGantts",
   "license": "none",
   "scripts": {
-    "check": "node --check serve.js",
-    "start": "node serve.js",
-    "dev": "nodemon serve.js"
+    "build": "tsc -p tsconfig.json",
+    "check": "node --check serve.js && npm run typecheck && npm test",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "test": "tsx --test test/**/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^5.2.1"
   },
   "devDependencies": {
-    "nodemon": "^3.0.0"
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.20.1",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "keywords": [
     "express",

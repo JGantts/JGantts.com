@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore:
+      - prod
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            jgantts-com/package-lock.json
+            jgantts-server/package-lock.json
+
+      - name: Install and build website
+        run: |
+          npm ci
+          npm run build
+        working-directory: ./jgantts-com
+
+      - name: Install server dependencies
+        run: npm ci
+        working-directory: ./jgantts-server
+
+      - name: Type-check and test server
+        run: npm run check
+        working-directory: ./jgantts-server
+
+      - name: Build server
+        run: npm run build
+        working-directory: ./jgantts-server

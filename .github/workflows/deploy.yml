@@ -141,3 +141,7 @@ jobs:
             cd /home/jgantts-com/node-js/jgantts-server
             npm ci --omit=dev
             sudo systemctl restart jgantts-com-node-app
+
+      - name: Smoke-test live deployment
+        run: npm run smoke:live
+        working-directory: ./jgantts-server/

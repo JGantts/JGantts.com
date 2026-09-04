@@ -8,8 +8,11 @@
   "license": "none",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "check": "node --check serve.js && npm run typecheck && npm test",
+    "check": "node --check serve.js && node --check scripts/smoke-test.js && npm run typecheck && npm test",
     "dev": "tsx watch src/server.ts",
+    "smoke": "npm run build && node scripts/smoke-test.js",
+    "smoke:live": "node scripts/smoke-test.js --live",
+    "smoke:local": "npm run build && node scripts/smoke-test.js --local",
     "start": "node dist/server.js",
     "test": "tsx --test test/**/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"

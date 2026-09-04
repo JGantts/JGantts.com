@@ -44,3 +44,7 @@ jobs:
       - name: Build server
         run: npm run build
         working-directory: ./jgantts-server
+
+      - name: Smoke-test compiled server
+        run: npm run smoke:local
+        working-directory: ./jgantts-server

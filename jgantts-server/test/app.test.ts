@@ -4,6 +4,7 @@ import test from 'node:test';
 import type { AddressInfo } from 'node:net';
 import type { Express } from 'express';
 import { createApp } from '../src/app';
+import { DEV_BUILD_INFO, loadBuildInfo } from '../src/build-info';
 import { normalizeSiteOrigin, parsePort } from '../src/config';
 import { upsertMeta } from '../src/site/html';
 
@@ -13,6 +14,11 @@ const TEMPLATE = `<!doctype html>
   <meta content="old" name="description">
   <meta content="old" property="og:title">
 </head><body><div id="app"></div></body></html>`;
+
+const BUILD_INFO = {
+  commitId: '0123456789abcdef0123456789abcdef01234567',
+  commitMessage: 'Test build metadata endpoint',
+};
 
 interface TestResponse {
   body: string;
@@ -65,6 +71,13 @@ test('validates PORT', () => {
   assert.equal(parsePort('0'), 0);
   assert.throws(() => parsePort('wat'), /PORT/);
   assert.throws(() => parsePort('65536'), /PORT/);
+});
+
+test('uses explicit build strings in development', () => {
+  assert.deepEqual(
+    loadBuildInfo('/path/that/does/not/exist', { NODE_ENV: 'development' }),
+    DEV_BUILD_INFO,
+  );
 });
 
 test('upserts metadata regardless of attribute order', () => {
@@ -132,6 +145,38 @@ test('exposes an API health endpoint before the SPA fallback', async () => {
   assert.equal(response.status, 200);
   assert.match(String(response.headers['content-type']), /application\/json/);
   assert.deepEqual(JSON.parse(response.body), { status: 'ok' });
+});
+
+test('returns full build information through the API', async () => {
+  const app = createApp({
+    appHtmlTemplate: TEMPLATE,
+    buildInfo: BUILD_INFO,
+    siteOrigin: 'https://jgantts.com',
+  });
+  const response = await request(app, '/api/build');
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers['cache-control'], 'no-store');
+  assert.deepEqual(JSON.parse(response.body), BUILD_INFO);
+});
+
+test('reads centralized build information for every API request', async () => {
+  let currentBuildInfo = BUILD_INFO;
+  const app = createApp({
+    appHtmlTemplate: TEMPLATE,
+    buildInfoProvider: () => currentBuildInfo,
+    siteOrigin: 'https://jgantts.com',
+  });
+
+  const firstResponse = await request(app, '/api/build');
+  currentBuildInfo = {
+    commitId: 'fedcba9876543210fedcba9876543210fedcba98',
+    commitMessage: 'Updated centralized build information',
+  };
+  const secondResponse = await request(app, '/api/build');
+
+  assert.deepEqual(JSON.parse(firstResponse.body), BUILD_INFO);
+  assert.deepEqual(JSON.parse(secondResponse.body), currentBuildInfo);
 });
 
 test('returns JSON 404 responses for unimplemented API routes', async () => {

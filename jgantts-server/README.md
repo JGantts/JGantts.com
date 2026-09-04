@@ -13,10 +13,17 @@ The Express application is written in TypeScript under `src/`. Production runs t
 - `npm run smoke` — test localhost and the live server.
 
 The smoke test verifies health, the homepage, server-rendered Holmes metadata, JSON API 404s,
-and missing-static-file handling. It retries health checks so it can safely run immediately after
-a deployment restart.
+full build metadata, and missing-static-file handling. It retries health checks so it can safely
+run immediately after a deployment restart.
 
 ## Adding API routes
 
 Add future endpoints to `src/api/router.ts`. Everything mounted below `/api` returns JSON and is
 kept ahead of the static-site and SPA fallback middleware.
+
+`GET /api/build` returns the full deployed commit ID and commit message. The build writes these
+values to the centralized `dist/build-info.json`, so production does not need access to the Git
+repository. The endpoint reads that file on every request, allowing the deployment workflow to
+update build information for every `prod` commit without rebuilding or restarting the server.
+During local development, the API returns `dev` and `Local development build`, making the badge
+state predictable while debugging. Vite proxies `/api` requests to the server on port 3000.

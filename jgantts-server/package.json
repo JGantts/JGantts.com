@@ -7,8 +7,8 @@
   "author": "JGantts",
   "license": "none",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "check": "node --check serve.js && node --check scripts/smoke-test.js && npm run typecheck && npm test",
+    "build": "tsc -p tsconfig.json && node scripts/write-build-info.js",
+    "check": "node --check serve.js && node --check scripts/smoke-test.js && node --check scripts/write-build-info.js && npm run typecheck && npm test",
     "dev": "tsx watch src/server.ts",
     "smoke": "npm run build && node scripts/smoke-test.js",
     "smoke:live": "node scripts/smoke-test.js --live",

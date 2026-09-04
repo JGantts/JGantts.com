@@ -1,6 +1,7 @@
 import path from 'node:path';
 import express from 'express';
-import { createApiRouter } from './api/router';
+import { createApiRouter, type BuildInfoProvider } from './api/router';
+import { loadBuildInfo, type BuildInfo } from './build-info';
 import { normalizeSiteOrigin } from './config';
 import { errorHandler } from './middleware/error-handler';
 import { SITE_DIST_ROOT, SITE_INDEX_PATH, SITE_PUBLIC_ROOT } from './paths';
@@ -8,6 +9,8 @@ import { MAINTENANCE_HTML, readAppHtml, renderAppHtml } from './site/html';
 
 export interface AppOptions {
   appHtmlTemplate?: string;
+  buildInfo?: BuildInfo;
+  buildInfoProvider?: BuildInfoProvider;
   distRoot?: string;
   indexPath?: string;
   publicRoot?: string;
@@ -24,11 +27,14 @@ export function createApp(options: AppOptions = {}): express.Express {
     : options.appHtmlTemplate;
   const distRoot = options.distRoot ?? SITE_DIST_ROOT;
   const publicRoot = options.publicRoot ?? SITE_PUBLIC_ROOT;
+  const fixedBuildInfo = options.buildInfo;
+  const getBuildInfo = options.buildInfoProvider
+    ?? (fixedBuildInfo ? () => fixedBuildInfo : () => loadBuildInfo());
 
   app.disable('x-powered-by');
 
   // API routes must be mounted before the SPA fallback.
-  app.use('/api', createApiRouter());
+  app.use('/api', createApiRouter(getBuildInfo));
 
   app.use('/assets', express.static(path.join(distRoot, 'assets'), {
     fallthrough: true,

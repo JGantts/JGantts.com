@@ -49,6 +49,17 @@ async function testOrigin(origin) {
   console.log(`Testing ${origin}`);
   await waitForHealth(origin);
 
+  const build = await fetchFrom(origin, '/api/build');
+  const buildInfo = await build.json();
+  assert.equal(build.status, 200);
+  assert.match(build.headers.get('content-type') ?? '', /application\/json/i);
+  assert.match(buildInfo.commitId, /^(?:dev|[0-9a-f]{40,64})$/i);
+  assert.equal(typeof buildInfo.commitMessage, 'string');
+  assert.ok(buildInfo.commitMessage.length > 0);
+  if (process.env.EXPECTED_COMMIT_SHA) {
+    assert.equal(buildInfo.commitId, process.env.EXPECTED_COMMIT_SHA);
+  }
+
   const home = await fetchFrom(origin, '/');
   const homeHtml = await home.text();
   assert.equal(home.status, 200);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -8,9 +8,6 @@ const isPhotosPage = computed(() => route.path.startsWith('/photos'))
 const layoutClass = computed(() => ({
   'layout--photos': isPhotosPage.value,
 }))
-const shortCommitId = __APP_COMMIT__ === 'dev' ? __APP_COMMIT__ : __APP_COMMIT__.slice(0, 7)
-const commitMessage = __APP_COMMIT_MESSAGE__
-const isCommitMessageVisible = ref(false)
 const pageColors = computed(() =>
   route.path.startsWith('/photos')
     ? { light: '#f4efe8', dark: '#111716' }
@@ -54,20 +51,6 @@ onBeforeUnmount(() => {
       <p class="copyright">
       © 2026 Jacob Gantt
       </p>
-      <button
-        class="version-tag"
-        type="button"
-        :aria-expanded="isCommitMessageVisible"
-        :aria-label="isCommitMessageVisible ? 'Show site build commit ID' : 'Show site build commit message'"
-        @click="isCommitMessageVisible = !isCommitMessageVisible"
-      >
-        <span class="version-label">
-          {{ isCommitMessageVisible ? 'Build description' : 'Site build' }}
-        </span>
-        <span class="version-value">
-          {{ isCommitMessageVisible ? commitMessage : shortCommitId }}
-        </span>
-      </button>
     </footer>
   </div>
 </template>
@@ -193,51 +176,6 @@ body {
   font-size: 0.8rem;
 }
 
-.version-tag {
-  align-items: baseline;
-  align-self: center;
-  background: color-mix(in srgb, currentColor 3%, transparent);
-  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
-  border-radius: 999px;
-  color: inherit;
-  cursor: pointer;
-  display: inline-flex;
-  gap: 0.35rem;
-  font-family: 'Azeret Mono Variable', monospace;
-  font-size: 0.55rem;
-  line-height: 1.35;
-  max-width: min(100%, 42rem);
-  opacity: 0.52;
-  padding: 0.2rem 0.42rem;
-  text-decoration: none;
-}
-
-.version-tag:hover {
-  border-color: color-mix(in srgb, currentColor 38%, transparent);
-  opacity: 0.82;
-}
-
-.version-tag:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.version-label {
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.version-label::after {
-  content: ':';
-}
-
-.version-value {
-  opacity: 0.68;
-  overflow-wrap: anywhere;
-  text-align: left;
-}
 </style>
 
 <style>

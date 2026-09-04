@@ -89,6 +89,32 @@ jobs:
           strip_components: 2
           rm: true
 
+  deploy-build-info:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Generate centralized build information
+        run: node scripts/write-build-info.js
+        working-directory: ./jgantts-server
+
+      - name: Deploy centralized build information
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.LINODE_IP }}
+          username: ${{ secrets.LINODE_USER }}
+          password: ${{ secrets.LINODE_PASSWORD }}
+          port: 22
+          source: './jgantts-server/dist/build-info.json'
+          target: '/home/jgantts-com/node-js/'
+
   deploy-site:
     needs: changes
     if: needs.changes.outputs.website == 'true'
@@ -142,6 +168,23 @@ jobs:
             npm ci --omit=dev
             sudo systemctl restart jgantts-com-node-app
 
-      - name: Smoke-test live deployment
-        run: npm run smoke:live
-        working-directory: ./jgantts-server/
+
+  verify-build-info:
+    needs:
+      - deploy-build-info
+      - deploy-site
+    if: |
+      always() &&
+      needs.deploy-build-info.result == 'success' &&
+      (needs.deploy-site.result == 'success' || needs.deploy-site.result == 'skipped')
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify live server and deployed commit
+        run: node scripts/smoke-test.js --live
+        working-directory: ./jgantts-server
+        env:
+          EXPECTED_COMMIT_SHA: ${{ github.sha }}

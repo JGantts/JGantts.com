@@ -1,45 +1,11 @@
-import { execFileSync } from "node:child_process";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig, type ServerOptions } from "vite";
 import vue from "@vitejs/plugin-vue";
 import svgLoader from "vite-svg-loader";
 import { visualizer } from "rollup-plugin-visualizer";
 
-function getCommitId() {
-  const environmentCommit =
-    process.env.VITE_COMMIT_SHA ?? process.env.GITHUB_SHA ?? process.env.COMMIT_SHA;
-  if (environmentCommit) return environmentCommit.trim();
-
-  try {
-    return execFileSync("git", ["rev-parse", "HEAD"], {
-      cwd: fileURLToPath(new URL("..", import.meta.url)),
-      encoding: "utf8",
-    }).trim();
-  } catch {
-    return "dev";
-  }
-}
-
-function getCommitMessage(commitId: string) {
-  const environmentMessage =
-    process.env.VITE_COMMIT_MESSAGE ?? process.env.COMMIT_MESSAGE;
-  if (environmentMessage) return environmentMessage.trim();
-
-  if (commitId === "dev") return "Local development build";
-
-  try {
-    return execFileSync("git", ["log", "-1", "--format=%s", commitId], {
-      cwd: fileURLToPath(new URL("..", import.meta.url)),
-      encoding: "utf8",
-    }).trim();
-  } catch {
-    return "Commit message unavailable";
-  }
-}
-
 export default defineConfig(({ command }) => {
   const isBuild = command === "build";
-  const commitId = getCommitId();
 
   let server: ServerOptions;
   let publicDir: string | boolean = "PUBLIC";
@@ -48,6 +14,12 @@ export default defineConfig(({ command }) => {
     server = {
       host: true,
       port: 42301,
+      proxy: {
+        '/api': {
+          changeOrigin: true,
+          target: 'http://localhost:3000',
+        },
+      },
       strictPort: true,
     };
   } else {
@@ -56,10 +28,6 @@ export default defineConfig(({ command }) => {
   }
 
   return {
-    define: {
-      __APP_COMMIT__: JSON.stringify(commitId),
-      __APP_COMMIT_MESSAGE__: JSON.stringify(getCommitMessage(commitId)),
-    },
     publicDir,
     server,
     build: {

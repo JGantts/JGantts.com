@@ -791,3 +791,40 @@ test('returns a non-cacheable 503 when the frontend build is missing', async () 
   assert.equal(response.headers['cache-control'], 'no-store');
   assert.match(response.body, /doing his best/);
 });
+
+test('batch uploads preserve successes and enforce authenticated bounded multipart requests', async (t) => {
+  const database = openContentDatabase(':memory:');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jgantts-batch-'));
+  t.after(() => { database.close(); fs.rmSync(root, { recursive: true, force: true }); });
+  const posts = new PostRepository(database);
+  posts.create({ id: 'batch', slug: 'batch', bodyMarkdown: '', bodyHtml: '' });
+  const media = new MediaService(new MediaRepository(database), posts, root);
+  const app = createApp({ adminToken: 'secret', appHtmlTemplate: TEMPLATE,
+    services: { media, posts: new PostService(posts) } });
+  const png = await sharp({ create: { width: 12, height: 12, channels: 3, background: 'red' } }).png().toBuffer();
+  const send = (files: Buffer[], altTexts: unknown, authorized = true, postId = 'batch') => {
+    const boundary = 'batch-boundary';
+    const parts = [Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="postId"\r\n\r\n${postId}\r\n--${boundary}\r\nContent-Disposition: form-data; name="altTexts"\r\n\r\n${JSON.stringify(altTexts)}\r\n`)];
+    for (const file of files) parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="files"; filename="photo.png"\r\nContent-Type: image/png\r\n\r\n`), file, Buffer.from('\r\n'));
+    parts.push(Buffer.from(`--${boundary}--\r\n`));
+    return request(app, '/api/admin/media/batch', { method: 'POST', body: Buffer.concat(parts),
+      headers: { 'content-type': `multipart/form-data; boundary=${boundary}`,
+        ...(authorized ? { authorization: 'Bearer secret' } : {}) } });
+  };
+  assert.equal((await send([png], ['red'], false)).status, 401);
+  assert.equal((await send([png], [], true)).status, 400);
+  assert.equal((await send([png], ['red'], true, 'missing')).status, 400);
+  const response = await send([png, Buffer.from('broken'), png, png], ['red', 'broken', '', 'last']);
+  assert.equal(response.status, 200);
+  const results = JSON.parse(response.body).results;
+  assert.deepEqual(results.map((r: { status: string }) => r.status), ['uploaded', 'failed', 'failed', 'uploaded']);
+  assert.deepEqual(results.map((r: { index: number }) => r.index), [0, 1, 2, 3]);
+  assert.deepEqual(media.listForPost('batch').map((m) => m.displayOrder), [0, 1]);
+  assert.equal((await send(Array(11).fill(png), Array(11).fill('red'))).status, 413);
+  assert.equal((await send([Buffer.alloc(25 * 1024 * 1024 + 1)], ['large'])).status, 413);
+  assert.equal((await send(Array(3).fill(Buffer.alloc(18 * 1024 * 1024)), ['a', 'b', 'c'])).status, 413);
+  assert.equal(media.listForPost('batch').length, 2);
+  assert.equal(posts.getById('batch')?.status, 'draft');
+  assert.equal((await send(Array(10).fill(png), Array(10).fill('red'))).status, 200);
+  assert.deepEqual(media.listForPost('batch').map((m) => m.displayOrder), Array.from({ length: 12 }, (_, i) => i));
+});

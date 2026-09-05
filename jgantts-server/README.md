@@ -35,3 +35,20 @@ Posts and media use SQLite plus a persistent media directory configured through
 `/var/lib/jgantts` and rejects paths inside the deployment tree. See
 [`docs/CONTENT-OPERATIONS.md`](../docs/CONTENT-OPERATIONS.md) for layout, backup, and restore
 instructions.
+
+### Batch photo uploads
+
+`POST /api/admin/media/batch` accepts the same bearer or admin-session authentication
+as single uploads. Send multipart fields `postId`, `altTexts` (a JSON array with one
+entry per file), and repeated `files` parts in the desired gallery order. Limits
+are 10 files, 25 MiB per file, 50 MiB combined file bytes, two text fields, and
+32 KiB per text field. Byte limits apply while streaming, including chunked bodies.
+Multipart/limit errors reject the entire request before storing any photos (400/413);
+missing posts or mismatched metadata arrays return 400.
+
+A valid envelope returns 200 with `{ results: [...] }` in input order. Each result
+has `index`, `status: "uploaded"`, and `media`, or `index`, `status: "failed"`, and
+an `error` with `code` and `message`. Invalid images or alt text fail individually;
+successful photos remain saved and append in selection order. Processing is
+sequential to bound image-processing memory. Uploading never publishes the post.
+Retry only failed entries: re-sending successful files creates additional photos.

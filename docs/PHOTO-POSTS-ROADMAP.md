@@ -32,14 +32,14 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 - Status: Phase 1 media lifecycle implementation in progress.
 - Active item: None.
-- Next item: 1.6 — add a bounded batch-upload API with per-file results.
+- Next item: 1.7 — normalize media across every delivery path.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; 1,600 px and 480 px WebP derivatives; checksums; dimensions;
   database fields for display order, focal point, and hero media; public media
   URLs; backup of database and media; metadata editing, transactional reorder,
-  hero selection, and safeguarded deletion APIs.
-- Current gaps: no batch or pre-draft upload, gallery maintenance editor, visible
+  hero selection, safeguarded deletion, and bounded batch-upload APIs.
+- Current gaps: no pre-draft upload, gallery maintenance editor, visible
   captions, upload progress, responsive `srcset`, lightbox, or focal-point controls.
   The source privacy policy is documented; its rendition rollout remains pending.
 
@@ -100,7 +100,7 @@ that post.
   focal point, select the hero, and reorder all photos transactionally.
 - [x] **1.5** Add authenticated media deletion with published-post safeguards,
   hero fallback, database/file consistency, and idempotent retry behavior.
-- [ ] **1.6** Add a batch-upload API contract with per-file results so one bad
+- [x] **1.6** Add a batch-upload API contract with per-file results so one bad
   image does not discard successful uploads. Set explicit limits for file count
   and aggregate request size.
 - [ ] **1.7** Return normalized media consistently from admin, public-post, feed,
@@ -296,6 +296,20 @@ verified against the live domain.
   hero clearing, contiguous order, final-photo removal, partial filesystem failure,
   restart recovery, and repeated deletion. All 53 server tests, type checking,
   and the production server build pass.
+
+### 2026-09-05 — Bounded batch uploads
+
+- Added authenticated multipart `POST /api/admin/media/batch` with ordered
+  per-file outcomes. Invalid images and alt text do not discard successful photos;
+  successful uploads append in selection order without publishing the post.
+- Limited requests to 10 files, 25 MiB per file, and 50 MiB combined file bytes,
+  counted while streaming even for chunked requests. Envelope/limit errors occur
+  before persistence; metadata is bounded separately. Documented retry semantics.
+- Verified authorization, malformed metadata, missing posts, partial failures,
+  file/aggregate/count limits, a full 10-photo batch, and append ordering.
+  All 54 server tests, type checking, and the production server build pass.
+- Local Node 22.12/22.13 crashed in the installed SQLite native dependency even
+  in a standalone database check. Validation passed using Node 22.23.2.
 
 ## Definition of done
 

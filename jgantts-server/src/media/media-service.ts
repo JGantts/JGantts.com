@@ -138,7 +138,10 @@ export class MediaService {
         caption: null,
         focalX: null,
         focalY: null,
-        displayOrder,
+        // Resolve append order after asynchronous processing so simultaneous uploads
+        // cannot reserve the same position.
+        displayOrder: input.displayOrder ?? this.media.listByPostId(input.postId)
+          .reduce((next, item) => Math.max(next, item.displayOrder + 1), 0),
         processingState: 'ready',
         processingError: null,
         renditionManifest: {},
@@ -149,6 +152,29 @@ export class MediaService {
       for (const createdPath of createdPaths) fs.rmSync(createdPath, { force: true });
       throw error;
     }
+  }
+
+  async uploadBatch(postId: unknown, files: Array<{ buffer: Buffer; altText: unknown }>) {
+    if (typeof postId !== 'string' || !this.posts.getById(postId)) {
+      throw new PostInputError('postId does not identify a post.');
+    }
+    if (files.length < 1 || files.length > 10
+      || files.reduce((sum, file) => sum + file.buffer.length, 0) > 50 * 1024 * 1024) {
+      throw new PostInputError('Batch must contain 1–10 files totaling at most 50 MiB.');
+    }
+    const results = [];
+    for (const [index, file] of files.entries()) {
+      try {
+        const media = await this.uploadImage({ postId, buffer: file.buffer, altText: file.altText as string });
+        results.push({ index, status: 'uploaded' as const, media });
+      } catch (error) {
+        results.push({ index, status: 'failed' as const, error: {
+          code: error instanceof PostInputError ? 'bad_request' : 'upload_failed',
+          message: error instanceof PostInputError ? error.message : 'The image could not be stored.',
+        } });
+      }
+    }
+    return results;
   }
 
   getFile(id: string, variant: MediaVariant): MediaFile | null {

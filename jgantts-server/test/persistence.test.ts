@@ -60,12 +60,25 @@ test('upgrades an existing version-one production schema with optional titles', 
       id, slug, body_markdown, body_html, status, created_at, updated_at
     ) VALUES ('old-post', 'old-post', 'Old', '<p>Old</p>', 'published', ?, ?)
   `).run('2026-09-04T12:00:00.000Z', '2026-09-04T12:00:00.000Z');
+  oldDatabase.prepare(`
+    INSERT INTO media (
+      id, post_id, original_path, derived_json, mime_type, width, height,
+      byte_size, checksum_sha256, alt_text, display_order, created_at
+    ) VALUES ('old-media', 'old-post', 'originals/old.jpg', '{}', 'image/jpeg',
+      1200, 800, 100, 'checksum', 'Historic photo', 0, ?)
+  `).run('2026-09-04T12:00:00.000Z');
   oldDatabase.close();
 
   const upgraded = openContentDatabase(databasePath);
   t.after(() => upgraded.close());
   const post = new PostRepository(upgraded).getBySlug('old-post');
+  const media = new MediaRepository(upgraded).getById('old-media');
   assert.equal(post?.title, null);
+  assert.equal(media?.caption, null);
+  assert.equal(media?.processingState, 'ready');
+  assert.equal(media?.processingError, null);
+  assert.deepEqual(media?.renditionManifest, {});
+  assert.equal(media?.updatedAt, media?.createdAt);
   assert.equal(
     upgraded.prepare('SELECT COUNT(*) FROM schema_migrations').pluck().get(),
     migrations.length,
@@ -170,6 +183,9 @@ test('stores original images, generates derivatives, and resolves safe public fi
   assert.equal(uploaded.width, 100);
   assert.equal(uploaded.height, 50);
   assert.equal(uploaded.displayOrder, 2);
+  assert.equal(uploaded.caption, null);
+  assert.equal(uploaded.processingState, 'ready');
+  assert.equal(uploaded.updatedAt, uploaded.createdAt);
   assert.equal('originalPath' in uploaded, false);
   assert.equal('derivatives' in uploaded, false);
 

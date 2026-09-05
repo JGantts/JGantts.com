@@ -23,7 +23,10 @@ export interface UploadImageInput {
   postId: string;
 }
 
-export interface PublicMedia extends Omit<MediaRecord, 'originalPath' | 'derivatives'> {
+export interface PublicMedia extends Omit<
+  MediaRecord,
+  'originalPath' | 'derivatives' | 'processingError' | 'renditionManifest'
+> {
   urls: Record<'original' | 'large' | 'thumbnail', string>;
 }
 
@@ -34,7 +37,13 @@ export interface MediaFile {
 
 function publicMedia(media: MediaRecord): PublicMedia {
   const base = `/media/${encodeURIComponent(media.id)}`;
-  const { originalPath: _originalPath, derivatives: _derivatives, ...publicFields } = media;
+  const {
+    originalPath: _originalPath,
+    derivatives: _derivatives,
+    processingError: _processingError,
+    renditionManifest: _renditionManifest,
+    ...publicFields
+  } = media;
   return {
     ...publicFields,
     urls: {
@@ -104,6 +113,7 @@ export class MediaService {
         .webp({ quality: 78 }).toFile(thumbnailPath);
       createdPaths.push(thumbnailPath);
 
+      const createdAt = new Date().toISOString();
       return publicMedia(this.media.create({
         id,
         postId: input.postId,
@@ -118,10 +128,15 @@ export class MediaService {
         byteSize: input.buffer.length,
         checksumSha256: createHash('sha256').update(input.buffer).digest('hex'),
         altText: input.altText,
+        caption: null,
         focalX: null,
         focalY: null,
         displayOrder,
-        createdAt: new Date().toISOString(),
+        processingState: 'ready',
+        processingError: null,
+        renditionManifest: {},
+        createdAt,
+        updatedAt: createdAt,
       }));
     } catch (error) {
       for (const createdPath of createdPaths) fs.rmSync(createdPath, { force: true });

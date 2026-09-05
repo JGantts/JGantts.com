@@ -14,10 +14,15 @@ export interface MediaRecord {
   byteSize: number;
   checksumSha256: string;
   altText: string;
+  caption: string | null;
   focalX: number | null;
   focalY: number | null;
   displayOrder: number;
+  processingState: 'processing' | 'ready' | 'failed';
+  processingError: string | null;
+  renditionManifest: Record<string, unknown>;
   createdAt: string;
+  updatedAt: string;
 }
 
 export type MediaVariant = 'original' | keyof MediaDerivatives;

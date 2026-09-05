@@ -124,6 +124,20 @@ export const migrations: readonly Migration[] = [
       WHERE state IN ('pending', 'processing');
     `,
   },
+  {
+    version: 4,
+    name: 'photo_media_lifecycle',
+    sql: `
+      ALTER TABLE media ADD COLUMN caption TEXT;
+      ALTER TABLE media ADD COLUMN processing_state TEXT NOT NULL DEFAULT 'ready'
+        CHECK (processing_state IN ('processing', 'ready', 'failed'));
+      ALTER TABLE media ADD COLUMN processing_error TEXT;
+      ALTER TABLE media ADD COLUMN rendition_json TEXT NOT NULL DEFAULT '{}';
+      ALTER TABLE media ADD COLUMN updated_at TEXT;
+
+      UPDATE media SET updated_at = created_at WHERE updated_at IS NULL;
+    `,
+  },
 ];
 
 export function migrateDatabase(database: Database.Database): void {

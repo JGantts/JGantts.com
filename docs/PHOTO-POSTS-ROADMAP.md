@@ -32,7 +32,7 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 - Status: Roadmap written; implementation has not started.
 - Active item: None.
-- Next item: 1.1 — finalize the media lifecycle and public-original policy.
+- Next item: 1.3 — enforce same-post hero ownership and fallback behavior.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; 1,600 px and 480 px WebP derivatives; checksums; dimensions;
@@ -86,11 +86,11 @@ that post.
 
 ### Phase 1 — Media lifecycle and API
 
-- [ ] **1.1** Decide whether uploaded originals remain publicly downloadable or
+- [x] **1.1** Decide whether uploaded originals remain publicly downloadable or
   become private archival sources with a metadata-stripped high-resolution
   public rendition. Document the EXIF/GPS privacy behavior before accepting new
   production photos.
-- [ ] **1.2** Add an additive migration for caption, processing state/error,
+- [x] **1.2** Add an additive migration for caption, processing state/error,
   updated timestamp, and a normalized rendition manifest. Preserve all current
   media records and URLs.
 - [ ] **1.3** Enforce that `hero_media_id` belongs to the same post and define
@@ -244,6 +244,26 @@ verified against the live domain.
   the first explicit decision before new production photo ingestion.
 - Separated required accessibility alt text from optional visible captions and
   separated gallery order from hero selection.
+
+### 2026-09-05 — Source-photo privacy policy
+
+- Existing public original URLs remain available so already-published immutable
+  links do not break.
+- After the high-resolution public rendition is implemented and verified, new
+  uploads will keep their source bytes private. Normal pages, sharing metadata,
+  and downloads will use orientation-normalized, metadata-stripped renditions.
+- Existing sources will move behind the private boundary only through an
+  audited regeneration/migration that first proves every replacement rendition.
+
+### 2026-09-05 — Photo-media lifecycle migration
+
+- Added an additive version-four migration for captions, processing state and
+  safe failure detail, rendition manifests, and update timestamps.
+- Existing media migrates as ready, keeps its current paths, and receives its
+  creation time as the initial update time. New uploads populate the lifecycle
+  fields without exposing processing errors or internal manifests publicly.
+- Verified a version-one database/media upgrade, fresh uploads, all 51 server
+  tests, type checking, and the production server build.
 
 ## Definition of done
 

@@ -11,11 +11,13 @@ export type PostMedia = {
   processingState: 'processing' | 'ready' | 'failed'
   renditions: Array<{
     byteSize: number
+    colorSpace: 'srgb'
     format: 'avif' | 'jpeg' | 'png' | 'webp'
     height: number
     url: string
     variant: string
     width: number
+    privateMetadataStripped: true
   }>
   updatedAt: string
   height: number | null

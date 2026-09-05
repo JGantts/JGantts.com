@@ -300,6 +300,47 @@ test('uses PNG rather than JPEG as the compatible fallback for transparency', as
   assert.ok(uploaded.renditions.every(({ format }) => format !== 'jpeg'));
 });
 
+test('converts profiled images to sRGB and strips private metadata from every rendition', async (t) => {
+  const root = temporaryDirectory(t);
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostRepository(database);
+  posts.create({ id: 'profiled', slug: 'profiled', bodyMarkdown: '', bodyHtml: '' });
+  const service = new MediaService(new MediaRepository(database), posts, path.join(root, 'media'));
+  const privateMarker = 'private-location-marker';
+  const source = await sharp({
+    create: { width: 800, height: 400, channels: 3, background: { r: 210, g: 70, b: 40 } },
+  })
+    .withIccProfile('p3')
+    .withExif({ IFD0: { Artist: privateMarker } })
+    .withXmp(`<x:xmpmeta xmlns:x="adobe:ns:meta/"><private>${privateMarker}</private></x:xmpmeta>`)
+    .jpeg()
+    .toBuffer();
+  const sourceMetadata = await sharp(source).metadata();
+  assert.ok(sourceMetadata.icc);
+  assert.ok(sourceMetadata.exif);
+  assert.ok(sourceMetadata.xmp);
+
+  const uploaded = await service.uploadImage({ postId: 'profiled', altText: 'Profiled image', buffer: source });
+  assert.ok(uploaded.renditions.some(({ format }) => format === 'avif'));
+  for (const rendition of uploaded.renditions) {
+    assert.equal(rendition.colorSpace, 'srgb');
+    assert.equal(rendition.privateMetadataStripped, true);
+    const file = service.getFile(uploaded.id, rendition.variant)!;
+    const output = fs.readFileSync(file.path);
+    const outputMetadata = await sharp(output).metadata();
+    assert.equal(outputMetadata.space, 'srgb');
+    assert.equal(outputMetadata.icc, undefined);
+    assert.equal(outputMetadata.exif, undefined);
+    assert.equal(outputMetadata.iptc, undefined);
+    assert.equal(outputMetadata.xmp, undefined);
+    assert.equal(output.includes(Buffer.from(privateMarker)), false);
+  }
+  // Archival source bytes remain immutable and private-policy migration is still
+  // deferred; only public renditions are normalized and scrubbed here.
+  assert.deepEqual(fs.readFileSync(service.getFile(uploaded.id, 'original')!.path), source);
+});
+
 test('rejects invalid image uploads before creating media records', async (t) => {
   const root = temporaryDirectory(t);
   const database = openContentDatabase(':memory:');

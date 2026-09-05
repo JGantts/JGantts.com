@@ -6,9 +6,11 @@ export interface MediaDerivatives {
 
 export interface MediaRendition {
   byteSize: number;
+  colorSpace: 'srgb';
   format: RenditionFormat;
   height: number;
   path: string;
+  privateMetadataStripped: true;
   variant: string;
   width: number;
 }

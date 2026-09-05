@@ -32,9 +32,9 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 ## Current state
 
-- Status: Phase 1 and photo pipeline items 2.1–2.3 are complete; Phase 2 is in progress.
+- Status: Phase 1 and photo pipeline items 2.1–2.4 are complete; Phase 2 is in progress.
 - Active item: None.
-- Next item: 2.4 — explicit ICC/color-space handling and metadata stripping.
+- Next item: 2.5 — tiny loading placeholders.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; responsive WebP, AVIF, and JPEG/PNG fallback renditions; checksums; dimensions;
@@ -148,7 +148,7 @@ SQL or filesystem work by the client.
   without upscaling.
 - [x] **2.3** Produce WebP and AVIF where worthwhile, retain a broadly compatible
   fallback, and record every rendition in the database manifest.
-- [ ] **2.4** Preserve intended color appearance with an explicit ICC/color-space
+- [x] **2.4** Preserve intended color appearance with an explicit ICC/color-space
   policy while stripping private metadata from public renditions.
 - [ ] **2.5** Generate a tiny placeholder or equivalent low-quality preview to
   prevent blank layout during large-image loading.
@@ -457,6 +457,19 @@ verified against the live domain.
 - Verified AVIF, JPEG, transparent PNG, MIME delivery, no-upscale behavior, and
   internal/public manifest boundaries. All 58 server tests, type checking, and
   the client production build pass on Node 22.23.2.
+
+### 2026-09-05 — Public rendition color and metadata policy
+
+- Public renditions explicitly transform profiled inputs into device-independent
+  sRGB before encoding. The manifest and normalized public contract identify the
+  `srgb` output space so later `<picture>` consumers do not need to infer it.
+- Rendition encoding deliberately retains no source metadata. EXIF (including
+  GPS), XMP, IPTC, and source ICC blocks are absent from WebP, AVIF, JPEG, and PNG
+  outputs; immutable archival source bytes remain unchanged under the staged
+  source-privacy policy.
+- Verified the policy with a Display-P3 JPEG carrying ICC, EXIF, XMP, and a
+  private marker, checking every generated format and width. All 59 server tests,
+  type checking, and the client production build pass on Node 22.23.2.
 
 ## Definition of done
 

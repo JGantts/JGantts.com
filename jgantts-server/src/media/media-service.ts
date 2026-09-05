@@ -102,7 +102,12 @@ async function writeRendition(
   width: number,
   outputPath: string,
 ): Promise<sharp.OutputInfo> {
-  const image = sharp(buffer).autoOrient().resize({ width, withoutEnlargement: true });
+  // Sharp uses embedded input profiles during conversion. Force every public
+  // rendition into device-independent sRGB and deliberately avoid all metadata-
+  // retention methods so EXIF/GPS, XMP, IPTC, and the source ICC profile are
+  // stripped from the encoded output.
+  const image = sharp(buffer).autoOrient().resize({ width, withoutEnlargement: true })
+    .toColourspace('srgb');
   if (format === 'avif') return image.avif({ quality: 58, effort: 4 }).toFile(outputPath);
   if (format === 'jpeg') return image.jpeg({ quality: width <= 480 ? 80 : 86 }).toFile(outputPath);
   if (format === 'png') return image.png({ compressionLevel: 9, adaptiveFiltering: true }).toFile(outputPath);
@@ -180,9 +185,11 @@ export class MediaService {
           derivatives[variant] = relativePath;
           renditions.push({
             byteSize: info.size,
+            colorSpace: 'srgb',
             format: outputFormat,
             height: info.height,
             path: relativePath,
+            privateMetadataStripped: true,
             variant,
             width: info.width,
           });

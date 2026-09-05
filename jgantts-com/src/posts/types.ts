@@ -11,7 +11,7 @@ export type PostMedia = {
   processingState: 'processing' | 'ready' | 'failed'
   renditions: Array<{
     byteSize: number
-    format: 'webp'
+    format: 'avif' | 'jpeg' | 'png' | 'webp'
     height: number
     url: string
     variant: string

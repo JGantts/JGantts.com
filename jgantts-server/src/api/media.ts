@@ -9,7 +9,7 @@ export function createMediaRouter(media: MediaService): express.Router {
 
   router.get('/:id/:variant', (req, res, next) => {
     const variant = req.params.variant as MediaVariant;
-    if (!legacyVariants.has(variant) && !/^w-\d{1,5}$/.test(variant)) {
+    if (!legacyVariants.has(variant) && !/^(?:avif-|jpeg-|png-)?w-\d{1,5}$/.test(variant)) {
       res.sendStatus(404);
       return;
     }

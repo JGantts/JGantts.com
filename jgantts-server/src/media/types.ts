@@ -6,12 +6,14 @@ export interface MediaDerivatives {
 
 export interface MediaRendition {
   byteSize: number;
-  format: 'webp';
+  format: RenditionFormat;
   height: number;
   path: string;
   variant: string;
   width: number;
 }
+
+export type RenditionFormat = 'avif' | 'jpeg' | 'png' | 'webp';
 
 export interface RenditionManifest {
   renditions: MediaRendition[];

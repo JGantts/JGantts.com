@@ -6,13 +6,22 @@ import type { PostRepository } from '../posts/post-repository';
 import { PostInputError } from '../posts/errors';
 import { ensureMediaDirectories } from '../storage';
 import { MediaRepository } from './media-repository';
-import type { MediaRecord, MediaRendition, MediaVariant, RenditionManifest } from './types';
+import type {
+  MediaRecord, MediaRendition, MediaVariant, RenditionFormat, RenditionManifest,
+} from './types';
 
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 // Covers compact masonry cells through a high-density expanded viewer. The
 // oriented source width is added when it falls between these stops, and widths
 // above the source are omitted.
 export const RESPONSIVE_IMAGE_WIDTHS = [320, 480, 768, 1_024, 1_600, 2_400] as const;
+const MINIMUM_AVIF_WIDTH = 768;
+const renditionFormats: Record<RenditionFormat, { extension: string; mimeType: string }> = {
+  avif: { extension: 'avif', mimeType: 'image/avif' },
+  jpeg: { extension: 'jpg', mimeType: 'image/jpeg' },
+  png: { extension: 'png', mimeType: 'image/png' },
+  webp: { extension: 'webp', mimeType: 'image/webp' },
+};
 const formats = {
   avif: { extension: 'avif', mimeType: 'image/avif' },
   jpeg: { extension: 'jpg', mimeType: 'image/jpeg' },
@@ -82,6 +91,24 @@ function publicMedia(media: MediaRecord): PublicMedia {
   };
 }
 
+function variantFor(format: RenditionFormat, width: number): string {
+  // Keep the width-only WebP URL introduced with the responsive pipeline stable.
+  return format === 'webp' ? `w-${width}` : `${format}-w-${width}`;
+}
+
+async function writeRendition(
+  buffer: Buffer,
+  format: RenditionFormat,
+  width: number,
+  outputPath: string,
+): Promise<sharp.OutputInfo> {
+  const image = sharp(buffer).autoOrient().resize({ width, withoutEnlargement: true });
+  if (format === 'avif') return image.avif({ quality: 58, effort: 4 }).toFile(outputPath);
+  if (format === 'jpeg') return image.jpeg({ quality: width <= 480 ? 80 : 86 }).toFile(outputPath);
+  if (format === 'png') return image.png({ compressionLevel: 9, adaptiveFiltering: true }).toFile(outputPath);
+  return image.webp({ quality: width <= 480 ? 78 : 84 }).toFile(outputPath);
+}
+
 export class MediaService {
   private readonly directories;
 
@@ -138,24 +165,31 @@ export class MediaService {
       const renditions: MediaRendition[] = [];
       const derivatives: Record<string, string> = {};
       for (const width of responsiveWidths) {
-        const variant = `w-${width}`;
-        const name = `${id}-${variant}.webp`;
-        const outputPath = path.join(this.directories.derived, name);
-        const info = await sharp(input.buffer).autoOrient().resize({ width, withoutEnlargement: true })
-          .webp({ quality: width <= 480 ? 78 : 84 }).toFile(outputPath);
-        createdPaths.push(outputPath);
-        const relativePath = path.posix.join('derived', name);
-        derivatives[variant] = relativePath;
-        renditions.push({
-          byteSize: info.size,
-          format: 'webp',
-          height: info.height,
-          path: relativePath,
-          variant,
-          width: info.width,
-        });
+        const outputFormats: RenditionFormat[] = [
+          'webp',
+          ...(width >= MINIMUM_AVIF_WIDTH ? ['avif' as const] : []),
+          metadata.hasAlpha ? 'png' : 'jpeg',
+        ];
+        for (const outputFormat of outputFormats) {
+          const variant = variantFor(outputFormat, width);
+          const name = `${id}-${variant}.${renditionFormats[outputFormat].extension}`;
+          const outputPath = path.join(this.directories.derived, name);
+          const info = await writeRendition(input.buffer, outputFormat, width, outputPath);
+          createdPaths.push(outputPath);
+          const relativePath = path.posix.join('derived', name);
+          derivatives[variant] = relativePath;
+          renditions.push({
+            byteSize: info.size,
+            format: outputFormat,
+            height: info.height,
+            path: relativePath,
+            variant,
+            width: info.width,
+          });
+        }
       }
-      const closestPath = (target: number) => renditions.reduce((closest, rendition) =>
+      const webpRenditions = renditions.filter((rendition) => rendition.format === 'webp');
+      const closestPath = (target: number) => webpRenditions.reduce((closest, rendition) =>
         Math.abs(rendition.width - target) < Math.abs(closest.width - target) ? rendition : closest).path;
       derivatives.thumbnail = closestPath(480);
       derivatives.large = closestPath(1_600);
@@ -226,7 +260,10 @@ export class MediaService {
     if (!filePath.startsWith(rootPrefix) || !fs.existsSync(filePath)) return null;
     return {
       path: filePath,
-      mimeType: variant === 'original' ? media.mimeType : 'image/webp',
+      mimeType: variant === 'original'
+        ? media.mimeType
+        : renditionFormats[(media.renditionManifest as Partial<RenditionManifest>).renditions
+          ?.find((rendition) => rendition.variant === variant)?.format ?? 'webp'].mimeType,
     };
   }
 

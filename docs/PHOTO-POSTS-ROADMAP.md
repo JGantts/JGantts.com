@@ -32,12 +32,12 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 ## Current state
 
-- Status: Phase 1 and photo pipeline item 2.2 are complete; Phase 2 is in progress.
+- Status: Phase 1 and photo pipeline items 2.1–2.3 are complete; Phase 2 is in progress.
 - Active item: None.
-- Next item: 2.3 — multi-format renditions.
+- Next item: 2.4 — explicit ICC/color-space handling and metadata stripping.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
-  originals; responsive 320–2,400 px WebP renditions; checksums; dimensions;
+  originals; responsive WebP, AVIF, and JPEG/PNG fallback renditions; checksums; dimensions;
   database fields for display order, focal point, and hero media; public media
   URLs; backup of database and media; metadata editing, transactional reorder,
   hero selection, safeguarded deletion, and bounded batch-upload APIs.
@@ -146,7 +146,7 @@ SQL or filesystem work by the client.
 - [x] **2.2** Generate a responsive width set appropriate for the existing masonry
   tile sizes, expanded-photo viewer, mobile detail, and high-density screens
   without upscaling.
-- [ ] **2.3** Produce WebP and AVIF where worthwhile, retain a broadly compatible
+- [x] **2.3** Produce WebP and AVIF where worthwhile, retain a broadly compatible
   fallback, and record every rendition in the database manifest.
 - [ ] **2.4** Preserve intended color appearance with an explicit ICC/color-space
   policy while stripping private metadata from public renditions.
@@ -443,6 +443,20 @@ verified against the live domain.
 - Verified all 57 server tests and the client production build using Node
   22.23.2. `better-sqlite3` 13 crashes on Node 22 releases before 22.14, so the
   server engine floor now records the working minimum patch level.
+
+### 2026-09-05 — Multi-format responsive renditions
+
+- Every responsive width now receives WebP plus a broadly compatible fallback:
+  JPEG for opaque photos and PNG where transparency must be retained. AVIF is
+  generated at widths of 768 px and above, where its encoding and container
+  overhead are worthwhile.
+- Each stored and public rendition records its format, dimensions, byte size,
+  stable variant, and immutable URL. Media delivery resolves the format from the
+  manifest and sends the matching MIME type; existing width-only WebP and legacy
+  `thumbnail`/`large` URLs remain stable.
+- Verified AVIF, JPEG, transparent PNG, MIME delivery, no-upscale behavior, and
+  internal/public manifest boundaries. All 58 server tests, type checking, and
+  the client production build pass on Node 22.23.2.
 
 ## Definition of done
 

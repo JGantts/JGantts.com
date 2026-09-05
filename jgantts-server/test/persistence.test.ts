@@ -190,7 +190,9 @@ test('stores original images, generates derivatives, and resolves safe public fi
   assert.equal(uploaded.caption, null);
   assert.equal(uploaded.processingState, 'ready');
   assert.equal(uploaded.updatedAt, uploaded.createdAt);
-  assert.deepEqual(uploaded.renditions.map((rendition) => rendition.width), [100]);
+  assert.deepEqual(uploaded.renditions.map((rendition) => [rendition.format, rendition.width]), [
+    ['webp', 100], ['jpeg', 100],
+  ]);
   assert.equal(uploaded.renditions[0]?.url, `/media/${uploaded.id}/w-100`);
   assert.equal(posts.update('media-post', { heroMediaId: uploaded.id })?.heroMediaId, uploaded.id);
   posts.create({
@@ -236,7 +238,7 @@ test('stores original images, generates derivatives, and resolves safe public fi
   assert.equal(service.getFile(uploaded.id, 'large'), null);
 });
 
-test('generates a responsive WebP width set without upscaling', async (t) => {
+test('generates responsive modern and fallback formats without upscaling', async (t) => {
   const root = temporaryDirectory(t);
   const database = openContentDatabase(':memory:');
   t.after(() => database.close());
@@ -250,24 +252,52 @@ test('generates a responsive WebP width set without upscaling', async (t) => {
 
   const uploaded = await service.uploadImage({ postId: 'responsive', altText: 'Wide image', buffer: source });
   assert.deepEqual(
-    uploaded.renditions.map(({ width, height }) => [width, height]),
+    uploaded.renditions.filter(({ format }) => format === 'webp').map(({ width, height }) => [width, height]),
     [[320, 160], [480, 240], [768, 384], [1_024, 512], [1_600, 800], [2_400, 1_200]],
   );
   assert.ok(uploaded.renditions.every((rendition) => rendition.byteSize > 0));
-  assert.ok(uploaded.renditions.every((rendition) => rendition.format === 'webp'));
+  assert.deepEqual(
+    uploaded.renditions.filter(({ format }) => format === 'avif').map(({ width }) => width),
+    [768, 1_024, 1_600, 2_400],
+  );
+  assert.deepEqual(
+    uploaded.renditions.filter(({ format }) => format === 'jpeg').map(({ width }) => width),
+    [320, 480, 768, 1_024, 1_600, 2_400],
+  );
   for (const rendition of uploaded.renditions) {
     const file = service.getFile(uploaded.id, rendition.variant);
     assert.ok(file);
+    assert.equal(file.mimeType, `image/${rendition.format}`);
     assert.equal((await sharp(file.path).metadata()).width, rendition.width);
   }
   const stored = repository.getById(uploaded.id)!;
   assert.deepEqual(
     'renditions' in stored.renditionManifest
-      ? stored.renditionManifest.renditions.map((rendition) => rendition.width)
+      ? stored.renditionManifest.renditions.filter(({ format }) => format === 'webp')
+        .map((rendition) => rendition.width)
       : [],
     [320, 480, 768, 1_024, 1_600, 2_400],
   );
   assert.equal(service.getFile(uploaded.id, 'w-9999'), null);
+});
+
+test('uses PNG rather than JPEG as the compatible fallback for transparency', async (t) => {
+  const root = temporaryDirectory(t);
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostRepository(database);
+  posts.create({ id: 'alpha', slug: 'alpha', bodyMarkdown: '', bodyHtml: '' });
+  const service = new MediaService(new MediaRepository(database), posts, path.join(root, 'media'));
+  const source = await sharp({
+    create: { width: 400, height: 200, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 0.5 } },
+  }).png().toBuffer();
+
+  const uploaded = await service.uploadImage({ postId: 'alpha', altText: 'Transparent image', buffer: source });
+  assert.deepEqual(
+    uploaded.renditions.map(({ format, width }) => [format, width]),
+    [['webp', 320], ['png', 320], ['webp', 400], ['png', 400]],
+  );
+  assert.ok(uploaded.renditions.every(({ format }) => format !== 'jpeg'));
 });
 
 test('rejects invalid image uploads before creating media records', async (t) => {

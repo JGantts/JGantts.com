@@ -47,6 +47,8 @@ type UploadQueueItem = {
 }
 const uploadQueue = ref<UploadQueueItem[]>([])
 const uploadRunning = ref(false)
+const mediaDrafts = reactive<Record<string, { altText: string; caption: string }>>({})
+const mediaSavingId = ref<string | null>(null)
 const syndication = ref<Syndication | null>(null)
 const teaser = ref('')
 let previewTimer: ReturnType<typeof setTimeout> | null = null
@@ -89,6 +91,9 @@ function copyToForm(post: AdminPost) {
   notice.value = ''
   error.value = ''
   syndication.value = null
+  post.media.forEach((item) => {
+    mediaDrafts[item.id] = { altText: item.altText, caption: item.caption ?? '' }
+  })
   if (post.status === 'published') void loadSyndication(post.id)
 }
 
@@ -178,6 +183,34 @@ function replacePost(post: AdminPost) {
   if (index === -1) posts.value.unshift(post)
   else posts.value.splice(index, 1, post)
   copyToForm(post)
+}
+
+function replaceMedia(updated: PostMedia) {
+  const post = selected.value
+  if (!post) return
+  const media = post.media.map((item) => item.id === updated.id ? updated : item)
+  const index = posts.value.findIndex(({ id }) => id === post.id)
+  if (index !== -1) posts.value.splice(index, 1, { ...post, media })
+  mediaDrafts[updated.id] = { altText: updated.altText, caption: updated.caption ?? '' }
+}
+
+async function saveMedia(item: PostMedia) {
+  const draft = mediaDrafts[item.id]
+  if (!draft?.altText.trim()) return
+  mediaSavingId.value = item.id
+  error.value = ''
+  try {
+    const updated = await adminRequest<PostMedia>(
+      `/api/admin/media/${item.id}`,
+      jsonRequest('PATCH', { altText: draft.altText, caption: draft.caption.trim() || null }),
+    )
+    replaceMedia(updated)
+    notice.value = 'Photo details saved.'
+  } catch (mediaError) {
+    error.value = message(mediaError)
+  } finally {
+    mediaSavingId.value = null
+  }
 }
 
 async function save(): Promise<AdminPost | null> {
@@ -466,7 +499,14 @@ onBeforeUnmount(() => {
             <div v-if="selected?.media.length" class="media-grid">
               <figure v-for="item in selected.media" :key="item.id">
                 <img :alt="item.altText" :src="item.urls.thumbnail">
-                <figcaption>{{ item.altText }}</figcaption>
+                <figcaption>
+                  <span>{{ item.width }} × {{ item.height }} · {{ item.processingState }}</span>
+                  <label>Alt text <textarea v-model="mediaDrafts[item.id].altText" maxlength="2000" rows="2" required></textarea></label>
+                  <label>Caption <textarea v-model="mediaDrafts[item.id].caption" maxlength="5000" rows="2"></textarea></label>
+                  <button :disabled="mediaSavingId === item.id || !mediaDrafts[item.id].altText.trim()" type="button" @click="saveMedia(item)">
+                    {{ mediaSavingId === item.id ? 'Saving…' : 'Save photo details' }}
+                  </button>
+                </figcaption>
               </figure>
             </div>
             <p v-else class="empty-state">Choose the first photograph for this draft.</p>
@@ -578,9 +618,11 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .preview-body :deep(ul) { list-style: disc; padding-left: 1.5rem; }
 .preview-body :deep(ol) { list-style: decimal; padding-left: 1.5rem; }
 .empty-state { color: var(--muted); }
-.media-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); margin-bottom: 1rem; }
+.media-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); margin-bottom: 1rem; }
 .media-grid img { aspect-ratio: 1; border-radius: 0.5rem; object-fit: cover; width: 100%; }
-.media-grid figcaption { color: var(--muted); font-size: 0.75rem; margin-top: 0.35rem; }
+.media-grid figure { border: 1px solid var(--border); border-radius: 0.65rem; padding: 0.65rem; }
+.media-grid figcaption { display: grid; gap: 0.65rem; margin-top: 0.5rem; }
+.media-grid figcaption > span { color: var(--muted); font-family: 'Azeret Mono Variable', monospace; font-size: 0.7rem; }
 .photo-dropzone { align-items: center; border: 2px dashed var(--border); border-radius: 0.75rem; cursor: pointer; display: grid; justify-items: center; padding: 1.5rem; text-align: center; }
 .photo-dropzone span, .upload-status { color: var(--muted); font-size: 0.75rem; }
 .photo-dropzone input { max-width: 28rem; }

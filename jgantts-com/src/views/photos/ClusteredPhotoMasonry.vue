@@ -72,8 +72,16 @@ const imageRecords = computed(() =>
   ),
 )
 
+const masonryImageRecords = computed(() =>
+  [...imageRecords.value].sort(
+    (left, right) =>
+      right.postIndex - left.postIndex
+      || left.attachmentIndex - right.attachmentIndex,
+  ),
+)
+
 const cards = computed<PhotoCard[]>(() =>
-  imageRecords.value.map(({ attachment, id, post }) => {
+  masonryImageRecords.value.map(({ attachment, id, post }) => {
     const original = attachment.meta?.original
     const aspectRatio =
       original?.aspect ??

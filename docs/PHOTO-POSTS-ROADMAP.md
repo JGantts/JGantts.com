@@ -34,7 +34,7 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 - Status: Phase 1 media lifecycle implementation complete.
 - Active item: None.
-- Next item: 2.1 — normalize orientation and verify recorded dimensions.
+- Next item: 2.2 — responsive rendition widths for the existing photos gallery.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; 1,600 px and 480 px WebP derivatives; checksums; dimensions;
@@ -141,7 +141,7 @@ SQL or filesystem work by the client.
 
 ### Phase 2 — Image processing pipeline
 
-- [ ] **2.1** Normalize EXIF orientation before recording width and height; add
+- [x] **2.1** Normalize EXIF orientation before recording width and height; add
   portrait, landscape, square, and rotated-fixture tests.
 - [ ] **2.2** Generate a responsive width set appropriate for the existing masonry
   tile sizes, expanded-photo viewer, mobile detail, and high-density screens
@@ -157,6 +157,8 @@ SQL or filesystem work by the client.
   previously valid image.
 - [ ] **2.7** Add a repeatable command to regenerate derivatives from stored
   sources after pipeline changes, with dry-run and bounded-concurrency options.
+  Reconcile legacy width/height values with the oriented source dimensions; the
+  2.1 upload fix does not retroactively update stored media records.
 - [ ] **2.8** Add corruption, unsupported color/profile, decompression-bomb,
   disk-full, restart, and regeneration tests.
 
@@ -416,6 +418,19 @@ verified against the live domain.
   and collision tests. API and private authoring paths remain unchanged.
 - Canonical metadata, discovery documents, navigation, and new syndication links
   must agree on the new URL. Phase 1 completion and the next item 2.1 are unchanged.
+
+### 2026-09-05 — Orientation-aware upload dimensions
+
+- Use Sharp's auto-oriented metadata dimensions for new media records and
+  explicitly auto-orient both rendition pipelines before resizing. Stored width
+  and height describe the full-resolution displayed composition, not raw EXIF
+  sensor dimensions or a resized derivative. Original source bytes are unchanged.
+- Verified all eight EXIF orientations, including mirrored cases, using colored
+  quadrant fixtures that check pixel placement in both WebP renditions. Added
+  portrait, landscape, square, and downscaled fixtures; checked database values,
+  source-byte preservation, and absence of orientation tags on renditions.
+- All 56 server tests, type checking, and the production server build pass.
+  Existing record reconciliation remains part of regeneration item 2.7.
 
 ## Definition of done
 

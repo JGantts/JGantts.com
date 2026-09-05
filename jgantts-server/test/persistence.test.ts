@@ -321,3 +321,57 @@ test('failed media cleanup survives database restart and retries missing files s
   assert.deepEqual(fs.readdirSync(path.join(root, 'derived')), []);
   service.deleteImage(photo.id);
 });
+
+test('records oriented source dimensions and preserves orientation in both renditions', async (t) => {
+  const root = temporaryDirectory(t);
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostRepository(database);
+  posts.create({ id: 'orientation', slug: 'orientation', bodyMarkdown: '', bodyHtml: '' });
+  const repository = new MediaRepository(database);
+  const service = new MediaService(repository, posts, path.join(root, 'media'));
+  // Four distinct quadrants verify mirrored orientations as well as 90-degree turns.
+  const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00'];
+  const expectedCorners = [
+    [0, 1, 2, 3], [1, 0, 3, 2], [3, 2, 1, 0], [2, 3, 0, 1],
+    [0, 2, 1, 3], [2, 0, 3, 1], [3, 1, 2, 0], [1, 3, 0, 2],
+  ];
+  for (const orientation of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    const tiles = await Promise.all(colors.map((background) => sharp({
+      create: { width: 40, height: 20, channels: 3, background },
+    }).png().toBuffer()));
+    const source = await sharp({ create: { width: 80, height: 40, channels: 3, background: 'white' } })
+      .composite(tiles.map((input, i) => ({ input, left: (i % 2) * 40, top: Math.floor(i / 2) * 20 })))
+      .withMetadata({ orientation }).jpeg({ quality: 100 }).toBuffer();
+    const uploaded = await service.uploadImage({ postId: 'orientation', altText: 'Four colored quadrants', buffer: source });
+    const expectedSize = orientation >= 5 ? [40, 80] : [80, 40];
+    assert.deepEqual([uploaded.width, uploaded.height], expectedSize);
+    const stored = repository.getById(uploaded.id)!;
+    assert.deepEqual([stored.width, stored.height], expectedSize);
+    assert.deepEqual(fs.readFileSync(service.getFile(uploaded.id, 'original')!.path), source);
+    for (const variant of ['large', 'thumbnail'] as const) {
+      const file = service.getFile(uploaded.id, variant)!;
+      const metadata = await sharp(file.path).metadata();
+      assert.deepEqual([metadata.width, metadata.height], expectedSize);
+      assert.equal(metadata.orientation, undefined);
+      const { data, info } = await sharp(file.path).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+      const positions = [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]];
+      const actual = positions.map(([x, y]) => {
+        const offset = (Math.floor(y * info.height) * info.width + Math.floor(x * info.width)) * info.channels;
+        const [r, g, b] = data.subarray(offset, offset + 3);
+        return b > 150 ? 2 : r > 150 ? (g > 150 ? 3 : 0) : 1;
+      });
+      assert.deepEqual(actual, expectedCorners[orientation - 1], `orientation ${orientation}, ${variant}`);
+    }
+  }
+  for (const [width, height] of [[30, 60], [60, 30], [40, 40], [2400, 1200]]) {
+    const source = await sharp({ create: { width, height, channels: 3, background: 'red' } }).png().toBuffer();
+    const uploaded = await service.uploadImage({ postId: 'orientation', altText: 'Red image', buffer: source });
+    assert.deepEqual([uploaded.width, uploaded.height], [width, height]);
+    for (const [variant, maxWidth] of [['large', 1600], ['thumbnail', 480]] as const) {
+      const metadata = await sharp(service.getFile(uploaded.id, variant)!.path).metadata();
+      const scaledWidth = Math.min(width, maxWidth);
+      assert.deepEqual([metadata.width, metadata.height], [scaledWidth, height * scaledWidth / width]);
+    }
+  }
+});

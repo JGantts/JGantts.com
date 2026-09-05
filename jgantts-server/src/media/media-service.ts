@@ -121,10 +121,10 @@ export class MediaService {
     try {
       fs.writeFileSync(originalPath, input.buffer, { flag: 'wx', mode: 0o640 });
       createdPaths.push(originalPath);
-      await sharp(input.buffer).rotate().resize({ width: 1_600, withoutEnlargement: true })
+      await sharp(input.buffer).autoOrient().resize({ width: 1_600, withoutEnlargement: true })
         .webp({ quality: 84 }).toFile(largePath);
       createdPaths.push(largePath);
-      await sharp(input.buffer).rotate().resize({ width: 480, withoutEnlargement: true })
+      await sharp(input.buffer).autoOrient().resize({ width: 480, withoutEnlargement: true })
         .webp({ quality: 78 }).toFile(thumbnailPath);
       createdPaths.push(thumbnailPath);
 
@@ -138,8 +138,10 @@ export class MediaService {
           thumbnail: path.posix.join('derived', thumbnailName),
         },
         mimeType: format.mimeType,
-        width: metadata.width,
-        height: metadata.height,
+        // Source bytes stay immutable; layout dimensions describe the oriented
+        // full-resolution composition, before derivative resizing.
+        width: metadata.autoOrient.width,
+        height: metadata.autoOrient.height,
         byteSize: input.buffer.length,
         checksumSha256: createHash('sha256').update(input.buffer).digest('hex'),
         altText: input.altText,

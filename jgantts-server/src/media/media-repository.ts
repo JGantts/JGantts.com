@@ -1,4 +1,5 @@
 import type { ContentDatabase } from '../db/database';
+import { inTransaction } from '../db/database';
 import type { MediaDerivatives, MediaRecord } from './types';
 
 interface MediaRow {
@@ -80,5 +81,32 @@ export class MediaRepository {
     return (this.database.prepare(`
       SELECT * FROM media WHERE post_id = ? ORDER BY display_order, id
     `).all(postId) as MediaRow[]).map(mapMedia);
+  }
+
+  updateMetadata(
+    id: string,
+    changes: Pick<MediaRecord, 'altText' | 'caption' | 'focalX' | 'focalY'>,
+    updatedAt: string,
+  ): MediaRecord | null {
+    const result = this.database.prepare(`
+      UPDATE media SET
+        alt_text = @altText,
+        caption = @caption,
+        focal_x = @focalX,
+        focal_y = @focalY,
+        updated_at = @updatedAt
+      WHERE id = @id
+    `).run({ id, ...changes, updatedAt });
+    return result.changes ? this.getById(id) : null;
+  }
+
+  reorder(postId: string, orderedIds: string[], updatedAt: string): MediaRecord[] {
+    return inTransaction(this.database, () => {
+      const update = this.database.prepare(`
+        UPDATE media SET display_order = ?, updated_at = ? WHERE id = ? AND post_id = ?
+      `);
+      orderedIds.forEach((id, index) => update.run(index, updatedAt, id, postId));
+      return this.listByPostId(postId);
+    });
   }
 }

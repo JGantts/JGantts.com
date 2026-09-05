@@ -15,6 +15,7 @@ export type CanonicalPost = {
   bodyHtml: string
   contentWarning: string | null
   excerpt: string | null
+  heroMediaId: string | null
   id: string
   media: PostMedia[]
   publishedAt: string

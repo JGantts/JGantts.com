@@ -33,6 +33,10 @@ function titleFor(post: Post): string {
   return post.title?.trim() || 'Post by Jacob Gantt';
 }
 
+export function heroMediaFor(post: CanonicalPostPage): PublicMedia | null {
+  return post.media.find((item) => item.id === post.heroMediaId) ?? post.media[0] ?? null;
+}
+
 export function getCanonicalPostMeta(
   req: Request,
   post: CanonicalPostPage,
@@ -40,7 +44,7 @@ export function getCanonicalPostMeta(
 ): ResolvedPageMeta {
   const defaults = getPageMeta(req, configuredSiteOrigin);
   const origin = getRequestOrigin(req, configuredSiteOrigin);
-  const image = post.media[0]?.urls.large;
+  const image = heroMediaFor(post)?.urls.large;
   const title = titleFor(post);
   return {
     title: `${title} | JGantts`,

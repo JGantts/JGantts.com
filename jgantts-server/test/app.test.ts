@@ -659,6 +659,7 @@ test('uploads local media and serves immutable originals and derivatives', async
   });
   assert.equal(uploadedResponse.status, 201);
   const uploaded = JSON.parse(uploadedResponse.body) as {
+    id: string;
     originalPath?: string;
     derivatives?: unknown;
     urls: { large: string; original: string; thumbnail: string };
@@ -666,6 +667,32 @@ test('uploads local media and serves immutable originals and derivatives', async
   assert.equal(uploaded.originalPath, undefined);
   assert.equal(uploaded.derivatives, undefined);
   assert.equal(uploadedResponse.headers.location, uploaded.urls.original);
+
+  const editedResponse = await request(app, `/api/admin/media/${uploaded.id}`, {
+    body: JSON.stringify({
+      altText: 'An updated brown rectangle', caption: 'A visible caption', focalX: 0.4, focalY: 0.6,
+    }),
+    headers: { authorization: 'Bearer media-secret', 'content-type': 'application/json' },
+    method: 'PATCH',
+  });
+  assert.equal(editedResponse.status, 200);
+  assert.equal(JSON.parse(editedResponse.body).caption, 'A visible caption');
+
+  const orderResponse = await request(app, '/api/admin/posts/media-api-post/media/order', {
+    body: JSON.stringify({ mediaIds: [uploaded.id] }),
+    headers: { authorization: 'Bearer media-secret', 'content-type': 'application/json' },
+    method: 'PUT',
+  });
+  assert.equal(orderResponse.status, 200);
+  assert.equal(JSON.parse(orderResponse.body).media[0].displayOrder, 0);
+
+  const heroResponse = await request(app, '/api/admin/posts/media-api-post/media/hero', {
+    body: JSON.stringify({ mediaId: uploaded.id }),
+    headers: { authorization: 'Bearer media-secret', 'content-type': 'application/json' },
+    method: 'PUT',
+  });
+  assert.equal(heroResponse.status, 200);
+  assert.equal(JSON.parse(heroResponse.body).heroMediaId, uploaded.id);
 
   const original = await request(app, uploaded.urls.original);
   assert.equal(original.status, 200);
@@ -681,7 +708,7 @@ test('uploads local media and serves immutable originals and derivatives', async
   const postResponse = await request(app, '/api/posts/media-api-post');
   const post = JSON.parse(postResponse.body) as { media: Array<{ altText: string; urls: unknown }> };
   assert.equal(post.media.length, 1);
-  assert.equal(post.media[0].altText, 'A brown test rectangle');
+  assert.equal(post.media[0].altText, 'An updated brown rectangle');
   assert.ok(post.media[0].urls);
 
   const canonicalPage = await request(app, '/posts/media-api-post');

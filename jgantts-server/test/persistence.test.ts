@@ -186,6 +186,34 @@ test('stores original images, generates derivatives, and resolves safe public fi
   assert.equal(uploaded.caption, null);
   assert.equal(uploaded.processingState, 'ready');
   assert.equal(uploaded.updatedAt, uploaded.createdAt);
+  assert.equal(posts.update('media-post', { heroMediaId: uploaded.id })?.heroMediaId, uploaded.id);
+  posts.create({
+    id: 'different-post', slug: 'different-post', bodyMarkdown: 'Other', bodyHtml: '<p>Other</p>',
+  });
+  assert.throws(
+    () => posts.update('different-post', { heroMediaId: uploaded.id }),
+    /hero media must belong to the same post/,
+  );
+  const second = await service.uploadImage({
+    altText: 'Second photo', buffer: original, displayOrder: 0, postId: 'media-post',
+  });
+  const edited = service.updateMetadata(uploaded.id, {
+    altText: 'Updated description', caption: 'Visible caption', focalX: 0.25, focalY: 0.75,
+  });
+  assert.equal(edited?.altText, 'Updated description');
+  assert.equal(edited?.caption, 'Visible caption');
+  assert.equal(edited?.focalX, 0.25);
+  assert.throws(
+    () => service.updateMetadata(uploaded.id, { focalX: 2, focalY: 0.5 }),
+    /focalX and focalY/,
+  );
+  const reordered = service.reorder('media-post', [uploaded.id, second.id]);
+  assert.deepEqual(reordered.map((item) => [item.id, item.displayOrder]), [
+    [uploaded.id, 0], [second.id, 1],
+  ]);
+  assert.equal(service.selectHero('media-post', second.id), second.id);
+  assert.throws(() => service.selectHero('different-post', second.id), /must belong/);
+  assert.equal(service.selectHero('media-post', null), null);
   assert.equal('originalPath' in uploaded, false);
   assert.equal('derivatives' in uploaded, false);
 

@@ -35,6 +35,13 @@ export interface MediaFile {
   path: string;
 }
 
+export interface UpdateMediaMetadataInput {
+  altText?: unknown;
+  caption?: unknown;
+  focalX?: unknown;
+  focalY?: unknown;
+}
+
 function publicMedia(media: MediaRecord): PublicMedia {
   const base = `/media/${encodeURIComponent(media.id)}`;
   const {
@@ -160,5 +167,64 @@ export class MediaService {
 
   listForPost(postId: string): PublicMedia[] {
     return this.media.listByPostId(postId).map(publicMedia);
+  }
+
+  updateMetadata(id: string, input: UpdateMediaMetadataInput): PublicMedia | null {
+    const current = this.media.getById(id);
+    if (!current) return null;
+    const altText = input.altText === undefined ? current.altText : input.altText;
+    if (typeof altText !== 'string' || !altText.trim() || altText.length > 2_000) {
+      throw new PostInputError('altText must be a non-empty string no longer than 2,000 characters.');
+    }
+    const caption = input.caption === undefined ? current.caption : input.caption;
+    if (caption !== null && (typeof caption !== 'string' || caption.length > 5_000)) {
+      throw new PostInputError('caption must be null or a string no longer than 5,000 characters.');
+    }
+    const focalX = input.focalX === undefined ? current.focalX : input.focalX;
+    const focalY = input.focalY === undefined ? current.focalY : input.focalY;
+    const validCoordinate = (value: unknown) => value === null
+      || (typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1);
+    if (!validCoordinate(focalX) || !validCoordinate(focalY) || ((focalX === null) !== (focalY === null))) {
+      throw new PostInputError('focalX and focalY must both be null or numbers from 0 through 1.');
+    }
+    const updated = this.media.updateMetadata(id, {
+      altText: altText.trim(),
+      caption: typeof caption === 'string' ? caption.trim() || null : caption,
+      focalX: focalX as number | null,
+      focalY: focalY as number | null,
+    }, new Date().toISOString());
+    return updated ? publicMedia(updated) : null;
+  }
+
+  reorder(postId: string, orderedIds: unknown): PublicMedia[] {
+    if (!this.posts.getById(postId)) throw new PostInputError('postId does not identify a post.');
+    if (!Array.isArray(orderedIds) || orderedIds.some((id) => typeof id !== 'string')) {
+      throw new PostInputError('mediaIds must be an array of media IDs.');
+    }
+    const currentIds = this.media.listByPostId(postId).map((item) => item.id);
+    const proposed = orderedIds as string[];
+    if (
+      proposed.length !== currentIds.length
+      || new Set(proposed).size !== proposed.length
+      || proposed.some((id) => !currentIds.includes(id))
+    ) {
+      throw new PostInputError('mediaIds must contain every photo for the post exactly once.');
+    }
+    return this.media.reorder(postId, proposed, new Date().toISOString()).map(publicMedia);
+  }
+
+  selectHero(postId: string, mediaId: unknown): string | null {
+    if (mediaId !== null && typeof mediaId !== 'string') {
+      throw new PostInputError('mediaId must be a media ID or null.');
+    }
+    if (typeof mediaId === 'string') {
+      const selected = this.media.getById(mediaId);
+      if (!selected || selected.postId !== postId) {
+        throw new PostInputError('Hero media must belong to the post.');
+      }
+    }
+    const post = this.posts.update(postId, { heroMediaId: mediaId });
+    if (!post) throw new PostInputError('postId does not identify a post.');
+    return post.heroMediaId;
   }
 }

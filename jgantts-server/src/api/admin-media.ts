@@ -30,5 +30,24 @@ export function createAdminMediaRouter(media: MediaService): express.Router {
     });
   });
 
+  router.patch('/:id', (req, res, next) => {
+    try {
+      if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+        throw Object.assign(new Error('Request body must be an object.'), { status: 400 });
+      }
+      const allowed = new Set(['altText', 'caption', 'focalX', 'focalY']);
+      const unknown = Object.keys(req.body).find((field) => !allowed.has(field));
+      if (unknown) throw Object.assign(new Error(`Unknown media field: ${unknown}`), { status: 400 });
+      const result = media.updateMetadata(req.params.id, req.body);
+      if (!result) {
+        res.status(404).json({ error: { code: 'not_found', message: 'Media not found.' } });
+        return;
+      }
+      res.set('Cache-Control', 'no-store').json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   return router;
 }

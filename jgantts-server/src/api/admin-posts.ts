@@ -103,6 +103,31 @@ export function createAdminPostsRouter(
     }
   });
 
+  router.put('/:id/media/order', (req, res, next) => {
+    try {
+      if (!media) throw Object.assign(new Error('Media service is unavailable.'), { status: 503 });
+      const ordered = media.reorder(req.params.id, req.body?.mediaIds);
+      res.set('Cache-Control', 'no-store').json({ media: ordered });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.put('/:id/media/hero', (req, res, next) => {
+    try {
+      if (!media) throw Object.assign(new Error('Media service is unavailable.'), { status: 503 });
+      media.selectHero(req.params.id, req.body?.mediaId);
+      const post = posts.findById(req.params.id);
+      if (!post) {
+        res.status(404).json({ error: { code: 'not_found', message: 'Post not found.' } });
+        return;
+      }
+      res.set('Cache-Control', 'no-store').json(responsePost(post));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.get('/:id', (req, res) => {
     const post = posts.findById(req.params.id);
     if (!post) {

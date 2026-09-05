@@ -138,6 +138,41 @@ export const migrations: readonly Migration[] = [
       UPDATE media SET updated_at = created_at WHERE updated_at IS NULL;
     `,
   },
+  {
+    version: 5,
+    name: 'enforce_hero_media_ownership',
+    sql: `
+      UPDATE posts
+      SET hero_media_id = NULL
+      WHERE hero_media_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM media
+          WHERE media.id = posts.hero_media_id AND media.post_id = posts.id
+        );
+
+      CREATE TRIGGER posts_hero_media_owner_insert
+      BEFORE INSERT ON posts
+      WHEN NEW.hero_media_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM media
+          WHERE media.id = NEW.hero_media_id AND media.post_id = NEW.id
+        )
+      BEGIN
+        SELECT RAISE(ABORT, 'hero media must belong to the same post');
+      END;
+
+      CREATE TRIGGER posts_hero_media_owner_update
+      BEFORE UPDATE OF hero_media_id ON posts
+      WHEN NEW.hero_media_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM media
+          WHERE media.id = NEW.hero_media_id AND media.post_id = NEW.id
+        )
+      BEGIN
+        SELECT RAISE(ABORT, 'hero media must belong to the same post');
+      END;
+    `,
+  },
 ];
 
 export function migrateDatabase(database: Database.Database): void {

@@ -32,7 +32,7 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 - Status: Roadmap written; implementation has not started.
 - Active item: None.
-- Next item: 1.3 — enforce same-post hero ownership and fallback behavior.
+- Next item: 1.5 — add safeguarded media deletion.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; 1,600 px and 480 px WebP derivatives; checksums; dimensions;
@@ -93,9 +93,9 @@ that post.
 - [x] **1.2** Add an additive migration for caption, processing state/error,
   updated timestamp, and a normalized rendition manifest. Preserve all current
   media records and URLs.
-- [ ] **1.3** Enforce that `hero_media_id` belongs to the same post and define
+- [x] **1.3** Enforce that `hero_media_id` belongs to the same post and define
   deterministic fallback behavior when no hero is selected.
-- [ ] **1.4** Add authenticated endpoints to edit alt text and caption, select the
+- [x] **1.4** Add authenticated endpoints to edit alt text and caption, select the
   focal point, select the hero, and reorder all photos transactionally.
 - [ ] **1.5** Add authenticated media deletion with published-post safeguards,
   hero fallback, database/file consistency, and idempotent retry behavior.
@@ -264,6 +264,19 @@ verified against the live domain.
   fields without exposing processing errors or internal manifests publicly.
 - Verified a version-one database/media upgrade, fresh uploads, all 51 server
   tests, type checking, and the production server build.
+
+### 2026-09-05 — Hero integrity and gallery maintenance API
+
+- Added database triggers that reject a hero owned by another post and clear any
+  invalid legacy reference during migration. An unset hero resolves to the first
+  item by deterministic `(display_order, id)` ordering.
+- Added authenticated operations for alt text, caption, paired normalized focal
+  coordinates, complete transactional gallery reorder, and hero selection or
+  clearing. Reorder requests must contain every post photo exactly once.
+- Canonical social metadata honors an explicit hero without changing gallery
+  order. Bearer and persistent-cookie authentication cover all new routes.
+- Verified service and API behavior, invalid focal points, cross-post hero
+  rejection, contiguous reorder, all 51 server tests, and both production builds.
 
 ## Definition of done
 

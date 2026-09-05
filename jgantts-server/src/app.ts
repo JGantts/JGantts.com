@@ -1,5 +1,6 @@
 import path from 'node:path';
 import express from 'express';
+import { createMediaRouter } from './api/media';
 import { createApiRouter, type ApiServices, type BuildInfoProvider } from './api/router';
 import { loadBuildInfo, type BuildInfo } from './build-info';
 import { normalizeSiteOrigin } from './config';
@@ -8,6 +9,7 @@ import { SITE_DIST_ROOT, SITE_INDEX_PATH, SITE_PUBLIC_ROOT } from './paths';
 import { MAINTENANCE_HTML, readAppHtml, renderAppHtml } from './site/html';
 
 export interface AppOptions {
+  adminToken?: string;
   appHtmlTemplate?: string;
   buildInfo?: BuildInfo;
   buildInfoProvider?: BuildInfoProvider;
@@ -35,7 +37,10 @@ export function createApp(options: AppOptions = {}): express.Express {
   app.disable('x-powered-by');
 
   // API routes must be mounted before the SPA fallback.
-  app.use('/api', createApiRouter(getBuildInfo, options.services));
+  app.use('/api', createApiRouter(getBuildInfo, options.services, {
+    adminToken: options.adminToken,
+  }));
+  if (options.services?.media) app.use('/media', createMediaRouter(options.services.media));
 
   app.use('/assets', express.static(path.join(distRoot, 'assets'), {
     fallthrough: true,

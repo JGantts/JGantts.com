@@ -1,11 +1,20 @@
 import express from 'express';
 import type { BuildInfo } from '../build-info';
+import type { MediaService } from '../media/media-service';
+import { createAdminAuth } from '../middleware/admin-auth';
 import type { PostService } from '../posts/post-service';
+import { createAdminMediaRouter } from './admin-media';
+import { createAdminPostsRouter } from './admin-posts';
 
 export type BuildInfoProvider = () => BuildInfo;
 
 export interface ApiServices {
+  media?: MediaService;
   posts?: PostService;
+}
+
+export interface ApiOptions {
+  adminToken?: string;
 }
 
 function badRequest(message: string): Error & { status: number } {
@@ -15,6 +24,7 @@ function badRequest(message: string): Error & { status: number } {
 export function createApiRouter(
   getBuildInfo: BuildInfoProvider,
   services: ApiServices = {},
+  options: ApiOptions = {},
 ): express.Router {
   const router = express.Router();
 
@@ -30,6 +40,8 @@ export function createApiRouter(
   });
 
   if (services.posts) {
+    router.use('/admin/posts', createAdminAuth(options.adminToken ?? ''), createAdminPostsRouter(services.posts));
+
     router.get('/posts', (req, res, next) => {
       try {
         const rawLimit = req.query.limit;
@@ -42,7 +54,13 @@ export function createApiRouter(
           throw badRequest('Post cursor must be a single string.');
         }
         const page = services.posts?.listPublished({ cursor: rawCursor, limit });
-        res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120').json(page);
+        res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120').json(page && {
+          ...page,
+          items: page.items.map((post) => ({
+            ...post,
+            media: services.media?.listForPost(post.id) ?? [],
+          })),
+        });
       } catch (error) {
         if (error instanceof RangeError || error instanceof TypeError) {
           next(badRequest(error.message));
@@ -63,8 +81,15 @@ export function createApiRouter(
       res.set({
         'Cache-Control': 'public, max-age=30, stale-while-revalidate=120',
         'Content-Location': `/api/posts/${encodeURIComponent(post.slug)}`,
-      }).json(post);
+      }).json({
+        ...post,
+        media: services.media?.listForPost(post.id) ?? [],
+      });
     });
+  }
+
+  if (services.media) {
+    router.use('/admin/media', createAdminAuth(options.adminToken ?? ''), createAdminMediaRouter(services.media));
   }
 
   router.use((req, res) => {

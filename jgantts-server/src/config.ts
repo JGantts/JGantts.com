@@ -53,6 +53,7 @@ export function parsePort(value: string | undefined): number {
 }
 
 export interface RuntimeConfig {
+  adminApiToken: string;
   dataRoot: string;
   databasePath: string;
   mediaRoot: string;
@@ -63,6 +64,7 @@ export interface RuntimeConfig {
 export function getRuntimeConfig(environment: NodeJS.ProcessEnv = process.env): RuntimeConfig {
   const dataRoot = resolveDataRoot(environment.JGANTTS_DATA_ROOT, environment);
   return {
+    adminApiToken: environment.JGANTTS_ADMIN_TOKEN?.trim() ?? '',
     dataRoot,
     databasePath: path.join(dataRoot, 'content.sqlite'),
     mediaRoot: path.join(dataRoot, 'media'),

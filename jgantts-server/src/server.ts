@@ -2,6 +2,8 @@ import type { Server } from 'node:http';
 import { createApp } from './app';
 import { getRuntimeConfig } from './config';
 import { openContentDatabase } from './db/database';
+import { MediaRepository } from './media/media-repository';
+import { MediaService } from './media/media-service';
 import { SITE_INDEX_PATH } from './paths';
 import { PostRepository } from './posts/post-repository';
 import { PostService } from './posts/post-service';
@@ -13,7 +15,13 @@ export function startServer(): Server {
   const appHtmlTemplate = readAppHtml(SITE_INDEX_PATH);
   ensureMediaDirectories(config.mediaRoot);
   const contentDatabase = openContentDatabase(config.databasePath);
-  const postService = new PostService(new PostRepository(contentDatabase));
+  const postRepository = new PostRepository(contentDatabase);
+  const postService = new PostService(postRepository);
+  const mediaService = new MediaService(
+    new MediaRepository(contentDatabase),
+    postRepository,
+    config.mediaRoot,
+  );
 
   if (!appHtmlTemplate) {
     console.warn(`Built app HTML not found at ${SITE_INDEX_PATH}; serving maintenance page with status 503.`);
@@ -23,8 +31,9 @@ export function startServer(): Server {
   }
 
   const server = createApp({
+    adminToken: config.adminApiToken,
     appHtmlTemplate,
-    services: { posts: postService },
+    services: { media: mediaService, posts: postService },
     siteOrigin: config.siteOrigin,
   }).listen(config.port, () => {
     console.log(`Server is running on http://localhost:${config.port}`);

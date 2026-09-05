@@ -20,17 +20,23 @@
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "marked": "^18.0.11",
+    "multer": "^2.3.0",
+    "sanitize-html": "^2.17.7",
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
     "@types/node": "^22.20.1",
+    "@types/sanitize-html": "^2.16.1",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   },
   "keywords": [
     "express",

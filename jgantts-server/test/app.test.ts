@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import http from 'node:http';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import type { AddressInfo } from 'node:net';
 import type { Express } from 'express';
+import sharp from 'sharp';
 import { createApp } from '../src/app';
 import { DEV_BUILD_INFO, loadBuildInfo } from '../src/build-info';
 import { getRuntimeConfig, normalizeSiteOrigin, parsePort, PRODUCTION_DATA_ROOT } from '../src/config';
 import { openContentDatabase } from '../src/db/database';
+import { MediaRepository } from '../src/media/media-repository';
+import { MediaService } from '../src/media/media-service';
 import { PostRepository } from '../src/posts/post-repository';
 import { PostService } from '../src/posts/post-service';
 import { upsertMeta } from '../src/site/html';
@@ -32,7 +38,7 @@ interface TestResponse {
 function request(
   app: Express,
   pathname: string,
-  options: { body?: string; headers?: http.OutgoingHttpHeaders; method?: string } = {},
+  options: { body?: Buffer | string; headers?: http.OutgoingHttpHeaders; method?: string } = {},
 ): Promise<TestResponse> {
   return new Promise((resolve, reject) => {
     const server = http.createServer(app);
@@ -61,6 +67,25 @@ function request(
       req.end(options.body);
     });
   });
+}
+
+function multipartBody(
+  boundary: string,
+  fields: Record<string, string>,
+  file: { content: Buffer; contentType: string; filename: string },
+): Buffer {
+  const parts: Buffer[] = [];
+  for (const [name, value] of Object.entries(fields)) {
+    parts.push(Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+    ));
+  }
+  parts.push(Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${file.filename}"\r\n`
+      + `Content-Type: ${file.contentType}\r\n\r\n`,
+  ));
+  parts.push(file.content, Buffer.from(`\r\n--${boundary}--\r\n`));
+  return Buffer.concat(parts);
 }
 
 test('normalizes and validates SITE_ORIGIN', () => {
@@ -244,6 +269,156 @@ test('gets published posts through current and prior slugs without exposing draf
   assert.equal(JSON.parse(priorSlug.body).slug, 'canonical-slug');
   assert.equal((await request(app, '/api/posts/draft-slug')).status, 404);
   assert.equal((await request(app, '/api/posts/missing')).status, 404);
+});
+
+test('protects admin routes and creates, edits, and publishes sanitized posts', async (t) => {
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostService(new PostRepository(database));
+  const app = createApp({
+    adminToken: 'test-admin-secret',
+    appHtmlTemplate: TEMPLATE,
+    services: { posts },
+    siteOrigin: 'https://jgantts.com',
+  });
+  const body = JSON.stringify({
+    slug: 'first-local-post',
+    bodyMarkdown: '# Hello\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(2)) **world**',
+    excerpt: 'A first post',
+  });
+
+  assert.equal((await request(app, '/api/admin/posts', {
+    body,
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  })).status, 401);
+
+  const createdResponse = await request(app, '/api/admin/posts', {
+    body,
+    headers: {
+      authorization: 'Bearer test-admin-secret',
+      'content-type': 'application/json',
+    },
+    method: 'POST',
+  });
+  assert.equal(createdResponse.status, 201);
+  const created = JSON.parse(createdResponse.body) as { bodyHtml: string; id: string; status: string };
+  assert.equal(created.status, 'draft');
+  assert.match(created.bodyHtml, /<h1>Hello<\/h1>/);
+  assert.match(created.bodyHtml, /<strong>world<\/strong>/);
+  assert.doesNotMatch(created.bodyHtml, /script|javascript:/i);
+  assert.equal((await request(app, '/api/posts/first-local-post')).status, 404);
+
+  const updatedResponse = await request(app, `/api/admin/posts/${created.id}`, {
+    body: JSON.stringify({ slug: 'canonical-local-post', bodyMarkdown: 'Updated' }),
+    headers: {
+      authorization: 'Bearer test-admin-secret',
+      'content-type': 'application/json',
+    },
+    method: 'PATCH',
+  });
+  assert.equal(updatedResponse.status, 200);
+  assert.equal(JSON.parse(updatedResponse.body).bodyHtml, '<p>Updated</p>\n');
+
+  const publishedResponse = await request(app, `/api/admin/posts/${created.id}/publish`, {
+    headers: { authorization: 'Bearer test-admin-secret' },
+    method: 'POST',
+  });
+  assert.equal(publishedResponse.status, 200);
+  assert.equal(JSON.parse(publishedResponse.body).status, 'published');
+  assert.equal((await request(app, '/api/posts/canonical-local-post')).status, 200);
+  assert.equal((await request(app, '/api/posts/first-local-post')).status, 200);
+});
+
+test('returns safe failures for disabled admin API and invalid author input', async (t) => {
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostService(new PostRepository(database));
+  const disabledApp = createApp({ appHtmlTemplate: TEMPLATE, services: { posts } });
+  const disabled = await request(disabledApp, '/api/admin/posts', {
+    body: '{}', headers: { 'content-type': 'application/json' }, method: 'POST',
+  });
+  assert.equal(disabled.status, 503);
+  assert.equal(JSON.parse(disabled.body).error.code, 'admin_unavailable');
+
+  const app = createApp({ adminToken: 'secret', appHtmlTemplate: TEMPLATE, services: { posts } });
+  const invalid = await request(app, '/api/admin/posts', {
+    body: JSON.stringify({ slug: 'Not Valid', bodyMarkdown: 'Hello' }),
+    headers: { authorization: 'Bearer secret', 'content-type': 'application/json' },
+    method: 'POST',
+  });
+  assert.equal(invalid.status, 400);
+
+  const unknown = await request(app, '/api/admin/posts', {
+    body: JSON.stringify({ slug: 'valid', bodyMarkdown: 'Hello', status: 'published' }),
+    headers: { authorization: 'Bearer secret', 'content-type': 'application/json' },
+    method: 'POST',
+  });
+  assert.equal(unknown.status, 400);
+});
+
+test('uploads local media and serves immutable originals and derivatives', async (t) => {
+  const database = openContentDatabase(':memory:');
+  const mediaRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'jgantts-api-media-'));
+  t.after(() => {
+    database.close();
+    fs.rmSync(mediaRoot, { recursive: true, force: true });
+  });
+  const postRepository = new PostRepository(database);
+  postRepository.create({
+    id: 'media-api-post', slug: 'media-api-post', bodyMarkdown: 'Photo', bodyHtml: '<p>Photo</p>',
+  });
+  const media = new MediaService(new MediaRepository(database), postRepository, mediaRoot);
+  const app = createApp({
+    adminToken: 'media-secret',
+    appHtmlTemplate: TEMPLATE,
+    services: { media, posts: new PostService(postRepository) },
+  });
+  const image = await sharp({
+    create: { width: 24, height: 12, channels: 3, background: '#884422' },
+  }).png().toBuffer();
+  const boundary = 'jgantts-test-boundary';
+  const body = multipartBody(boundary, {
+    postId: 'media-api-post',
+    altText: 'A brown test rectangle',
+    displayOrder: '1',
+  }, { content: image, contentType: 'image/png', filename: 'test.png' });
+
+  const uploadedResponse = await request(app, '/api/admin/media', {
+    body,
+    headers: {
+      authorization: 'Bearer media-secret',
+      'content-length': body.length,
+      'content-type': `multipart/form-data; boundary=${boundary}`,
+    },
+    method: 'POST',
+  });
+  assert.equal(uploadedResponse.status, 201);
+  const uploaded = JSON.parse(uploadedResponse.body) as {
+    originalPath?: string;
+    derivatives?: unknown;
+    urls: { large: string; original: string; thumbnail: string };
+  };
+  assert.equal(uploaded.originalPath, undefined);
+  assert.equal(uploaded.derivatives, undefined);
+  assert.equal(uploadedResponse.headers.location, uploaded.urls.original);
+
+  const original = await request(app, uploaded.urls.original);
+  assert.equal(original.status, 200);
+  assert.match(String(original.headers['content-type']), /image\/png/);
+  assert.match(String(original.headers['cache-control']), /immutable/);
+  const derivative = await request(app, uploaded.urls.large);
+  assert.equal(derivative.status, 200);
+  assert.match(String(derivative.headers['content-type']), /image\/webp/);
+
+  postRepository.update('media-api-post', {
+    status: 'published', publishedAt: '2026-09-04T12:00:00.000Z',
+  });
+  const postResponse = await request(app, '/api/posts/media-api-post');
+  const post = JSON.parse(postResponse.body) as { media: Array<{ altText: string; urls: unknown }> };
+  assert.equal(post.media.length, 1);
+  assert.equal(post.media[0].altText, 'A brown test rectangle');
+  assert.ok(post.media[0].urls);
 });
 
 test('reads centralized build information for every API request', async () => {

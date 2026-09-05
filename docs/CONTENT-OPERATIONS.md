@@ -26,6 +26,15 @@ because the current deployment replaces files in that application tree. The
 systemd service account needs read/write access to the configured data root;
 other users should not have write access.
 
+Set `JGANTTS_ADMIN_TOKEN` to a high-entropy secret to enable the admin API. It is
+sent as an `Authorization: Bearer …` header and must exist only in server-side
+configuration. When it is absent, public reads remain available and admin routes
+return `503 admin_unavailable`.
+
+The initial media API accepts JPEG, PNG, WebP, and AVIF images up to 25 MB. Alt
+text is required. The original bytes are retained and 1,600 px and 480 px WebP
+derivatives are generated without upscaling.
+
 ## Backup
 
 Run the application-aware backup command while the service is running or

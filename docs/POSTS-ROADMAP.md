@@ -33,9 +33,9 @@ Authoring -> JGantts database -> canonical post page
 
 ## Current state
 
-- Status: Phase 1 complete; Phase 2 canonical post API in progress.
+- Status: Phases 1 and 2 complete; canonical page work is next.
 - Active item: None.
-- Next item: 2.3 — implement authenticated admin create and update endpoints.
+- Next item: 3.1 — add the canonical `/posts/:slug` Vue route and view.
 - Existing implementation: `/photos` contains six hard-coded Mastodon status IDs.
   The Vue client requests each status and its context directly from
   `mastodon.social` and treats the Mastodon response as both post content and
@@ -144,16 +144,16 @@ persistent local database, and backup restoration has been tested.
 - [x] **2.1** Implement public `GET /api/posts` with stable ordering and pagination.
 - [x] **2.2** Implement public `GET /api/posts/:slug`, including old-slug
   resolution.
-- [ ] **2.3** Implement authenticated admin create and update endpoints.
-- [ ] **2.4** Implement an explicit publish operation with transactional state and
+- [x] **2.3** Implement authenticated admin create and update endpoints.
+- [x] **2.4** Implement an explicit publish operation with transactional state and
   timestamp changes.
-- [ ] **2.5** Render Markdown to sanitized HTML and test unsafe-input handling.
-- [ ] **2.6** Implement authenticated media upload with type and size validation,
+- [x] **2.5** Render Markdown to sanitized HTML and test unsafe-input handling.
+- [x] **2.6** Implement authenticated media upload with type and size validation,
   checksum generation, alt text, and deterministic paths.
-- [ ] **2.7** Generate required image derivatives without altering the original.
-- [ ] **2.8** Serve local media with appropriate content type, caching, and
+- [x] **2.7** Generate required image derivatives without altering the original.
+- [x] **2.8** Serve local media with appropriate content type, caching, and
   immutable URLs.
-- [ ] **2.9** Add authorization, validation, error-shape, and API integration tests.
+- [x] **2.9** Add authorization, validation, error-shape, and API integration tests.
 
 Exit condition: a post and its media can be authored and published entirely on
 JGantts.com without Mastodon.
@@ -300,6 +300,19 @@ the live site is the demonstrable source of truth.
   lookup for published posts. Drafts and archived posts are not exposed.
 - Added cache headers, canonical API `Content-Location`, pagination validation,
   and integration coverage. All 22 server tests and the production build pass.
+
+### 2026-09-04 — Canonical authoring and media API
+
+- Added server-only bearer authentication controlled by `JGANTTS_ADMIN_TOKEN`;
+  when no token is configured the write API fails closed while public reads work.
+- Added validated draft creation and editing, explicit idempotent publishing, and
+  Markdown rendering through an HTML allowlist sanitizer.
+- Added JPEG, PNG, WebP, and AVIF upload up to 25 MB with required alt text,
+  SHA-256 checksums, original-byte retention, and large/thumbnail WebP variants.
+- Public media URLs resolve from database records, do not reveal filesystem
+  paths, reject path traversal, and return immutable cache headers.
+- Verified the complete Phase 2 server with 27 passing tests and a production
+  build, including authenticated multipart upload and public media delivery.
 
 ## Definition of done
 

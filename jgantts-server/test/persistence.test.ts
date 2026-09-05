@@ -3,9 +3,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import sharp from 'sharp';
 import { backupContent } from '../src/db/backup';
 import { inTransaction, openContentDatabase } from '../src/db/database';
 import { migrations, migrateDatabase } from '../src/db/migrations';
+import { MediaRepository } from '../src/media/media-repository';
+import { MediaService } from '../src/media/media-service';
 import { PostRepository } from '../src/posts/post-repository';
 import { ensureMediaDirectories } from '../src/storage';
 
@@ -108,4 +111,61 @@ test('backs up and restores both the database and media', async (t) => {
     fs.readFileSync(path.join(backupRoot, 'media', 'originals', 'sample.jpg'), 'utf8'),
     'original bytes',
   );
+});
+
+test('stores original images, generates derivatives, and resolves safe public files', async (t) => {
+  const root = temporaryDirectory(t);
+  const database = openContentDatabase(path.join(root, 'content.sqlite'));
+  t.after(() => database.close());
+  const posts = new PostRepository(database);
+  posts.create({
+    id: 'media-post', slug: 'media-post', bodyMarkdown: 'Photo', bodyHtml: '<p>Photo</p>',
+  });
+  const repository = new MediaRepository(database);
+  const service = new MediaService(repository, posts, path.join(root, 'media'));
+  const original = await sharp({
+    create: { width: 100, height: 50, channels: 3, background: '#336699' },
+  }).png().toBuffer();
+
+  const uploaded = await service.uploadImage({
+    altText: 'A blue rectangle used for testing',
+    buffer: original,
+    displayOrder: 2,
+    postId: 'media-post',
+  });
+  assert.equal(uploaded.mimeType, 'image/png');
+  assert.equal(uploaded.width, 100);
+  assert.equal(uploaded.height, 50);
+  assert.equal(uploaded.displayOrder, 2);
+  assert.equal('originalPath' in uploaded, false);
+  assert.equal('derivatives' in uploaded, false);
+
+  const originalFile = service.getFile(uploaded.id, 'original');
+  const largeFile = service.getFile(uploaded.id, 'large');
+  const thumbnailFile = service.getFile(uploaded.id, 'thumbnail');
+  assert.ok(originalFile && largeFile && thumbnailFile);
+  assert.deepEqual(fs.readFileSync(originalFile.path), original);
+  assert.equal((await sharp(largeFile.path).metadata()).format, 'webp');
+  assert.equal((await sharp(thumbnailFile.path).metadata()).width, 100);
+
+  database.prepare("UPDATE media SET derived_json = '{\"large\":\"../../outside\"}' WHERE id = ?")
+    .run(uploaded.id);
+  assert.equal(service.getFile(uploaded.id, 'large'), null);
+});
+
+test('rejects invalid image uploads before creating media records', async (t) => {
+  const root = temporaryDirectory(t);
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostRepository(database);
+  posts.create({ id: 'post', slug: 'post', bodyMarkdown: 'Post', bodyHtml: '<p>Post</p>' });
+  const service = new MediaService(new MediaRepository(database), posts, path.join(root, 'media'));
+
+  await assert.rejects(() => service.uploadImage({
+    altText: 'Not an image', buffer: Buffer.from('hello'), postId: 'post',
+  }), /readable image/);
+  await assert.rejects(() => service.uploadImage({
+    altText: '', buffer: Buffer.from('hello'), postId: 'post',
+  }), /altText/);
+  assert.equal(database.prepare('SELECT COUNT(*) FROM media').pluck().get(), 0);
 });

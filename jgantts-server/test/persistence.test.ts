@@ -74,6 +74,10 @@ test('upgrades an existing version-one production schema with optional titles', 
   const post = new PostRepository(upgraded).getBySlug('old-post');
   const media = new MediaRepository(upgraded).getById('old-media');
   assert.equal(post?.title, null);
+  assert.equal(media?.originalPath, 'originals/old.jpg');
+  assert.equal(media?.altText, 'Historic photo');
+  assert.equal(media?.checksumSha256, 'checksum');
+  assert.equal(media?.displayOrder, 0);
   assert.equal(media?.caption, null);
   assert.equal(media?.processingState, 'ready');
   assert.equal(media?.processingError, null);

@@ -1,6 +1,6 @@
 import type { ContentDatabase } from '../db/database';
 import { inTransaction } from '../db/database';
-import { PostConflictError } from '../posts/errors';
+import { PostConflictError, PostInputError } from '../posts/errors';
 import type { MediaDerivatives, MediaRecord } from './types';
 
 interface MediaRow {
@@ -135,6 +135,14 @@ export class MediaRepository {
 
   reorder(postId: string, orderedIds: string[], updatedAt: string): MediaRecord[] {
     return inTransaction(this.database, () => {
+      // Validate membership in the same transaction as the writes: a gallery may
+      // have changed since the service read it (for example in another process).
+      const currentIds = this.listByPostId(postId).map((item) => item.id);
+      if (orderedIds.length !== currentIds.length
+        || new Set(orderedIds).size !== orderedIds.length
+        || orderedIds.some((id) => !currentIds.includes(id))) {
+        throw new PostInputError('mediaIds must contain every photo for the post exactly once.');
+      }
       const update = this.database.prepare(`
         UPDATE media SET display_order = ?, updated_at = ? WHERE id = ? AND post_id = ?
       `);

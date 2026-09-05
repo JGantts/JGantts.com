@@ -859,3 +859,68 @@ test('batch uploads preserve successes and enforce authenticated bounded multipa
   assert.equal((await send(Array(10).fill(png), Array(10).fill('red'))).status, 200);
   assert.deepEqual(media.listForPost('batch').map((m) => m.displayOrder), Array.from({ length: 12 }, (_, i) => i));
 });
+
+test('gallery maintenance enforces auth and validation and serializes competing complete orders', async (t) => {
+  const database = openContentDatabase(':memory:');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jgantts-lifecycle-'));
+  t.after(() => { database.close(); fs.rmSync(root, { recursive: true, force: true }); });
+  const posts = new PostRepository(database);
+  for (const id of ['gallery', 'other']) posts.create({ id, slug: id, bodyMarkdown: '', bodyHtml: '' });
+  const repository = new MediaRepository(database);
+  const media = new MediaService(repository, posts, root);
+  const app = createApp({ adminToken: 'secret', appHtmlTemplate: TEMPLATE,
+    services: { media, posts: new PostService(posts) } });
+  const png = await sharp({ create: { width: 12, height: 12, channels: 3, background: 'red' } }).png().toBuffer();
+  const photos = [];
+  for (let i = 0; i < 3; i++) photos.push(await media.uploadImage({ postId: 'gallery', buffer: png, altText: `Photo ${i}` }));
+  const foreign = await media.uploadImage({ postId: 'other', buffer: png, altText: 'Other photo' });
+  const ids = photos.map((photo) => photo.id);
+  const orderUrl = '/api/admin/posts/gallery/media/order';
+  const heroUrl = '/api/admin/posts/gallery/media/hero';
+  const editUrl = `/api/admin/media/${ids[0]}`;
+  const send = (url: string, method: string, body: unknown, credential = 'Bearer secret') => request(app, url, {
+    method, body: JSON.stringify(body), headers: { 'content-type': 'application/json', authorization: credential },
+  });
+  const before = media.listForPost('gallery');
+  for (const credential of ['', 'Bearer incorrect']) {
+    assert.equal((await send(orderUrl, 'PUT', { mediaIds: ids }, credential)).status, 401);
+    assert.equal((await send(heroUrl, 'PUT', { mediaId: ids[0] }, credential)).status, 401);
+    assert.equal((await send(editUrl, 'PATCH', { altText: 'Changed' }, credential)).status, 401);
+    assert.equal((await send(editUrl, 'DELETE', {}, credential)).status, 401);
+  }
+  for (const mediaIds of [[ids[0]], [ids[0], ids[0], ids[2]], [ids[0], ids[1], foreign.id], [1, 2, 3], null]) {
+    assert.equal((await send(orderUrl, 'PUT', { mediaIds })).status, 400);
+  }
+  assert.equal((await send(heroUrl, 'PUT', { mediaId: foreign.id })).status, 400);
+  for (const body of [{ altText: '' }, { caption: 42 }, { focalX: 0.5 }, { focalX: -1, focalY: 1 }, { postId: 'other' }]) {
+    assert.equal((await send(editUrl, 'PATCH', body)).status, 400);
+  }
+  assert.deepEqual(media.listForPost('gallery'), before);
+  assert.equal(posts.getById('gallery')?.heroMediaId, null);
+  database.exec(`CREATE TRIGGER reject_reorder BEFORE UPDATE OF display_order ON media
+    WHEN NEW.display_order = 1 BEGIN SELECT RAISE(ABORT, 'simulated reorder failure'); END`);
+  assert.throws(() => media.reorder('gallery', [...ids].reverse()), /simulated reorder failure/);
+  assert.deepEqual(media.listForPost('gallery'), before);
+  database.exec('DROP TRIGGER reject_reorder');
+  const orders = [[ids[2], ids[0], ids[1]], [ids[1], ids[2], ids[0]]];
+  const responses = await Promise.all(orders.map((mediaIds) => send(orderUrl, 'PUT', { mediaIds })));
+  for (const [i, response] of responses.entries()) {
+    assert.equal(response.status, 200);
+    assert.deepEqual(JSON.parse(response.body).media.map((m: { id: string }) => m.id), orders[i]);
+  }
+  const final = media.listForPost('gallery');
+  assert.ok(orders.some((order) => JSON.stringify(order) === JSON.stringify(final.map((m) => m.id))));
+  assert.deepEqual(final.map((m) => m.displayOrder), [0, 1, 2]);
+  assert.equal(media.listForPost('other')[0].id, foreign.id);
+  // A stale order after deletion cannot silently restore or omit a photo.
+  media.deleteImage(ids[0]);
+  const remaining = media.listForPost('gallery');
+  assert.throws(() => repository.reorder('gallery', ids, new Date().toISOString()), /every photo/);
+  assert.deepEqual(media.listForPost('gallery'), remaining);
+  // Session authentication applies to gallery maintenance as well as authoring.
+  const session = await request(app, '/api/admin/session', { method: 'POST',
+    body: JSON.stringify({ token: 'secret' }), headers: { 'content-type': 'application/json' } });
+  const cookie = session.headers['set-cookie']![0].split(';')[0];
+  assert.equal((await request(app, heroUrl, { method: 'PUT', body: JSON.stringify({ mediaId: ids[1] }),
+    headers: { cookie, 'content-type': 'application/json' } })).status, 200);
+});

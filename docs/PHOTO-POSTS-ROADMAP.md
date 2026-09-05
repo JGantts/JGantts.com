@@ -30,9 +30,9 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 ## Current state
 
-- Status: Phase 1 media lifecycle implementation in progress.
+- Status: Phase 1 media lifecycle implementation complete.
 - Active item: None.
-- Next item: 1.8 — complete media lifecycle edge-case coverage.
+- Next item: 2.1 — normalize orientation and verify recorded dimensions.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; 1,600 px and 480 px WebP derivatives; checksums; dimensions;
@@ -105,7 +105,7 @@ that post.
   and aggregate request size.
 - [x] **1.7** Return normalized media consistently from admin, public-post, feed,
   sitemap/metadata, and server-rendered page paths.
-- [ ] **1.8** Test authorization, validation, cross-post references, concurrent
+- [x] **1.8** Test authorization, validation, cross-post references, concurrent
   reorder attempts, partial batch failure, deletion, and old-record migration.
 
 Exit condition: the server supports the complete photo lifecycle without direct
@@ -324,6 +324,23 @@ verified against the live domain.
 - Verified identical normalized media in admin list/detail, public list/detail,
   and initial page data, plus rendition URLs across feed, sitemap, and JSON-LD.
   All 54 server tests, type checking, and both production builds pass.
+
+### 2026-09-05 — Media lifecycle edge-case coverage
+
+- Added API coverage for missing/incorrect credentials on gallery edits, reorder,
+  hero selection, and deletion, plus cookie-authenticated hero selection.
+- Verified invalid metadata, duplicate/incomplete/foreign-photo orders, and
+  cross-post hero rejection leave stored media unchanged. Competing complete
+  reorder requests each return a coherent order and leave contiguous positions;
+  the last successful complete order wins.
+- Moved membership revalidation inside the repository reorder transaction to
+  reject stale lists after gallery changes. Verified stale-order rejection and
+  rollback of all media positions/timestamps on an injected mid-reorder failure.
+- Extended legacy migration assertions for original paths, accessibility text,
+  checksums, and ordering. Existing tests cover partial batch success, deletion
+  safeguards, retry/restart recovery, and migration defaults.
+- All 55 server tests, type checking, and the production server build pass on
+  the verified Node 22 runtime. Phase 1 is complete.
 
 ## Definition of done
 

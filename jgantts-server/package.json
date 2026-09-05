@@ -11,6 +11,7 @@
     "check": "node --check serve.js && node --check scripts/smoke-test.js && node --check scripts/write-build-info.js && npm run typecheck && npm test",
     "content:backup": "node dist/cli/backup-content.js",
     "dev": "tsx watch src/server.ts",
+    "media:regenerate": "node dist/cli/regenerate-media.js",
     "smoke": "npm run build && node scripts/smoke-test.js",
     "smoke:live": "node scripts/smoke-test.js --live",
     "smoke:local": "npm run build && node scripts/smoke-test.js --local",

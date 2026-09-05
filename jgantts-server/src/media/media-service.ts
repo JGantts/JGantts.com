@@ -42,7 +42,7 @@ export interface PublicMedia extends Omit<
   'originalPath' | 'derivatives' | 'processingError' | 'renditionManifest'
 > {
   placeholder: (Omit<MediaRendition, 'format' | 'path' | 'purpose' | 'variant'> & {
-    format: 'webp'; purpose: 'placeholder'; url: string; variant: 'placeholder';
+    format: 'webp'; purpose: 'placeholder'; url: string; variant: string;
   }) | null;
   renditions: Array<Omit<MediaRendition, 'path'> & { purpose: 'responsive'; url: string }>;
   urls: Record<'original' | 'large' | 'thumbnail', string>;
@@ -71,6 +71,13 @@ export interface MediaProcessingHooks {
   beforePromote?: (file: Readonly<StagedMediaFile>, index: number) => void;
 }
 
+export interface RegenerationResult {
+  id: string;
+  renditionCount: number;
+  status: 'failed' | 'planned' | 'regenerated';
+  error?: string;
+}
+
 function publicMedia(media: MediaRecord): PublicMedia {
   const base = `/media/${encodeURIComponent(media.id)}`;
   const manifest = media.renditionManifest as Partial<RenditionManifest>;
@@ -85,7 +92,7 @@ function publicMedia(media: MediaRecord): PublicMedia {
   const storedPlaceholder = storedRenditions.find((rendition) => rendition.purpose === 'placeholder');
   const placeholder = storedPlaceholder
     ? { ...toPublicRendition(storedPlaceholder), format: 'webp' as const,
-      purpose: 'placeholder' as const, variant: 'placeholder' as const }
+      purpose: 'placeholder' as const }
     : null;
   // Explicit fields keep future storage and processing details private by default.
   return {
@@ -114,9 +121,9 @@ function publicMedia(media: MediaRecord): PublicMedia {
   };
 }
 
-function variantFor(format: RenditionFormat, width: number): string {
+function variantFor(format: RenditionFormat, width: number, suffix = ''): string {
   // Keep the width-only WebP URL introduced with the responsive pipeline stable.
-  return format === 'webp' ? `w-${width}` : `${format}-w-${width}`;
+  return `${format === 'webp' ? `w-${width}` : `${format}-w-${width}`}${suffix}`;
 }
 
 async function writeRendition(
@@ -145,6 +152,126 @@ async function writePlaceholder(buffer: Buffer, outputPath: string): Promise<sha
     withoutEnlargement: true,
   })
     .toColourspace('srgb').blur(1).webp({ quality: 25, effort: 4 }).toFile(outputPath);
+}
+
+function responsiveWidths(sourceWidth: number): number[] {
+  return Array.from(new Set([
+    ...RESPONSIVE_IMAGE_WIDTHS.filter((width) => width <= sourceWidth),
+    ...(sourceWidth < RESPONSIVE_IMAGE_WIDTHS.at(-1)! ? [sourceWidth] : []),
+  ])).sort((left, right) => left - right);
+}
+
+async function stageRenditionSet(
+  buffer: Buffer,
+  metadata: sharp.Metadata,
+  fileStem: string,
+  stagingDirectory: string,
+  derivedDirectory: string,
+  variantSuffix = '',
+): Promise<{
+  derivatives: Record<string, string>;
+  renditions: MediaRendition[];
+  stagedFiles: StagedMediaFile[];
+}> {
+  const renditions: MediaRendition[] = [];
+  const derivatives: Record<string, string> = {};
+  const stagedFiles: StagedMediaFile[] = [];
+  const addRendition = (rendition: MediaRendition, name: string, stagedPath: string) => {
+    renditions.push(rendition);
+    derivatives[rendition.variant] = rendition.path;
+    stagedFiles.push({
+      finalPath: path.join(derivedDirectory, name), rendition, stagedPath,
+    });
+  };
+
+  const placeholderVariant = `placeholder${variantSuffix}`;
+  const placeholderName = `${fileStem}-${placeholderVariant}.webp`;
+  const placeholderPath = path.join(stagingDirectory, placeholderName);
+  const placeholderInfo = await writePlaceholder(buffer, placeholderPath);
+  addRendition({
+    byteSize: placeholderInfo.size,
+    colorSpace: 'srgb',
+    format: 'webp',
+    height: placeholderInfo.height,
+    path: path.posix.join('derived', placeholderName),
+    privateMetadataStripped: true,
+    purpose: 'placeholder',
+    variant: placeholderVariant,
+    width: placeholderInfo.width,
+  }, placeholderName, placeholderPath);
+  if (variantSuffix) derivatives.placeholder = path.posix.join('derived', placeholderName);
+
+  for (const width of responsiveWidths(metadata.autoOrient.width)) {
+    const outputFormats: RenditionFormat[] = [
+      'webp',
+      ...(width >= MINIMUM_AVIF_WIDTH ? ['avif' as const] : []),
+      metadata.hasAlpha ? 'png' : 'jpeg',
+    ];
+    for (const outputFormat of outputFormats) {
+      const variant = variantFor(outputFormat, width, variantSuffix);
+      const name = `${fileStem}-${variant}.${renditionFormats[outputFormat].extension}`;
+      const outputPath = path.join(stagingDirectory, name);
+      const info = await writeRendition(buffer, outputFormat, width, outputPath);
+      addRendition({
+        byteSize: info.size,
+        colorSpace: 'srgb',
+        format: outputFormat,
+        height: info.height,
+        path: path.posix.join('derived', name),
+        privateMetadataStripped: true,
+        purpose: 'responsive',
+        variant,
+        width: info.width,
+      }, name, outputPath);
+      if (variantSuffix) derivatives[variantFor(outputFormat, width)] = path.posix.join('derived', name);
+    }
+  }
+  const webpRenditions = renditions.filter((rendition) =>
+    rendition.format === 'webp' && rendition.purpose === 'responsive');
+  const closestPath = (target: number) => webpRenditions.reduce((closest, rendition) =>
+    Math.abs(rendition.width - target) < Math.abs(closest.width - target) ? rendition : closest).path;
+  derivatives.thumbnail = closestPath(480);
+  derivatives.large = closestPath(1_600);
+  return { derivatives, renditions, stagedFiles };
+}
+
+async function verifyStagedFiles(
+  files: StagedMediaFile[],
+  source?: { buffer: Buffer; checksum: string },
+): Promise<void> {
+  for (const file of files) {
+    const stat = fs.statSync(file.stagedPath);
+    if (!stat.isFile() || stat.size <= 0) throw new Error('Staged media verification failed.');
+    if (!file.rendition) {
+      if (!source) throw new Error('Staged source verification failed.');
+      const actualChecksum = createHash('sha256').update(fs.readFileSync(file.stagedPath)).digest('hex');
+      if (stat.size !== source.buffer.length || actualChecksum !== source.checksum) {
+        throw new Error('Staged source verification failed.');
+      }
+      continue;
+    }
+    const stagedMetadata = await sharp(file.stagedPath).metadata();
+    const expectedFormat = file.rendition.format === 'avif' ? 'heif' : file.rendition.format;
+    if (
+      stagedMetadata.format !== expectedFormat
+      || stagedMetadata.width !== file.rendition.width
+      || stagedMetadata.height !== file.rendition.height
+      || stat.size !== file.rendition.byteSize
+    ) throw new Error('Staged rendition verification failed.');
+  }
+}
+
+function promoteStagedFiles(
+  files: StagedMediaFile[],
+  promotedPaths: string[],
+  hooks: MediaProcessingHooks,
+): void {
+  files.forEach((file, index) => {
+    hooks.beforePromote?.(file, index);
+    if (fs.existsSync(file.finalPath)) throw new Error('Media destination already exists.');
+    fs.renameSync(file.stagedPath, file.finalPath);
+    promotedPaths.push(file.finalPath);
+  });
 }
 
 export class MediaService {
@@ -199,103 +326,16 @@ export class MediaService {
       const stagedOriginalPath = path.join(stagingDirectory, originalName);
       fs.writeFileSync(stagedOriginalPath, input.buffer, { flag: 'wx', mode: 0o640 });
       stagedFiles.push({ finalPath: originalPath, stagedPath: stagedOriginalPath });
-      const sourceWidth = metadata.autoOrient.width;
-      const responsiveWidths = Array.from(new Set([
-        ...RESPONSIVE_IMAGE_WIDTHS.filter((width) => width <= sourceWidth),
-        ...(sourceWidth < RESPONSIVE_IMAGE_WIDTHS.at(-1)! ? [sourceWidth] : []),
-      ])).sort((left, right) => left - right);
-      const renditions: MediaRendition[] = [];
-      const derivatives: Record<string, string> = {};
-      const placeholderName = `${id}-placeholder.webp`;
-      const placeholderPath = path.join(stagingDirectory, placeholderName);
-      const placeholderInfo = await writePlaceholder(input.buffer, placeholderPath);
-      const relativePlaceholderPath = path.posix.join('derived', placeholderName);
-      derivatives.placeholder = relativePlaceholderPath;
-      const placeholderRendition: MediaRendition = {
-        byteSize: placeholderInfo.size,
-        colorSpace: 'srgb',
-        format: 'webp',
-        height: placeholderInfo.height,
-        path: relativePlaceholderPath,
-        privateMetadataStripped: true,
-        purpose: 'placeholder',
-        variant: 'placeholder',
-        width: placeholderInfo.width,
-      };
-      renditions.push(placeholderRendition);
-      stagedFiles.push({
-        finalPath: path.join(this.directories.derived, placeholderName),
-        rendition: placeholderRendition,
-        stagedPath: placeholderPath,
-      });
-      for (const width of responsiveWidths) {
-        const outputFormats: RenditionFormat[] = [
-          'webp',
-          ...(width >= MINIMUM_AVIF_WIDTH ? ['avif' as const] : []),
-          metadata.hasAlpha ? 'png' : 'jpeg',
-        ];
-        for (const outputFormat of outputFormats) {
-          const variant = variantFor(outputFormat, width);
-          const name = `${id}-${variant}.${renditionFormats[outputFormat].extension}`;
-          const outputPath = path.join(stagingDirectory, name);
-          const info = await writeRendition(input.buffer, outputFormat, width, outputPath);
-          const relativePath = path.posix.join('derived', name);
-          derivatives[variant] = relativePath;
-          const rendition: MediaRendition = {
-            byteSize: info.size,
-            colorSpace: 'srgb',
-            format: outputFormat,
-            height: info.height,
-            path: relativePath,
-            privateMetadataStripped: true,
-            purpose: 'responsive',
-            variant,
-            width: info.width,
-          };
-          renditions.push(rendition);
-          stagedFiles.push({
-            finalPath: path.join(this.directories.derived, name),
-            rendition,
-            stagedPath: outputPath,
-          });
-        }
-      }
-      const webpRenditions = renditions.filter((rendition) =>
-        rendition.format === 'webp' && rendition.purpose === 'responsive');
-      const closestPath = (target: number) => webpRenditions.reduce((closest, rendition) =>
-        Math.abs(rendition.width - target) < Math.abs(closest.width - target) ? rendition : closest).path;
-      derivatives.thumbnail = closestPath(480);
-      derivatives.large = closestPath(1_600);
+      const stagedSet = await stageRenditionSet(
+        input.buffer, metadata, id, stagingDirectory, this.directories.derived,
+      );
+      const { derivatives, renditions } = stagedSet;
+      stagedFiles.push(...stagedSet.stagedFiles);
 
       this.processingHooks.afterStage?.(stagedFiles);
       const expectedChecksum = createHash('sha256').update(input.buffer).digest('hex');
-      for (const file of stagedFiles) {
-        const stat = fs.statSync(file.stagedPath);
-        if (!stat.isFile() || stat.size <= 0) throw new Error('Staged media verification failed.');
-        if (!file.rendition) {
-          const actualChecksum = createHash('sha256').update(fs.readFileSync(file.stagedPath)).digest('hex');
-          if (stat.size !== input.buffer.length || actualChecksum !== expectedChecksum) {
-            throw new Error('Staged source verification failed.');
-          }
-          continue;
-        }
-        const stagedMetadata = await sharp(file.stagedPath).metadata();
-        const expectedFormat = file.rendition.format === 'avif' ? 'heif' : file.rendition.format;
-        if (
-          stagedMetadata.format !== expectedFormat
-          || stagedMetadata.width !== file.rendition.width
-          || stagedMetadata.height !== file.rendition.height
-          || stat.size !== file.rendition.byteSize
-        ) {
-          throw new Error('Staged rendition verification failed.');
-        }
-      }
-      stagedFiles.forEach((file, index) => {
-        this.processingHooks.beforePromote?.(file, index);
-        if (fs.existsSync(file.finalPath)) throw new Error('Media destination already exists.');
-        fs.renameSync(file.stagedPath, file.finalPath);
-        promotedPaths.push(file.finalPath);
-      });
+      await verifyStagedFiles(stagedFiles, { buffer: input.buffer, checksum: expectedChecksum });
+      promoteStagedFiles(stagedFiles, promotedPaths, this.processingHooks);
 
       const createdAt = new Date().toISOString();
       return publicMedia(this.media.create({
@@ -374,6 +414,90 @@ export class MediaService {
 
   listForPost(postId: string): PublicMedia[] {
     return this.media.listByPostId(postId).map(publicMedia);
+  }
+
+  async regenerateAll(options: { concurrency?: number; dryRun?: boolean } = {}): Promise<RegenerationResult[]> {
+    const concurrency = options.concurrency ?? 2;
+    if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 8) {
+      throw new PostInputError('concurrency must be an integer from 1 through 8.');
+    }
+    const records = this.media.listAll();
+    const results = new Array<RegenerationResult>(records.length);
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < records.length) {
+        const index = cursor++;
+        const record = records[index];
+        try {
+          results[index] = await this.regenerateImage(record, Boolean(options.dryRun));
+        } catch (error) {
+          results[index] = {
+            id: record.id,
+            renditionCount: 0,
+            status: 'failed',
+            error: error instanceof Error ? error.message : 'Unknown regeneration failure.',
+          };
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, records.length) }, worker));
+    return results;
+  }
+
+  private async regenerateImage(record: MediaRecord, dryRun: boolean): Promise<RegenerationResult> {
+    const source = this.getFile(record.id, 'original');
+    if (!source) throw new Error('Stored source file is missing or unsafe.');
+    const buffer = fs.readFileSync(source.path);
+    const checksum = createHash('sha256').update(buffer).digest('hex');
+    if (checksum !== record.checksumSha256) throw new Error('Stored source checksum does not match the database.');
+    const metadata = await sharp(buffer).metadata();
+    if (!metadata.width || !metadata.height || !metadata.format
+      || !formats[metadata.format as keyof typeof formats]) {
+      throw new Error('Stored source is not a supported readable image.');
+    }
+    const widths = responsiveWidths(metadata.autoOrient.width);
+    const renditionCount = 1 + widths.reduce(
+      (count, width) => count + 2 + (width >= MINIMUM_AVIF_WIDTH ? 1 : 0),
+      0,
+    );
+    if (dryRun) return { id: record.id, renditionCount, status: 'planned' };
+
+    const generation = randomUUID().replaceAll('-', '').slice(0, 8);
+    const suffix = `-v-${generation}`;
+    const stagingDirectory = fs.mkdtempSync(path.join(this.mediaRoot, '.staging-'));
+    const promotedPaths: string[] = [];
+    let updated = false;
+    try {
+      const stagedSet = await stageRenditionSet(
+        buffer, metadata, `${record.id}-${generation}`, stagingDirectory, this.directories.derived, suffix,
+      );
+      this.processingHooks.afterStage?.(stagedSet.stagedFiles);
+      await verifyStagedFiles(stagedSet.stagedFiles);
+      promoteStagedFiles(stagedSet.stagedFiles, promotedPaths, this.processingHooks);
+      const replacement = this.media.replaceRenditions(record.id, {
+        derivatives: stagedSet.derivatives,
+        height: metadata.autoOrient.height,
+        renditionManifest: { version: 1, renditions: stagedSet.renditions },
+        width: metadata.autoOrient.width,
+      }, new Date().toISOString());
+      if (!replacement) throw new Error('Media record disappeared during regeneration.');
+      updated = true;
+
+      const newPaths = new Set(Object.values(stagedSet.derivatives));
+      for (const oldRelativePath of new Set(Object.values(record.derivatives))) {
+        if (!oldRelativePath || newPaths.has(oldRelativePath)) continue;
+        const oldPath = path.resolve(this.mediaRoot, oldRelativePath);
+        if (oldPath.startsWith(`${path.resolve(this.mediaRoot)}${path.sep}`)) {
+          try { fs.rmSync(oldPath, { force: true }); } catch { /* Leave orphan cleanup to the audit command. */ }
+        }
+      }
+      return { id: record.id, renditionCount: stagedSet.renditions.length, status: 'regenerated' };
+    } catch (error) {
+      if (!updated) for (const promotedPath of promotedPaths) fs.rmSync(promotedPath, { force: true });
+      throw error;
+    } finally {
+      fs.rmSync(stagingDirectory, { recursive: true, force: true });
+    }
   }
 
   deleteImage(id: string): void {

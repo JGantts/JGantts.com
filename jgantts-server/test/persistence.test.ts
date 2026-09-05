@@ -436,6 +436,44 @@ test('staged upload failures remove partial files without touching valid media',
   assert.ok(service.getFile(existing.id, 'original'));
 });
 
+test('dry-runs and regenerates versioned derivatives while reconciling oriented dimensions', async (t) => {
+  const root = temporaryDirectory(t);
+  const mediaRoot = path.join(root, 'media');
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostRepository(database);
+  const repository = new MediaRepository(database);
+  posts.create({ id: 'regenerate', slug: 'regenerate', bodyMarkdown: '', bodyHtml: '' });
+  const service = new MediaService(repository, posts, mediaRoot);
+  const source = await sharp({
+    create: { width: 80, height: 40, channels: 3, background: '#334455' },
+  }).withMetadata({ orientation: 6 }).jpeg().toBuffer();
+  const uploaded = await service.uploadImage({ postId: 'regenerate', altText: 'Rotated', buffer: source });
+  const before = repository.getById(uploaded.id)!;
+  const oldFiles = Array.from(new Set(Object.values(before.derivatives)))
+    .map((relativePath) => path.join(mediaRoot, relativePath!));
+  database.prepare("UPDATE media SET width = 999, height = 999, rendition_json = '{}' WHERE id = ?")
+    .run(uploaded.id);
+
+  const dryRun = await service.regenerateAll({ concurrency: 1, dryRun: true });
+  assert.deepEqual(dryRun.map(({ id, status }) => [id, status]), [[uploaded.id, 'planned']]);
+  assert.deepEqual([repository.getById(uploaded.id)!.width, repository.getById(uploaded.id)!.height], [999, 999]);
+  assert.ok(oldFiles.every((file) => fs.existsSync(file)));
+
+  const results = await service.regenerateAll({ concurrency: 2 });
+  assert.deepEqual(results.map(({ id, status }) => [id, status]), [[uploaded.id, 'regenerated']]);
+  const regenerated = repository.getById(uploaded.id)!;
+  assert.deepEqual([regenerated.width, regenerated.height], [40, 80]);
+  assert.ok('renditions' in regenerated.renditionManifest);
+  if ('renditions' in regenerated.renditionManifest) {
+    assert.ok(regenerated.renditionManifest.renditions.every(({ variant }) => /-v-[a-f0-9]{8}$/.test(variant)));
+  }
+  assert.ok(oldFiles.every((file) => !fs.existsSync(file)));
+  assert.deepEqual(fs.readFileSync(service.getFile(uploaded.id, 'original')!.path), source);
+  assert.match(service.listForPost('regenerate')[0].renditions[0].url, /-v-[a-f0-9]{8}$/);
+  await assert.rejects(() => service.regenerateAll({ concurrency: 0 }), /concurrency/);
+});
+
 test('rejects invalid image uploads before creating media records', async (t) => {
   const root = temporaryDirectory(t);
   const database = openContentDatabase(':memory:');

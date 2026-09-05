@@ -78,6 +78,32 @@ export class MediaRepository {
     return row ? mapMedia(row) : null;
   }
 
+  listAll(): MediaRecord[] {
+    return (this.database.prepare('SELECT * FROM media ORDER BY created_at, id').all() as MediaRow[])
+      .map(mapMedia);
+  }
+
+  replaceRenditions(
+    id: string,
+    changes: Pick<MediaRecord, 'derivatives' | 'height' | 'renditionManifest' | 'width'>,
+    updatedAt: string,
+  ): MediaRecord | null {
+    const result = this.database.prepare(`
+      UPDATE media SET derived_json = @derivedJson, rendition_json = @renditionJson,
+        width = @width, height = @height, processing_state = 'ready',
+        processing_error = NULL, updated_at = @updatedAt
+      WHERE id = @id
+    `).run({
+      id,
+      derivedJson: JSON.stringify(changes.derivatives),
+      renditionJson: JSON.stringify(changes.renditionManifest),
+      width: changes.width,
+      height: changes.height,
+      updatedAt,
+    });
+    return result.changes ? this.getById(id) : null;
+  }
+
   beginDeletion(id: string): void {
     inTransaction(this.database, () => {
       const media = this.getById(id);

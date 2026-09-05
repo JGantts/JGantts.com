@@ -16,7 +16,7 @@ export type PostMedia = {
     privateMetadataStripped: true
     purpose: 'placeholder'
     url: string
-    variant: 'placeholder'
+    variant: string
     width: number
   } | null
   processingState: 'processing' | 'ready' | 'failed'

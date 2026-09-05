@@ -8,6 +8,8 @@ The Express application is written in TypeScript under `src/`. Production runs t
 - `npm run dev` — run the TypeScript server in watch mode.
 - `npm run check` — type-check and run the HTTP test suite.
 - `npm run build` — compile the production server.
+- `npm run media:regenerate -- --dry-run` — report planned rendition regeneration.
+- `npm run media:regenerate -- --concurrency=2` — rebuild rendition sets from stored sources.
 - `npm run smoke:local` — build and smoke-test a temporary localhost server.
 - `npm run smoke:live` — smoke-test `https://jgantts.com`.
 - `npm run smoke` — test localhost and the live server.

@@ -32,9 +32,9 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 ## Current state
 
-- Status: Phase 1 and photo pipeline items 2.1–2.6 are complete; Phase 2 is in progress.
+- Status: Phase 1 and photo pipeline items 2.1–2.7 are complete; Phase 2 is in progress.
 - Active item: None.
-- Next item: 2.7 — repeatable derivative regeneration.
+- Next item: 2.8 — adversarial image-pipeline coverage.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; responsive WebP, AVIF, and JPEG/PNG fallback renditions; checksums; dimensions;
@@ -155,7 +155,7 @@ SQL or filesystem work by the client.
 - [x] **2.6** Make processing failure-safe: write temporary files, verify output,
   atomically promote the set, and clean up partial files without deleting a
   previously valid image.
-- [ ] **2.7** Add a repeatable command to regenerate derivatives from stored
+- [x] **2.7** Add a repeatable command to regenerate derivatives from stored
   sources after pipeline changes, with dry-run and bounded-concurrency options.
   Reconcile legacy width/height values with the oriented source dimensions; the
   2.1 upload fix does not retroactively update stored media records.
@@ -496,6 +496,20 @@ verified against the live domain.
 - Injected corruption, mid-promotion failure, and database failure tests verify
   cleanup and preservation behavior. All 61 server tests, type checking, and the
   client production build pass on Node 22.23.2.
+
+### 2026-09-05 — Repeatable derivative regeneration
+
+- Added `media:regenerate` with report-only `--dry-run` and bounded
+  `--concurrency=1-8` modes. Each record is independently reported so one bad
+  source does not hide successful work or make failures ambiguous.
+- Regeneration verifies immutable source checksums, uses the same staged pipeline
+  as uploads, swaps the verified manifest and oriented dimensions in the
+  database, and only then removes superseded derivatives. New public rendition
+  variants include a generation token so immutable caches receive new URLs.
+- Verified dry-run immutability, real regeneration, old-file cleanup, source-byte
+  preservation, versioned URLs, orientation reconciliation, argument validation,
+  and a compiled CLI smoke run. All 62 server tests, type checking, both
+  production builds pass on Node 22.23.2.
 
 ## Definition of done
 

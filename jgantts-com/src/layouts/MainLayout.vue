@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import BuildInfo from '@/components/BuildInfo.vue'
 
 const route = useRoute()
 const darkModePreference = window.matchMedia('(prefers-color-scheme: dark)')
@@ -51,6 +52,7 @@ onBeforeUnmount(() => {
       <p class="copyright">
       © 2026 Jacob Gantt
       </p>
+      <BuildInfo />
     </footer>
   </div>
 </template>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import { onBeforeUnmount } from 'vue'
-import BuildInfo from '@/components/BuildInfo.vue'
 
 const darkModePreference = window.matchMedia('(prefers-color-scheme: dark)')
 
@@ -25,7 +24,6 @@ onBeforeUnmount(() => {
 
 <template>
   <RouterView />
-  <BuildInfo />
 </template>
 
 <style>

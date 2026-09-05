@@ -74,7 +74,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside v-if="buildInfo" ref="rootElement" class="build-info" aria-label="Site build">
+  <aside
+    v-if="buildInfo"
+    ref="rootElement"
+    class="build-info"
+    aria-label="Site build"
+  >
     <button
       ref="triggerElement"
       class="build-trigger"
@@ -111,12 +116,12 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .build-info {
-  bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
+  align-self: center;
   color-scheme: light dark;
   font-family: 'Azeret Mono Variable', monospace;
-  position: fixed;
-  right: max(0.45rem, env(safe-area-inset-right, 0px));
-  z-index: 1000;
+  margin-top: 0.1rem;
+  position: relative;
+  z-index: 1;
 }
 
 .build-trigger {
@@ -153,10 +158,11 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   color: CanvasText;
   font-family: 'Figtree Variable', sans-serif;
+  left: 50%;
   max-width: calc(100vw - 1rem);
   padding: 0.65rem 0.7rem;
   position: absolute;
-  right: 0;
+  transform: translateX(-50%);
   width: min(19rem, calc(100vw - 1rem));
 }
 
@@ -215,7 +221,7 @@ onBeforeUnmount(() => {
 .build-details-enter-from,
 .build-details-leave-to {
   opacity: 0;
-  transform: translateY(0.2rem);
+  transform: translate(-50%, 0.2rem);
 }
 
 .visually-hidden {

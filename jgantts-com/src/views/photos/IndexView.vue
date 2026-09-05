@@ -110,6 +110,7 @@ const router = useRouter()
 
 const toots = ref<(TootThread | null)[]>(tootIds.map(() => null))
 const localPosts = ref<CanonicalPost[]>([])
+const localThreads = ref<TootThread[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const tootLoads = new Map<number, Promise<void>>()
@@ -138,37 +139,21 @@ let commentsDrawerPointerStartedAt = 0
 let commentsDrawerPointerStartState: 0 | 1 | 2 = 0
 const commentsDrawerStateLabel = computed(() => ['Collapsed', 'Expanded', 'Fully expanded'][commentsDrawerState.value])
 const activeToot = computed(() =>
-  activeTootIndex.value === null ? null : toots.value[activeTootIndex.value] ?? null,
+  activeTootIndex.value === null ? null : allToots.value[activeTootIndex.value] ?? null,
 )
-const localPhotoPosts = computed(() => localPosts.value.map((post) => ({
-  id: `local:${post.id}`,
-  created_at: post.publishedAt,
-  media_attachments: post.media.map((media) => {
-    const fallback = media.renditions.find(({ format }) => format === 'jpeg' || format === 'png')
-    return {
-      description: media.altText,
-      meta: { original: { height: media.height ?? undefined, width: media.width ?? undefined } },
-      preview_url: media.urls.thumbnail,
-      type: 'image' as const,
-      url: fallback?.url ?? media.urls.large,
-    }
-  }),
-})))
-const photoPosts = computed(() => [
-  ...toots.value.map((toot) => toot?.post ?? null),
-  ...localPhotoPosts.value,
-])
+const allToots = computed(() => [...toots.value.filter((toot): toot is TootThread => Boolean(toot)), ...localThreads.value])
+const photoPosts = computed(() => allToots.value.map((toot) => toot.post))
 const commentsByPostId = computed(() => {
   const comments = new Map<string, DisplayStatus[]>()
-  toots.value.forEach((toot) => {
-    if (toot) comments.set(toot.post.id, flattenComments(toot.comments))
+  allToots.value.forEach((toot) => {
+    comments.set(toot.post.id, flattenComments(toot.comments))
   })
   return comments
 })
 const replyCountsByPostId = computed(() => {
   const counts = new Map<string, number>()
-  toots.value.forEach((toot) => {
-    if (toot) counts.set(toot.post.id, countReplies(toot.comments))
+  allToots.value.forEach((toot) => {
+    counts.set(toot.post.id, countReplies(toot.comments))
   })
   return counts
 })
@@ -180,19 +165,17 @@ const formatter = new Intl.DateTimeFormat(undefined, {
 const numberFormatter = new Intl.NumberFormat()
 
 function selectToot(nextIndex: number) {
-  if (nextIndex >= tootIds.length) {
-    const post = localPosts.value[nextIndex - tootIds.length]
-    if (post && props.postId !== post.slug) void router.push(`/photos/${post.slug}`)
-    return
-  }
+  const post = allToots.value[nextIndex]?.post
+  if (!post) return
   activeTootIndex.value = nextIndex
   selectedPostVisibility.value = 1
   commentsDrawerState.value = 0
   commentsDrawerDragOffset.value = 0
-  const postId = toots.value[nextIndex]?.post.id
-  if (!postId) return
+  const postId = post.id
 
-  if (props.postId !== postId) void router.push(`/photos/${postId}`)
+  const localPost = localPosts.value.find((candidate) => `local:${candidate.id}` === postId)
+  const routeId = localPost?.slug ?? postId
+  if (props.postId !== routeId) void router.push(`/photos/${routeId}`)
 }
 
 function clearSelection() {
@@ -204,7 +187,12 @@ function clearSelection() {
 }
 
 function syncSelectionFromRoute(postId = props.postId) {
-  activeTootIndex.value = postId ? tootIds.indexOf(postId) : null
+  const localIndex = localPosts.value.findIndex((post) => post.slug === postId)
+  activeTootIndex.value = postId
+    ? (tootIds.indexOf(postId) >= 0
+      ? tootIds.indexOf(postId)
+      : localIndex >= 0 ? tootIds.length + localIndex : -1)
+    : null
   if (activeTootIndex.value === -1) activeTootIndex.value = null
   selectedPostVisibility.value = 1
   commentsDrawerState.value = 0
@@ -381,6 +369,61 @@ onMounted(async () => {
         if (!response.ok) return
         const page = await response.json() as { items?: CanonicalPost[] }
         localPosts.value = (page.items ?? []).filter((post) => post.media.length > 0)
+        localThreads.value = localPosts.value.map((post) => ({
+          post: {
+            account: { acct: 'jgantts', avatar: '/favicon.png', display_name: 'Jacob Gantt', url: '/', username: 'jgantts' },
+            content: post.bodyHtml,
+            created_at: post.publishedAt,
+            favourites_count: 0,
+            id: `local:${post.id}`,
+            media_attachments: post.media.map((media) => ({
+              description: media.altText,
+              meta: { original: { height: media.height ?? undefined, width: media.width ?? undefined } },
+              preview_url: media.urls.thumbnail,
+              type: 'image' as const,
+              url: media.urls.large,
+            })),
+            mentions: [],
+            reblogs_count: 0,
+            replies_count: 0,
+            sensitive: Boolean(post.contentWarning),
+            spoiler_text: post.contentWarning ?? '',
+            tags: [],
+            uri: `/posts/${post.slug}`,
+            url: `/posts/${post.slug}`,
+            visibility: 'public' as const,
+            in_reply_to_id: null,
+          },
+          comments: [],
+        }))
+        await Promise.all(localThreads.value.map(async (thread, index) => {
+          try {
+            const commentsResponse = await fetch(`/api/posts/${encodeURIComponent(localPosts.value[index]!.slug)}/comments/mastodon`)
+            if (!commentsResponse.ok) return
+            const result = await commentsResponse.json() as { comments?: Array<Record<string, any>> }
+            const statuses = (result.comments ?? []).map((comment) => ({
+              account: { acct: comment.account.handle, avatar: comment.account.avatarUrl ?? '/favicon.png', display_name: comment.account.displayName, url: comment.account.url, username: comment.account.handle },
+              content: comment.contentHtml,
+              created_at: comment.createdAt,
+              favourites_count: 0,
+              id: comment.id,
+              media_attachments: [],
+              mentions: [],
+              reblogs_count: 0,
+              replies_count: 0,
+              sensitive: false,
+              spoiler_text: '',
+              tags: [],
+              uri: comment.url,
+              url: comment.url,
+              visibility: 'public' as const,
+              in_reply_to_id: comment.parentId,
+            })) as MastodonStatus[]
+            thread.comments = buildCommentTree(statuses)
+          } catch {
+            // The local post remains browsable when its remote discussion is unavailable.
+          }
+        }))
       }).catch(() => {
         // Mastodon remains useful when the local-post API is temporarily unavailable.
       }),
@@ -513,7 +556,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
           />
 
           <template
-            v-for="(toot, tootIndex) in toots"
+            v-for="(toot, tootIndex) in allToots"
             :key="toot?.post.id ?? tootIds[tootIndex]"
           >
             <section

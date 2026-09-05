@@ -128,6 +128,13 @@ export class PostRepository {
     `).all() as PostRow[]).map(mapPost);
   }
 
+  listAll(): Post[] {
+    return (this.database.prepare(`
+      SELECT * FROM posts
+      ORDER BY created_at DESC, id DESC
+    `).all() as PostRow[]).map(mapPost);
+  }
+
   update(id: string, changes: PostChanges, updatedAt = new Date().toISOString()): Post | null {
     return inTransaction(this.database, () => {
       const current = this.getById(id);

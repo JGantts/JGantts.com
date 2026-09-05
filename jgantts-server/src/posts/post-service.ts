@@ -102,6 +102,15 @@ export class PostService {
     return this.posts.listAllPublished();
   }
 
+  listAll(): Post[] {
+    return this.posts.listAll();
+  }
+
+  preview(bodyMarkdown: unknown): { bodyHtml: string } {
+    const markdown = validateText(bodyMarkdown, 'bodyMarkdown', 100_000, true) as string;
+    return { bodyHtml: renderPostMarkdown(markdown) };
+  }
+
   listPublished(options: { cursor?: string; limit?: number } = {}): PublicPostPage {
     const limit = options.limit ?? DEFAULT_PAGE_SIZE;
     if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PAGE_SIZE) {
@@ -154,5 +163,12 @@ export class PostService {
     if (!post || post.status === 'archived') return null;
     if (post.status === 'published') return post;
     return this.posts.update(id, { status: 'published', publishedAt }, publishedAt);
+  }
+
+  archive(id: string, archivedAt = new Date().toISOString()): Post | null {
+    const post = this.posts.getById(id);
+    if (!post) return null;
+    if (post.status === 'archived') return post;
+    return this.posts.update(id, { status: 'archived' }, archivedAt);
   }
 }

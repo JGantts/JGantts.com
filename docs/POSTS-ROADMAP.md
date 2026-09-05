@@ -159,6 +159,22 @@ persistent local database, and backup restoration has been tested.
 Exit condition: a post and its media can be authored and published entirely on
 JGantts.com without Mastodon.
 
+### Phase 2A — Private authoring interface
+
+- [x] **2A.1** Add authenticated admin list and single-post read endpoints.
+- [x] **2A.2** Add a sanitized Markdown preview endpoint.
+- [x] **2A.3** Build a private `/admin/posts` editor for creating and updating
+  drafts without storing the admin token persistently in the browser.
+- [x] **2A.4** Add local publishing and archiving controls with explicit
+  confirmation and save-before-publish behavior.
+- [x] **2A.5** Add image upload with required alt text and existing-media preview.
+- [x] **2A.6** Add explicit Mastodon syndication status, publication, and retry
+  controls without coupling them to local publication.
+- [x] **2A.7** Prevent search indexing and verify desktop and mobile layouts.
+
+Exit condition: the complete authoring workflow can be operated through a
+private site interface instead of curl while retaining the API security model.
+
 ### Phase 3 — Canonical pages and discovery
 
 - [x] **3.1** Add `/posts/:slug` to the Vue router and render local post content.
@@ -374,6 +390,21 @@ the live site is the demonstrable source of truth.
   cache behavior, unavailable and unsyndicated posts, truncation, and API routing
   with 46 passing server tests and a production client build. Browser QA passed
   at desktop and 390 px mobile widths with no horizontal overflow.
+
+### 2026-09-05 — Private post editor
+
+- Added authenticated admin post listing and lookup, sanitized Markdown preview,
+  and explicit archive operations while retaining bearer protection on every
+  authoring endpoint.
+- Added `/admin/posts` with a memory-only token unlock, draft creation and
+  editing, live preview, post status and list navigation, local publishing,
+  archiving, image upload with alt text, and existing-image display.
+- Added separately confirmed Mastodon link publication, state inspection, remote
+  source linking, failure detail, and manual retry. Local publishing never
+  silently triggers Mastodon, and publish actions save current edits first.
+- Added `noindex, nofollow` metadata and kept the editor out of public navigation.
+  Verified the API suite, production client build, browser authoring flow, and
+  desktop/390 px mobile layouts with no horizontal overflow.
 
 ## Definition of done
 

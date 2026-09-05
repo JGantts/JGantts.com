@@ -326,6 +326,31 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.doesNotMatch(created.bodyHtml, /script|javascript:/i);
   assert.equal((await request(app, '/api/posts/first-local-post')).status, 404);
 
+  const listResponse = await request(app, '/api/admin/posts', {
+    headers: { authorization: 'Bearer test-admin-secret' },
+  });
+  assert.equal(listResponse.status, 200);
+  assert.equal(JSON.parse(listResponse.body).items[0].id, created.id);
+  assert.equal(listResponse.headers['cache-control'], 'no-store');
+
+  const getResponse = await request(app, `/api/admin/posts/${created.id}`, {
+    headers: { authorization: 'Bearer test-admin-secret' },
+  });
+  assert.equal(getResponse.status, 200);
+  assert.equal(JSON.parse(getResponse.body).slug, 'first-local-post');
+
+  const previewResponse = await request(app, '/api/admin/posts/preview', {
+    body: JSON.stringify({ bodyMarkdown: '**Preview** <script>bad()</script>' }),
+    headers: {
+      authorization: 'Bearer test-admin-secret',
+      'content-type': 'application/json',
+    },
+    method: 'POST',
+  });
+  assert.equal(previewResponse.status, 200);
+  assert.match(JSON.parse(previewResponse.body).bodyHtml, /<strong>Preview<\/strong>/);
+  assert.doesNotMatch(JSON.parse(previewResponse.body).bodyHtml, /script|bad\(\)/i);
+
   const updatedResponse = await request(app, `/api/admin/posts/${created.id}`, {
     body: JSON.stringify({ slug: 'canonical-local-post', bodyMarkdown: 'Updated' }),
     headers: {
@@ -345,6 +370,14 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.equal(JSON.parse(publishedResponse.body).status, 'published');
   assert.equal((await request(app, '/api/posts/canonical-local-post')).status, 200);
   assert.equal((await request(app, '/api/posts/first-local-post')).status, 200);
+
+  const archivedResponse = await request(app, `/api/admin/posts/${created.id}/archive`, {
+    headers: { authorization: 'Bearer test-admin-secret' },
+    method: 'POST',
+  });
+  assert.equal(archivedResponse.status, 200);
+  assert.equal(JSON.parse(archivedResponse.body).status, 'archived');
+  assert.equal((await request(app, '/api/posts/canonical-local-post')).status, 404);
 });
 
 test('protects and idempotently queues the explicit Mastodon syndication API', async (t) => {

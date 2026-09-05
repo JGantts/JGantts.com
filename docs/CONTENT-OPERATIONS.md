@@ -35,6 +35,20 @@ The initial media API accepts JPEG, PNG, WebP, and AVIF images up to 25 MB. Alt
 text is required. The original bytes are retained and 1,600 px and 480 px WebP
 derivatives are generated without upscaling.
 
+## Private post editor
+
+Open `/admin/posts` and unlock it with `JGANTTS_ADMIN_TOKEN`. The token is kept
+only in page memory: it is not bundled into the frontend, written to browser
+storage, or retained after a reload, lock action, or navigation away from the
+editor.
+
+The editor can create and update drafts, preview sanitized Markdown, upload and
+review images, publish locally, archive posts, inspect Mastodon state, queue a
+Mastodon link post, and retry a failed syndication. Local publication and
+Mastodon syndication remain separate confirmed actions. The route is omitted
+from public navigation and emits `noindex, nofollow`; API authentication remains
+the security boundary.
+
 ## Mastodon syndication
 
 Keep the Mastodon credential only in the protected systemd environment file at

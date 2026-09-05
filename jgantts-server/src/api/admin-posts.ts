@@ -1,5 +1,6 @@
 import express from 'express';
 import type { AuthorPostChanges, AuthorPostInput, PostService } from '../posts/post-service';
+import type { MediaService } from '../media/media-service';
 import type { MastodonSyndicationService } from '../syndication/mastodon-syndication-service';
 
 const AUTHOR_FIELDS = new Set(['slug', 'title', 'bodyMarkdown', 'excerpt', 'contentWarning']);
@@ -28,14 +29,36 @@ function parseSyndicationBody(value: unknown): { teaser?: unknown } {
 
 export function createAdminPostsRouter(
   posts: PostService,
+  media?: MediaService,
   mastodon?: MastodonSyndicationService,
 ): express.Router {
   const router = express.Router();
+  const responsePost = (post: NonNullable<ReturnType<PostService['findById']>>) => ({
+    ...post,
+    media: media?.listForPost(post.id) ?? [],
+  });
+
+  router.get('/', (_req, res) => {
+    res.set('Cache-Control', 'no-store').json({
+      items: posts.listAll().map(responsePost),
+    });
+  });
+
+  router.post('/preview', (req, res, next) => {
+    try {
+      if (!isRecord(req.body) || Object.keys(req.body).some((field) => field !== 'bodyMarkdown')) {
+        throw Object.assign(new Error('Preview requires only bodyMarkdown.'), { status: 400 });
+      }
+      res.set('Cache-Control', 'no-store').json(posts.preview(req.body.bodyMarkdown));
+    } catch (error) {
+      next(error);
+    }
+  });
 
   router.post('/', (req, res, next) => {
     try {
       const post = posts.createDraft(parseBody(req.body, false) as AuthorPostInput);
-      res.status(201).set('Location', `/api/admin/posts/${post.id}`).json(post);
+      res.status(201).set('Location', `/api/admin/posts/${post.id}`).json(responsePost(post));
     } catch (error) {
       next(error);
     }
@@ -48,7 +71,7 @@ export function createAdminPostsRouter(
         res.status(404).json({ error: { code: 'not_found', message: 'Post not found.' } });
         return;
       }
-      res.json(post);
+      res.json(responsePost(post));
     } catch (error) {
       next(error);
     }
@@ -61,10 +84,32 @@ export function createAdminPostsRouter(
         res.status(404).json({ error: { code: 'not_found', message: 'Post not found.' } });
         return;
       }
-      res.json(post);
+      res.json(responsePost(post));
     } catch (error) {
       next(error);
     }
+  });
+
+  router.post('/:id/archive', (req, res, next) => {
+    try {
+      const post = posts.archive(req.params.id);
+      if (!post) {
+        res.status(404).json({ error: { code: 'not_found', message: 'Post not found.' } });
+        return;
+      }
+      res.json(responsePost(post));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/:id', (req, res) => {
+    const post = posts.findById(req.params.id);
+    if (!post) {
+      res.status(404).json({ error: { code: 'not_found', message: 'Post not found.' } });
+      return;
+    }
+    res.set('Cache-Control', 'no-store').json(responsePost(post));
   });
 
   if (mastodon) {

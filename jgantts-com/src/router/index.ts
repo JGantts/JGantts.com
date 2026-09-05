@@ -23,6 +23,7 @@ type AppRouteMeta = {
   socialTitle?: string
   socialDescription?: string
   socialImage?: string
+  robots?: string
 }
 
 const defaultMeta: Required<AppRouteMeta> = {
@@ -31,6 +32,7 @@ const defaultMeta: Required<AppRouteMeta> = {
   socialTitle: 'JGantts',
   socialDescription: 'JGantts',
   socialImage: '',
+  robots: 'index, follow',
 }
 
 function upsertMetaTag(attribute: 'name' | 'property', key: string, content: string) {
@@ -71,6 +73,7 @@ function resolveMeta(to: RouteLocationNormalized): Required<AppRouteMeta> {
     socialDescription:
       routeMeta.socialDescription ?? routeMeta.description ?? defaultMeta.socialDescription,
     socialImage,
+    robots: routeMeta.robots ?? defaultMeta.robots,
   }
 }
 
@@ -236,6 +239,22 @@ const router = createRouter({
       },
     },
     {
+      path: '/admin',
+      component: MainLayout,
+      children: [
+        {
+          path: 'posts',
+          name: 'Post editor',
+          component: () => import('@/views/admin/PostsAdminView.vue'),
+          meta: {
+            title: 'Post editor | JGantts',
+            description: 'Private post authoring.',
+            robots: 'noindex, nofollow',
+          },
+        },
+      ],
+    },
+    {
       path: '/posts',
       component: MainLayout,
       children: [
@@ -300,6 +319,7 @@ router.afterEach((to) => {
   upsertMetaTag('name', 'twitter:title', meta.socialTitle)
   upsertMetaTag('name', 'twitter:description', meta.socialDescription)
   upsertMetaTag('name', 'twitter:image', meta.socialImage)
+  upsertMetaTag('name', 'robots', meta.robots)
   upsertCanonicalLink(new URL(to.path, window.location.origin).toString())
   document.head.querySelectorAll('meta[property^="article:"]').forEach((tag) => tag.remove())
   document.head.querySelector('#__POST_JSON_LD__')?.remove()

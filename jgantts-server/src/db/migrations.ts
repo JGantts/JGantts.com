@@ -115,6 +115,15 @@ export const migrations: readonly Migration[] = [
       ALTER TABLE post_revisions ADD COLUMN title TEXT;
     `,
   },
+  {
+    version: 3,
+    name: 'outbox_active_job_uniqueness',
+    sql: `
+      CREATE UNIQUE INDEX outbox_active_job_idx
+      ON outbox_jobs(kind, aggregate_id)
+      WHERE state IN ('pending', 'processing');
+    `,
+  },
 ];
 
 export function migrateDatabase(database: Database.Database): void {

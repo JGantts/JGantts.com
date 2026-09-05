@@ -180,20 +180,20 @@ web document with no dependency on Mastodon availability.
 
 ### Phase 4 — Mastodon syndication
 
-- [ ] **4.1** Add server-only Mastodon configuration and minimally scoped tokens.
-- [ ] **4.2** Insert a syndication outbox job transactionally when requested after
+- [x] **4.1** Add server-only Mastodon configuration and minimally scoped tokens.
+- [x] **4.2** Insert a syndication outbox job transactionally when requested after
   local publication.
-- [ ] **4.3** Implement a worker that claims jobs safely and survives process
+- [x] **4.3** Implement a worker that claims jobs safely and survives process
   restarts.
-- [ ] **4.4** Generate a Mastodon teaser containing the canonical URL and respecting
+- [x] **4.4** Generate a Mastodon teaser containing the canonical URL and respecting
   the instance character limit.
-- [ ] **4.5** Publish with a stable Mastodon idempotency key to prevent duplicate
+- [x] **4.5** Publish with a stable Mastodon idempotency key to prevent duplicate
   posts during retries.
-- [ ] **4.6** Persist the returned Mastodon status ID and URL on success.
-- [ ] **4.7** Add bounded retry/backoff, failure visibility, and manual retry.
-- [ ] **4.8** Define and implement edit behavior: local edits remain authoritative;
+- [x] **4.6** Persist the returned Mastodon status ID and URL on success.
+- [x] **4.7** Add bounded retry/backoff, failure visibility, and manual retry.
+- [x] **4.8** Define and implement edit behavior: local edits remain authoritative;
   teaser edits are an explicit operation rather than automatic two-way sync.
-- [ ] **4.9** Test success, timeout-after-success, duplicate retry, rate limiting,
+- [x] **4.9** Test success, timeout-after-success, duplicate retry, rate limiting,
   authentication failure, and Mastodon outage behavior.
 
 Exit condition: publishing on JGantts.com can reliably produce exactly one
@@ -339,6 +339,24 @@ the live site is the demonstrable source of truth.
 - Verified with 30 passing server tests, production server/client builds, and
   browser QA at desktop and 390 px mobile widths, including client navigation
   metadata and horizontal-overflow checks.
+
+### 2026-09-04 — Durable Mastodon syndication
+
+- Added server-only `MASTODON_BASE_URL` and `MASTODON_ACCESS_TOKEN`
+  configuration. The feature fails closed unless the Mastodon origin, access
+  token, and canonical `SITE_ORIGIN` are all present.
+- Added an explicit authenticated operation that transactionally creates one
+  Mastodon syndication and durable outbox job per canonical post. Repeated calls
+  and later local revisions reuse the same remote publication.
+- Added a restart-safe worker with stale-lock recovery, bounded exponential
+  retry, `Retry-After` handling, permanent-error handling, manual retry, and a
+  stable idempotency key for uncertain outcomes.
+- The worker reads the instance status limit, creates a conservative teaser with
+  the canonical URL, and persists the Mastodon status ID and URL. Local edits do
+  not propagate unless the explicit teaser-edit operation is requested.
+- Verified configuration, status construction, instance API behavior, success,
+  duplicate requests, timeout-after-send, rate limiting, authentication failure,
+  manual retry, explicit edits, and crash recovery with 42 passing server tests.
 
 ## Definition of done
 

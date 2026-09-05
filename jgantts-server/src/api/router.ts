@@ -3,6 +3,7 @@ import type { BuildInfo } from '../build-info';
 import type { MediaService } from '../media/media-service';
 import { createAdminAuth } from '../middleware/admin-auth';
 import type { PostService } from '../posts/post-service';
+import type { MastodonSyndicationService } from '../syndication/mastodon-syndication-service';
 import { createAdminMediaRouter } from './admin-media';
 import { createAdminPostsRouter } from './admin-posts';
 
@@ -10,6 +11,7 @@ export type BuildInfoProvider = () => BuildInfo;
 
 export interface ApiServices {
   media?: MediaService;
+  mastodonSyndication?: MastodonSyndicationService;
   posts?: PostService;
 }
 
@@ -40,7 +42,11 @@ export function createApiRouter(
   });
 
   if (services.posts) {
-    router.use('/admin/posts', createAdminAuth(options.adminToken ?? ''), createAdminPostsRouter(services.posts));
+    router.use(
+      '/admin/posts',
+      createAdminAuth(options.adminToken ?? ''),
+      createAdminPostsRouter(services.posts, services.mastodonSyndication),
+    );
 
     router.get('/posts', (req, res, next) => {
       try {

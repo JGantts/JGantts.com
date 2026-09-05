@@ -44,6 +44,25 @@ export function normalizeSiteOrigin(value: string | undefined): string {
   return parsed.origin;
 }
 
+export function normalizeMastodonOrigin(value: string | undefined): string {
+  if (!value?.trim()) return '';
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value.trim());
+  } catch {
+    throw new Error('MASTODON_BASE_URL must be an absolute https:// URL.');
+  }
+
+  if (parsed.protocol !== 'https:') {
+    throw new Error('MASTODON_BASE_URL must use https://.');
+  }
+  if (parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash) {
+    throw new Error('MASTODON_BASE_URL must contain only an origin, for example https://mastodon.social.');
+  }
+  return parsed.origin;
+}
+
 export function parsePort(value: string | undefined): number {
   const port = value === undefined || value === '' ? DEFAULT_PORT : Number(value);
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
@@ -57,6 +76,8 @@ export interface RuntimeConfig {
   dataRoot: string;
   databasePath: string;
   mediaRoot: string;
+  mastodonAccessToken: string;
+  mastodonOrigin: string;
   port: number;
   siteOrigin: string;
 }
@@ -68,6 +89,8 @@ export function getRuntimeConfig(environment: NodeJS.ProcessEnv = process.env): 
     dataRoot,
     databasePath: path.join(dataRoot, 'content.sqlite'),
     mediaRoot: path.join(dataRoot, 'media'),
+    mastodonAccessToken: environment.MASTODON_ACCESS_TOKEN?.trim() ?? '',
+    mastodonOrigin: normalizeMastodonOrigin(environment.MASTODON_BASE_URL),
     port: parsePort(environment.PORT),
     siteOrigin: normalizeSiteOrigin(environment.SITE_ORIGIN),
   };

@@ -9,13 +9,21 @@ import type { Express } from 'express';
 import sharp from 'sharp';
 import { createApp } from '../src/app';
 import { DEV_BUILD_INFO, loadBuildInfo } from '../src/build-info';
-import { getRuntimeConfig, normalizeSiteOrigin, parsePort, PRODUCTION_DATA_ROOT } from '../src/config';
+import {
+  getRuntimeConfig,
+  normalizeMastodonOrigin,
+  normalizeSiteOrigin,
+  parsePort,
+  PRODUCTION_DATA_ROOT,
+} from '../src/config';
 import { openContentDatabase } from '../src/db/database';
 import { MediaRepository } from '../src/media/media-repository';
 import { MediaService } from '../src/media/media-service';
 import { PostRepository } from '../src/posts/post-repository';
 import { PostService } from '../src/posts/post-service';
 import { upsertMeta } from '../src/site/html';
+import { MastodonSyndicationService } from '../src/syndication/mastodon-syndication-service';
+import { SyndicationRepository } from '../src/syndication/syndication-repository';
 
 const TEMPLATE = `<!doctype html>
 <html><head>
@@ -92,6 +100,12 @@ test('normalizes and validates SITE_ORIGIN', () => {
   assert.equal(normalizeSiteOrigin(' https://JGantts.com:443 '), 'https://jgantts.com');
   assert.throws(() => normalizeSiteOrigin('jgantts.com'), /absolute/);
   assert.throws(() => normalizeSiteOrigin('https://jgantts.com/a'), /only an origin/);
+});
+
+test('requires a clean HTTPS Mastodon origin', () => {
+  assert.equal(normalizeMastodonOrigin(' https://mastodon.social '), 'https://mastodon.social');
+  assert.throws(() => normalizeMastodonOrigin('http://mastodon.social'), /https/);
+  assert.throws(() => normalizeMastodonOrigin('https://mastodon.social/path'), /only an origin/);
 });
 
 test('validates PORT', () => {
@@ -329,6 +343,52 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.equal(JSON.parse(publishedResponse.body).status, 'published');
   assert.equal((await request(app, '/api/posts/canonical-local-post')).status, 200);
   assert.equal((await request(app, '/api/posts/first-local-post')).status, 200);
+});
+
+test('protects and idempotently queues the explicit Mastodon syndication API', async (t) => {
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const postRepository = new PostRepository(database);
+  const posts = new PostService(postRepository);
+  const syndications = new MastodonSyndicationService(
+    new SyndicationRepository(database),
+    posts,
+    'https://jgantts.com',
+    'https://mastodon.social',
+    true,
+  );
+  const post = posts.createDraft({ slug: 'syndicated-post', bodyMarkdown: 'Owned locally' });
+  posts.publish(post.id);
+  const app = createApp({
+    adminToken: 'syndication-secret',
+    appHtmlTemplate: TEMPLATE,
+    services: { mastodonSyndication: syndications, posts },
+    siteOrigin: 'https://jgantts.com',
+  });
+  const pathname = `/api/admin/posts/${post.id}/syndications/mastodon`;
+
+  assert.equal((await request(app, pathname, { method: 'POST' })).status, 401);
+  const first = await request(app, pathname, {
+    body: JSON.stringify({ teaser: 'Read the canonical post' }),
+    headers: {
+      authorization: 'Bearer syndication-secret',
+      'content-type': 'application/json',
+    },
+    method: 'POST',
+  });
+  assert.equal(first.status, 202);
+  assert.equal(JSON.parse(first.body).state, 'pending');
+
+  const repeated = await request(app, pathname, {
+    headers: { authorization: 'Bearer syndication-secret' },
+    method: 'POST',
+  });
+  assert.equal(repeated.status, 200);
+  const inspected = await request(app, pathname, {
+    headers: { authorization: 'Bearer syndication-secret' },
+  });
+  assert.equal(inspected.status, 200);
+  assert.equal(inspected.headers['cache-control'], 'no-store');
 });
 
 test('renders canonical post HTML, redirects old slugs, and preserves publication statuses', async (t) => {

@@ -9,6 +9,10 @@ import { PostRepository } from './posts/post-repository';
 import { PostService } from './posts/post-service';
 import { readAppHtml } from './site/html';
 import { ensureMediaDirectories } from './storage';
+import { MastodonClient } from './syndication/mastodon-client';
+import { MastodonSyndicationService } from './syndication/mastodon-syndication-service';
+import { OutboxWorker } from './syndication/outbox-worker';
+import { SyndicationRepository } from './syndication/syndication-repository';
 
 export function startServer(): Server {
   const config = getRuntimeConfig();
@@ -22,6 +26,20 @@ export function startServer(): Server {
     postRepository,
     config.mediaRoot,
   );
+  const syndicationRepository = new SyndicationRepository(contentDatabase);
+  const mastodonSyndication = new MastodonSyndicationService(
+    syndicationRepository,
+    postService,
+    config.siteOrigin,
+    config.mastodonOrigin,
+    Boolean(config.mastodonAccessToken),
+  );
+  const outboxWorker = mastodonSyndication.enabled
+    ? new OutboxWorker(
+      syndicationRepository,
+      new MastodonClient(config.mastodonOrigin, config.mastodonAccessToken),
+    )
+    : null;
 
   if (!appHtmlTemplate) {
     console.warn(`Built app HTML not found at ${SITE_INDEX_PATH}; serving maintenance page with status 503.`);
@@ -29,16 +47,23 @@ export function startServer(): Server {
   if (process.env.NODE_ENV === 'production' && !config.siteOrigin) {
     console.warn('SITE_ORIGIN is not set in production; falling back to request-derived URLs.');
   }
+  if (!mastodonSyndication.enabled) {
+    console.warn('Mastodon syndication is disabled; set SITE_ORIGIN, MASTODON_BASE_URL, and MASTODON_ACCESS_TOKEN to enable it.');
+  }
 
   const server = createApp({
     adminToken: config.adminApiToken,
     appHtmlTemplate,
-    services: { media: mediaService, posts: postService },
+    services: { mastodonSyndication, media: mediaService, posts: postService },
     siteOrigin: config.siteOrigin,
   }).listen(config.port, () => {
     console.log(`Server is running on http://localhost:${config.port}`);
+    outboxWorker?.start();
   });
-  server.once('close', () => contentDatabase.close());
+  server.once('close', () => {
+    if (outboxWorker) void outboxWorker.stop().finally(() => contentDatabase.close());
+    else contentDatabase.close();
+  });
 
   const shutdown = (signal: NodeJS.Signals) => {
     console.log(`${signal} received; closing HTTP server.`);

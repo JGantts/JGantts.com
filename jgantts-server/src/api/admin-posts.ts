@@ -1,5 +1,6 @@
 import express from 'express';
 import type { AuthorPostChanges, AuthorPostInput, PostService } from '../posts/post-service';
+import type { MastodonSyndicationService } from '../syndication/mastodon-syndication-service';
 
 const AUTHOR_FIELDS = new Set(['slug', 'title', 'bodyMarkdown', 'excerpt', 'contentWarning']);
 
@@ -17,7 +18,18 @@ function parseBody(value: unknown, partial: boolean): AuthorPostInput | AuthorPo
   return value as unknown as AuthorPostInput | AuthorPostChanges;
 }
 
-export function createAdminPostsRouter(posts: PostService): express.Router {
+function parseSyndicationBody(value: unknown): { teaser?: unknown } {
+  if (value === undefined) return {};
+  if (!isRecord(value)) throw Object.assign(new Error('Request body must be an object.'), { status: 400 });
+  const unknownField = Object.keys(value).find((field) => field !== 'teaser');
+  if (unknownField) throw Object.assign(new Error(`Unknown syndication field: ${unknownField}`), { status: 400 });
+  return { teaser: value.teaser };
+}
+
+export function createAdminPostsRouter(
+  posts: PostService,
+  mastodon?: MastodonSyndicationService,
+): express.Router {
   const router = express.Router();
 
   router.post('/', (req, res, next) => {
@@ -54,6 +66,46 @@ export function createAdminPostsRouter(posts: PostService): express.Router {
       next(error);
     }
   });
+
+  if (mastodon) {
+    router.get('/:id/syndications/mastodon', (req, res) => {
+      const syndication = mastodon.getForPost(req.params.id);
+      if (!syndication) {
+        res.status(404).json({ error: { code: 'not_found', message: 'Post has not been syndicated.' } });
+        return;
+      }
+      res.set('Cache-Control', 'no-store').json(syndication);
+    });
+
+    router.post('/:id/syndications/mastodon', (req, res, next) => {
+      try {
+        const input = parseSyndicationBody(req.body);
+        const result = mastodon.queue(req.params.id, input.teaser);
+        res.status(result.queued ? 202 : 200).set('Cache-Control', 'no-store').json(result.syndication);
+      } catch (error) {
+        next(error);
+      }
+    });
+
+    router.patch('/:id/syndications/mastodon', (req, res, next) => {
+      try {
+        const input = parseSyndicationBody(req.body);
+        const result = mastodon.queueEdit(req.params.id, input.teaser);
+        res.status(202).set('Cache-Control', 'no-store').json(result);
+      } catch (error) {
+        next(error);
+      }
+    });
+
+    router.post('/:id/syndications/mastodon/retry', (req, res, next) => {
+      try {
+        const result = mastodon.retry(req.params.id);
+        res.status(202).set('Cache-Control', 'no-store').json(result);
+      } catch (error) {
+        next(error);
+      }
+    });
+  }
 
   return router;
 }

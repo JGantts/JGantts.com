@@ -35,6 +35,43 @@ The initial media API accepts JPEG, PNG, WebP, and AVIF images up to 25 MB. Alt
 text is required. The original bytes are retained and 1,600 px and 480 px WebP
 derivatives are generated without upscaling.
 
+## Mastodon syndication
+
+Keep the Mastodon credential only in the protected systemd environment file at
+`/etc/jgantts-com/jgantts-com.env`:
+
+```text
+SITE_ORIGIN=https://jgantts.com
+MASTODON_BASE_URL=https://mastodon.social
+MASTODON_ACCESS_TOKEN=replace-with-the-access-token
+```
+
+The token needs `write:statuses`. Add `read:statuses` when the comments phase is
+enabled. The server does not need the OAuth client key or client secret after a
+user access token has been issued. Restart the service after changing the file;
+never print the environment or commit credentials to the repository.
+
+Local publication and Mastodon syndication are intentionally separate. With a
+published post ID and the admin bearer token, queue one canonical link post:
+
+```sh
+curl --fail-with-body --request POST \
+  --header "Authorization: Bearer $JGANTTS_ADMIN_TOKEN" \
+  https://jgantts.com/api/admin/posts/POST_ID/syndications/mastodon
+```
+
+To supply an explicit teaser, send JSON with one `teaser` field. Repeating the
+queue request returns the existing syndication and cannot create another remote
+status, even after local edits. Inspect its state with `GET` on the same URL.
+Failed publication can be queued again with `POST` to the same URL plus
+`/retry`.
+
+Local edits never alter Mastodon automatically. Explicitly queue an update to
+the existing remote teaser with `PATCH` and a JSON `teaser` field. Publication
+and edits run through the durable SQLite outbox. The worker recovers abandoned
+jobs after restart, uses a stable idempotency key, honors rate-limit delays, and
+stops retrying permanent authentication or validation failures.
+
 ## Backup
 
 Run the application-aware backup command while the service is running or

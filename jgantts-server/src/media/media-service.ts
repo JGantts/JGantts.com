@@ -60,6 +60,17 @@ export interface UpdateMediaMetadataInput {
   focalY?: unknown;
 }
 
+interface StagedMediaFile {
+  finalPath: string;
+  rendition?: MediaRendition;
+  stagedPath: string;
+}
+
+export interface MediaProcessingHooks {
+  afterStage?: (files: ReadonlyArray<StagedMediaFile>) => void;
+  beforePromote?: (file: Readonly<StagedMediaFile>, index: number) => void;
+}
+
 function publicMedia(media: MediaRecord): PublicMedia {
   const base = `/media/${encodeURIComponent(media.id)}`;
   const manifest = media.renditionManifest as Partial<RenditionManifest>;
@@ -143,6 +154,7 @@ export class MediaService {
     private readonly media: MediaRepository,
     private readonly posts: PostRepository,
     private readonly mediaRoot: string,
+    private readonly processingHooks: MediaProcessingHooks = {},
   ) {
     this.directories = ensureMediaDirectories(mediaRoot);
   }
@@ -179,11 +191,14 @@ export class MediaService {
     const id = randomUUID();
     const originalName = `${id}.${format.extension}`;
     const originalPath = path.join(this.directories.originals, originalName);
-    const createdPaths: string[] = [];
+    const stagingDirectory = fs.mkdtempSync(path.join(this.mediaRoot, '.staging-'));
+    const stagedFiles: StagedMediaFile[] = [];
+    const promotedPaths: string[] = [];
 
     try {
-      fs.writeFileSync(originalPath, input.buffer, { flag: 'wx', mode: 0o640 });
-      createdPaths.push(originalPath);
+      const stagedOriginalPath = path.join(stagingDirectory, originalName);
+      fs.writeFileSync(stagedOriginalPath, input.buffer, { flag: 'wx', mode: 0o640 });
+      stagedFiles.push({ finalPath: originalPath, stagedPath: stagedOriginalPath });
       const sourceWidth = metadata.autoOrient.width;
       const responsiveWidths = Array.from(new Set([
         ...RESPONSIVE_IMAGE_WIDTHS.filter((width) => width <= sourceWidth),
@@ -192,12 +207,11 @@ export class MediaService {
       const renditions: MediaRendition[] = [];
       const derivatives: Record<string, string> = {};
       const placeholderName = `${id}-placeholder.webp`;
-      const placeholderPath = path.join(this.directories.derived, placeholderName);
+      const placeholderPath = path.join(stagingDirectory, placeholderName);
       const placeholderInfo = await writePlaceholder(input.buffer, placeholderPath);
-      createdPaths.push(placeholderPath);
       const relativePlaceholderPath = path.posix.join('derived', placeholderName);
       derivatives.placeholder = relativePlaceholderPath;
-      renditions.push({
+      const placeholderRendition: MediaRendition = {
         byteSize: placeholderInfo.size,
         colorSpace: 'srgb',
         format: 'webp',
@@ -207,6 +221,12 @@ export class MediaService {
         purpose: 'placeholder',
         variant: 'placeholder',
         width: placeholderInfo.width,
+      };
+      renditions.push(placeholderRendition);
+      stagedFiles.push({
+        finalPath: path.join(this.directories.derived, placeholderName),
+        rendition: placeholderRendition,
+        stagedPath: placeholderPath,
       });
       for (const width of responsiveWidths) {
         const outputFormats: RenditionFormat[] = [
@@ -217,12 +237,11 @@ export class MediaService {
         for (const outputFormat of outputFormats) {
           const variant = variantFor(outputFormat, width);
           const name = `${id}-${variant}.${renditionFormats[outputFormat].extension}`;
-          const outputPath = path.join(this.directories.derived, name);
+          const outputPath = path.join(stagingDirectory, name);
           const info = await writeRendition(input.buffer, outputFormat, width, outputPath);
-          createdPaths.push(outputPath);
           const relativePath = path.posix.join('derived', name);
           derivatives[variant] = relativePath;
-          renditions.push({
+          const rendition: MediaRendition = {
             byteSize: info.size,
             colorSpace: 'srgb',
             format: outputFormat,
@@ -232,6 +251,12 @@ export class MediaService {
             purpose: 'responsive',
             variant,
             width: info.width,
+          };
+          renditions.push(rendition);
+          stagedFiles.push({
+            finalPath: path.join(this.directories.derived, name),
+            rendition,
+            stagedPath: outputPath,
           });
         }
       }
@@ -241,6 +266,36 @@ export class MediaService {
         Math.abs(rendition.width - target) < Math.abs(closest.width - target) ? rendition : closest).path;
       derivatives.thumbnail = closestPath(480);
       derivatives.large = closestPath(1_600);
+
+      this.processingHooks.afterStage?.(stagedFiles);
+      const expectedChecksum = createHash('sha256').update(input.buffer).digest('hex');
+      for (const file of stagedFiles) {
+        const stat = fs.statSync(file.stagedPath);
+        if (!stat.isFile() || stat.size <= 0) throw new Error('Staged media verification failed.');
+        if (!file.rendition) {
+          const actualChecksum = createHash('sha256').update(fs.readFileSync(file.stagedPath)).digest('hex');
+          if (stat.size !== input.buffer.length || actualChecksum !== expectedChecksum) {
+            throw new Error('Staged source verification failed.');
+          }
+          continue;
+        }
+        const stagedMetadata = await sharp(file.stagedPath).metadata();
+        const expectedFormat = file.rendition.format === 'avif' ? 'heif' : file.rendition.format;
+        if (
+          stagedMetadata.format !== expectedFormat
+          || stagedMetadata.width !== file.rendition.width
+          || stagedMetadata.height !== file.rendition.height
+          || stat.size !== file.rendition.byteSize
+        ) {
+          throw new Error('Staged rendition verification failed.');
+        }
+      }
+      stagedFiles.forEach((file, index) => {
+        this.processingHooks.beforePromote?.(file, index);
+        if (fs.existsSync(file.finalPath)) throw new Error('Media destination already exists.');
+        fs.renameSync(file.stagedPath, file.finalPath);
+        promotedPaths.push(file.finalPath);
+      });
 
       const createdAt = new Date().toISOString();
       return publicMedia(this.media.create({
@@ -254,7 +309,7 @@ export class MediaService {
         width: metadata.autoOrient.width,
         height: metadata.autoOrient.height,
         byteSize: input.buffer.length,
-        checksumSha256: createHash('sha256').update(input.buffer).digest('hex'),
+        checksumSha256: expectedChecksum,
         altText: input.altText,
         caption: null,
         focalX: null,
@@ -270,8 +325,10 @@ export class MediaService {
         updatedAt: createdAt,
       }));
     } catch (error) {
-      for (const createdPath of createdPaths) fs.rmSync(createdPath, { force: true });
+      for (const promotedPath of promotedPaths) fs.rmSync(promotedPath, { force: true });
       throw error;
+    } finally {
+      fs.rmSync(stagingDirectory, { recursive: true, force: true });
     }
   }
 

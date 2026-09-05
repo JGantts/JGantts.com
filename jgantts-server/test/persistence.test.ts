@@ -384,6 +384,58 @@ test('tiny placeholders fit within 32 pixels and do not upscale small images', a
   );
 });
 
+test('staged upload failures remove partial files without touching valid media', async (t) => {
+  const root = temporaryDirectory(t);
+  const mediaRoot = path.join(root, 'media');
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostRepository(database);
+  const repository = new MediaRepository(database);
+  posts.create({ id: 'atomic', slug: 'atomic', bodyMarkdown: '', bodyHtml: '' });
+  const source = await sharp({
+    create: { width: 100, height: 50, channels: 3, background: '#445566' },
+  }).png().toBuffer();
+  const service = new MediaService(repository, posts, mediaRoot);
+  const existing = await service.uploadImage({ postId: 'atomic', altText: 'Existing', buffer: source });
+  const snapshot = () => fs.readdirSync(mediaRoot, { recursive: true }).map(String).sort();
+  const validFiles = snapshot();
+
+  const corruptingService = new MediaService(repository, posts, mediaRoot, {
+    afterStage(files) {
+      const stagingDirectory = path.dirname(files[0].stagedPath);
+      assert.equal(fs.statSync(stagingDirectory).mode & 0o777, 0o700);
+      fs.writeFileSync(files.find(({ rendition }) => rendition)?.stagedPath ?? '', 'corrupt');
+    },
+  });
+  await assert.rejects(
+    () => corruptingService.uploadImage({ postId: 'atomic', altText: 'Corrupt', buffer: source }),
+    /verification failed|unsupported image format/,
+  );
+  assert.deepEqual(snapshot(), validFiles);
+
+  const promotionFailureService = new MediaService(repository, posts, mediaRoot, {
+    beforePromote(_file, index) {
+      if (index === 2) throw new Error('injected promotion failure');
+    },
+  });
+  await assert.rejects(
+    () => promotionFailureService.uploadImage({ postId: 'atomic', altText: 'Promotion', buffer: source }),
+    /injected promotion failure/,
+  );
+  assert.deepEqual(snapshot(), validFiles);
+
+  database.exec(`CREATE TRIGGER reject_staged_media BEFORE INSERT ON media
+    BEGIN SELECT RAISE(ABORT, 'injected media database failure'); END;`);
+  await assert.rejects(
+    () => service.uploadImage({ postId: 'atomic', altText: 'Database', buffer: source }),
+    /injected media database failure/,
+  );
+  database.exec('DROP TRIGGER reject_staged_media');
+  assert.deepEqual(snapshot(), validFiles);
+  assert.equal(repository.listByPostId('atomic').length, 1);
+  assert.ok(service.getFile(existing.id, 'original'));
+});
+
 test('rejects invalid image uploads before creating media records', async (t) => {
   const root = temporaryDirectory(t);
   const database = openContentDatabase(':memory:');

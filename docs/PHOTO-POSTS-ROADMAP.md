@@ -32,9 +32,9 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 ## Current state
 
-- Status: Phase 1 and photo pipeline items 2.1–2.5 are complete; Phase 2 is in progress.
+- Status: Phase 1 and photo pipeline items 2.1–2.6 are complete; Phase 2 is in progress.
 - Active item: None.
-- Next item: 2.6 — failure-safe atomic rendition promotion.
+- Next item: 2.7 — repeatable derivative regeneration.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; responsive WebP, AVIF, and JPEG/PNG fallback renditions; checksums; dimensions;
@@ -152,7 +152,7 @@ SQL or filesystem work by the client.
   policy while stripping private metadata from public renditions.
 - [x] **2.5** Generate a tiny placeholder or equivalent low-quality preview to
   prevent blank layout during large-image loading.
-- [ ] **2.6** Make processing failure-safe: write temporary files, verify output,
+- [x] **2.6** Make processing failure-safe: write temporary files, verify output,
   atomically promote the set, and clean up partial files without deleting a
   previously valid image.
 - [ ] **2.7** Add a repeatable command to regenerate derivatives from stored
@@ -483,6 +483,19 @@ verified against the live domain.
   renditions. Verified dimensions, no-upscale behavior, API delivery, MIME and
   cache headers, and metadata removal. All 60 server tests, type checking, and
   the client production build pass on Node 22.23.2.
+
+### 2026-09-05 — Failure-safe staged media promotion
+
+- Uploads now write the immutable source and complete rendition family into a
+  private same-filesystem staging directory. Every staged source is checked by
+  size and checksum; every rendition is decoded and checked for format,
+  dimensions, and byte size before any final path becomes visible.
+- Verified files are promoted with atomic renames. Encode, verification,
+  promotion, and database failures remove the staging directory and only files
+  promoted by that attempt, leaving earlier valid media untouched.
+- Injected corruption, mid-promotion failure, and database failure tests verify
+  cleanup and preservation behavior. All 61 server tests, type checking, and the
+  client production build pass on Node 22.23.2.
 
 ## Definition of done
 

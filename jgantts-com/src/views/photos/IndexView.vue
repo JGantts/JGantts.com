@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ClusteredPhotoMasonry from './ClusteredPhotoMasonry.vue'
 import MediaCarousel from '@/components/MediaCarousel.vue'
+import type { CanonicalPost } from '@/posts/types'
 
 type MastodonAccount = {
   acct: string
@@ -108,6 +109,7 @@ const props = defineProps<{
 const router = useRouter() 
 
 const toots = ref<(TootThread | null)[]>(tootIds.map(() => null))
+const localPosts = ref<CanonicalPost[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const tootLoads = new Map<number, Promise<void>>()
@@ -138,7 +140,24 @@ const commentsDrawerStateLabel = computed(() => ['Collapsed', 'Expanded', 'Fully
 const activeToot = computed(() =>
   activeTootIndex.value === null ? null : toots.value[activeTootIndex.value] ?? null,
 )
-const photoPosts = computed(() => toots.value.map((toot) => toot?.post ?? null))
+const localPhotoPosts = computed(() => localPosts.value.map((post) => ({
+  id: `local:${post.id}`,
+  created_at: post.publishedAt,
+  media_attachments: post.media.map((media) => {
+    const fallback = media.renditions.find(({ format }) => format === 'jpeg' || format === 'png')
+    return {
+      description: media.altText,
+      meta: { original: { height: media.height ?? undefined, width: media.width ?? undefined } },
+      preview_url: media.urls.thumbnail,
+      type: 'image' as const,
+      url: fallback?.url ?? media.urls.large,
+    }
+  }),
+})))
+const photoPosts = computed(() => [
+  ...toots.value.map((toot) => toot?.post ?? null),
+  ...localPhotoPosts.value,
+])
 const commentsByPostId = computed(() => {
   const comments = new Map<string, DisplayStatus[]>()
   toots.value.forEach((toot) => {
@@ -161,6 +180,11 @@ const formatter = new Intl.DateTimeFormat(undefined, {
 const numberFormatter = new Intl.NumberFormat()
 
 function selectToot(nextIndex: number) {
+  if (nextIndex >= tootIds.length) {
+    const post = localPosts.value[nextIndex - tootIds.length]
+    if (post && props.postId !== post.slug) void router.push(`/photos/${post.slug}`)
+    return
+  }
   activeTootIndex.value = nextIndex
   selectedPostVisibility.value = 1
   commentsDrawerState.value = 0
@@ -351,7 +375,16 @@ onMounted(async () => {
 
   try {
     syncSelectionFromRoute()
-    await Promise.all(tootIds.map((_, index) => ensureTootLoaded(index)))
+    await Promise.all([
+      ...tootIds.map((_, index) => ensureTootLoaded(index)),
+      fetch('/api/posts?limit=50').then(async (response) => {
+        if (!response.ok) return
+        const page = await response.json() as { items?: CanonicalPost[] }
+        localPosts.value = (page.items ?? []).filter((post) => post.media.length > 0)
+      }).catch(() => {
+        // Mastodon remains useful when the local-post API is temporarily unavailable.
+      }),
+    ])
 
     loading.value = false
     if (props.postId && tootIds.includes(props.postId)) {

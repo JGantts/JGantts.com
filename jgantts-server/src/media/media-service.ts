@@ -16,6 +16,7 @@ const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 // above the source are omitted.
 export const RESPONSIVE_IMAGE_WIDTHS = [320, 480, 768, 1_024, 1_600, 2_400] as const;
 const MINIMUM_AVIF_WIDTH = 768;
+const PLACEHOLDER_WIDTH = 32;
 const renditionFormats: Record<RenditionFormat, { extension: string; mimeType: string }> = {
   avif: { extension: 'avif', mimeType: 'image/avif' },
   jpeg: { extension: 'jpg', mimeType: 'image/jpeg' },
@@ -40,7 +41,10 @@ export interface PublicMedia extends Omit<
   MediaRecord,
   'originalPath' | 'derivatives' | 'processingError' | 'renditionManifest'
 > {
-  renditions: Array<Omit<MediaRendition, 'path'> & { url: string }>;
+  placeholder: (Omit<MediaRendition, 'format' | 'path' | 'purpose' | 'variant'> & {
+    format: 'webp'; purpose: 'placeholder'; url: string; variant: 'placeholder';
+  }) | null;
+  renditions: Array<Omit<MediaRendition, 'path'> & { purpose: 'responsive'; url: string }>;
   urls: Record<'original' | 'large' | 'thumbnail', string>;
 }
 
@@ -59,12 +63,19 @@ export interface UpdateMediaMetadataInput {
 function publicMedia(media: MediaRecord): PublicMedia {
   const base = `/media/${encodeURIComponent(media.id)}`;
   const manifest = media.renditionManifest as Partial<RenditionManifest>;
-  const renditions = Array.isArray(manifest.renditions)
-    ? manifest.renditions.map(({ path: _path, ...rendition }) => ({
+  const storedRenditions = Array.isArray(manifest.renditions) ? manifest.renditions : [];
+  const toPublicRendition = ({ path: _path, ...rendition }: MediaRendition) => ({
       ...rendition,
       url: `${base}/${encodeURIComponent(rendition.variant)}`,
-    }))
-    : [];
+    });
+  const renditions = storedRenditions
+    .filter((rendition) => rendition.purpose !== 'placeholder')
+    .map((rendition) => ({ ...toPublicRendition(rendition), purpose: 'responsive' as const }));
+  const storedPlaceholder = storedRenditions.find((rendition) => rendition.purpose === 'placeholder');
+  const placeholder = storedPlaceholder
+    ? { ...toPublicRendition(storedPlaceholder), format: 'webp' as const,
+      purpose: 'placeholder' as const, variant: 'placeholder' as const }
+    : null;
   // Explicit fields keep future storage and processing details private by default.
   return {
     id: media.id,
@@ -80,6 +91,7 @@ function publicMedia(media: MediaRecord): PublicMedia {
     focalY: media.focalY,
     displayOrder: media.displayOrder,
     processingState: media.processingState,
+    placeholder,
     createdAt: media.createdAt,
     updatedAt: media.updatedAt,
     renditions,
@@ -112,6 +124,16 @@ async function writeRendition(
   if (format === 'jpeg') return image.jpeg({ quality: width <= 480 ? 80 : 86 }).toFile(outputPath);
   if (format === 'png') return image.png({ compressionLevel: 9, adaptiveFiltering: true }).toFile(outputPath);
   return image.webp({ quality: width <= 480 ? 78 : 84 }).toFile(outputPath);
+}
+
+async function writePlaceholder(buffer: Buffer, outputPath: string): Promise<sharp.OutputInfo> {
+  return sharp(buffer).autoOrient().resize({
+    width: PLACEHOLDER_WIDTH,
+    height: PLACEHOLDER_WIDTH,
+    fit: 'inside',
+    withoutEnlargement: true,
+  })
+    .toColourspace('srgb').blur(1).webp({ quality: 25, effort: 4 }).toFile(outputPath);
 }
 
 export class MediaService {
@@ -169,6 +191,23 @@ export class MediaService {
       ])).sort((left, right) => left - right);
       const renditions: MediaRendition[] = [];
       const derivatives: Record<string, string> = {};
+      const placeholderName = `${id}-placeholder.webp`;
+      const placeholderPath = path.join(this.directories.derived, placeholderName);
+      const placeholderInfo = await writePlaceholder(input.buffer, placeholderPath);
+      createdPaths.push(placeholderPath);
+      const relativePlaceholderPath = path.posix.join('derived', placeholderName);
+      derivatives.placeholder = relativePlaceholderPath;
+      renditions.push({
+        byteSize: placeholderInfo.size,
+        colorSpace: 'srgb',
+        format: 'webp',
+        height: placeholderInfo.height,
+        path: relativePlaceholderPath,
+        privateMetadataStripped: true,
+        purpose: 'placeholder',
+        variant: 'placeholder',
+        width: placeholderInfo.width,
+      });
       for (const width of responsiveWidths) {
         const outputFormats: RenditionFormat[] = [
           'webp',
@@ -190,12 +229,14 @@ export class MediaService {
             height: info.height,
             path: relativePath,
             privateMetadataStripped: true,
+            purpose: 'responsive',
             variant,
             width: info.width,
           });
         }
       }
-      const webpRenditions = renditions.filter((rendition) => rendition.format === 'webp');
+      const webpRenditions = renditions.filter((rendition) =>
+        rendition.format === 'webp' && rendition.purpose === 'responsive');
       const closestPath = (target: number) => webpRenditions.reduce((closest, rendition) =>
         Math.abs(rendition.width - target) < Math.abs(closest.width - target) ? rendition : closest).path;
       derivatives.thumbnail = closestPath(480);

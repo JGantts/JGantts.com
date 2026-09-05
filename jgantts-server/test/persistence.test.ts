@@ -193,6 +193,11 @@ test('stores original images, generates derivatives, and resolves safe public fi
   assert.deepEqual(uploaded.renditions.map((rendition) => [rendition.format, rendition.width]), [
     ['webp', 100], ['jpeg', 100],
   ]);
+  assert.deepEqual(
+    uploaded.placeholder && [uploaded.placeholder.format, uploaded.placeholder.width, uploaded.placeholder.height],
+    ['webp', 32, 16],
+  );
+  assert.equal(uploaded.placeholder?.url, `/media/${uploaded.id}/placeholder`);
   assert.equal(uploaded.renditions[0]?.url, `/media/${uploaded.id}/w-100`);
   assert.equal(posts.update('media-post', { heroMediaId: uploaded.id })?.heroMediaId, uploaded.id);
   posts.create({
@@ -232,6 +237,10 @@ test('stores original images, generates derivatives, and resolves safe public fi
   assert.deepEqual(fs.readFileSync(originalFile.path), original);
   assert.equal((await sharp(largeFile.path).metadata()).format, 'webp');
   assert.equal((await sharp(thumbnailFile.path).metadata()).width, 100);
+  const placeholderFile = service.getFile(uploaded.id, 'placeholder');
+  assert.ok(placeholderFile);
+  assert.equal(placeholderFile.mimeType, 'image/webp');
+  assert.equal((await sharp(placeholderFile.path).metadata()).width, 32);
 
   database.prepare("UPDATE media SET derived_json = '{\"large\":\"../../outside\"}' WHERE id = ?")
     .run(uploaded.id);
@@ -273,7 +282,8 @@ test('generates responsive modern and fallback formats without upscaling', async
   const stored = repository.getById(uploaded.id)!;
   assert.deepEqual(
     'renditions' in stored.renditionManifest
-      ? stored.renditionManifest.renditions.filter(({ format }) => format === 'webp')
+      ? stored.renditionManifest.renditions.filter(({ format, purpose }) =>
+        format === 'webp' && purpose === 'responsive')
         .map((rendition) => rendition.width)
       : [],
     [320, 480, 768, 1_024, 1_600, 2_400],
@@ -323,7 +333,8 @@ test('converts profiled images to sRGB and strips private metadata from every re
 
   const uploaded = await service.uploadImage({ postId: 'profiled', altText: 'Profiled image', buffer: source });
   assert.ok(uploaded.renditions.some(({ format }) => format === 'avif'));
-  for (const rendition of uploaded.renditions) {
+  assert.ok(uploaded.placeholder);
+  for (const rendition of [...uploaded.renditions, uploaded.placeholder]) {
     assert.equal(rendition.colorSpace, 'srgb');
     assert.equal(rendition.privateMetadataStripped, true);
     const file = service.getFile(uploaded.id, rendition.variant)!;
@@ -339,6 +350,38 @@ test('converts profiled images to sRGB and strips private metadata from every re
   // Archival source bytes remain immutable and private-policy migration is still
   // deferred; only public renditions are normalized and scrubbed here.
   assert.deepEqual(fs.readFileSync(service.getFile(uploaded.id, 'original')!.path), source);
+});
+
+test('tiny placeholders fit within 32 pixels and do not upscale small images', async (t) => {
+  const root = temporaryDirectory(t);
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostRepository(database);
+  posts.create({ id: 'placeholder', slug: 'placeholder', bodyMarkdown: '', bodyHtml: '' });
+  const service = new MediaService(new MediaRepository(database), posts, path.join(root, 'media'));
+  const portraitSource = await sharp({
+    create: { width: 20, height: 40, channels: 3, background: '#778899' },
+  }).png().toBuffer();
+
+  const uploaded = await service.uploadImage({
+    postId: 'placeholder', altText: 'Tiny portrait', buffer: portraitSource,
+  });
+  assert.deepEqual(
+    uploaded.placeholder && [uploaded.placeholder.width, uploaded.placeholder.height],
+    [16, 32],
+  );
+  assert.ok(uploaded.placeholder && uploaded.placeholder.byteSize > 0);
+  assert.ok(uploaded.renditions.every(({ purpose }) => purpose === 'responsive'));
+  const alreadySmall = await sharp({
+    create: { width: 20, height: 10, channels: 3, background: '#778899' },
+  }).png().toBuffer();
+  const smallUpload = await service.uploadImage({
+    postId: 'placeholder', altText: 'Already small', buffer: alreadySmall,
+  });
+  assert.deepEqual(
+    smallUpload.placeholder && [smallUpload.placeholder.width, smallUpload.placeholder.height],
+    [20, 10],
+  );
 });
 
 test('rejects invalid image uploads before creating media records', async (t) => {

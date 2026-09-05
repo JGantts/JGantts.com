@@ -32,9 +32,9 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 ## Current state
 
-- Status: Phase 1 and photo pipeline items 2.1–2.4 are complete; Phase 2 is in progress.
+- Status: Phase 1 and photo pipeline items 2.1–2.5 are complete; Phase 2 is in progress.
 - Active item: None.
-- Next item: 2.5 — tiny loading placeholders.
+- Next item: 2.6 — failure-safe atomic rendition promotion.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; responsive WebP, AVIF, and JPEG/PNG fallback renditions; checksums; dimensions;
@@ -150,7 +150,7 @@ SQL or filesystem work by the client.
   fallback, and record every rendition in the database manifest.
 - [x] **2.4** Preserve intended color appearance with an explicit ICC/color-space
   policy while stripping private metadata from public renditions.
-- [ ] **2.5** Generate a tiny placeholder or equivalent low-quality preview to
+- [x] **2.5** Generate a tiny placeholder or equivalent low-quality preview to
   prevent blank layout during large-image loading.
 - [ ] **2.6** Make processing failure-safe: write temporary files, verify output,
   atomically promote the set, and clean up partial files without deleting a
@@ -470,6 +470,19 @@ verified against the live domain.
 - Verified the policy with a Display-P3 JPEG carrying ICC, EXIF, XMP, and a
   private marker, checking every generated format and width. All 59 server tests,
   type checking, and the client production build pass on Node 22.23.2.
+
+### 2026-09-05 — Tiny loading placeholders
+
+- Each new image receives a dedicated blurred WebP placeholder contained within
+  32 × 32 px. It preserves aspect ratio, never enlarges an already-small source,
+  and is encoded at low quality for inexpensive early display.
+- Placeholder metadata and its immutable URL are exposed separately from normal
+  responsive candidates, preventing later `srcset` construction from treating
+  the preview as a full rendition. Legacy records safely return no placeholder.
+- Placeholders use the same sRGB and private-metadata stripping policy as public
+  renditions. Verified dimensions, no-upscale behavior, API delivery, MIME and
+  cache headers, and metadata removal. All 60 server tests, type checking, and
+  the client production build pass on Node 22.23.2.
 
 ## Definition of done
 

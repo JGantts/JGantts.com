@@ -8,6 +8,17 @@ export type PostMedia = {
   focalX: number | null
   focalY: number | null
   postId: string
+  placeholder: {
+    byteSize: number
+    colorSpace: 'srgb'
+    format: 'webp'
+    height: number
+    privateMetadataStripped: true
+    purpose: 'placeholder'
+    url: string
+    variant: 'placeholder'
+    width: number
+  } | null
   processingState: 'processing' | 'ready' | 'failed'
   renditions: Array<{
     byteSize: number
@@ -18,6 +29,7 @@ export type PostMedia = {
     variant: string
     width: number
     privateMetadataStripped: true
+    purpose: 'responsive'
   }>
   updatedAt: string
   height: number | null

@@ -11,6 +11,7 @@ export interface MediaRendition {
   height: number;
   path: string;
   privateMetadataStripped: true;
+  purpose: 'placeholder' | 'responsive';
   variant: string;
   width: number;
 }

@@ -29,6 +29,8 @@ export type PhotoMasonry = {
 
 type GridCard = PhotoCard & { columnSpan: number; rowSpan: number }
 
+const POSITION_EPSILON = 0.001
+
 const RATIO_TILES = [
   { columnSpan: 2, rowSpan: 6 },
   { columnSpan: 2, rowSpan: 3 },
@@ -106,6 +108,75 @@ function pixelsForSpan(span: number, cellSize: number, gap: number) {
   return span * cellSize + Math.max(0, span - 1) * gap
 }
 
+function intervalOverlap(
+  firstStart: number,
+  firstEnd: number,
+  secondStart: number,
+  secondEnd: number,
+) {
+  return Math.max(0, Math.min(firstEnd, secondEnd) - Math.max(firstStart, secondStart))
+}
+
+function sharedBorderLength(
+  candidate: Pick<PlacedPhotoCard, 'x' | 'y' | 'width' | 'height'>,
+  clusterCards: PlacedPhotoCard[],
+  gap: number,
+) {
+  return clusterCards.reduce((longestBorder, card) => {
+    const candidateRight = candidate.x + candidate.width
+    const candidateBottom = candidate.y + candidate.height
+    const cardRight = card.x + card.width
+    const cardBottom = card.y + card.height
+    let sharedBorder = 0
+
+    if (
+      Math.abs(candidate.x - cardRight - gap) < POSITION_EPSILON
+      || Math.abs(card.x - candidateRight - gap) < POSITION_EPSILON
+    ) {
+      sharedBorder = intervalOverlap(candidate.y, candidateBottom, card.y, cardBottom)
+    }
+    if (
+      Math.abs(candidate.y - cardBottom - gap) < POSITION_EPSILON
+      || Math.abs(card.y - candidateBottom - gap) < POSITION_EPSILON
+    ) {
+      sharedBorder = Math.max(
+        sharedBorder,
+        intervalOverlap(candidate.x, candidateRight, card.x, cardRight),
+      )
+    }
+
+    return Math.max(longestBorder, sharedBorder)
+  }, 0)
+}
+
+function attachedYPositions(
+  x: number,
+  width: number,
+  height: number,
+  minimumY: number,
+  minimumBorderOverlap: number,
+  clusterCards: PlacedPhotoCard[],
+  gap: number,
+) {
+  const positions = new Set([minimumY])
+  for (const card of clusterCards) {
+    const horizontallyAdjacent =
+      Math.abs(x - (card.x + card.width + gap)) < POSITION_EPSILON
+      || Math.abs(x + width + gap - card.x) < POSITION_EPSILON
+    if (horizontallyAdjacent) {
+      // A cell is an exact fraction of every grid-derived photo edge, so this adjustment keeps
+      // the card on the same implicit grid while creating a substantial shared border.
+      positions.add(Math.max(minimumY, card.y + minimumBorderOverlap - height))
+    }
+
+    const horizontalOverlap = intervalOverlap(x, x + width, card.x, card.x + card.width)
+    if (horizontalOverlap + POSITION_EPSILON >= minimumBorderOverlap) {
+      positions.add(Math.max(minimumY, card.y + card.height + gap))
+    }
+  }
+  return positions
+}
+
 /**
  * Photos are placed independently on the skyline so smaller cards can fill space beside taller
  * ones. Cards retain their post key and are regrouped after placement for selection and styling.
@@ -115,7 +186,7 @@ function calculatePhotoMasonryAtDensity(
   containerWidth: number,
   totalColumns: number,
   gap: number,
-): PhotoMasonry {
+): PhotoMasonry | null {
   if (!cards.length || containerWidth <= 0 || totalColumns <= 0) {
     return { height: 0, clusters: [] }
   }
@@ -135,14 +206,34 @@ function calculatePhotoMasonryAtDensity(
   for (const card of gridCards) {
     let bestColumn = 0
     let bestY = Number.POSITIVE_INFINITY
+    const clusterCards = placedByCluster.get(card.clusterKey)!
 
     for (let column = 0; column <= totalColumns - card.columnSpan; column += 1) {
-      const y = Math.max(...skyline.slice(column, column + card.columnSpan))
-      if (y < bestY) {
-        bestY = y
-        bestColumn = column
+      const minimumY = Math.max(...skyline.slice(column, column + card.columnSpan))
+      const x = column * (cellSize + gap)
+      const width = pixelsForSpan(card.columnSpan, cellSize, gap)
+      const height = pixelsForSpan(card.rowSpan, cellSize, gap)
+      const yPositions = clusterCards.length
+        ? attachedYPositions(x, width, height, minimumY, cellSize, clusterCards, gap)
+        : [minimumY]
+
+      for (const y of yPositions) {
+        if (
+          clusterCards.length
+          && sharedBorderLength({ x, y, width, height }, clusterCards, gap)
+            + POSITION_EPSILON < cellSize
+        ) {
+          continue
+        }
+        if (y < bestY) {
+          bestY = y
+          bestColumn = column
+        }
       }
     }
+
+    // Reject this density rather than create a cluster joined by less than one whole grid cell.
+    if (!Number.isFinite(bestY)) return null
 
     const x = bestColumn * (cellSize + gap)
     const width = pixelsForSpan(card.columnSpan, cellSize, gap)
@@ -233,11 +324,12 @@ export function calculatePhotoMasonry(
 
   const minimumColumns = Math.min(6, maximumColumns)
   const preferredShortEdge = Math.min(300, Math.max(150, containerWidth / 4.5))
-  let best = calculatePhotoMasonryAtDensity(cards, containerWidth, minimumColumns, gap)
-  let bestScore = masonryScore(best, containerWidth, targetHeight, preferredShortEdge)
+  let best: PhotoMasonry | null = null
+  let bestScore = Number.POSITIVE_INFINITY
 
-  for (let columns = minimumColumns + 1; columns <= maximumColumns; columns += 1) {
+  for (let columns = minimumColumns; columns <= maximumColumns; columns += 1) {
     const candidate = calculatePhotoMasonryAtDensity(cards, containerWidth, columns, gap)
+    if (!candidate) continue
     const candidateScore = masonryScore(
       candidate,
       containerWidth,
@@ -250,5 +342,5 @@ export function calculatePhotoMasonry(
     }
   }
 
-  return best
+  return best ?? { height: 0, clusters: [] }
 }

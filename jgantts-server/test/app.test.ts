@@ -715,6 +715,25 @@ test('uploads local media and serves immutable originals and derivatives', async
   assert.equal(canonicalPage.status, 200);
   assert.match(canonicalPage.body, new RegExp(uploaded.urls.large.replaceAll('/', '\\/')));
   assert.match(canonicalPage.body, /twitter:card" content="summary_large_image"/);
+
+  const deletionUrl = `/api/admin/media/${uploaded.id}`;
+  assert.equal((await request(app, deletionUrl, { method: 'DELETE' })).status, 401);
+  const headers = { authorization: 'Bearer media-secret' };
+  assert.equal((await request(app, deletionUrl, { method: 'DELETE', headers })).status, 409);
+  assert.equal((await request(app, uploaded.urls.large)).status, 200);
+  postRepository.update('media-api-post', { status: 'draft' });
+  const session = await request(app, '/api/admin/session', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ token: 'media-secret' }),
+  });
+  assert.equal(session.status, 204);
+  const cookie = session.headers['set-cookie']![0].split(';', 1)[0];
+  const removed = await request(app, deletionUrl, { method: 'DELETE', headers: { cookie } });
+  assert.equal(removed.status, 204);
+  assert.equal(removed.headers['cache-control'], 'no-store');
+  assert.equal((await request(app, uploaded.urls.large)).status, 404);
+  assert.equal((await request(app, deletionUrl, { method: 'DELETE', headers })).status, 204);
+
 });
 
 test('reads centralized build information for every API request', async () => {

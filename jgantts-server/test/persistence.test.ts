@@ -246,3 +246,74 @@ test('rejects invalid image uploads before creating media records', async (t) =>
   }), /altText/);
   assert.equal(database.prepare('SELECT COUNT(*) FROM media').pluck().get(), 0);
 });
+
+test('media deletion protects published photos, clears heroes, and compacts order', async (t) => {
+  const root = temporaryDirectory(t);
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostRepository(database);
+  const repository = new MediaRepository(database);
+  const service = new MediaService(repository, posts, root);
+  posts.create({ id: 'delete-post', slug: 'delete-post', bodyMarkdown: '', bodyHtml: '' });
+  const buffer = await sharp({ create: { width: 8, height: 8, channels: 3, background: 'red' } })
+    .png().toBuffer();
+  const first = await service.uploadImage({ postId: 'delete-post', altText: 'First', buffer });
+  const second = await service.uploadImage({ postId: 'delete-post', altText: 'Second', buffer, displayOrder: 5 });
+  const files = ['original', 'large', 'thumbnail'].map((variant) =>
+    service.getFile(first.id, variant as 'original' | 'large' | 'thumbnail')!.path);
+  posts.update('delete-post', { status: 'published', heroMediaId: first.id });
+  assert.throws(() => service.deleteImage(first.id), /Unpublish/);
+  assert.ok(repository.getById(first.id));
+  assert.ok(files.every((file) => fs.existsSync(file)));
+  assert.equal(repository.pendingDeletionPaths(first.id), null);
+  posts.update('delete-post', { status: 'draft' });
+  // Database failure must roll back the journal, hero change, and media removal.
+  database.exec(`CREATE TRIGGER reject_media_delete BEFORE DELETE ON media
+    BEGIN SELECT RAISE(ABORT, 'injected deletion failure'); END;`);
+  assert.throws(() => service.deleteImage(first.id), /injected deletion failure/);
+  assert.equal(posts.getById('delete-post')!.heroMediaId, first.id);
+  assert.equal(repository.pendingDeletionPaths(first.id), null);
+  assert.ok(files.every((file) => fs.existsSync(file)));
+  database.exec('DROP TRIGGER reject_media_delete');
+  service.deleteImage(first.id);
+  assert.equal(repository.getById(first.id), null);
+  assert.equal(posts.getById('delete-post')!.heroMediaId, null);
+  assert.deepEqual(service.listForPost('delete-post').map((item) => [item.id, item.displayOrder]), [[second.id, 0]]);
+  assert.ok(files.every((file) => !fs.existsSync(file)));
+  service.deleteImage(first.id);
+  service.deleteImage(second.id);
+  service.deleteImage('unknown');
+  assert.deepEqual(service.listForPost('delete-post'), []);
+});
+
+test('failed media cleanup survives database restart and retries missing files safely', async (t) => {
+  const root = temporaryDirectory(t);
+  const databasePath = path.join(root, 'content.sqlite');
+  let database = openContentDatabase(databasePath);
+  t.after(() => database.close());
+  let posts = new PostRepository(database);
+  let repository = new MediaRepository(database);
+  let service = new MediaService(repository, posts, root);
+  posts.create({ id: 'retry-post', slug: 'retry-post', bodyMarkdown: '', bodyHtml: '' });
+  const buffer = await sharp({ create: { width: 8, height: 8, channels: 3, background: 'blue' } })
+    .png().toBuffer();
+  const photo = await service.uploadImage({ postId: 'retry-post', altText: 'Blue', buffer });
+  const original = service.getFile(photo.id, 'original')!.path;
+  const large = service.getFile(photo.id, 'large')!.path;
+  fs.unlinkSync(large);
+  fs.mkdirSync(large); // A filesystem failure after the original has already been removed.
+  assert.throws(() => service.deleteImage(photo.id), /cleanup is pending/);
+  assert.equal(fs.existsSync(original), false);
+  assert.equal(service.getFile(photo.id, 'thumbnail'), null);
+  assert.ok(repository.pendingDeletionPaths(photo.id));
+  database.close();
+  database = openContentDatabase(databasePath);
+  posts = new PostRepository(database);
+  repository = new MediaRepository(database);
+  service = new MediaService(repository, posts, root);
+  fs.rmdirSync(large);
+  service.deleteImage(photo.id);
+  assert.equal(repository.pendingDeletionPaths(photo.id), null);
+  assert.deepEqual(fs.readdirSync(path.join(root, 'derived')), []);
+  service.deleteImage(photo.id);
+});

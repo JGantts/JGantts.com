@@ -10,6 +10,15 @@ const upload = multer({
 export function createAdminMediaRouter(media: MediaService): express.Router {
   const router = express.Router();
 
+  router.delete('/:id', (req, res, next) => {
+    try {
+      media.deleteImage(req.params.id);
+      res.status(204).set('Cache-Control', 'no-store').end();
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post('/', (req, res, next) => {
     upload.single('file')(req, res, (uploadError) => {
       if (uploadError) {

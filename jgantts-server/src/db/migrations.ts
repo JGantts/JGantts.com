@@ -173,6 +173,17 @@ export const migrations: readonly Migration[] = [
       END;
     `,
   },
+  {
+    version: 6,
+    name: 'durable_media_deletion_cleanup',
+    sql: `
+      CREATE TABLE media_deletions (
+        media_id TEXT PRIMARY KEY,
+        paths_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      ) STRICT;
+    `,
+  },
 ];
 
 export function migrateDatabase(database: Database.Database): void {

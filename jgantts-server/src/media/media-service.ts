@@ -169,6 +169,32 @@ export class MediaService {
     return this.media.listByPostId(postId).map(publicMedia);
   }
 
+  deleteImage(id: string): void {
+    // Commit the logical deletion and its cleanup journal together before removing bytes.
+    this.media.beginDeletion(id);
+    const paths = this.media.pendingDeletionPaths(id);
+    if (!paths) return;
+    try {
+      const root = fs.realpathSync(this.mediaRoot);
+      const files = paths.map((relativePath) => {
+        const file = path.resolve(root, relativePath);
+        if (!file.startsWith(`${root}${path.sep}`)) throw new Error('Unsafe media path.');
+        // Resolve parent symlinks as well as lexical traversal before unlinking anything.
+        const parent = fs.realpathSync(path.dirname(file));
+        if (parent !== root && !parent.startsWith(`${root}${path.sep}`)) {
+          throw new Error('Unsafe media directory.');
+        }
+        return file;
+      });
+      for (const file of files) fs.rmSync(file, { force: true });
+      this.media.completeDeletion(id);
+    } catch {
+      throw Object.assign(new Error('Photo removed; file cleanup is pending. Retry this deletion.'), {
+        status: 503,
+      });
+    }
+  }
+
   updateMetadata(id: string, input: UpdateMediaMetadataInput): PublicMedia | null {
     const current = this.media.getById(id);
     if (!current) return null;

@@ -30,17 +30,18 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 ## Current state
 
-- Status: Roadmap written; implementation has not started.
+- Status: Phase 1 media lifecycle implementation in progress.
 - Active item: None.
-- Next item: 1.5 — add safeguarded media deletion.
+- Next item: 1.6 — add a bounded batch-upload API with per-file results.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; 1,600 px and 480 px WebP derivatives; checksums; dimensions;
   database fields for display order, focal point, and hero media; public media
-  URLs; backup of database and media.
-- Current gaps: no batch or pre-draft upload, reorder, hero selection, metadata
-  editing, captions, deletion, upload progress, responsive `srcset`, lightbox,
-  focal-point controls, or explicit EXIF/GPS policy.
+  URLs; backup of database and media; metadata editing, transactional reorder,
+  hero selection, and safeguarded deletion APIs.
+- Current gaps: no batch or pre-draft upload, gallery maintenance editor, visible
+  captions, upload progress, responsive `srcset`, lightbox, or focal-point controls.
+  The source privacy policy is documented; its rendition rollout remains pending.
 
 ## Fixed architecture decisions
 
@@ -97,7 +98,7 @@ that post.
   deterministic fallback behavior when no hero is selected.
 - [x] **1.4** Add authenticated endpoints to edit alt text and caption, select the
   focal point, select the hero, and reorder all photos transactionally.
-- [ ] **1.5** Add authenticated media deletion with published-post safeguards,
+- [x] **1.5** Add authenticated media deletion with published-post safeguards,
   hero fallback, database/file consistency, and idempotent retry behavior.
 - [ ] **1.6** Add a batch-upload API contract with per-file results so one bad
   image does not discard successful uploads. Set explicit limits for file count
@@ -277,6 +278,24 @@ verified against the live domain.
   order. Bearer and persistent-cookie authentication cover all new routes.
 - Verified service and API behavior, invalid focal points, cross-post hero
   rejection, contiguous reorder, all 51 server tests, and both production builds.
+
+### 2026-09-05 — Safeguarded media deletion
+
+- Added authenticated `DELETE /api/admin/media/:id`. Published posts return 409
+  and must be unpublished before any photo can be removed, including the last.
+- One database transaction clears a removed hero, deletes its media record,
+  compacts remaining display order, updates the post timestamp, and journals
+  cleanup paths. An unset hero uses the first remaining photo; an empty gallery
+  has no hero. Existing backups are untouched and Mastodon edits remain explicit.
+- File cleanup follows the database commit. Failure returns 503 with a retry
+  instruction; repeating the same DELETE resumes durable cleanup after restart.
+  Removed media is immediately inaccessible through public routes. Successful,
+  repeated, and unknown-ID deletions return 204. Cleanup never recursively removes
+  directories and rejects paths outside media storage.
+- Verified bearer and session authentication, published protection, rollback,
+  hero clearing, contiguous order, final-photo removal, partial filesystem failure,
+  restart recovery, and repeated deletion. All 53 server tests, type checking,
+  and the production server build pass.
 
 ## Definition of done
 

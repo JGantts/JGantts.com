@@ -1,5 +1,6 @@
 import type { ContentDatabase } from '../db/database';
 import { inTransaction } from '../db/database';
+import { PostConflictError } from '../posts/errors';
 import type { MediaDerivatives, MediaRecord } from './types';
 
 interface MediaRow {
@@ -75,6 +76,38 @@ export class MediaRepository {
   getById(id: string): MediaRecord | null {
     const row = this.database.prepare('SELECT * FROM media WHERE id = ?').get(id) as MediaRow | undefined;
     return row ? mapMedia(row) : null;
+  }
+
+  beginDeletion(id: string): void {
+    inTransaction(this.database, () => {
+      const media = this.getById(id);
+      if (!media) return;
+      const post = this.database.prepare('SELECT status FROM posts WHERE id = ?')
+        .get(media.postId) as { status: string };
+      if (post.status === 'published') {
+        throw new PostConflictError('Unpublish the post before deleting its photos.');
+      }
+      const now = new Date().toISOString();
+      this.database.prepare(`
+        INSERT INTO media_deletions (media_id, paths_json, created_at) VALUES (?, ?, ?)
+      `).run(id, JSON.stringify([media.originalPath, ...Object.values(media.derivatives)]), now);
+      this.database.prepare(`
+        UPDATE posts SET hero_media_id = CASE WHEN hero_media_id = ? THEN NULL ELSE hero_media_id END,
+          updated_at = ? WHERE id = ?
+      `).run(id, now, media.postId);
+      this.database.prepare('DELETE FROM media WHERE id = ?').run(id);
+      this.reorder(media.postId, this.listByPostId(media.postId).map((item) => item.id), now);
+    });
+  }
+
+  pendingDeletionPaths(id: string): string[] | null {
+    const row = this.database.prepare('SELECT paths_json FROM media_deletions WHERE media_id = ?')
+      .get(id) as { paths_json: string } | undefined;
+    return row ? JSON.parse(row.paths_json) as string[] : null;
+  }
+
+  completeDeletion(id: string): void {
+    this.database.prepare('DELETE FROM media_deletions WHERE media_id = ?').run(id);
   }
 
   listByPostId(postId: string): MediaRecord[] {

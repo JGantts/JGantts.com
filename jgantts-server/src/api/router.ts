@@ -2,7 +2,7 @@ import express from 'express';
 import type { BuildInfo } from '../build-info';
 import type { MastodonCommentsService } from '../comments/mastodon-comments-service';
 import type { MediaService } from '../media/media-service';
-import { createAdminAuth } from '../middleware/admin-auth';
+import { ADMIN_SESSION_COOKIE, adminTokenMatches, createAdminAuth } from '../middleware/admin-auth';
 import type { HealthService } from '../observability/health-service';
 import type { PostService } from '../posts/post-service';
 import type { MastodonSyndicationService } from '../syndication/mastodon-syndication-service';
@@ -44,6 +44,39 @@ export function createApiRouter(
 
   router.get('/build', (_req, res) => {
     res.set('Cache-Control', 'no-store').json(getBuildInfo());
+  });
+
+  router.post('/admin/session', (req, res) => {
+    const configuredToken = options.adminToken ?? '';
+    if (!configuredToken) {
+      res.status(503).json({
+        error: { code: 'admin_unavailable', message: 'The admin API is not configured.' },
+      });
+      return;
+    }
+    const suppliedToken = typeof req.body?.token === 'string' ? req.body.token : '';
+    if (!adminTokenMatches(configuredToken, suppliedToken)) {
+      res.status(401).json({
+        error: { code: 'unauthorized', message: 'That admin token was not accepted.' },
+      });
+      return;
+    }
+    res.cookie(ADMIN_SESSION_COOKIE, configuredToken, {
+      httpOnly: true,
+      maxAge: 365 * 24 * 60 * 60 * 1000,
+      path: '/api/admin',
+      sameSite: 'strict',
+      secure: true,
+    }).set('Cache-Control', 'no-store').status(204).end();
+  });
+
+  router.delete('/admin/session', (_req, res) => {
+    res.clearCookie(ADMIN_SESSION_COOKIE, {
+      httpOnly: true,
+      path: '/api/admin',
+      sameSite: 'strict',
+      secure: true,
+    }).set('Cache-Control', 'no-store').status(204).end();
   });
 
   if (services.posts) {

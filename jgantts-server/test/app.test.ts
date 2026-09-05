@@ -359,6 +359,37 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
     method: 'POST',
   })).status, 401);
 
+  const sessionResponse = await request(app, '/api/admin/session', {
+    body: JSON.stringify({ token: 'test-admin-secret' }),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  });
+  assert.equal(sessionResponse.status, 204);
+  const sessionCookie = sessionResponse.headers['set-cookie']?.[0];
+  assert.ok(sessionCookie);
+  assert.match(sessionCookie, /^jgantts_admin=/);
+  assert.match(sessionCookie, /HttpOnly/i);
+  assert.match(sessionCookie, /Secure/i);
+  assert.match(sessionCookie, /SameSite=Strict/i);
+  assert.match(sessionCookie, /Path=\/api\/admin/i);
+  assert.equal((await request(app, '/api/admin/posts', {
+    headers: { cookie: sessionCookie.split(';', 1)[0] },
+  })).status, 200);
+
+  const logoutResponse = await request(app, '/api/admin/session', {
+    headers: { cookie: sessionCookie.split(';', 1)[0] },
+    method: 'DELETE',
+  });
+  assert.equal(logoutResponse.status, 204);
+  assert.match(logoutResponse.headers['set-cookie']?.[0] ?? '', /Expires=Thu, 01 Jan 1970/i);
+
+  const invalidSession = await request(app, '/api/admin/session', {
+    body: JSON.stringify({ token: 'wrong-token' }),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  });
+  assert.equal(invalidSession.status, 401);
+
   const createdResponse = await request(app, '/api/admin/posts', {
     body,
     headers: {

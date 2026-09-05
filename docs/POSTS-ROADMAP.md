@@ -164,7 +164,7 @@ JGantts.com without Mastodon.
 - [x] **2A.1** Add authenticated admin list and single-post read endpoints.
 - [x] **2A.2** Add a sanitized Markdown preview endpoint.
 - [x] **2A.3** Build a private `/admin/posts` editor for creating and updating
-  drafts without storing the admin token persistently in the browser.
+  drafts with a server-issued, HttpOnly admin-session cookie.
 - [x] **2A.4** Add local publishing and archiving controls with explicit
   confirmation and save-before-publish behavior.
 - [x] **2A.5** Add image upload with required alt text and existing-media preview.
@@ -410,6 +410,15 @@ the live site is the demonstrable source of truth.
 - Documented application-only rollback through a Git revert and non-destructive
   content recovery into a fresh data root, including verification, activation,
   and recovery if the health check fails.
+
+### 2026-09-05 — Persistent admin session
+
+- Replaced the editor's memory-only bearer credential with a server-validated
+  admin session stored in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie.
+- The editor restores the session after reload without exposing the token to
+  frontend JavaScript. Explicit logout expires the cookie; rotating the server
+  token invalidates existing sessions immediately.
+- Retained bearer-token authentication for scripts and direct API clients.
 
 ## Definition of done
 

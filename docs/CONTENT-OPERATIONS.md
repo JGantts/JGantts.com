@@ -37,10 +37,11 @@ derivatives are generated without upscaling.
 
 ## Private post editor
 
-Open `/admin/posts` and unlock it with `JGANTTS_ADMIN_TOKEN`. The token is kept
-only in page memory: it is not bundled into the frontend, written to browser
-storage, or retained after a reload, lock action, or navigation away from the
-editor.
+Open `/admin/posts` and unlock it with `JGANTTS_ADMIN_TOKEN`. After validation,
+the server keeps the sign-in in an `HttpOnly`, `Secure`, `SameSite=Strict`
+cookie. Frontend JavaScript cannot read the token. The cookie persists across
+reloads and browser restarts until **Log out** is clicked or the configured
+admin token is rotated.
 
 The editor can create and update drafts, preview sanitized Markdown, upload and
 review images, publish locally, archive posts, inspect Mastodon state, queue a

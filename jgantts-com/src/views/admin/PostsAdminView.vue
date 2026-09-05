@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
-import { AdminApiError, adminRequest, adminToken, jsonRequest } from '@/admin/api'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { AdminApiError, adminRequest, createAdminSession, deleteAdminSession, jsonRequest } from '@/admin/api'
 import type { PostMedia } from '@/posts/types'
 
 type AdminPost = {
@@ -27,6 +27,7 @@ type Syndication = {
 
 const tokenInput = ref('')
 const authenticated = ref(false)
+const checkingSession = ref(true)
 const posts = ref<AdminPost[]>([])
 const selectedId = ref<string | null>(null)
 const notice = ref('')
@@ -61,8 +62,7 @@ const syndicationButtonLabel = computed(() => {
 function message(value: unknown): string {
   if (value instanceof AdminApiError && value.status === 401) {
     authenticated.value = false
-    adminToken.value = ''
-    return 'That admin token was not accepted.'
+    return 'Your admin session is not valid. Sign in again.'
   }
   return value instanceof Error ? value.message : 'The request could not be completed.'
 }
@@ -99,28 +99,46 @@ function newDraft() {
 async function login() {
   error.value = ''
   busy.value = true
-  adminToken.value = tokenInput.value.trim()
   try {
+    await createAdminSession(tokenInput.value.trim())
     await loadPosts()
     authenticated.value = true
     tokenInput.value = ''
     if (posts.value[0]) copyToForm(posts.value[0])
     else newDraft()
   } catch (loginError) {
-    adminToken.value = ''
     error.value = message(loginError)
   } finally {
     busy.value = false
   }
 }
 
-function signOut() {
-  adminToken.value = ''
+async function signOut() {
+  try {
+    await deleteAdminSession()
+  } catch {
+    // Clear the local editor regardless; the server cookie will expire naturally.
+  }
   authenticated.value = false
   posts.value = []
   selectedId.value = null
   tokenInput.value = ''
   newDraft()
+}
+
+async function restoreSession() {
+  try {
+    await loadPosts()
+    authenticated.value = true
+    if (posts.value[0]) copyToForm(posts.value[0])
+    else newDraft()
+  } catch (sessionError) {
+    if (!(sessionError instanceof AdminApiError && sessionError.status === 401)) {
+      error.value = message(sessionError)
+    }
+  } finally {
+    checkingSession.value = false
+  }
 }
 
 async function loadPosts() {
@@ -300,18 +318,22 @@ watch(() => form.bodyMarkdown, () => {
   previewTimer = setTimeout(() => { void refreshPreview() }, 350)
 })
 
+onMounted(() => { void restoreSession() })
+
 onBeforeUnmount(() => {
   if (previewTimer) clearTimeout(previewTimer)
-  adminToken.value = ''
 })
 </script>
 
 <template>
   <main class="admin-page">
-    <section v-if="!authenticated" class="login-card">
+    <section v-if="checkingSession" class="login-card" aria-live="polite">
+      <p>Checking admin session…</p>
+    </section>
+    <section v-else-if="!authenticated" class="login-card">
       <p class="eyebrow">Private authoring</p>
       <h1>Post editor</h1>
-      <p>The admin token stays in memory and is cleared when this page closes or reloads.</p>
+      <p>Your sign-in is kept in a secure browser cookie until you log out.</p>
       <form @submit.prevent="login">
         <label for="admin-token">Admin token</label>
         <input id="admin-token" v-model="tokenInput" autocomplete="off" type="password">
@@ -328,7 +350,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="toolbar-actions">
           <button class="button-secondary" type="button" @click="newDraft">New draft</button>
-          <button class="button-quiet" type="button" @click="signOut">Lock</button>
+          <button class="button-quiet" type="button" @click="signOut">Log out</button>
         </div>
       </header>
 

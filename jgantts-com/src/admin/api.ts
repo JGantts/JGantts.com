@@ -1,7 +1,3 @@
-import { ref } from 'vue'
-
-export const adminToken = ref('')
-
 export class AdminApiError extends Error {
   constructor(message: string, readonly status: number) {
     super(message)
@@ -9,9 +5,7 @@ export class AdminApiError extends Error {
 }
 
 export async function adminRequest<T>(pathname: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers)
-  headers.set('authorization', `Bearer ${adminToken.value}`)
-  const response = await fetch(pathname, { ...options, headers })
+  const response = await fetch(pathname, { ...options, credentials: 'same-origin' })
   if (!response.ok) {
     let message = `Request failed (${response.status})`
     try {
@@ -22,7 +16,16 @@ export async function adminRequest<T>(pathname: string, options: RequestInit = {
     }
     throw new AdminApiError(message, response.status)
   }
+  if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
+}
+
+export async function createAdminSession(token: string): Promise<void> {
+  await adminRequest('/api/admin/session', jsonRequest('POST', { token }))
+}
+
+export async function deleteAdminSession(): Promise<void> {
+  await adminRequest('/api/admin/session', { method: 'DELETE' })
 }
 
 export function jsonRequest(method: string, body?: unknown): RequestInit {

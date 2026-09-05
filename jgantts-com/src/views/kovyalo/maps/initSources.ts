@@ -1,4 +1,5 @@
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
+import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
 import type {  } from '../common/Settings';
@@ -67,7 +68,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
         const protocol = new Protocol()
         maplibregl.addProtocol('pmtiles', protocol.tile)
   
-        const data: GeoJSON.FeatureCollection = {
+        const data: FeatureCollection = {
           type: 'FeatureCollection',
           features: allTowns.map(t => ({
             type: 'Feature',

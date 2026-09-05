@@ -16,6 +16,27 @@ type PhotoPost = {
   media_attachments: Attachment[]
 }
 
+type PostExposure = {
+  attentionSeconds: number
+  lastSeenAt: number
+  qualifiedViews: number
+}
+
+type PostExposureSession = {
+  attentionSeconds: number
+  lastSampleAt: number
+  qualified: boolean
+  visibilityRatio: number
+  visibleSince: number | null
+}
+
+const exposureStorageKey = 'photo-post-exposure-v1'
+const exposureRetentionMs = 90 * 24 * 60 * 60 * 1000
+const maximumStoredExposures = 500
+const minimumVisibleRatio = 0.5
+const qualificationTimeMs = 1000
+const maximumSessionAttentionSeconds = 15
+
 const props = defineProps<{
   posts: Array<PhotoPost | null>
   activePostId?: string
@@ -34,14 +55,86 @@ const viewportHeight = ref(0)
 const activePhotoId = ref<string | null>(null)
 const expandedPhotoUrl = ref('')
 const selectedPostVisibility = ref(1)
+const exposureHistory = readExposureHistory()
+const exposurePrioritySnapshot = new Map(
+  Array.from(exposureHistory, ([id, exposure]) => [id, { ...exposure }]),
+)
+const exposurePriorityTime = Date.now()
 let resizeObserver: ResizeObserver | null = null
+let exposureObserver: IntersectionObserver | null = null
+let exposureSampleInterval: number | null = null
+let exposureHistoryDirty = false
+let lastExposurePersistedAt = 0
 let selectedPostElement: HTMLElement | null = null
 let visibilityFrame: number | null = null
 let selectedPostSetupFrame: number | null = null
 let preloadFrame: number | null = null
 let fullSizeLoadToken = 0
 const originalPhotoPreloads = new Map<string, HTMLLinkElement>()
+const exposureSessions = new Map<string, PostExposureSession>()
 const clusterDateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
+
+function readExposureHistory() {
+  const history = new Map<string, PostExposure>()
+  try {
+    const stored = JSON.parse(localStorage.getItem(exposureStorageKey) ?? '{}') as unknown
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return history
+
+    const now = Date.now()
+    Object.entries(stored).forEach(([id, value]) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return
+      const exposure = value as Partial<PostExposure>
+      if (
+        !Number.isFinite(exposure.attentionSeconds)
+        || !Number.isFinite(exposure.lastSeenAt)
+        || !Number.isFinite(exposure.qualifiedViews)
+        || exposure.lastSeenAt! <= 0
+        || now - exposure.lastSeenAt! > exposureRetentionMs
+      ) {
+        return
+      }
+      history.set(id, {
+        attentionSeconds: Math.max(0, exposure.attentionSeconds!),
+        lastSeenAt: exposure.lastSeenAt!,
+        qualifiedViews: Math.max(0, Math.floor(exposure.qualifiedViews!)),
+      })
+    })
+  } catch {
+    // A blocked or malformed local store should not prevent the gallery from rendering.
+  }
+  return history
+}
+
+function persistExposureHistory() {
+  if (!exposureHistoryDirty) return
+  try {
+    const retained = Array.from(exposureHistory.entries())
+      .filter(([, exposure]) => Date.now() - exposure.lastSeenAt <= exposureRetentionMs)
+      .sort((left, right) => right[1].lastSeenAt - left[1].lastSeenAt)
+      .slice(0, maximumStoredExposures)
+    localStorage.setItem(exposureStorageKey, JSON.stringify(Object.fromEntries(retained)))
+    exposureHistoryDirty = false
+    lastExposurePersistedAt = Date.now()
+  } catch {
+    // Browsing modes that disable localStorage simply get the default recency ordering.
+  }
+}
+
+function postPriority(postIndex: number, postId: string) {
+  const recency = postIndex / Math.max(1, props.posts.length - 1)
+  const exposure = exposurePrioritySnapshot.get(postId)
+  if (!exposure?.qualifiedViews) return 1 + recency * 0.35
+
+  const attention = Math.min(1, Math.log1p(exposure.attentionSeconds) / Math.log1p(20))
+  const repetition = Math.min(1, exposure.qualifiedViews / 3)
+  const daysSinceLastSeen = Math.max(
+    0,
+    (exposurePriorityTime - exposure.lastSeenAt) / (24 * 60 * 60 * 1000),
+  )
+  const decay = 2 ** (-daysSinceLastSeen / 14)
+  const seenPenalty = decay * (0.65 + attention * 0.2 + repetition * 0.15)
+  return recency * 0.35 - seenPenalty
+}
 
 function syncViewportHeight() {
   viewportHeight.value = window.innerHeight
@@ -74,9 +167,13 @@ const imageRecords = computed(() =>
 
 const masonryImageRecords = computed(() =>
   [...imageRecords.value].sort(
-    (left, right) =>
-      right.postIndex - left.postIndex
-      || left.attachmentIndex - right.attachmentIndex,
+    (left, right) => {
+      const priorityDifference = postPriority(right.postIndex, right.post.id)
+        - postPriority(left.postIndex, left.post.id)
+      return priorityDifference
+        || right.postIndex - left.postIndex
+        || left.attachmentIndex - right.attachmentIndex
+    },
   ),
 )
 
@@ -240,8 +337,128 @@ function scheduleSelectedPostVisibilityUpdate() {
   visibilityFrame = requestAnimationFrame(updateSelectedPostVisibility)
 }
 
+function exposureSession(postId: string) {
+  let session = exposureSessions.get(postId)
+  if (!session) {
+    session = {
+      attentionSeconds: 0,
+      lastSampleAt: performance.now(),
+      qualified: false,
+      visibilityRatio: 0,
+      visibleSince: null,
+    }
+    exposureSessions.set(postId, session)
+  }
+  return session
+}
+
+function samplePostExposures() {
+  const now = performance.now()
+  const isPageActive = document.visibilityState === 'visible' && document.hasFocus()
+
+  exposureSessions.forEach((session, postId) => {
+    const isVisible = isPageActive && session.visibilityRatio >= minimumVisibleRatio
+    if (!isVisible) {
+      session.visibleSince = null
+      session.lastSampleAt = now
+      return
+    }
+
+    if (session.visibleSince === null) {
+      session.visibleSince = now
+      session.lastSampleAt = now
+      return
+    }
+
+    const qualificationTime = session.visibleSince + qualificationTimeMs
+    if (now < qualificationTime) {
+      session.lastSampleAt = now
+      return
+    }
+
+    let exposure = exposureHistory.get(postId)
+    if (!exposure) {
+      exposure = { attentionSeconds: 0, lastSeenAt: Date.now(), qualifiedViews: 0 }
+      exposureHistory.set(postId, exposure)
+    }
+    if (!session.qualified) {
+      session.qualified = true
+      exposure.qualifiedViews += 1
+      exposureHistoryDirty = true
+    }
+
+    const sampleStartedAt = Math.max(session.lastSampleAt, qualificationTime)
+    const availableAttention = maximumSessionAttentionSeconds - session.attentionSeconds
+    const attentionSeconds = Math.min(
+      availableAttention,
+      Math.max(0, now - sampleStartedAt) / 1000 * session.visibilityRatio,
+    )
+    session.lastSampleAt = now
+    if (attentionSeconds > 0) {
+      session.attentionSeconds += attentionSeconds
+      exposure.attentionSeconds += attentionSeconds
+      exposure.lastSeenAt = Date.now()
+      exposureHistoryDirty = true
+    }
+  })
+
+  if (exposureHistoryDirty && Date.now() - lastExposurePersistedAt >= 3000) {
+    persistExposureHistory()
+  }
+}
+
+function updatePostExposureVisibility(entries: IntersectionObserverEntry[]) {
+  samplePostExposures()
+  const now = performance.now()
+  entries.forEach((entry) => {
+    const postId = (entry.target as HTMLElement).dataset.clusterKey
+    if (!postId) return
+    const session = exposureSession(postId)
+    const wasVisible = session.visibilityRatio >= minimumVisibleRatio
+    const isVisible = entry.intersectionRatio >= minimumVisibleRatio
+    session.visibilityRatio = entry.intersectionRatio
+    if (isVisible && !wasVisible) {
+      session.visibleSince = now
+      session.lastSampleAt = now
+    } else if (!isVisible) {
+      session.visibleSince = null
+      session.lastSampleAt = now
+    }
+  })
+}
+
+async function observePostExposures() {
+  await nextTick()
+  if (!exposureObserver || !containerRef.value) return
+
+  exposureObserver.disconnect()
+  exposureSessions.forEach((session) => {
+    session.visibilityRatio = 0
+    session.visibleSince = null
+    session.lastSampleAt = performance.now()
+  })
+  containerRef.value.querySelectorAll<HTMLElement>('[data-cluster-key]').forEach((cluster) => {
+    exposureSession(cluster.dataset.clusterKey!).lastSampleAt = performance.now()
+    exposureObserver!.observe(cluster)
+  })
+}
+
+function handleExposureActivityChange() {
+  samplePostExposures()
+  if (document.visibilityState !== 'visible') persistExposureHistory()
+}
+
+function handleExposurePageHide() {
+  samplePostExposures()
+  persistExposureHistory()
+}
+
 watch(() => props.activePostId, observeSelectedPost)
 watch([() => props.activePostId, imageRecords], scheduleActivePostPhotoPreloads, { immediate: true })
+watch(
+  () => masonry.value.clusters.map((cluster) => cluster.key).join(':'),
+  observePostExposures,
+)
 
 function formatClusterDate(value: string): string {
   return clusterDateFormatter.format(new Date(value))
@@ -524,24 +741,41 @@ onMounted(() => {
   syncViewportHeight()
   window.addEventListener('resize', syncViewportHeight, { passive: true })
   window.addEventListener('scroll', scheduleSelectedPostVisibilityUpdate, { passive: true })
+  window.addEventListener('focus', handleExposureActivityChange)
+  window.addEventListener('blur', handleExposureActivityChange)
+  window.addEventListener('pagehide', handleExposurePageHide)
+  document.addEventListener('visibilitychange', handleExposureActivityChange)
 
   resizeObserver = new ResizeObserver(([entry]) => {
     containerWidth.value = entry?.contentRect.width ?? 0
     scheduleSelectedPostVisibilityUpdate()
   })
   if (containerRef.value) resizeObserver.observe(containerRef.value)
+  exposureObserver = new IntersectionObserver(updatePostExposureVisibility, {
+    threshold: [0, minimumVisibleRatio, 0.75, 1],
+  })
+  exposureSampleInterval = window.setInterval(samplePostExposures, 250)
+  observePostExposures()
   observeSelectedPost()
 })
 
 onBeforeUnmount(() => {
+  samplePostExposures()
+  persistExposureHistory()
   fullSizeLoadToken += 1
   originalPhotoPreloads.forEach((preload) => preload.remove())
   resizeObserver?.disconnect()
+  exposureObserver?.disconnect()
+  if (exposureSampleInterval !== null) clearInterval(exposureSampleInterval)
   if (visibilityFrame !== null) cancelAnimationFrame(visibilityFrame)
   if (selectedPostSetupFrame !== null) cancelAnimationFrame(selectedPostSetupFrame)
   if (preloadFrame !== null) cancelAnimationFrame(preloadFrame)
   window.removeEventListener('resize', syncViewportHeight)
   window.removeEventListener('scroll', scheduleSelectedPostVisibilityUpdate)
+  window.removeEventListener('focus', handleExposureActivityChange)
+  window.removeEventListener('blur', handleExposureActivityChange)
+  window.removeEventListener('pagehide', handleExposurePageHide)
+  document.removeEventListener('visibilitychange', handleExposureActivityChange)
   document.documentElement.style.overflow = ''
 })
 </script>

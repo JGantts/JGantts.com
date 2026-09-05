@@ -83,6 +83,15 @@ const router = createRouter({
             socialDescription: 'JGantts',
           },
         },
+        {
+          path: 'dev',
+          name: 'Development',
+          component: () => import('@/views/DevPage.vue'),
+          meta: {
+            title: 'Development | JGantts',
+            description: 'Local development tools for JGantts.com.',
+          },
+        },
         /*{
           path: "services/",
           name: "services",

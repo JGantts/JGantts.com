@@ -311,7 +311,7 @@ the live site is the demonstrable source of truth.
   when no token is configured the write API fails closed while public reads work.
 - Added validated draft creation and editing, explicit idempotent publishing, and
   Markdown rendering through an HTML allowlist sanitizer.
-- Added JPEG, PNG, WebP, and AVIF upload up to 25 MB with required alt text,
+- Added JPEG, PNG, WebP, and AVIF upload up to 100 MB with required alt text,
   SHA-256 checksums, original-byte retention, and large/thumbnail WebP variants.
 - Public media URLs resolve from database records, do not reveal filesystem
   paths, reject path traversal, and return immutable cache headers.

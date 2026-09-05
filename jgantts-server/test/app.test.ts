@@ -885,8 +885,8 @@ test('batch uploads preserve successes and enforce authenticated bounded multipa
   assert.deepEqual(results.map((r: { index: number }) => r.index), [0, 1, 2, 3]);
   assert.deepEqual(media.listForPost('batch').map((m) => m.displayOrder), [0, 1]);
   assert.equal((await send(Array(11).fill(png), Array(11).fill('red'))).status, 413);
-  assert.equal((await send([Buffer.alloc(25 * 1024 * 1024 + 1)], ['large'])).status, 413);
-  assert.equal((await send(Array(3).fill(Buffer.alloc(18 * 1024 * 1024)), ['a', 'b', 'c'])).status, 413);
+  assert.equal((await send([Buffer.alloc(100 * 1024 * 1024 + 1)], ['large'])).status, 413);
+  assert.equal((await send([Buffer.alloc(100 * 1024 * 1024), Buffer.alloc(100 * 1024 * 1024), Buffer.alloc(51 * 1024 * 1024)], ['a', 'b', 'c'])).status, 413);
   assert.equal(media.listForPost('batch').length, 2);
   assert.equal(posts.getById('batch')?.status, 'draft');
   assert.equal((await send(Array(10).fill(png), Array(10).fill('red'))).status, 200);

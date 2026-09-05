@@ -583,7 +583,7 @@ onBeforeUnmount(() => {
 
         <section class="editor-card">
           <section v-if="selectedId" class="media-panel media-panel--primary" aria-labelledby="media-title">
-            <div class="section-heading"><h2 id="media-title">Start with photos</h2><span>JPEG, PNG, WebP, or AVIF · 25 MB max</span></div>
+            <div class="section-heading"><h2 id="media-title">Start with photos</h2><span>JPEG, PNG, WebP, or AVIF · 100 MB per photo</span></div>
             <div v-if="selected?.media.length" class="media-grid">
               <figure
                 v-for="(item, index) in selected.media"

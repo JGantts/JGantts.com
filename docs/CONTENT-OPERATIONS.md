@@ -31,7 +31,7 @@ sent as an `Authorization: Bearer …` header and must exist only in server-side
 configuration. When it is absent, public reads remain available and admin routes
 return `503 admin_unavailable`.
 
-The initial media API accepts JPEG, PNG, WebP, and AVIF images up to 25 MB. Alt
+The initial media API accepts JPEG, PNG, WebP, and AVIF images up to 100 MB. Alt
 text is required. The original bytes are retained and 1,600 px and 480 px WebP
 derivatives are generated without upscaling.
 

@@ -357,7 +357,7 @@ verified against the live domain.
 - Added authenticated multipart `POST /api/admin/media/batch` with ordered
   per-file outcomes. Invalid images and alt text do not discard successful photos;
   successful uploads append in selection order without publishing the post.
-- Limited requests to 10 files, 25 MiB per file, and 50 MiB combined file bytes,
+- Limited requests to 10 files, 100 MiB per file, and 250 MiB combined file bytes,
   counted while streaming even for chunked requests. Envelope/limit errors occur
   before persistence; metadata is bounded separately. Documented retry semantics.
 - Verified authorization, malformed metadata, missing posts, partial failures,

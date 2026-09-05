@@ -43,7 +43,7 @@ instructions.
 `POST /api/admin/media/batch` accepts the same bearer or admin-session authentication
 as single uploads. Send multipart fields `postId`, `altTexts` (a JSON array with one
 entry per file), and repeated `files` parts in the desired gallery order. Limits
-are 10 files, 25 MiB per file, 50 MiB combined file bytes, two text fields, and
+are 10 files, 100 MiB per file, 250 MiB combined file bytes, two text fields, and
 32 KiB per text field. Byte limits apply while streaming, including chunked bodies.
 Multipart/limit errors reject the entire request before storing any photos (400/413);
 missing posts or mismatched metadata arrays return 400.

@@ -10,7 +10,9 @@ import type {
   MediaRecord, MediaRendition, MediaVariant, RenditionFormat, RenditionManifest,
 } from './types';
 
-const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+// Generous enough for modern camera originals while still bounding accidental
+// uploads and decompression work. Derivatives remain optimized for delivery.
+const MAX_IMAGE_BYTES = 100 * 1024 * 1024;
 const MAX_IMAGE_PIXELS = 80_000_000;
 // Covers compact masonry cells through a high-density expanded viewer. The
 // oriented source width is added when it falls between these stops, and widths
@@ -312,7 +314,7 @@ export class MediaService {
     if (!Buffer.isBuffer(input.buffer) || input.buffer.length === 0) {
       throw new PostInputError('An image file is required.');
     }
-    if (input.buffer.length > MAX_IMAGE_BYTES) throw new PostInputError('Image exceeds the 25 MB limit.');
+    if (input.buffer.length > MAX_IMAGE_BYTES) throw new PostInputError('Image exceeds the 100 MB limit.');
     if (
       typeof input.altText !== 'string'
       || input.altText.trim().length === 0

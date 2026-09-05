@@ -3,11 +3,11 @@ import multer from 'multer';
 import type { MediaService } from '../media/media-service';
 import { PostInputError } from '../posts/errors';
 
-const MAX_BATCH_BYTES = 50 * 1024 * 1024;
+const MAX_BATCH_BYTES = 250 * 1024 * 1024;
 const batchBytes = new WeakMap<express.Request, number>();
 // Count streamed bytes, including chunked requests, before retaining each chunk.
 const batchUpload = multer({
-  limits: { fileSize: 25 * 1024 * 1024, files: 10, fields: 2, fieldSize: 32 * 1024, parts: 13 },
+  limits: { fileSize: 100 * 1024 * 1024, files: 10, fields: 2, fieldSize: 32 * 1024, parts: 13 },
   storage: {
     _handleFile(req, file, callback) {
       const chunks: Buffer[] = [];
@@ -20,7 +20,7 @@ const batchUpload = multer({
         if (total > MAX_BATCH_BYTES) {
           failed = true;
           chunks.length = 0;
-          callback(Object.assign(new Error('Batch exceeds 50 MiB.'), { status: 413 }));
+          callback(Object.assign(new Error('Batch exceeds 250 MiB.'), { status: 413 }));
           return;
         }
         chunks.push(chunk);
@@ -41,7 +41,7 @@ const batchUpload = multer({
 });
 
 const upload = multer({
-  limits: { fileSize: 25 * 1024 * 1024, files: 1, fields: 3 },
+  limits: { fileSize: 100 * 1024 * 1024, files: 1, fields: 3 },
   storage: multer.memoryStorage(),
 });
 

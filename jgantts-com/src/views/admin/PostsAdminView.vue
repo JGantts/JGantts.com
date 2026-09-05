@@ -358,6 +358,21 @@ async function archive() {
   }
 }
 
+async function unpublish() {
+  if (!selectedId.value || !window.confirm('Unpublish this post? Its public page will no longer be available.')) return
+  error.value = ''
+  busy.value = true
+  try {
+    const post = await adminRequest<AdminPost>(`/api/admin/posts/${selectedId.value}/unpublish`, jsonRequest('POST'))
+    replacePost(post)
+    notice.value = 'Post unpublished and returned to draft.'
+  } catch (unpublishError) {
+    error.value = message(unpublishError)
+  } finally {
+    busy.value = false
+  }
+}
+
 async function loadSyndication(postId: string) {
   try {
     syndication.value = await adminRequest<Syndication>(
@@ -658,6 +673,7 @@ onBeforeUnmount(() => {
             <div class="editor-actions">
               <button :disabled="busy" type="submit">{{ busy ? 'Working…' : selectedId ? 'Save changes' : 'Create draft' }}</button>
               <button v-if="canPublish" class="button-secondary" :disabled="busy" type="button" @click="publish">Publish locally</button>
+              <button v-if="selected?.status === 'published'" class="button-secondary" :disabled="busy" type="button" @click="unpublish">Unpublish</button>
               <button v-if="selected && selected.status !== 'archived'" class="button-quiet" :disabled="busy" type="button" @click="archive">Archive</button>
             </div>
           </form>

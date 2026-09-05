@@ -89,7 +89,7 @@ export class PostService {
     const id = randomUUID();
     return this.posts.create({
       id,
-      slug: `draft-${id.replaceAll('-', '').slice(0, 12)}`,
+      slug: id,
       bodyMarkdown: '',
       bodyHtml: '',
     });
@@ -173,6 +173,12 @@ export class PostService {
     if (!post || post.status === 'archived') return null;
     if (post.status === 'published') return post;
     return this.posts.update(id, { status: 'published', publishedAt }, publishedAt);
+  }
+
+  unpublish(id: string, updatedAt = new Date().toISOString()): Post | null {
+    const post = this.posts.getById(id);
+    if (!post || post.status !== 'published') return post;
+    return this.posts.update(id, { status: 'draft', publishedAt: null }, updatedAt);
   }
 
   archive(id: string, archivedAt = new Date().toISOString()): Post | null {

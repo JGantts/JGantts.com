@@ -115,6 +115,19 @@ export function createAdminPostsRouter(
     }
   });
 
+  router.post('/:id/unpublish', (req, res, next) => {
+    try {
+      const post = posts.unpublish(req.params.id);
+      if (!post) {
+        res.status(404).json({ error: { code: 'not_found', message: 'Post not found.' } });
+        return;
+      }
+      res.set('Cache-Control', 'no-store').json(responsePost(post));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.put('/:id/media/order', (req, res, next) => {
     try {
       if (!media) throw Object.assign(new Error('Media service is unavailable.'), { status: 503 });

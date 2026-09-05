@@ -430,7 +430,7 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.equal(emptyDraft.status, 'draft');
   assert.equal(emptyDraft.bodyMarkdown, '');
   assert.deepEqual(emptyDraft.media, []);
-  assert.match(emptyDraft.slug, /^draft-[a-f0-9]{12}$/);
+  assert.match(emptyDraft.slug, /^[a-f0-9-]{36}$/);
   assert.equal(emptyDraftResponse.headers.location, `/api/admin/posts/${emptyDraft.id}`);
   assert.equal((await request(app, '/api/admin/posts/empty', {
     body: JSON.stringify({ title: 'not accepted' }),
@@ -470,13 +470,20 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.equal((await request(app, '/api/posts/canonical-local-post')).status, 200);
   assert.equal((await request(app, '/api/posts/first-local-post')).status, 200);
 
+  const unpublishedResponse = await request(app, `/api/admin/posts/${created.id}/unpublish`, {
+    headers: { authorization: 'Bearer test-admin-secret' },
+    method: 'POST',
+  });
+  assert.equal(unpublishedResponse.status, 200);
+  assert.equal(JSON.parse(unpublishedResponse.body).status, 'draft');
+  assert.equal((await request(app, '/api/posts/canonical-local-post')).status, 404);
+
   const archivedResponse = await request(app, `/api/admin/posts/${created.id}/archive`, {
     headers: { authorization: 'Bearer test-admin-secret' },
     method: 'POST',
   });
   assert.equal(archivedResponse.status, 200);
   assert.equal(JSON.parse(archivedResponse.body).status, 'archived');
-  assert.equal((await request(app, '/api/posts/canonical-local-post')).status, 404);
 });
 
 test('protects and idempotently queues the explicit Mastodon syndication API', async (t) => {

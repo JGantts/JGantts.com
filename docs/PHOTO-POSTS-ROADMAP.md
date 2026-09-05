@@ -32,9 +32,9 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 ## Current state
 
-- Status: Phases 1–2 and authoring items 3.1–3.3 are complete; Phase 3 is in progress.
+- Status: Phases 1–2 and authoring items 3.1–3.4 are complete; Phase 3 is in progress.
 - Active item: None.
-- Next item: 3.4 — accessible gallery reorder controls.
+- Next item: 3.5 — hero selection and focal-point previews.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; responsive WebP, AVIF, and JPEG/PNG fallback renditions; checksums; dimensions;
@@ -173,7 +173,7 @@ responsive rendition set that can be regenerated deterministically.
   cancellation, failure, and retry states.
 - [x] **3.3** Present every uploaded photo as an editable card with thumbnail,
   required alt text, optional caption, dimensions, and processing status.
-- [ ] **3.4** Add keyboard-accessible drag reorder plus explicit move controls for
+- [x] **3.4** Add keyboard-accessible drag reorder plus explicit move controls for
   touch and assistive technology; save one complete ordered list.
 - [ ] **3.5** Add hero-photo selection and a focal-point picker with an immediate
   preview of existing masonry tiles and social-preview crops.
@@ -558,6 +558,15 @@ verified against the live domain.
 - Successful metadata saves update only the matching photo in local editor state;
   validation and server failures remain visible without discarding unsaved card
   text. Existing server coverage verifies metadata validation and persistence.
+- The client production build and all 63 server tests/type checks pass on Node
+  22.23.2; consolidated interaction coverage remains in item 3.9.
+
+### 2026-09-05 — Accessible gallery ordering
+
+- Added direct drag-and-drop ordering for pointer users and explicit move-earlier
+  and move-later controls that remain operable from keyboards and touch devices.
+- Every change sends the server one complete ordered media-id list; the editor
+  replaces its local gallery with the server-normalized result after persistence.
 - The client production build and all 63 server tests/type checks pass on Node
   22.23.2; consolidated interaction coverage remains in item 3.9.
 

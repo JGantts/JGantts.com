@@ -49,6 +49,8 @@ const uploadQueue = ref<UploadQueueItem[]>([])
 const uploadRunning = ref(false)
 const mediaDrafts = reactive<Record<string, { altText: string; caption: string }>>({})
 const mediaSavingId = ref<string | null>(null)
+const orderSaving = ref(false)
+const draggedMediaId = ref<string | null>(null)
 const syndication = ref<Syndication | null>(null)
 const teaser = ref('')
 let previewTimer: ReturnType<typeof setTimeout> | null = null
@@ -211,6 +213,60 @@ async function saveMedia(item: PostMedia) {
   } finally {
     mediaSavingId.value = null
   }
+}
+
+function updateSelectedMedia(media: PostMedia[]) {
+  const post = selected.value
+  if (!post) return
+  const index = posts.value.findIndex(({ id }) => id === post.id)
+  if (index !== -1) posts.value.splice(index, 1, { ...post, media })
+}
+
+async function saveMediaOrder(media: PostMedia[]) {
+  if (!selectedId.value || orderSaving.value) return
+  orderSaving.value = true
+  error.value = ''
+  try {
+    const result = await adminRequest<{ media: PostMedia[] }>(
+      `/api/admin/posts/${selectedId.value}/media/order`,
+      jsonRequest('PUT', { mediaIds: media.map(({ id }) => id) }),
+    )
+    updateSelectedMedia(result.media)
+    notice.value = 'Photo order saved.'
+  } catch (orderError) {
+    error.value = message(orderError)
+  } finally {
+    orderSaving.value = false
+  }
+}
+
+async function moveMedia(index: number, offset: -1 | 1) {
+  const media = [...(selected.value?.media ?? [])]
+  const target = index + offset
+  if (!media[index] || target < 0 || target >= media.length) return
+  ;[media[index], media[target]] = [media[target], media[index]]
+  await saveMediaOrder(media)
+}
+
+function startMediaDrag(item: PostMedia, event: DragEvent) {
+  draggedMediaId.value = item.id
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', item.id)
+  }
+}
+
+async function dropMedia(targetId: string) {
+  const sourceId = draggedMediaId.value
+  draggedMediaId.value = null
+  if (!sourceId || sourceId === targetId) return
+  const media = [...(selected.value?.media ?? [])]
+  const sourceIndex = media.findIndex(({ id }) => id === sourceId)
+  const targetIndex = media.findIndex(({ id }) => id === targetId)
+  if (sourceIndex < 0 || targetIndex < 0) return
+  const [moved] = media.splice(sourceIndex, 1)
+  media.splice(targetIndex, 0, moved)
+  await saveMediaOrder(media)
 }
 
 async function save(): Promise<AdminPost | null> {
@@ -497,10 +553,23 @@ onBeforeUnmount(() => {
           <section v-if="selectedId" class="media-panel media-panel--primary" aria-labelledby="media-title">
             <div class="section-heading"><h2 id="media-title">Start with photos</h2><span>JPEG, PNG, WebP, or AVIF · 25 MB max</span></div>
             <div v-if="selected?.media.length" class="media-grid">
-              <figure v-for="item in selected.media" :key="item.id">
+              <figure
+                v-for="(item, index) in selected.media"
+                :key="item.id"
+                :class="{ 'is-dragging': draggedMediaId === item.id }"
+                draggable="true"
+                @dragend="draggedMediaId = null"
+                @dragover.prevent
+                @dragstart="startMediaDrag(item, $event)"
+                @drop.prevent="dropMedia(item.id)"
+              >
                 <img :alt="item.altText" :src="item.urls.thumbnail">
                 <figcaption>
-                  <span>{{ item.width }} × {{ item.height }} · {{ item.processingState }}</span>
+                  <span>Photo {{ index + 1 }} · {{ item.width }} × {{ item.height }} · {{ item.processingState }}</span>
+                  <div class="media-order-actions" aria-label="Change photo position">
+                    <button class="button-secondary" :disabled="orderSaving || index === 0" type="button" @click="moveMedia(index, -1)">Move earlier</button>
+                    <button class="button-secondary" :disabled="orderSaving || index === selected.media.length - 1" type="button" @click="moveMedia(index, 1)">Move later</button>
+                  </div>
                   <label>Alt text <textarea v-model="mediaDrafts[item.id].altText" maxlength="2000" rows="2" required></textarea></label>
                   <label>Caption <textarea v-model="mediaDrafts[item.id].caption" maxlength="5000" rows="2"></textarea></label>
                   <button :disabled="mediaSavingId === item.id || !mediaDrafts[item.id].altText.trim()" type="button" @click="saveMedia(item)">
@@ -621,8 +690,12 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .media-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); margin-bottom: 1rem; }
 .media-grid img { aspect-ratio: 1; border-radius: 0.5rem; object-fit: cover; width: 100%; }
 .media-grid figure { border: 1px solid var(--border); border-radius: 0.65rem; padding: 0.65rem; }
+.media-grid figure[draggable="true"] { cursor: grab; }
+.media-grid figure.is-dragging { opacity: 0.5; }
 .media-grid figcaption { display: grid; gap: 0.65rem; margin-top: 0.5rem; }
 .media-grid figcaption > span { color: var(--muted); font-family: 'Azeret Mono Variable', monospace; font-size: 0.7rem; }
+.media-order-actions { display: grid; gap: 0.4rem; grid-template-columns: 1fr 1fr; }
+.media-order-actions button { font-size: 0.72rem; padding: 0.45rem; }
 .photo-dropzone { align-items: center; border: 2px dashed var(--border); border-radius: 0.75rem; cursor: pointer; display: grid; justify-items: center; padding: 1.5rem; text-align: center; }
 .photo-dropzone span, .upload-status { color: var(--muted); font-size: 0.75rem; }
 .photo-dropzone input { max-width: 28rem; }

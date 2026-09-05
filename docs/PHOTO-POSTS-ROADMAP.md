@@ -32,9 +32,9 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 ## Current state
 
-- Status: Phases 1–2 are complete.
+- Status: Phases 1–2 and authoring item 3.1 are complete; Phase 3 is in progress.
 - Active item: None.
-- Next item: 3.1 — photo-first draft creation.
+- Next item: 3.2 — multi-file upload progress and recovery.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; responsive WebP, AVIF, and JPEG/PNG fallback renditions; checksums; dimensions;
@@ -167,7 +167,7 @@ responsive rendition set that can be regenerated deterministically.
 
 ### Phase 3 — Photo-first authoring
 
-- [ ] **3.1** Change the editor's new-post flow to create an empty draft first,
+- [x] **3.1** Change the editor's new-post flow to create an empty draft first,
   then make drag-and-drop or file selection the primary action.
 - [ ] **3.2** Support multi-file selection with individual progress, preview,
   cancellation, failure, and retry states.
@@ -524,6 +524,19 @@ verified against the live domain.
   and failed regeneration with the prior manifest and files preserved. All 63
   server tests, type checking, and the client production build pass on Node
   22.23.2. Phase 2 is complete.
+
+### 2026-09-05 — Photo-first empty drafts
+
+- Added an authenticated empty-draft operation that immediately creates a
+  persistent draft with a collision-resistant temporary slug and no required
+  prose. It rejects supplied authoring fields and returns the normal normalized
+  admin post contract.
+- The editor now creates the draft before authoring and places photo selection at
+  the top of the workspace. New users can upload immediately instead of first
+  inventing a title, slug, or Markdown body.
+- Verified authentication, empty state, generated slugs, response location, and
+  field rejection. All 63 server tests, type checking, and the client production
+  build pass on Node 22.23.2.
 
 ## Definition of done
 

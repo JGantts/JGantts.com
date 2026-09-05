@@ -55,6 +55,18 @@ export function createAdminPostsRouter(
     }
   });
 
+  router.post('/empty', (req, res, next) => {
+    try {
+      if (req.body !== undefined && (!isRecord(req.body) || Object.keys(req.body).length > 0)) {
+        throw Object.assign(new Error('Empty draft creation does not accept fields.'), { status: 400 });
+      }
+      const post = posts.createEmptyDraft();
+      res.status(201).set('Location', `/api/admin/posts/${post.id}`).json(responsePost(post));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post('/', (req, res, next) => {
     try {
       const post = posts.createDraft(parseBody(req.body, false) as AuthorPostInput);

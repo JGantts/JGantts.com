@@ -85,6 +85,16 @@ export class PostService {
     });
   }
 
+  createEmptyDraft(): Post {
+    const id = randomUUID();
+    return this.posts.create({
+      id,
+      slug: `draft-${id.replaceAll('-', '').slice(0, 12)}`,
+      bodyMarkdown: '',
+      bodyHtml: '',
+    });
+  }
+
   findById(id: string): Post | null {
     return this.posts.getById(id);
   }

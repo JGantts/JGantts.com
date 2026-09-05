@@ -419,6 +419,25 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.equal(getResponse.status, 200);
   assert.equal(JSON.parse(getResponse.body).slug, 'first-local-post');
 
+  const emptyDraftResponse = await request(app, '/api/admin/posts/empty', {
+    headers: { authorization: 'Bearer test-admin-secret' },
+    method: 'POST',
+  });
+  assert.equal(emptyDraftResponse.status, 201);
+  const emptyDraft = JSON.parse(emptyDraftResponse.body) as {
+    bodyMarkdown: string; id: string; media: unknown[]; slug: string; status: string;
+  };
+  assert.equal(emptyDraft.status, 'draft');
+  assert.equal(emptyDraft.bodyMarkdown, '');
+  assert.deepEqual(emptyDraft.media, []);
+  assert.match(emptyDraft.slug, /^draft-[a-f0-9]{12}$/);
+  assert.equal(emptyDraftResponse.headers.location, `/api/admin/posts/${emptyDraft.id}`);
+  assert.equal((await request(app, '/api/admin/posts/empty', {
+    body: JSON.stringify({ title: 'not accepted' }),
+    headers: { authorization: 'Bearer test-admin-secret', 'content-type': 'application/json' },
+    method: 'POST',
+  })).status, 400);
+
   const previewResponse = await request(app, '/api/admin/posts/preview', {
     body: JSON.stringify({ bodyMarkdown: '**Preview** <script>bad()</script>' }),
     headers: {

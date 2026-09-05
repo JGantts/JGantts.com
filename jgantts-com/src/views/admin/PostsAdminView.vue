@@ -82,18 +82,20 @@ function copyToForm(post: AdminPost) {
   if (post.status === 'published') void loadSyndication(post.id)
 }
 
-function newDraft() {
-  selectedId.value = null
-  form.title = ''
-  form.slug = ''
-  form.excerpt = ''
-  form.contentWarning = ''
-  form.bodyMarkdown = ''
-  previewHtml.value = ''
-  teaser.value = ''
-  syndication.value = null
-  notice.value = 'New unsaved draft'
+async function newDraft() {
+  if (!authenticated.value || busy.value) return
   error.value = ''
+  notice.value = ''
+  busy.value = true
+  try {
+    const post = await adminRequest<AdminPost>('/api/admin/posts/empty', jsonRequest('POST'))
+    replacePost(post)
+    notice.value = 'Empty draft created. Add photos first, then optional writing.'
+  } catch (draftError) {
+    error.value = message(draftError)
+  } finally {
+    busy.value = false
+  }
 }
 
 async function login() {
@@ -105,7 +107,7 @@ async function login() {
     authenticated.value = true
     tokenInput.value = ''
     if (posts.value[0]) copyToForm(posts.value[0])
-    else newDraft()
+    else await newDraft()
   } catch (loginError) {
     error.value = message(loginError)
   } finally {
@@ -123,7 +125,12 @@ async function signOut() {
   posts.value = []
   selectedId.value = null
   tokenInput.value = ''
-  newDraft()
+  form.title = ''
+  form.slug = ''
+  form.excerpt = ''
+  form.contentWarning = ''
+  form.bodyMarkdown = ''
+  previewHtml.value = ''
 }
 
 async function restoreSession() {
@@ -131,7 +138,7 @@ async function restoreSession() {
     await loadPosts()
     authenticated.value = true
     if (posts.value[0]) copyToForm(posts.value[0])
-    else newDraft()
+    else await newDraft()
   } catch (sessionError) {
     if (!(sessionError instanceof AdminApiError && sessionError.status === 401)) {
       error.value = message(sessionError)
@@ -349,7 +356,7 @@ onBeforeUnmount(() => {
           <h1>Post editor</h1>
         </div>
         <div class="toolbar-actions">
-          <button class="button-secondary" type="button" @click="newDraft">New draft</button>
+          <button class="button-secondary" :disabled="busy" type="button" @click="newDraft">New draft</button>
           <button class="button-quiet" type="button" @click="signOut">Log out</button>
         </div>
       </header>
@@ -370,6 +377,22 @@ onBeforeUnmount(() => {
         </aside>
 
         <section class="editor-card">
+          <section v-if="selectedId" class="media-panel media-panel--primary" aria-labelledby="media-title">
+            <div class="section-heading"><h2 id="media-title">Start with photos</h2><span>JPEG, PNG, WebP, or AVIF · 25 MB max</span></div>
+            <div v-if="selected?.media.length" class="media-grid">
+              <figure v-for="item in selected.media" :key="item.id">
+                <img :alt="item.altText" :src="item.urls.thumbnail">
+                <figcaption>{{ item.altText }}</figcaption>
+              </figure>
+            </div>
+            <p v-else class="empty-state">Choose the first photograph for this draft.</p>
+            <form class="upload-form" @submit.prevent="uploadMedia">
+              <label>Image <input accept="image/jpeg,image/png,image/webp,image/avif" type="file" @change="chooseFile"></label>
+              <label>Alt text <input v-model="uploadAlt" maxlength="2000" required></label>
+              <button :disabled="busy || !uploadFile || !uploadAlt.trim()" type="submit">Upload image</button>
+            </form>
+          </section>
+
           <form class="editor-form" @submit.prevent="save">
             <div class="status-row">
               <span class="status-chip">{{ selected?.status || 'unsaved' }}</span>
@@ -391,21 +414,6 @@ onBeforeUnmount(() => {
             <div class="section-heading"><h2 id="preview-title">Preview</h2><span v-if="previewBusy">Updating…</span></div>
             <div v-if="previewHtml" class="preview-body" v-html="previewHtml"></div>
             <p v-else class="empty-state">Write some Markdown to preview it.</p>
-          </section>
-
-          <section v-if="selectedId" class="media-panel" aria-labelledby="media-title">
-            <div class="section-heading"><h2 id="media-title">Images</h2><span>JPEG, PNG, WebP, or AVIF · 25 MB max</span></div>
-            <div v-if="selected?.media.length" class="media-grid">
-              <figure v-for="item in selected.media" :key="item.id">
-                <img :alt="item.altText" :src="item.urls.thumbnail">
-                <figcaption>{{ item.altText }}</figcaption>
-              </figure>
-            </div>
-            <form class="upload-form" @submit.prevent="uploadMedia">
-              <label>Image <input accept="image/jpeg,image/png,image/webp,image/avif" type="file" @change="chooseFile"></label>
-              <label>Alt text <input v-model="uploadAlt" maxlength="2000" required></label>
-              <button :disabled="busy || !uploadFile || !uploadAlt.trim()" type="submit">Upload image</button>
-            </form>
           </section>
 
           <section v-if="canSyndicate" class="mastodon-panel" aria-labelledby="syndication-title">
@@ -456,6 +464,7 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .status-chip { border: 1px solid var(--border); border-radius: 999px; font-family: 'Azeret Mono Variable', monospace; font-size: 0.7rem; padding: 0.25rem 0.55rem; }
 .status-row a, .editor-actions a { color: var(--accent); font-size: 0.8rem; }
 .preview, .media-panel, .mastodon-panel { border-top: 1px solid var(--border); padding-top: 1.5rem; }
+.media-panel--primary { border-top: 0; padding-top: 0; }
 .section-heading { align-items: baseline; margin-bottom: 1rem; }
 .section-heading h2 { font-size: 1.25rem; font-weight: 650; }
 .preview-body { line-height: 1.65; }

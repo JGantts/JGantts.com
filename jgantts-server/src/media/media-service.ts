@@ -11,6 +11,7 @@ import type {
 } from './types';
 
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+const MAX_IMAGE_PIXELS = 80_000_000;
 // Covers compact masonry cells through a high-density expanded viewer. The
 // oriented source width is added when it falls between these stops, and widths
 // above the source are omitted.
@@ -274,6 +275,25 @@ function promoteStagedFiles(
   });
 }
 
+function cleanStaleStagingDirectories(mediaRoot: string): void {
+  for (const entry of fs.readdirSync(mediaRoot, { withFileTypes: true })) {
+    if (!entry.name.startsWith('.staging-') || (!entry.isDirectory() && !entry.isSymbolicLink())) continue;
+    const ownerPid = Number(entry.name.split('-')[1]);
+    if (Number.isInteger(ownerPid) && ownerPid > 0) {
+      try {
+        process.kill(ownerPid, 0);
+        continue;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'EPERM') continue;
+      }
+    } else {
+      const age = Date.now() - fs.lstatSync(path.join(mediaRoot, entry.name)).mtimeMs;
+      if (age < 60 * 60 * 1_000) continue;
+    }
+    fs.rmSync(path.join(mediaRoot, entry.name), { recursive: true, force: true });
+  }
+}
+
 export class MediaService {
   private readonly directories;
 
@@ -284,6 +304,7 @@ export class MediaService {
     private readonly processingHooks: MediaProcessingHooks = {},
   ) {
     this.directories = ensureMediaDirectories(mediaRoot);
+    cleanStaleStagingDirectories(mediaRoot);
   }
 
   async uploadImage(input: UploadImageInput): Promise<PublicMedia> {
@@ -314,11 +335,14 @@ export class MediaService {
     if (!format || !metadata.width || !metadata.height) {
       throw new PostInputError('Only JPEG, PNG, WebP, and AVIF images are supported.');
     }
+    if (metadata.width * metadata.height > MAX_IMAGE_PIXELS) {
+      throw new PostInputError('Image exceeds the 80 megapixel safety limit.');
+    }
 
     const id = randomUUID();
     const originalName = `${id}.${format.extension}`;
     const originalPath = path.join(this.directories.originals, originalName);
-    const stagingDirectory = fs.mkdtempSync(path.join(this.mediaRoot, '.staging-'));
+    const stagingDirectory = fs.mkdtempSync(path.join(this.mediaRoot, `.staging-${process.pid}-`));
     const stagedFiles: StagedMediaFile[] = [];
     const promotedPaths: string[] = [];
 
@@ -455,6 +479,9 @@ export class MediaService {
       || !formats[metadata.format as keyof typeof formats]) {
       throw new Error('Stored source is not a supported readable image.');
     }
+    if (metadata.width * metadata.height > MAX_IMAGE_PIXELS) {
+      throw new Error('Stored source exceeds the 80 megapixel safety limit.');
+    }
     const widths = responsiveWidths(metadata.autoOrient.width);
     const renditionCount = 1 + widths.reduce(
       (count, width) => count + 2 + (width >= MINIMUM_AVIF_WIDTH ? 1 : 0),
@@ -464,7 +491,7 @@ export class MediaService {
 
     const generation = randomUUID().replaceAll('-', '').slice(0, 8);
     const suffix = `-v-${generation}`;
-    const stagingDirectory = fs.mkdtempSync(path.join(this.mediaRoot, '.staging-'));
+    const stagingDirectory = fs.mkdtempSync(path.join(this.mediaRoot, `.staging-${process.pid}-`));
     const promotedPaths: string[] = [];
     let updated = false;
     try {

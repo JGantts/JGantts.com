@@ -32,9 +32,9 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 ## Current state
 
-- Status: Phase 1 and photo pipeline items 2.1–2.7 are complete; Phase 2 is in progress.
+- Status: Phases 1–2 are complete.
 - Active item: None.
-- Next item: 2.8 — adversarial image-pipeline coverage.
+- Next item: 3.1 — photo-first draft creation.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; responsive WebP, AVIF, and JPEG/PNG fallback renditions; checksums; dimensions;
@@ -159,7 +159,7 @@ SQL or filesystem work by the client.
   sources after pipeline changes, with dry-run and bounded-concurrency options.
   Reconcile legacy width/height values with the oriented source dimensions; the
   2.1 upload fix does not retroactively update stored media records.
-- [ ] **2.8** Add corruption, unsupported color/profile, decompression-bomb,
+- [x] **2.8** Add corruption, unsupported color/profile, decompression-bomb,
   disk-full, restart, and regeneration tests.
 
 Exit condition: every accepted source image has a verified, privacy-conscious,
@@ -510,6 +510,20 @@ verified against the live domain.
   preservation, versioned URLs, orientation reconciliation, argument validation,
   and a compiled CLI smoke run. All 62 server tests, type checking, both
   production builds pass on Node 22.23.2.
+
+### 2026-09-05 — Adversarial pipeline coverage
+
+- Added an explicit 80-megapixel input ceiling checked before decode work and a
+  crafted oversized PNG-header test. Existing type/format validation rejects
+  unreadable and unsupported sources before persistence.
+- Staging directories now identify their owner process. Service startup removes
+  remnants owned by dead processes without disturbing live work; legacy staging
+  directories are removed only after an age threshold.
+- Verified staged corruption, simulated disk exhaustion, mid-promotion failure,
+  database failure, crash remnants, profiled color conversion, oversized input,
+  and failed regeneration with the prior manifest and files preserved. All 63
+  server tests, type checking, and the client production build pass on Node
+  22.23.2. Phase 2 is complete.
 
 ## Definition of done
 

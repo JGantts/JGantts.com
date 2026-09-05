@@ -19,6 +19,15 @@ function temporaryDirectory(t: test.TestContext): string {
   return directory;
 }
 
+function crc32(buffer: Buffer): number {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
 test('configures and migrates a file database idempotently', (t) => {
   const root = temporaryDirectory(t);
   const databasePath = path.join(root, 'content.sqlite');
@@ -413,6 +422,17 @@ test('staged upload failures remove partial files without touching valid media',
   );
   assert.deepEqual(snapshot(), validFiles);
 
+  const diskFullService = new MediaService(repository, posts, mediaRoot, {
+    afterStage() {
+      throw Object.assign(new Error('simulated disk full'), { code: 'ENOSPC' });
+    },
+  });
+  await assert.rejects(
+    () => diskFullService.uploadImage({ postId: 'atomic', altText: 'Disk full', buffer: source }),
+    /simulated disk full/,
+  );
+  assert.deepEqual(snapshot(), validFiles);
+
   const promotionFailureService = new MediaService(repository, posts, mediaRoot, {
     beforePromote(_file, index) {
       if (index === 2) throw new Error('injected promotion failure');
@@ -472,6 +492,47 @@ test('dry-runs and regenerates versioned derivatives while reconciling oriented 
   assert.deepEqual(fs.readFileSync(service.getFile(uploaded.id, 'original')!.path), source);
   assert.match(service.listForPost('regenerate')[0].renditions[0].url, /-v-[a-f0-9]{8}$/);
   await assert.rejects(() => service.regenerateAll({ concurrency: 0 }), /concurrency/);
+
+  const currentPaths = { ...regenerated.derivatives };
+  const failingService = new MediaService(repository, posts, mediaRoot, {
+    afterStage(files) {
+      fs.writeFileSync(files.find(({ rendition }) => rendition)?.stagedPath ?? '', 'corrupt');
+    },
+  });
+  const failed = await failingService.regenerateAll();
+  assert.equal(failed[0].status, 'failed');
+  assert.deepEqual(repository.getById(uploaded.id)!.derivatives, currentPaths);
+  assert.ok(Object.values(currentPaths).every((relativePath) =>
+    relativePath && fs.existsSync(path.join(mediaRoot, relativePath))));
+});
+
+test('rejects decompression-bomb dimensions and removes staging left by a dead process', async (t) => {
+  const root = temporaryDirectory(t);
+  const mediaRoot = path.join(root, 'media');
+  ensureMediaDirectories(mediaRoot);
+  const staleDirectory = path.join(mediaRoot, '.staging-999999-crash');
+  fs.mkdirSync(staleDirectory, { mode: 0o700 });
+  fs.writeFileSync(path.join(staleDirectory, 'partial'), 'partial');
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostRepository(database);
+  posts.create({ id: 'limits', slug: 'limits', bodyMarkdown: '', bodyHtml: '' });
+  const service = new MediaService(new MediaRepository(database), posts, mediaRoot);
+  assert.equal(fs.existsSync(staleDirectory), false);
+
+  const tinyPng = await sharp({
+    create: { width: 1, height: 1, channels: 3, background: 'black' },
+  }).png().toBuffer();
+  const oversizedHeader = Buffer.from(tinyPng);
+  oversizedHeader.writeUInt32BE(10_000, 16);
+  oversizedHeader.writeUInt32BE(9_000, 20);
+  oversizedHeader.writeUInt32BE(crc32(oversizedHeader.subarray(12, 29)), 29);
+  await assert.rejects(
+    () => service.uploadImage({ postId: 'limits', altText: 'Oversized', buffer: oversizedHeader }),
+    /80 megapixel safety limit/,
+  );
+  assert.deepEqual(fs.readdirSync(path.join(mediaRoot, 'derived')), []);
+  assert.deepEqual(fs.readdirSync(path.join(mediaRoot, 'originals')), []);
 });
 
 test('rejects invalid image uploads before creating media records', async (t) => {

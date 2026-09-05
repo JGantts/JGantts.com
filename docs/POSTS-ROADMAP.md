@@ -33,9 +33,9 @@ Authoring -> JGantts database -> canonical post page
 
 ## Current state
 
-- Status: Architecture agreed; implementation not started.
+- Status: Phase 1 complete; Phase 2 canonical post API in progress.
 - Active item: None.
-- Next item: 1.1 — define and document the runtime data locations.
+- Next item: 2.3 — implement authenticated admin create and update endpoints.
 - Existing implementation: `/photos` contains six hard-coded Mastodon status IDs.
   The Vue client requests each status and its context directly from
   `mastodon.social` and treats the Mastodon response as both post content and
@@ -120,20 +120,20 @@ deployment workflow.
 
 ### Phase 1 — Persistence foundation
 
-- [ ] **1.1** Add configuration for the SQLite database and media roots; document
+- [x] **1.1** Add configuration for the SQLite database and media roots; document
   development and production paths and ensure production data is outside the
   deployment target.
-- [ ] **1.2** Select a maintained SQLite driver compatible with the production
+- [x] **1.2** Select a maintained SQLite driver compatible with the production
   Node version and add it to the server.
-- [ ] **1.3** Add a migration runner and initial schema for posts, slug redirects,
+- [x] **1.3** Add a migration runner and initial schema for posts, slug redirects,
   media, syndications, outbox jobs, and Mastodon comment cache.
-- [ ] **1.4** Enable WAL mode, foreign keys, busy timeout, and safe transaction
+- [x] **1.4** Enable WAL mode, foreign keys, busy timeout, and safe transaction
   helpers.
-- [ ] **1.5** Add repository/service boundaries so API routes do not issue ad hoc
+- [x] **1.5** Add repository/service boundaries so API routes do not issue ad hoc
   SQL.
-- [ ] **1.6** Add database migration and repository tests using isolated temporary
+- [x] **1.6** Add database migration and repository tests using isolated temporary
   databases.
-- [ ] **1.7** Document backup and restore commands for the database and original
+- [x] **1.7** Document backup and restore commands for the database and original
   media; validate a restore in a temporary location.
 
 Exit condition: the server can create, read, update, and migrate posts in a
@@ -141,8 +141,8 @@ persistent local database, and backup restoration has been tested.
 
 ### Phase 2 — Canonical post API and media
 
-- [ ] **2.1** Implement public `GET /api/posts` with stable ordering and pagination.
-- [ ] **2.2** Implement public `GET /api/posts/:slug`, including old-slug
+- [x] **2.1** Implement public `GET /api/posts` with stable ordering and pagination.
+- [x] **2.2** Implement public `GET /api/posts/:slug`, including old-slug
   resolution.
 - [ ] **2.3** Implement authenticated admin create and update endpoints.
 - [ ] **2.4** Implement an explicit publish operation with transactional state and
@@ -280,6 +280,26 @@ the live site is the demonstrable source of truth.
   sanitization, and caching behind the Express server.
 - Deferred ActivityPub to keep the initial scope focused on content ownership and
   reliable publishing.
+
+### 2026-09-04 — Persistence foundation
+
+- Selected `better-sqlite3` 13 and standardized the server runtime on Node 22,
+  matching the production deployment workflow.
+- Development content defaults to `jgantts-server/.data`; production defaults to
+  `/var/lib/jgantts` and rejects locations inside the deployment tree.
+- Added transactional migrations, post revisions and slug redirects, repository
+  and service boundaries, and application-aware SQLite/media backup.
+- Verified the foundation with 20 passing server tests and a production build;
+  the persistence suite includes a temporary backup-and-restore rehearsal.
+
+### 2026-09-04 — Public post API
+
+- Wired the production content database into Express through `PostService` and
+  `PostRepository`, keeping SQL out of API routes.
+- Added stable `(published_at, id)` cursor pagination and current/prior-slug
+  lookup for published posts. Drafts and archived posts are not exposed.
+- Added cache headers, canonical API `Content-Location`, pagination validation,
+  and integration coverage. All 22 server tests and the production build pass.
 
 ## Definition of done
 

@@ -1,4 +1,25 @@
+import path from 'node:path';
+import { SERVER_ROOT } from './paths';
+
 export const DEFAULT_PORT = 3000;
+export const PRODUCTION_DATA_ROOT = '/var/lib/jgantts';
+const DEPLOYMENT_ROOT = path.resolve(SERVER_ROOT, '..');
+
+function resolveDataRoot(value: string | undefined, environment: NodeJS.ProcessEnv): string {
+  const configured = value?.trim();
+  const defaultRoot = environment.NODE_ENV === 'production'
+    ? PRODUCTION_DATA_ROOT
+    : path.join(SERVER_ROOT, '.data');
+  const resolved = path.resolve(configured || defaultRoot);
+
+  const isInsideDeployment = resolved === DEPLOYMENT_ROOT
+    || resolved.startsWith(`${DEPLOYMENT_ROOT}${path.sep}`);
+  if (environment.NODE_ENV === 'production' && isInsideDeployment) {
+    throw new Error('JGANTTS_DATA_ROOT must be outside the deployed application directory in production.');
+  }
+
+  return resolved;
+}
 
 export function normalizeSiteOrigin(value: string | undefined): string {
   if (!value?.trim()) {
@@ -32,12 +53,19 @@ export function parsePort(value: string | undefined): number {
 }
 
 export interface RuntimeConfig {
+  dataRoot: string;
+  databasePath: string;
+  mediaRoot: string;
   port: number;
   siteOrigin: string;
 }
 
 export function getRuntimeConfig(environment: NodeJS.ProcessEnv = process.env): RuntimeConfig {
+  const dataRoot = resolveDataRoot(environment.JGANTTS_DATA_ROOT, environment);
   return {
+    dataRoot,
+    databasePath: path.join(dataRoot, 'content.sqlite'),
+    mediaRoot: path.join(dataRoot, 'media'),
     port: parsePort(environment.PORT),
     siteOrigin: normalizeSiteOrigin(environment.SITE_ORIGIN),
   };

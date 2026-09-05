@@ -1,9 +1,21 @@
 import express from 'express';
 import type { BuildInfo } from '../build-info';
+import type { PostService } from '../posts/post-service';
 
 export type BuildInfoProvider = () => BuildInfo;
 
-export function createApiRouter(getBuildInfo: BuildInfoProvider): express.Router {
+export interface ApiServices {
+  posts?: PostService;
+}
+
+function badRequest(message: string): Error & { status: number } {
+  return Object.assign(new Error(message), { status: 400 });
+}
+
+export function createApiRouter(
+  getBuildInfo: BuildInfoProvider,
+  services: ApiServices = {},
+): express.Router {
   const router = express.Router();
 
   router.use(express.json({ limit: '1mb' }));
@@ -16,6 +28,44 @@ export function createApiRouter(getBuildInfo: BuildInfoProvider): express.Router
   router.get('/build', (_req, res) => {
     res.set('Cache-Control', 'no-store').json(getBuildInfo());
   });
+
+  if (services.posts) {
+    router.get('/posts', (req, res, next) => {
+      try {
+        const rawLimit = req.query.limit;
+        if (Array.isArray(rawLimit) || (rawLimit !== undefined && typeof rawLimit !== 'string')) {
+          throw badRequest('Post page limit must be a single integer.');
+        }
+        const limit = rawLimit === undefined ? undefined : Number(rawLimit);
+        const rawCursor = req.query.cursor;
+        if (Array.isArray(rawCursor) || (rawCursor !== undefined && typeof rawCursor !== 'string')) {
+          throw badRequest('Post cursor must be a single string.');
+        }
+        const page = services.posts?.listPublished({ cursor: rawCursor, limit });
+        res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120').json(page);
+      } catch (error) {
+        if (error instanceof RangeError || error instanceof TypeError) {
+          next(badRequest(error.message));
+          return;
+        }
+        next(error);
+      }
+    });
+
+    router.get('/posts/:slug', (req, res) => {
+      const post = services.posts?.findBySlug(req.params.slug);
+      if (!post) {
+        res.status(404).json({
+          error: { code: 'not_found', message: 'No published post exists at this slug.' },
+        });
+        return;
+      }
+      res.set({
+        'Cache-Control': 'public, max-age=30, stale-while-revalidate=120',
+        'Content-Location': `/api/posts/${encodeURIComponent(post.slug)}`,
+      }).json(post);
+    });
+  }
 
   router.use((req, res) => {
     res.status(404).json({

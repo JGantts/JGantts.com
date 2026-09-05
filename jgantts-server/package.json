@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/write-build-info.js",
     "check": "node --check serve.js && node --check scripts/smoke-test.js && node --check scripts/write-build-info.js && npm run typecheck && npm test",
+    "content:backup": "node dist/cli/backup-content.js",
     "dev": "tsx watch src/server.ts",
     "smoke": "npm run build && node scripts/smoke-test.js",
     "smoke:live": "node scripts/smoke-test.js --live",
@@ -18,16 +19,18 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "better-sqlite3": "^13.0.3",
     "express": "^5.2.1"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
     "@types/express": "^5.0.6",
     "@types/node": "^22.20.1",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "keywords": [
     "express",

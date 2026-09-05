@@ -29,6 +29,9 @@ coverage
 
 *.tsbuildinfo
 
+# Local site-owned content. Production uses /var/lib/jgantts.
+/jgantts-server/.data/
+
 /terrain-env
 /jgantts-com/PUBLIC/assets/kovyalo/map/*/*/height-tiles
 *.pmtiles

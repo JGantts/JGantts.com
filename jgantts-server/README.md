@@ -27,3 +27,11 @@ repository. The endpoint reads that file on every request, allowing the deployme
 update build information for every `prod` commit without rebuilding or restarting the server.
 During local development, the API returns `dev` and `Local development build`, making the badge
 state predictable while debugging. Vite proxies `/api` requests to the server on port 3000.
+
+## Site-owned content storage
+
+Posts and media use SQLite plus a persistent media directory configured through
+`JGANTTS_DATA_ROOT`. Development defaults to `.data` in this package; production defaults to
+`/var/lib/jgantts` and rejects paths inside the deployment tree. See
+[`docs/CONTENT-OPERATIONS.md`](../docs/CONTENT-OPERATIONS.md) for layout, backup, and restore
+instructions.

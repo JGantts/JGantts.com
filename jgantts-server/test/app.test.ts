@@ -5,7 +5,10 @@ import type { AddressInfo } from 'node:net';
 import type { Express } from 'express';
 import { createApp } from '../src/app';
 import { DEV_BUILD_INFO, loadBuildInfo } from '../src/build-info';
-import { normalizeSiteOrigin, parsePort } from '../src/config';
+import { getRuntimeConfig, normalizeSiteOrigin, parsePort, PRODUCTION_DATA_ROOT } from '../src/config';
+import { openContentDatabase } from '../src/db/database';
+import { PostRepository } from '../src/posts/post-repository';
+import { PostService } from '../src/posts/post-service';
 import { upsertMeta } from '../src/site/html';
 
 const TEMPLATE = `<!doctype html>
@@ -71,6 +74,18 @@ test('validates PORT', () => {
   assert.equal(parsePort('0'), 0);
   assert.throws(() => parsePort('wat'), /PORT/);
   assert.throws(() => parsePort('65536'), /PORT/);
+});
+
+test('resolves safe content storage paths by environment', () => {
+  const production = getRuntimeConfig({ NODE_ENV: 'production' });
+  assert.equal(production.dataRoot, PRODUCTION_DATA_ROOT);
+  assert.equal(production.databasePath, `${PRODUCTION_DATA_ROOT}/content.sqlite`);
+  assert.equal(production.mediaRoot, `${PRODUCTION_DATA_ROOT}/media`);
+
+  assert.throws(() => getRuntimeConfig({
+    NODE_ENV: 'production',
+    JGANTTS_DATA_ROOT: `${process.cwd()}/jgantts-server/runtime-content`,
+  }), /outside the deployed application directory/);
 });
 
 test('uses explicit build strings in development', () => {
@@ -158,6 +173,77 @@ test('returns full build information through the API', async () => {
   assert.equal(response.status, 200);
   assert.equal(response.headers['cache-control'], 'no-store');
   assert.deepEqual(JSON.parse(response.body), BUILD_INFO);
+});
+
+test('lists only published posts with stable cursor pagination', async (t) => {
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const repository = new PostRepository(database);
+  const posts = new PostService(repository);
+  const app = createApp({
+    appHtmlTemplate: TEMPLATE,
+    services: { posts },
+    siteOrigin: 'https://jgantts.com',
+  });
+  repository.create({
+    id: 'published-1', slug: 'newest', bodyMarkdown: 'Newest', bodyHtml: '<p>Newest</p>',
+    status: 'published', publishedAt: '2026-09-04T12:00:00.000Z',
+  });
+  repository.create({
+    id: 'published-2', slug: 'middle', bodyMarkdown: 'Middle', bodyHtml: '<p>Middle</p>',
+    status: 'published', publishedAt: '2026-09-04T11:00:00.000Z',
+  });
+  repository.create({
+    id: 'published-3', slug: 'oldest', bodyMarkdown: 'Oldest', bodyHtml: '<p>Oldest</p>',
+    status: 'published', publishedAt: '2026-09-04T10:00:00.000Z',
+  });
+  repository.create({
+    id: 'draft-1', slug: 'private-draft', bodyMarkdown: 'Draft', bodyHtml: '<p>Draft</p>',
+  });
+
+  const firstResponse = await request(app, '/api/posts?limit=2');
+  const firstPage = JSON.parse(firstResponse.body) as { items: Array<{ id: string }>; nextCursor: string };
+  assert.equal(firstResponse.status, 200);
+  assert.deepEqual(firstPage.items.map((post) => post.id), ['published-1', 'published-2']);
+  assert.ok(firstPage.nextCursor);
+
+  const secondResponse = await request(
+    app,
+    `/api/posts?limit=2&cursor=${encodeURIComponent(firstPage.nextCursor)}`,
+  );
+  const secondPage = JSON.parse(secondResponse.body) as { items: Array<{ id: string }>; nextCursor: null };
+  assert.deepEqual(secondPage.items.map((post) => post.id), ['published-3']);
+  assert.equal(secondPage.nextCursor, null);
+
+  const invalidResponse = await request(app, '/api/posts?limit=0');
+  assert.equal(invalidResponse.status, 400);
+});
+
+test('gets published posts through current and prior slugs without exposing drafts', async (t) => {
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const repository = new PostRepository(database);
+  const posts = new PostService(repository);
+  const app = createApp({
+    appHtmlTemplate: TEMPLATE,
+    services: { posts },
+    siteOrigin: 'https://jgantts.com',
+  });
+  repository.create({
+    id: 'published', slug: 'original-slug', bodyMarkdown: 'Public', bodyHtml: '<p>Public</p>',
+    status: 'published', publishedAt: '2026-09-04T12:00:00.000Z',
+  });
+  repository.update('published', { slug: 'canonical-slug' });
+  repository.create({
+    id: 'draft', slug: 'draft-slug', bodyMarkdown: 'Draft', bodyHtml: '<p>Draft</p>',
+  });
+
+  const priorSlug = await request(app, '/api/posts/original-slug');
+  assert.equal(priorSlug.status, 200);
+  assert.equal(priorSlug.headers['content-location'], '/api/posts/canonical-slug');
+  assert.equal(JSON.parse(priorSlug.body).slug, 'canonical-slug');
+  assert.equal((await request(app, '/api/posts/draft-slug')).status, 404);
+  assert.equal((await request(app, '/api/posts/missing')).status, 404);
 });
 
 test('reads centralized build information for every API request', async () => {

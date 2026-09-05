@@ -133,10 +133,10 @@ copying application files. Deployment stops immediately if the backup or SQLite
 integrity check fails. Snapshots are stored at:
 
 ```text
-/var/backups/jgantts-com/pre-deploy/<UTC timestamp>-<Git commit SHA>/
+/var/lib/jgantts/backups/pre-deploy/<UTC timestamp>-<Git commit SHA>/
 ```
 
-`/var/backups/jgantts-com/pre-deploy/latest` points to the newest verified
+`/var/lib/jgantts/backups/pre-deploy/latest` points to the newest verified
 snapshot. Backups are deliberately not deleted by the deploy workflow; add
 off-host replication and an explicit retention policy before enabling cleanup.
 
@@ -162,7 +162,7 @@ As root, choose an exact verified backup rather than relying blindly on the
 `latest` symlink:
 
 ```sh
-BACKUP=/var/backups/jgantts-com/pre-deploy/20260905T120000Z-COMMIT_SHA
+BACKUP=/var/lib/jgantts/backups/pre-deploy/20260905T120000Z-COMMIT_SHA
 RESTORE=/var/lib/jgantts-restores/20260905T123000Z
 
 test -f "$BACKUP/content.sqlite"

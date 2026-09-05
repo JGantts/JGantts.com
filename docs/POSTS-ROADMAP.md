@@ -405,7 +405,7 @@ the live site is the demonstrable source of truth.
 - Added a blocking production pre-deploy backup before application files are
   copied. It uses SQLite's online backup API, copies media, verifies SQLite
   integrity and the media layout, and records the newest verified snapshot.
-- Backups are retained under `/var/backups/jgantts-com/pre-deploy`; the workflow
+- Backups are retained under `/var/lib/jgantts/backups/pre-deploy`; the workflow
   does not delete them or imply that same-host storage is disaster recovery.
 - Documented application-only rollback through a Git revert and non-destructive
   content recovery into a fresh data root, including verification, activation,

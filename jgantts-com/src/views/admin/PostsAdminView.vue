@@ -9,6 +9,7 @@ type AdminPost = {
   contentWarning: string | null
   createdAt: string
   excerpt: string | null
+  heroMediaId: string | null
   id: string
   media: PostMedia[]
   publishedAt: string | null
@@ -204,7 +205,7 @@ async function saveMedia(item: PostMedia) {
   try {
     const updated = await adminRequest<PostMedia>(
       `/api/admin/media/${item.id}`,
-      jsonRequest('PATCH', { altText: draft.altText, caption: draft.caption.trim() || null }),
+      jsonRequest('PATCH', { altText: draft.altText, caption: draft.caption.trim() || null, focalX: item.focalX, focalY: item.focalY }),
     )
     replaceMedia(updated)
     notice.value = 'Photo details saved.'
@@ -213,6 +214,37 @@ async function saveMedia(item: PostMedia) {
   } finally {
     mediaSavingId.value = null
   }
+}
+
+async function selectHero(item: PostMedia) {
+  if (!selectedId.value) return
+  try {
+    const updated = await adminRequest<AdminPost>(`/api/admin/posts/${selectedId.value}/media/hero`, jsonRequest('PUT', { mediaId: item.id }))
+    replacePost(updated)
+    notice.value = 'Hero photo selected.'
+  } catch (heroError) { error.value = message(heroError) }
+}
+
+async function setFocalPoint(item: PostMedia, event: MouseEvent) {
+  const target = event.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  const focalX = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
+  const focalY = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
+  try {
+    const updated = await adminRequest<PostMedia>(`/api/admin/media/${item.id}`, jsonRequest('PATCH', { focalX, focalY }))
+    replaceMedia(updated)
+    notice.value = 'Focal point saved.'
+  } catch (focalError) { error.value = message(focalError) }
+}
+
+async function removeMedia(item: PostMedia) {
+  if (!window.confirm('Remove this photo from the draft? This cannot be undone.')) return
+  try {
+    await adminRequest(`/api/admin/media/${item.id}`, { method: 'DELETE' })
+    const post = selected.value
+    if (post) updateSelectedMedia(post.media.filter(({ id }) => id !== item.id))
+    notice.value = 'Photo removed.'
+  } catch (removeError) { error.value = message(removeError) }
 }
 
 function updateSelectedMedia(media: PostMedia[]) {
@@ -563,9 +595,16 @@ onBeforeUnmount(() => {
                 @dragstart="startMediaDrag(item, $event)"
                 @drop.prevent="dropMedia(item.id)"
               >
-                <img :alt="item.altText" :src="item.urls.thumbnail">
+                <button class="media-preview" type="button" :aria-label="`Set focal point for photo ${index + 1}`" @click="setFocalPoint(item, $event)">
+                  <img :alt="item.altText" :src="item.urls.thumbnail">
+                  <span class="focal-marker" :style="{ left: `${(item.focalX ?? 0.5) * 100}%`, top: `${(item.focalY ?? 0.5) * 100}%` }"></span>
+                </button>
                 <figcaption>
                   <span>Photo {{ index + 1 }} · {{ item.width }} × {{ item.height }} · {{ item.processingState }}</span>
+                  <div class="media-order-actions">
+                    <button class="button-secondary" :class="{ 'is-selected': selected?.heroMediaId === item.id }" type="button" @click="selectHero(item)">{{ selected?.heroMediaId === item.id ? 'Hero photo' : 'Set as hero' }}</button>
+                    <button class="button-quiet" type="button" @click="removeMedia(item)">Remove photo</button>
+                  </div>
                   <div class="media-order-actions" aria-label="Change photo position">
                     <button class="button-secondary" :disabled="orderSaving || index === 0" type="button" @click="moveMedia(index, -1)">Move earlier</button>
                     <button class="button-secondary" :disabled="orderSaving || index === selected.media.length - 1" type="button" @click="moveMedia(index, 1)">Move later</button>
@@ -689,6 +728,10 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .empty-state { color: var(--muted); }
 .media-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); margin-bottom: 1rem; }
 .media-grid img { aspect-ratio: 1; border-radius: 0.5rem; object-fit: cover; width: 100%; }
+.media-preview { background: transparent; border: 0; cursor: crosshair; padding: 0; position: relative; width: 100%; }
+.media-preview img { display: block; }
+.focal-marker { background: var(--accent); border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px black; height: 0.8rem; position: absolute; transform: translate(-50%, -50%); width: 0.8rem; }
+.is-selected { background: var(--accent); color: white; }
 .media-grid figure { border: 1px solid var(--border); border-radius: 0.65rem; padding: 0.65rem; }
 .media-grid figure[draggable="true"] { cursor: grab; }
 .media-grid figure.is-dragging { opacity: 0.5; }

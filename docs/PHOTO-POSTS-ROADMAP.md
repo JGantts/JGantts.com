@@ -32,9 +32,9 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 ## Current state
 
-- Status: Phases 1–2 and authoring items 3.1–3.4 are complete; Phase 3 is in progress.
+- Status: Phases 1–2 and authoring items 3.1–3.6 are complete; Phase 3 is in progress.
 - Active item: None.
-- Next item: 3.5 — hero selection and focal-point previews.
+- Next item: 3.7 — photo-only publishing.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; responsive WebP, AVIF, and JPEG/PNG fallback renditions; checksums; dimensions;
@@ -175,9 +175,9 @@ responsive rendition set that can be regenerated deterministically.
   required alt text, optional caption, dimensions, and processing status.
 - [x] **3.4** Add keyboard-accessible drag reorder plus explicit move controls for
   touch and assistive technology; save one complete ordered list.
-- [ ] **3.5** Add hero-photo selection and a focal-point picker with an immediate
+- [x] **3.5** Add hero-photo selection and a focal-point picker with an immediate
   preview of existing masonry tiles and social-preview crops.
-- [ ] **3.6** Add confirmed photo removal and clear warnings when changing a
+- [x] **3.6** Add confirmed photo removal and clear warnings when changing a
   published post.
 - [ ] **3.7** Allow a photo-only post: title, excerpt, content warning, and Markdown
   body remain optional, while at least one successfully processed photo is

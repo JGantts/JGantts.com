@@ -35,8 +35,18 @@ const error = ref('')
 const busy = ref(false)
 const previewHtml = ref('')
 const previewBusy = ref(false)
-const uploadFile = ref<File | null>(null)
-const uploadAlt = ref('')
+type UploadQueueItem = {
+  altText: string
+  error: string
+  file: File
+  id: string
+  previewUrl: string
+  progress: number
+  status: 'cancelled' | 'failed' | 'queued' | 'uploading' | 'uploaded'
+  xhr: XMLHttpRequest | null
+}
+const uploadQueue = ref<UploadQueueItem[]>([])
+const uploadRunning = ref(false)
 const syndication = ref<Syndication | null>(null)
 const teaser = ref('')
 let previewTimer: ReturnType<typeof setTimeout> | null = null
@@ -275,30 +285,100 @@ async function retrySyndication() {
   }
 }
 
-function chooseFile(event: Event) {
-  uploadFile.value = (event.target as HTMLInputElement).files?.[0] ?? null
+function addFiles(files: File[]) {
+  for (const file of files) {
+    uploadQueue.value.push({
+      altText: '', error: '', file,
+      id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
+      previewUrl: URL.createObjectURL(file), progress: 0, status: 'queued', xhr: null,
+    })
+  }
 }
 
-async function uploadMedia() {
-  if (!selectedId.value || !uploadFile.value) return
-  error.value = ''
-  busy.value = true
+function chooseFiles(event: Event) {
+  const input = event.target as HTMLInputElement
+  addFiles(Array.from(input.files ?? []))
+  input.value = ''
+}
+
+function dropFiles(event: DragEvent) {
+  addFiles(Array.from(event.dataTransfer?.files ?? []).filter((file) => file.type.startsWith('image/')))
+}
+
+function removeUpload(item: UploadQueueItem) {
+  item.xhr?.abort()
+  URL.revokeObjectURL(item.previewUrl)
+  uploadQueue.value = uploadQueue.value.filter(({ id }) => id !== item.id)
+}
+
+function cancelUpload(item: UploadQueueItem) {
+  if (item.status === 'uploading') item.xhr?.abort()
+  else item.status = 'cancelled'
+}
+
+function uploadOne(item: UploadQueueItem): Promise<PostMedia> {
+  if (!selectedId.value) return Promise.reject(new Error('Create a draft before uploading.'))
   const body = new FormData()
   body.set('postId', selectedId.value)
-  body.set('altText', uploadAlt.value)
-  body.set('file', uploadFile.value)
-  try {
-    const uploaded = await adminRequest<PostMedia>('/api/admin/media', { body, method: 'POST' })
-    const current = selected.value
-    if (current) replacePost({ ...current, media: [...current.media, uploaded] })
-    uploadFile.value = null
-    uploadAlt.value = ''
-    notice.value = 'Image uploaded.'
-  } catch (uploadError) {
-    error.value = message(uploadError)
-  } finally {
-    busy.value = false
+  body.set('altText', item.altText.trim())
+  body.set('file', item.file)
+  item.status = 'uploading'
+  item.error = ''
+  item.progress = 0
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    item.xhr = xhr
+    xhr.open('POST', '/api/admin/media')
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) item.progress = Math.round((event.loaded / event.total) * 100)
+    }
+    xhr.onabort = () => {
+      item.status = 'cancelled'
+      item.xhr = null
+      reject(new Error('Upload cancelled.'))
+    }
+    xhr.onerror = () => reject(new Error('Network error while uploading.'))
+    xhr.onload = () => {
+      item.xhr = null
+      let response: unknown
+      try { response = JSON.parse(xhr.responseText) } catch { response = null }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(response as PostMedia)
+      else reject(new Error((response as { error?: { message?: string } })?.error?.message || `Upload failed (${xhr.status}).`))
+    }
+    xhr.send(body)
+  })
+}
+
+async function uploadQueued() {
+  const pending = uploadQueue.value.filter((item) =>
+    ['queued', 'failed'].includes(item.status) && item.altText.trim())
+  if (!pending.length || uploadRunning.value) return
+  uploadRunning.value = true
+  error.value = ''
+  let cursor = 0
+  const worker = async () => {
+    while (cursor < pending.length) {
+      const item = pending[cursor++]
+      try {
+        const uploaded = await uploadOne(item)
+        item.status = 'uploaded'
+        item.progress = 100
+        const current = selected.value
+        if (current) replacePost({ ...current, media: [...current.media, uploaded] })
+      } catch (uploadError) {
+        if (item.status !== 'cancelled') item.status = 'failed'
+        item.error = message(uploadError)
+      }
+    }
   }
+  await Promise.all(Array.from({ length: Math.min(2, pending.length) }, worker))
+  uploadRunning.value = false
+  notice.value = `${pending.filter(({ status }) => status === 'uploaded').length} photo(s) uploaded.`
+}
+
+async function retryUpload(item: UploadQueueItem) {
+  item.status = 'queued'
+  await uploadQueued()
 }
 
 async function refreshPreview() {
@@ -329,6 +409,10 @@ onMounted(() => { void restoreSession() })
 
 onBeforeUnmount(() => {
   if (previewTimer) clearTimeout(previewTimer)
+  uploadQueue.value.forEach((item) => {
+    item.xhr?.abort()
+    URL.revokeObjectURL(item.previewUrl)
+  })
 })
 </script>
 
@@ -386,11 +470,31 @@ onBeforeUnmount(() => {
               </figure>
             </div>
             <p v-else class="empty-state">Choose the first photograph for this draft.</p>
-            <form class="upload-form" @submit.prevent="uploadMedia">
-              <label>Image <input accept="image/jpeg,image/png,image/webp,image/avif" type="file" @change="chooseFile"></label>
-              <label>Alt text <input v-model="uploadAlt" maxlength="2000" required></label>
-              <button :disabled="busy || !uploadFile || !uploadAlt.trim()" type="submit">Upload image</button>
-            </form>
+            <label class="photo-dropzone" @dragover.prevent @drop.prevent="dropFiles">
+              <strong>Choose or drop photos</strong>
+              <span>Select multiple JPEG, PNG, WebP, or AVIF files.</span>
+              <input accept="image/jpeg,image/png,image/webp,image/avif" multiple type="file" @change="chooseFiles">
+            </label>
+            <div v-if="uploadQueue.length" class="upload-queue">
+              <article v-for="item in uploadQueue" :key="item.id" class="upload-item">
+                <img alt="" :src="item.previewUrl">
+                <div>
+                  <strong>{{ item.file.name }}</strong>
+                  <label>Alt text <input v-model="item.altText" maxlength="2000" required></label>
+                  <progress v-if="item.status === 'uploading'" max="100" :value="item.progress">{{ item.progress }}%</progress>
+                  <p v-if="item.error" class="message message--error">{{ item.error }}</p>
+                  <span class="upload-status">{{ item.status }}<template v-if="item.status === 'uploading'"> · {{ item.progress }}%</template></span>
+                </div>
+                <div class="upload-item-actions">
+                  <button v-if="item.status === 'failed' || item.status === 'cancelled'" class="button-secondary" :disabled="!item.altText.trim()" type="button" @click="retryUpload(item)">Retry</button>
+                  <button v-if="item.status === 'uploading' || item.status === 'queued'" class="button-quiet" type="button" @click="cancelUpload(item)">Cancel</button>
+                  <button v-else class="button-quiet" type="button" @click="removeUpload(item)">Remove</button>
+                </div>
+              </article>
+              <button :disabled="uploadRunning || !uploadQueue.some((item) => ['queued', 'failed'].includes(item.status) && item.altText.trim())" type="button" @click="uploadQueued">
+                {{ uploadRunning ? 'Uploading…' : 'Upload ready photos' }}
+              </button>
+            </div>
           </section>
 
           <form class="editor-form" @submit.prevent="save">
@@ -477,15 +581,23 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .media-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); margin-bottom: 1rem; }
 .media-grid img { aspect-ratio: 1; border-radius: 0.5rem; object-fit: cover; width: 100%; }
 .media-grid figcaption { color: var(--muted); font-size: 0.75rem; margin-top: 0.35rem; }
-.upload-form { grid-template-columns: 1fr 2fr auto; }
-.upload-form button { align-self: end; }
+.photo-dropzone { align-items: center; border: 2px dashed var(--border); border-radius: 0.75rem; cursor: pointer; display: grid; justify-items: center; padding: 1.5rem; text-align: center; }
+.photo-dropzone span, .upload-status { color: var(--muted); font-size: 0.75rem; }
+.photo-dropzone input { max-width: 28rem; }
+.upload-queue { display: grid; gap: 0.75rem; margin-top: 1rem; }
+.upload-item { align-items: center; border: 1px solid var(--border); border-radius: 0.65rem; display: grid; gap: 0.75rem; grid-template-columns: 5rem minmax(0, 1fr) auto; padding: 0.75rem; }
+.upload-item img { aspect-ratio: 1; border-radius: 0.4rem; object-fit: cover; width: 5rem; }
+.upload-item progress { width: 100%; }
+.upload-item-actions { display: grid; gap: 0.4rem; }
 .message { background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 0.5rem; padding: 0.75rem; }
 .message--error { color: #e5484d; }
 @media (max-width: 48rem) {
   .admin-workspace { grid-template-columns: 1fr; }
   .post-list { max-height: 14rem; position: static; }
   .admin-toolbar, .status-row, .section-heading { align-items: flex-start; flex-direction: column; }
-  .upload-form { grid-template-columns: 1fr; }
+  .upload-item { align-items: stretch; grid-template-columns: 4rem minmax(0, 1fr); }
+  .upload-item img { width: 4rem; }
+  .upload-item-actions { grid-column: 1 / -1; grid-template-columns: repeat(2, 1fr); }
   .editor-actions { align-items: stretch; flex-direction: column; }
 }
 </style>

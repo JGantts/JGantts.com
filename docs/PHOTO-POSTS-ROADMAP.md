@@ -32,9 +32,9 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 ## Current state
 
-- Status: Phases 1–2 and authoring item 3.1 are complete; Phase 3 is in progress.
+- Status: Phases 1–2 and authoring items 3.1–3.2 are complete; Phase 3 is in progress.
 - Active item: None.
-- Next item: 3.2 — multi-file upload progress and recovery.
+- Next item: 3.3 — editable photo cards.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; responsive WebP, AVIF, and JPEG/PNG fallback renditions; checksums; dimensions;
@@ -169,7 +169,7 @@ responsive rendition set that can be regenerated deterministically.
 
 - [x] **3.1** Change the editor's new-post flow to create an empty draft first,
   then make drag-and-drop or file selection the primary action.
-- [ ] **3.2** Support multi-file selection with individual progress, preview,
+- [x] **3.2** Support multi-file selection with individual progress, preview,
   cancellation, failure, and retry states.
 - [ ] **3.3** Present every uploaded photo as an editable card with thumbnail,
   required alt text, optional caption, dimensions, and processing status.
@@ -537,6 +537,18 @@ verified against the live domain.
 - Verified authentication, empty state, generated slugs, response location, and
   field rejection. All 63 server tests, type checking, and the client production
   build pass on Node 22.23.2.
+
+### 2026-09-05 — Multi-file authoring queue
+
+- Replaced the single-photo picker with multi-select and drag/drop intake. Each
+  queued file keeps its object-URL preview, required alt text, byte progress,
+  queued/uploading/uploaded/cancelled/failed state, and server error.
+- Uploads run with at most two active requests to bound browser and server memory.
+  Active and queued items can be cancelled; failed or cancelled files retain the
+  selected bytes and metadata for explicit retry without reselecting.
+- Object URLs and active requests are cleaned up when the editor unmounts. The
+  client production build and all 63 server tests/type checks pass on Node
+  22.23.2; full interaction coverage remains consolidated in item 3.9.
 
 ## Definition of done
 

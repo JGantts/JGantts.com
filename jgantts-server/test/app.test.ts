@@ -662,10 +662,12 @@ test('uploads local media and serves immutable originals and derivatives', async
     id: string;
     originalPath?: string;
     derivatives?: unknown;
+    renditions: Array<{ url: string; width: number }>;
     urls: { large: string; original: string; thumbnail: string };
   };
   assert.equal(uploaded.originalPath, undefined);
   assert.equal(uploaded.derivatives, undefined);
+  assert.deepEqual(uploaded.renditions.map((rendition) => rendition.width), [24]);
   assert.equal(uploadedResponse.headers.location, uploaded.urls.original);
 
   const editedResponse = await request(app, `/api/admin/media/${uploaded.id}`, {
@@ -701,6 +703,9 @@ test('uploads local media and serves immutable originals and derivatives', async
   const derivative = await request(app, uploaded.urls.large);
   assert.equal(derivative.status, 200);
   assert.match(String(derivative.headers['content-type']), /image\/webp/);
+  const responsiveDerivative = await request(app, uploaded.renditions[0].url);
+  assert.equal(responsiveDerivative.status, 200);
+  assert.match(String(responsiveDerivative.headers['content-type']), /image\/webp/);
 
   postRepository.update('media-api-post', {
     status: 'published', publishedAt: '2026-09-04T12:00:00.000Z',

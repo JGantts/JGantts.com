@@ -1,6 +1,21 @@
 export interface MediaDerivatives {
+  [variant: string]: string | undefined;
   large?: string;
   thumbnail?: string;
+}
+
+export interface MediaRendition {
+  byteSize: number;
+  format: 'webp';
+  height: number;
+  path: string;
+  variant: string;
+  width: number;
+}
+
+export interface RenditionManifest {
+  renditions: MediaRendition[];
+  version: 1;
 }
 
 export interface MediaRecord {
@@ -20,9 +35,9 @@ export interface MediaRecord {
   displayOrder: number;
   processingState: 'processing' | 'ready' | 'failed';
   processingError: string | null;
-  renditionManifest: Record<string, unknown>;
+  renditionManifest: RenditionManifest | Record<string, never>;
   createdAt: string;
   updatedAt: string;
 }
 
-export type MediaVariant = 'original' | keyof MediaDerivatives;
+export type MediaVariant = 'original' | string;

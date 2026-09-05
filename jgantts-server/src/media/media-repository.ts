@@ -1,7 +1,7 @@
 import type { ContentDatabase } from '../db/database';
 import { inTransaction } from '../db/database';
 import { PostConflictError, PostInputError } from '../posts/errors';
-import type { MediaDerivatives, MediaRecord } from './types';
+import type { MediaDerivatives, MediaRecord, RenditionManifest } from './types';
 
 interface MediaRow {
   id: string;
@@ -43,7 +43,7 @@ function mapMedia(row: MediaRow): MediaRecord {
     displayOrder: row.display_order,
     processingState: row.processing_state,
     processingError: row.processing_error,
-    renditionManifest: JSON.parse(row.rendition_json) as Record<string, unknown>,
+    renditionManifest: JSON.parse(row.rendition_json) as RenditionManifest | Record<string, never>,
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
   };

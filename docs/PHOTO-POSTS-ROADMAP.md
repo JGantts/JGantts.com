@@ -32,12 +32,12 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 ## Current state
 
-- Status: Phase 1 media lifecycle implementation complete.
+- Status: Phase 1 and photo pipeline item 2.2 are complete; Phase 2 is in progress.
 - Active item: None.
-- Next item: 2.2 — responsive rendition widths for the existing photos gallery.
+- Next item: 2.3 — multi-format renditions.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
-  originals; 1,600 px and 480 px WebP derivatives; checksums; dimensions;
+  originals; responsive 320–2,400 px WebP renditions; checksums; dimensions;
   database fields for display order, focal point, and hero media; public media
   URLs; backup of database and media; metadata editing, transactional reorder,
   hero selection, safeguarded deletion, and bounded batch-upload APIs.
@@ -143,7 +143,7 @@ SQL or filesystem work by the client.
 
 - [x] **2.1** Normalize EXIF orientation before recording width and height; add
   portrait, landscape, square, and rotated-fixture tests.
-- [ ] **2.2** Generate a responsive width set appropriate for the existing masonry
+- [x] **2.2** Generate a responsive width set appropriate for the existing masonry
   tile sizes, expanded-photo viewer, mobile detail, and high-density screens
   without upscaling.
 - [ ] **2.3** Produce WebP and AVIF where worthwhile, retain a broadly compatible
@@ -431,6 +431,18 @@ verified against the live domain.
   source-byte preservation, and absence of orientation tags on renditions.
 - All 56 server tests, type checking, and the production server build pass.
   Existing record reconciliation remains part of regeneration item 2.7.
+
+### 2026-09-05 — Responsive WebP rendition widths
+
+- New uploads generate 320, 480, 768, 1,024, 1,600, and 2,400 px WebP stops up
+  to the oriented source width. Smaller and intermediate sources receive one
+  exact-width terminal rendition, and sources are never enlarged.
+- The normalized public media contract exposes rendition dimensions, byte size,
+  format, variant, and immutable URL while keeping storage paths private. Legacy
+  `thumbnail` and `large` URLs resolve to the nearest generated rendition.
+- Verified all 57 server tests and the client production build using Node
+  22.23.2. `better-sqlite3` 13 crashes on Node 22 releases before 22.14, so the
+  server engine floor now records the working minimum patch level.
 
 ## Definition of done
 

@@ -2,14 +2,14 @@ import express from 'express';
 import type { MediaService } from '../media/media-service';
 import type { MediaVariant } from '../media/types';
 
-const variants = new Set<MediaVariant>(['original', 'large', 'thumbnail']);
+const legacyVariants = new Set<MediaVariant>(['original', 'large', 'thumbnail']);
 
 export function createMediaRouter(media: MediaService): express.Router {
   const router = express.Router();
 
   router.get('/:id/:variant', (req, res, next) => {
     const variant = req.params.variant as MediaVariant;
-    if (!variants.has(variant)) {
+    if (!legacyVariants.has(variant) && !/^w-\d{1,5}$/.test(variant)) {
       res.sendStatus(404);
       return;
     }

@@ -190,6 +190,8 @@ test('stores original images, generates derivatives, and resolves safe public fi
   assert.equal(uploaded.caption, null);
   assert.equal(uploaded.processingState, 'ready');
   assert.equal(uploaded.updatedAt, uploaded.createdAt);
+  assert.deepEqual(uploaded.renditions.map((rendition) => rendition.width), [100]);
+  assert.equal(uploaded.renditions[0]?.url, `/media/${uploaded.id}/w-100`);
   assert.equal(posts.update('media-post', { heroMediaId: uploaded.id })?.heroMediaId, uploaded.id);
   posts.create({
     id: 'different-post', slug: 'different-post', bodyMarkdown: 'Other', bodyHtml: '<p>Other</p>',
@@ -232,6 +234,40 @@ test('stores original images, generates derivatives, and resolves safe public fi
   database.prepare("UPDATE media SET derived_json = '{\"large\":\"../../outside\"}' WHERE id = ?")
     .run(uploaded.id);
   assert.equal(service.getFile(uploaded.id, 'large'), null);
+});
+
+test('generates a responsive WebP width set without upscaling', async (t) => {
+  const root = temporaryDirectory(t);
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostRepository(database);
+  posts.create({ id: 'responsive', slug: 'responsive', bodyMarkdown: '', bodyHtml: '' });
+  const repository = new MediaRepository(database);
+  const service = new MediaService(repository, posts, path.join(root, 'media'));
+  const source = await sharp({
+    create: { width: 3_000, height: 1_500, channels: 3, background: '#123456' },
+  }).jpeg().toBuffer();
+
+  const uploaded = await service.uploadImage({ postId: 'responsive', altText: 'Wide image', buffer: source });
+  assert.deepEqual(
+    uploaded.renditions.map(({ width, height }) => [width, height]),
+    [[320, 160], [480, 240], [768, 384], [1_024, 512], [1_600, 800], [2_400, 1_200]],
+  );
+  assert.ok(uploaded.renditions.every((rendition) => rendition.byteSize > 0));
+  assert.ok(uploaded.renditions.every((rendition) => rendition.format === 'webp'));
+  for (const rendition of uploaded.renditions) {
+    const file = service.getFile(uploaded.id, rendition.variant);
+    assert.ok(file);
+    assert.equal((await sharp(file.path).metadata()).width, rendition.width);
+  }
+  const stored = repository.getById(uploaded.id)!;
+  assert.deepEqual(
+    'renditions' in stored.renditionManifest
+      ? stored.renditionManifest.renditions.map((rendition) => rendition.width)
+      : [],
+    [320, 480, 768, 1_024, 1_600, 2_400],
+  );
+  assert.equal(service.getFile(uploaded.id, 'w-9999'), null);
 });
 
 test('rejects invalid image uploads before creating media records', async (t) => {

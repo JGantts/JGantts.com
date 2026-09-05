@@ -9,6 +9,14 @@ export type PostMedia = {
   focalY: number | null
   postId: string
   processingState: 'processing' | 'ready' | 'failed'
+  renditions: Array<{
+    byteSize: number
+    format: 'webp'
+    height: number
+    url: string
+    variant: string
+    width: number
+  }>
   updatedAt: string
   height: number | null
   id: string

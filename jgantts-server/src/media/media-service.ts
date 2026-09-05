@@ -6,9 +6,13 @@ import type { PostRepository } from '../posts/post-repository';
 import { PostInputError } from '../posts/errors';
 import { ensureMediaDirectories } from '../storage';
 import { MediaRepository } from './media-repository';
-import type { MediaRecord, MediaVariant } from './types';
+import type { MediaRecord, MediaRendition, MediaVariant, RenditionManifest } from './types';
 
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+// Covers compact masonry cells through a high-density expanded viewer. The
+// oriented source width is added when it falls between these stops, and widths
+// above the source are omitted.
+export const RESPONSIVE_IMAGE_WIDTHS = [320, 480, 768, 1_024, 1_600, 2_400] as const;
 const formats = {
   avif: { extension: 'avif', mimeType: 'image/avif' },
   jpeg: { extension: 'jpg', mimeType: 'image/jpeg' },
@@ -27,6 +31,7 @@ export interface PublicMedia extends Omit<
   MediaRecord,
   'originalPath' | 'derivatives' | 'processingError' | 'renditionManifest'
 > {
+  renditions: Array<Omit<MediaRendition, 'path'> & { url: string }>;
   urls: Record<'original' | 'large' | 'thumbnail', string>;
 }
 
@@ -44,6 +49,13 @@ export interface UpdateMediaMetadataInput {
 
 function publicMedia(media: MediaRecord): PublicMedia {
   const base = `/media/${encodeURIComponent(media.id)}`;
+  const manifest = media.renditionManifest as Partial<RenditionManifest>;
+  const renditions = Array.isArray(manifest.renditions)
+    ? manifest.renditions.map(({ path: _path, ...rendition }) => ({
+      ...rendition,
+      url: `${base}/${encodeURIComponent(rendition.variant)}`,
+    }))
+    : [];
   // Explicit fields keep future storage and processing details private by default.
   return {
     id: media.id,
@@ -61,6 +73,7 @@ function publicMedia(media: MediaRecord): PublicMedia {
     processingState: media.processingState,
     createdAt: media.createdAt,
     updatedAt: media.updatedAt,
+    renditions,
     urls: {
       original: `${base}/original`,
       large: `${base}/large`,
@@ -111,32 +124,48 @@ export class MediaService {
 
     const id = randomUUID();
     const originalName = `${id}.${format.extension}`;
-    const largeName = `${id}-large.webp`;
-    const thumbnailName = `${id}-thumbnail.webp`;
     const originalPath = path.join(this.directories.originals, originalName);
-    const largePath = path.join(this.directories.derived, largeName);
-    const thumbnailPath = path.join(this.directories.derived, thumbnailName);
     const createdPaths: string[] = [];
 
     try {
       fs.writeFileSync(originalPath, input.buffer, { flag: 'wx', mode: 0o640 });
       createdPaths.push(originalPath);
-      await sharp(input.buffer).autoOrient().resize({ width: 1_600, withoutEnlargement: true })
-        .webp({ quality: 84 }).toFile(largePath);
-      createdPaths.push(largePath);
-      await sharp(input.buffer).autoOrient().resize({ width: 480, withoutEnlargement: true })
-        .webp({ quality: 78 }).toFile(thumbnailPath);
-      createdPaths.push(thumbnailPath);
+      const sourceWidth = metadata.autoOrient.width;
+      const responsiveWidths = Array.from(new Set([
+        ...RESPONSIVE_IMAGE_WIDTHS.filter((width) => width <= sourceWidth),
+        ...(sourceWidth < RESPONSIVE_IMAGE_WIDTHS.at(-1)! ? [sourceWidth] : []),
+      ])).sort((left, right) => left - right);
+      const renditions: MediaRendition[] = [];
+      const derivatives: Record<string, string> = {};
+      for (const width of responsiveWidths) {
+        const variant = `w-${width}`;
+        const name = `${id}-${variant}.webp`;
+        const outputPath = path.join(this.directories.derived, name);
+        const info = await sharp(input.buffer).autoOrient().resize({ width, withoutEnlargement: true })
+          .webp({ quality: width <= 480 ? 78 : 84 }).toFile(outputPath);
+        createdPaths.push(outputPath);
+        const relativePath = path.posix.join('derived', name);
+        derivatives[variant] = relativePath;
+        renditions.push({
+          byteSize: info.size,
+          format: 'webp',
+          height: info.height,
+          path: relativePath,
+          variant,
+          width: info.width,
+        });
+      }
+      const closestPath = (target: number) => renditions.reduce((closest, rendition) =>
+        Math.abs(rendition.width - target) < Math.abs(closest.width - target) ? rendition : closest).path;
+      derivatives.thumbnail = closestPath(480);
+      derivatives.large = closestPath(1_600);
 
       const createdAt = new Date().toISOString();
       return publicMedia(this.media.create({
         id,
         postId: input.postId,
         originalPath: path.posix.join('originals', originalName),
-        derivatives: {
-          large: path.posix.join('derived', largeName),
-          thumbnail: path.posix.join('derived', thumbnailName),
-        },
+        derivatives,
         mimeType: format.mimeType,
         // Source bytes stay immutable; layout dimensions describe the oriented
         // full-resolution composition, before derivative resizing.
@@ -154,7 +183,7 @@ export class MediaService {
           .reduce((next, item) => Math.max(next, item.displayOrder + 1), 0),
         processingState: 'ready',
         processingError: null,
-        renditionManifest: {},
+        renditionManifest: { version: 1, renditions },
         createdAt,
         updatedAt: createdAt,
       }));

@@ -72,6 +72,14 @@ and edits run through the durable SQLite outbox. The worker recovers abandoned
 jobs after restart, uses a stable idempotency key, honors rate-limit delays, and
 stops retrying permanent authentication or validation failures.
 
+Published posts expose their projected Mastodon discussion at
+`GET /api/posts/:slug/comments/mastodon`. Replies are normalized and sanitized
+before reaching the browser. The server caches a successful context response for
+two minutes and serves the cached response with `stale: true` when Mastodon is
+temporarily unavailable. A response explicitly distinguishes an unsyndicated
+post, an unavailable discussion, and a partial thread. Every displayed reply and
+the reply action link back to Mastodon, which remains authoritative.
+
 ## Backup
 
 Run the application-aware backup command while the service is running or

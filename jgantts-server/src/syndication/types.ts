@@ -43,3 +43,8 @@ export interface MastodonStatusResult {
   id: string;
   url: string;
 }
+
+export interface MastodonStatusContext {
+  ancestors: unknown[];
+  descendants: unknown[];
+}

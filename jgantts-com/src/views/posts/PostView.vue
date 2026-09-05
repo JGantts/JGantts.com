@@ -1,13 +1,21 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import type { CanonicalPost } from '@/posts/types'
+import type {
+  CanonicalPost,
+  MastodonCommentNode,
+  MastodonCommentsResponse,
+} from '@/posts/types'
+import MastodonComment from './MastodonComment.vue'
 
 const props = defineProps<{ slug: string }>()
 const router = useRouter()
 const post = ref<CanonicalPost | null>(null)
 const loading = ref(true)
 const error = ref('')
+const comments = ref<MastodonCommentsResponse | null>(null)
+const commentTree = ref<MastodonCommentNode[]>([])
+const commentsLoading = ref(false)
 const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' })
 
 function initialPost(): CanonicalPost | null {
@@ -76,6 +84,44 @@ function updateDocumentMeta(value: CanonicalPost) {
   document.head.appendChild(jsonLd)
 }
 
+function buildCommentTree(response: MastodonCommentsResponse): MastodonCommentNode[] {
+  const nodes = new Map(response.comments.map((comment) => [
+    comment.id,
+    { ...comment, children: [] } as MastodonCommentNode,
+  ]))
+  const roots: MastodonCommentNode[] = []
+  for (const node of nodes.values()) {
+    const parent = node.parentId ? nodes.get(node.parentId) : null
+    if (parent) parent.children.push(node)
+    else roots.push(node)
+  }
+  return roots
+}
+
+async function loadComments(slug: string) {
+  commentsLoading.value = true
+  comments.value = null
+  commentTree.value = []
+  try {
+    const response = await fetch(`/api/posts/${encodeURIComponent(slug)}/comments/mastodon`)
+    if (!response.ok) throw new Error(`Comments request failed (${response.status})`)
+    const loaded = await response.json() as MastodonCommentsResponse
+    comments.value = loaded
+    commentTree.value = buildCommentTree(loaded)
+  } catch {
+    comments.value = {
+      comments: [],
+      fetchedAt: null,
+      remoteUrl: null,
+      stale: false,
+      state: 'unavailable',
+      truncated: false,
+    }
+  } finally {
+    commentsLoading.value = false
+  }
+}
+
 async function loadPost() {
   loading.value = true
   error.value = ''
@@ -84,6 +130,7 @@ async function loadPost() {
     post.value = embedded
     updateDocumentMeta(embedded)
     loading.value = false
+    void loadComments(embedded.slug)
     return
   }
 
@@ -98,6 +145,7 @@ async function loadPost() {
     const loaded = await response.json() as CanonicalPost
     post.value = loaded
     updateDocumentMeta(loaded)
+    void loadComments(loaded.slug)
     if (loaded.slug !== props.slug) await router.replace(`/posts/${loaded.slug}`)
   } catch (loadError) {
     error.value = loadError instanceof Error ? loadError.message : 'The post could not be loaded.'
@@ -149,6 +197,42 @@ watch(() => props.slug, loadPost)
       </div>
 
       <div class="post-body" v-html="post.bodyHtml"></div>
+
+      <section class="mastodon-comments" aria-labelledby="mastodon-comments-title">
+        <div class="comments-heading">
+          <div>
+            <h2 id="mastodon-comments-title">Replies on Mastodon</h2>
+            <p>Mastodon remains the source of truth. Replies unavailable to this server may not appear here.</p>
+          </div>
+          <a
+            v-if="comments?.remoteUrl"
+            :href="comments.remoteUrl"
+            rel="nofollow noopener noreferrer"
+            target="_blank"
+          >Reply on Mastodon ↗</a>
+        </div>
+        <p v-if="commentsLoading" class="comments-state" role="status">Loading replies…</p>
+        <p v-else-if="comments?.state === 'not_syndicated'" class="comments-state">
+          This post has not been shared to Mastodon.
+        </p>
+        <p v-else-if="comments?.state === 'unavailable'" class="comments-state" role="status">
+          Mastodon replies are temporarily unavailable.
+        </p>
+        <template v-else-if="comments?.state === 'available'">
+          <p v-if="comments.stale" class="comments-notice">Showing cached replies while Mastodon is unavailable.</p>
+          <p v-if="comments.truncated" class="comments-notice">
+            This is a partial thread. Open Mastodon to see the rest.
+          </p>
+          <p v-if="commentTree.length === 0" class="comments-state">No replies yet.</p>
+          <ol v-else class="comment-list">
+            <MastodonComment
+              v-for="comment in commentTree"
+              :key="comment.id"
+              :comment="comment"
+            />
+          </ol>
+        </template>
+      </section>
     </article>
   </main>
 </template>
@@ -258,9 +342,68 @@ watch(() => props.slug, loadPost)
 .post-body :deep(code) { font-family: 'Azeret Mono Variable', monospace; font-size: 0.88em; }
 .post-body :deep(pre) { overflow-x: auto; }
 
+.mastodon-comments {
+  border-top: 1px solid var(--border);
+  margin-top: 3rem;
+  padding-top: 2rem;
+}
+
+.comments-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.comments-heading h2 {
+  font-size: 1.35rem;
+  font-weight: 650;
+}
+
+.comments-heading p,
+.comments-state,
+.comments-notice {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.comments-heading p {
+  font-size: 0.9rem;
+  margin-top: 0.35rem;
+}
+
+.comments-heading > a {
+  color: var(--accent);
+  flex: 0 0 auto;
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.75rem;
+}
+
+.comments-state,
+.comments-notice {
+  margin-top: 1.5rem;
+}
+
+.comments-notice {
+  border-left: 0.2rem solid var(--accent);
+  padding-left: 0.75rem;
+}
+
+.comment-list {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1.5rem;
+}
+
 .post-state {
   display: grid;
   gap: 1rem;
   text-align: center;
+}
+
+@media (max-width: 34rem) {
+  .comments-heading {
+    flex-direction: column;
+  }
 }
 </style>

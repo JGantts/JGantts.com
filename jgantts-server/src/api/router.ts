@@ -1,5 +1,6 @@
 import express from 'express';
 import type { BuildInfo } from '../build-info';
+import type { MastodonCommentsService } from '../comments/mastodon-comments-service';
 import type { MediaService } from '../media/media-service';
 import { createAdminAuth } from '../middleware/admin-auth';
 import type { PostService } from '../posts/post-service';
@@ -10,6 +11,7 @@ import { createAdminPostsRouter } from './admin-posts';
 export type BuildInfoProvider = () => BuildInfo;
 
 export interface ApiServices {
+  mastodonComments?: MastodonCommentsService;
   media?: MediaService;
   mastodonSyndication?: MastodonSyndicationService;
   posts?: PostService;
@@ -75,6 +77,24 @@ export function createApiRouter(
         next(error);
       }
     });
+
+    if (services.mastodonComments) {
+      router.get('/posts/:slug/comments/mastodon', async (req, res, next) => {
+        try {
+          const post = services.posts?.findBySlug(req.params.slug);
+          if (!post) {
+            res.status(404).json({
+              error: { code: 'not_found', message: 'No published post exists at this slug.' },
+            });
+            return;
+          }
+          const result = await services.mastodonComments?.getForPost(post.id);
+          res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120').json(result);
+        } catch (error) {
+          next(error);
+        }
+      });
+    }
 
     router.get('/posts/:slug', (req, res) => {
       const post = services.posts?.findBySlug(req.params.slug);

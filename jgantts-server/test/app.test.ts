@@ -9,6 +9,8 @@ import type { Express } from 'express';
 import sharp from 'sharp';
 import { createApp } from '../src/app';
 import { DEV_BUILD_INFO, loadBuildInfo } from '../src/build-info';
+import { CommentCacheRepository } from '../src/comments/comment-cache-repository';
+import { MastodonCommentsService } from '../src/comments/mastodon-comments-service';
 import {
   getRuntimeConfig,
   normalizeMastodonOrigin,
@@ -357,12 +359,17 @@ test('protects and idempotently queues the explicit Mastodon syndication API', a
     'https://mastodon.social',
     true,
   );
+  const commentService = new MastodonCommentsService(
+    new CommentCacheRepository(database),
+    new SyndicationRepository(database),
+    null,
+  );
   const post = posts.createDraft({ slug: 'syndicated-post', bodyMarkdown: 'Owned locally' });
   posts.publish(post.id);
   const app = createApp({
     adminToken: 'syndication-secret',
     appHtmlTemplate: TEMPLATE,
-    services: { mastodonSyndication: syndications, posts },
+    services: { mastodonComments: commentService, mastodonSyndication: syndications, posts },
     siteOrigin: 'https://jgantts.com',
   });
   const pathname = `/api/admin/posts/${post.id}/syndications/mastodon`;
@@ -389,6 +396,10 @@ test('protects and idempotently queues the explicit Mastodon syndication API', a
   });
   assert.equal(inspected.status, 200);
   assert.equal(inspected.headers['cache-control'], 'no-store');
+
+  const comments = await request(app, '/api/posts/syndicated-post/comments/mastodon');
+  assert.equal(comments.status, 200);
+  assert.equal(JSON.parse(comments.body).state, 'not_syndicated');
 });
 
 test('renders canonical post HTML, redirects old slugs, and preserves publication statuses', async (t) => {

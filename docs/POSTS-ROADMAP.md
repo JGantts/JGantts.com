@@ -201,20 +201,20 @@ Mastodon link post, without coupling local availability to Mastodon.
 
 ### Phase 5 — Mastodon replies on canonical posts
 
-- [ ] **5.1** Implement a server-side Mastodon client for status context requests.
-- [ ] **5.2** Add `GET /api/posts/:id/comments/mastodon` or an equivalent slug-based
+- [x] **5.1** Implement a server-side Mastodon client for status context requests.
+- [x] **5.2** Add `GET /api/posts/:id/comments/mastodon` or an equivalent slug-based
   endpoint.
-- [ ] **5.3** Normalize remote statuses into an internal comment response instead
+- [x] **5.3** Normalize remote statuses into an internal comment response instead
   of exposing the Mastodon API model to Vue.
-- [ ] **5.4** Sanitize all remote HTML and constrain external media and links.
-- [ ] **5.5** Cache responses briefly and serve stale cached comments when Mastodon
+- [x] **5.4** Sanitize all remote HTML and constrain external media and links.
+- [x] **5.5** Cache responses briefly and serve stale cached comments when Mastodon
   is unavailable.
-- [ ] **5.6** Preserve reply threading and handle replies whose parent is absent.
-- [ ] **5.7** Label the UI “Replies on Mastodon,” link every reply to its source,
+- [x] **5.6** Preserve reply threading and handle replies whose parent is absent.
+- [x] **5.7** Label the UI “Replies on Mastodon,” link every reply to its source,
   and add a “Reply on Mastodon” action.
-- [ ] **5.8** Represent unavailable, deleted, limited-visibility, and truncated
+- [x] **5.8** Represent unavailable, deleted, limited-visibility, and truncated
   threads honestly.
-- [ ] **5.9** Test hostile content, cache expiry, stale-on-error, empty threads,
+- [x] **5.9** Test hostile content, cache expiry, stale-on-error, empty threads,
   nesting, and upstream limits.
 
 Exit condition: the site presents Mastodon discussion as a safe remote projection
@@ -357,6 +357,23 @@ the live site is the demonstrable source of truth.
 - Verified configuration, status construction, instance API behavior, success,
   duplicate requests, timeout-after-send, rate limiting, authentication failure,
   manual retry, explicit edits, and crash recovery with 42 passing server tests.
+
+### 2026-09-04 — Mastodon replies on canonical posts
+
+- Added an authenticated server-side Mastodon context client and the public
+  slug-based `GET /api/posts/:slug/comments/mastodon` projection endpoint.
+- Normalized remote accounts, replies, relationships, and image attachments into
+  a small site-owned response. Remote HTML is allowlist-sanitized; links and
+  media require HTTPS and link back to their original sources.
+- Added a two-minute SQLite cache with fresh-cache reads and stale-on-error
+  fallback so Mastodon downtime does not remove recently retrieved discussion.
+- Added nested “Replies on Mastodon” rendering, source links for every reply, an
+  explicit “Reply on Mastodon” action, missing-parent context labels, and honest
+  unavailable, partial-thread, and visibility caveats.
+- Verified hostile content, unsafe URLs, nesting, missing parents, fresh and stale
+  cache behavior, unavailable and unsyndicated posts, truncation, and API routing
+  with 46 passing server tests and a production client build. Browser QA passed
+  at desktop and 390 px mobile widths with no horizontal overflow.
 
 ## Definition of done
 

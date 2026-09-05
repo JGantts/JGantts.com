@@ -84,6 +84,7 @@ test('uses the Mastodon instance limit and sends authenticated idempotent status
     if (url.endsWith('/api/v2/instance')) {
       return Response.json({ configuration: { statuses: { max_characters: 620 } } });
     }
+    if (url.endsWith('/context')) return Response.json({ ancestors: [], descendants: [] });
     return Response.json({ id: 'status-id', url: 'https://mastodon.social/@jgantts/status-id' });
   };
   const client = new MastodonClient('https://mastodon.social', 'secret-token', fakeFetch);
@@ -100,6 +101,9 @@ test('uses the Mastodon instance limit and sends authenticated idempotent status
     status: 'A canonical link',
     visibility: 'public',
   });
+  assert.deepEqual(await client.getStatusContext('status/id'), { ancestors: [], descendants: [] });
+  assert.equal(requests[2].url, 'https://mastodon.social/api/v1/statuses/status%2Fid/context');
+  assert.equal(requests[2].headers.get('authorization'), 'Bearer secret-token');
 });
 
 test('captures Mastodon rate-limit retry timing without exposing credentials', async () => {

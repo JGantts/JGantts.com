@@ -1,6 +1,8 @@
 import type { Server } from 'node:http';
 import { createApp } from './app';
 import { getRuntimeConfig } from './config';
+import { CommentCacheRepository } from './comments/comment-cache-repository';
+import { MastodonCommentsService } from './comments/mastodon-comments-service';
 import { openContentDatabase } from './db/database';
 import { MediaRepository } from './media/media-repository';
 import { MediaService } from './media/media-service';
@@ -27,6 +29,9 @@ export function startServer(): Server {
     config.mediaRoot,
   );
   const syndicationRepository = new SyndicationRepository(contentDatabase);
+  const mastodonClient = config.mastodonOrigin && config.mastodonAccessToken
+    ? new MastodonClient(config.mastodonOrigin, config.mastodonAccessToken)
+    : null;
   const mastodonSyndication = new MastodonSyndicationService(
     syndicationRepository,
     postService,
@@ -37,9 +42,14 @@ export function startServer(): Server {
   const outboxWorker = mastodonSyndication.enabled
     ? new OutboxWorker(
       syndicationRepository,
-      new MastodonClient(config.mastodonOrigin, config.mastodonAccessToken),
+      mastodonClient as MastodonClient,
     )
     : null;
+  const mastodonComments = new MastodonCommentsService(
+    new CommentCacheRepository(contentDatabase),
+    syndicationRepository,
+    mastodonClient,
+  );
 
   if (!appHtmlTemplate) {
     console.warn(`Built app HTML not found at ${SITE_INDEX_PATH}; serving maintenance page with status 503.`);
@@ -54,7 +64,12 @@ export function startServer(): Server {
   const server = createApp({
     adminToken: config.adminApiToken,
     appHtmlTemplate,
-    services: { mastodonSyndication, media: mediaService, posts: postService },
+    services: {
+      mastodonComments,
+      mastodonSyndication,
+      media: mediaService,
+      posts: postService,
+    },
     siteOrigin: config.siteOrigin,
   }).listen(config.port, () => {
     console.log(`Server is running on http://localhost:${config.port}`);

@@ -1,4 +1,4 @@
-import type { MastodonStatusResult } from './types';
+import type { MastodonStatusContext, MastodonStatusResult } from './types';
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -30,6 +30,10 @@ export interface MastodonClientLike {
   publishStatus(text: string, idempotencyKey: string): Promise<MastodonStatusResult>;
 }
 
+export interface MastodonCommentsClientLike {
+  getStatusContext(statusId: string): Promise<MastodonStatusContext>;
+}
+
 export class MastodonClient implements MastodonClientLike {
   private statusCharacterLimit: number | null = null;
 
@@ -57,6 +61,15 @@ export class MastodonClient implements MastodonClientLike {
 
   editStatus(statusId: string, text: string, idempotencyKey: string): Promise<MastodonStatusResult> {
     return this.writeStatus(`/api/v1/statuses/${encodeURIComponent(statusId)}`, 'PUT', text, idempotencyKey);
+  }
+
+  async getStatusContext(statusId: string): Promise<MastodonStatusContext> {
+    const response = await this.request(`/api/v1/statuses/${encodeURIComponent(statusId)}/context`);
+    const body = await response.json() as Partial<MastodonStatusContext>;
+    if (!Array.isArray(body.ancestors) || !Array.isArray(body.descendants)) {
+      throw new MastodonRequestError('Mastodon returned an invalid status context.', response.status);
+    }
+    return { ancestors: body.ancestors, descendants: body.descendants };
   }
 
   private async writeStatus(

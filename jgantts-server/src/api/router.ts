@@ -3,6 +3,7 @@ import type { BuildInfo } from '../build-info';
 import type { MastodonCommentsService } from '../comments/mastodon-comments-service';
 import type { MediaService } from '../media/media-service';
 import { createAdminAuth } from '../middleware/admin-auth';
+import type { HealthService } from '../observability/health-service';
 import type { PostService } from '../posts/post-service';
 import type { MastodonSyndicationService } from '../syndication/mastodon-syndication-service';
 import { createAdminMediaRouter } from './admin-media';
@@ -11,6 +12,7 @@ import { createAdminPostsRouter } from './admin-posts';
 export type BuildInfoProvider = () => BuildInfo;
 
 export interface ApiServices {
+  health?: HealthService;
   mastodonComments?: MastodonCommentsService;
   media?: MediaService;
   mastodonSyndication?: MastodonSyndicationService;
@@ -36,7 +38,8 @@ export function createApiRouter(
 
   // Operational endpoint. Add future business endpoints in this router.
   router.get('/health', (_req, res) => {
-    res.json({ status: 'ok' });
+    const report = services.health?.inspect() ?? { status: 'ok' };
+    res.set('Cache-Control', 'no-store').status(report.status === 'unhealthy' ? 503 : 200).json(report);
   });
 
   router.get('/build', (_req, res) => {

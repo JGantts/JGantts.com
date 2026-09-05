@@ -32,7 +32,13 @@ async function waitForHealth(origin) {
       const body = await response.text();
       assert.equal(response.status, 200, `health returned ${response.status}: ${body.slice(0, 200)}`);
       assert.match(response.headers.get('content-type') ?? '', /application\/json/i);
-      assert.deepEqual(JSON.parse(body), { status: 'ok' });
+      const report = JSON.parse(body);
+      assert.ok(['ok', 'degraded'].includes(report.status), `unexpected health status: ${report.status}`);
+      if (report.checks) {
+        assert.equal(report.checks.database?.status, 'ok');
+        assert.equal(report.checks.media?.status, 'ok');
+        assert.notEqual(report.checks.outbox?.status, 'unhealthy');
+      }
       return;
     } catch (error) {
       lastError = error;

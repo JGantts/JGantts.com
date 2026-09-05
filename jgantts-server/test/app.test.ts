@@ -21,9 +21,12 @@ import {
 import { openContentDatabase } from '../src/db/database';
 import { MediaRepository } from '../src/media/media-repository';
 import { MediaService } from '../src/media/media-service';
+import { HealthService } from '../src/observability/health-service';
+import { createStructuredLogger } from '../src/observability/logger';
 import { PostRepository } from '../src/posts/post-repository';
 import { PostService } from '../src/posts/post-service';
 import { upsertMeta } from '../src/site/html';
+import { ensureMediaDirectories } from '../src/storage';
 import { MastodonSyndicationService } from '../src/syndication/mastodon-syndication-service';
 import { SyndicationRepository } from '../src/syndication/syndication-repository';
 
@@ -203,6 +206,33 @@ test('exposes an API health endpoint before the SPA fallback', async () => {
   assert.deepEqual(JSON.parse(response.body), { status: 'ok' });
 });
 
+test('exposes detailed core and dependency health without making Mastodon mandatory', async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jgantts-api-health-'));
+  const mediaRoot = path.join(root, 'media');
+  ensureMediaDirectories(mediaRoot);
+  const database = openContentDatabase(path.join(root, 'content.sqlite'));
+  t.after(() => {
+    database.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+  const app = createApp({
+    appHtmlTemplate: TEMPLATE,
+    services: { health: new HealthService(database, mediaRoot, false) },
+  });
+  const response = await request(app, '/api/health');
+  const body = JSON.parse(response.body) as {
+    checks: { database: { status: string }; mastodon: { status: string }; media: { status: string } };
+    status: string;
+  };
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers['cache-control'], 'no-store');
+  assert.equal(body.status, 'ok');
+  assert.equal(body.checks.database.status, 'ok');
+  assert.equal(body.checks.media.status, 'ok');
+  assert.equal(body.checks.mastodon.status, 'disabled');
+});
+
 test('returns full build information through the API', async () => {
   const app = createApp({
     appHtmlTemplate: TEMPLATE,
@@ -214,6 +244,25 @@ test('returns full build information through the API', async () => {
   assert.equal(response.status, 200);
   assert.equal(response.headers['cache-control'], 'no-store');
   assert.deepEqual(JSON.parse(response.body), BUILD_INFO);
+});
+
+test('logs request metadata without headers, query values, or request bodies', async () => {
+  const lines: string[] = [];
+  const app = createApp({
+    appHtmlTemplate: TEMPLATE,
+    logger: createStructuredLogger((line) => lines.push(line)),
+  });
+  const response = await request(app, '/api/health?sensitive=query-value', {
+    headers: { authorization: 'Bearer private-token' },
+  });
+  assert.equal(response.status, 200);
+  assert.ok(response.headers['x-request-id']);
+  assert.equal(lines.length, 1);
+  const entry = JSON.parse(lines[0]) as { event: string; path: string; status: number };
+  assert.equal(entry.event, 'http_request_completed');
+  assert.equal(entry.path, '/api/health');
+  assert.equal(entry.status, 200);
+  assert.doesNotMatch(lines[0], /private-token|query-value|authorization/i);
 });
 
 test('lists only published posts with stable cursor pagination', async (t) => {

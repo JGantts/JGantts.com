@@ -2,6 +2,7 @@ import sanitizeHtml from 'sanitize-html';
 import type { MastodonCommentsClientLike } from '../syndication/mastodon-client';
 import type { SyndicationRepository } from '../syndication/syndication-repository';
 import type { MastodonStatusContext } from '../syndication/types';
+import { NOOP_LOGGER, type StructuredLogger } from '../observability/logger';
 import { CommentCacheRepository } from './comment-cache-repository';
 import type { MastodonComment, MastodonCommentAttachment, MastodonCommentsResponse } from './types';
 
@@ -105,6 +106,7 @@ export class MastodonCommentsService {
     private readonly cache: CommentCacheRepository,
     private readonly syndications: SyndicationRepository,
     private readonly mastodon: MastodonCommentsClientLike | null,
+    private readonly logger: StructuredLogger = NOOP_LOGGER,
   ) {}
 
   async getForPost(postId: string, now = new Date()): Promise<MastodonCommentsResponse> {
@@ -119,6 +121,11 @@ export class MastodonCommentsService {
     const matchingCache = cached?.rootStatusId === syndication.remoteStatusId ? cached : null;
     if (matchingCache && Date.parse(matchingCache.expiresAt) > now.getTime()) return matchingCache.payload;
     if (!this.mastodon) {
+      this.logger.warn('mastodon_comments_unavailable', {
+        cached: Boolean(matchingCache),
+        postId,
+        reason: 'client_disabled',
+      });
       return matchingCache
         ? { ...matchingCache.payload, stale: true }
         : {
@@ -148,7 +155,13 @@ export class MastodonCommentsService {
         rootStatusId: syndication.remoteStatusId,
       });
       return payload;
-    } catch {
+    } catch (error) {
+      this.logger.warn('mastodon_comments_fetch_failed', {
+        cached: Boolean(matchingCache),
+        error,
+        postId,
+        remoteStatusId: syndication.remoteStatusId,
+      });
       return matchingCache
         ? { ...matchingCache.payload, stale: true }
         : {

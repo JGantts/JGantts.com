@@ -4,7 +4,8 @@ import { createMediaRouter } from './api/media';
 import { createApiRouter, type ApiServices, type BuildInfoProvider } from './api/router';
 import { loadBuildInfo, type BuildInfo } from './build-info';
 import { normalizeSiteOrigin } from './config';
-import { errorHandler } from './middleware/error-handler';
+import { createErrorHandler } from './middleware/error-handler';
+import { createRequestLogger, NOOP_LOGGER, type StructuredLogger } from './observability/logger';
 import { SITE_DIST_ROOT, SITE_INDEX_PATH, SITE_PUBLIC_ROOT } from './paths';
 import { MAINTENANCE_HTML, readAppHtml, renderAppHtml } from './site/html';
 import { renderAtomFeed, renderSitemap } from './site/discovery';
@@ -17,6 +18,7 @@ export interface AppOptions {
   buildInfoProvider?: BuildInfoProvider;
   distRoot?: string;
   indexPath?: string;
+  logger?: StructuredLogger;
   publicRoot?: string;
   services?: ApiServices;
   siteOrigin?: string;
@@ -35,8 +37,10 @@ export function createApp(options: AppOptions = {}): express.Express {
   const fixedBuildInfo = options.buildInfo;
   const getBuildInfo = options.buildInfoProvider
     ?? (fixedBuildInfo ? () => fixedBuildInfo : () => loadBuildInfo());
+  const logger = options.logger ?? NOOP_LOGGER;
 
   app.disable('x-powered-by');
+  app.use(createRequestLogger(logger));
 
   // API routes must be mounted before the SPA fallback.
   app.use('/api', createApiRouter(getBuildInfo, options.services, {
@@ -119,6 +123,6 @@ export function createApp(options: AppOptions = {}): express.Express {
     res.type('html').set('Cache-Control', 'no-cache').send(html);
   });
 
-  app.use(errorHandler);
+  app.use(createErrorHandler(logger));
   return app;
 }

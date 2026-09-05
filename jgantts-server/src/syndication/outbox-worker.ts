@@ -1,4 +1,5 @@
 import { MastodonRequestError, type MastodonClientLike } from './mastodon-client';
+import { NOOP_LOGGER, type StructuredLogger } from '../observability/logger';
 import { buildMastodonStatus } from './mastodon-syndication-service';
 import { SyndicationRepository } from './syndication-repository';
 import type { OutboxJob } from './types';
@@ -26,6 +27,7 @@ export class OutboxWorker {
     private readonly repository: SyndicationRepository,
     private readonly mastodon: MastodonClientLike,
     private readonly pollIntervalMs = 5_000,
+    private readonly logger: StructuredLogger = NOOP_LOGGER,
   ) {}
 
   start(): void {
@@ -64,12 +66,35 @@ export class OutboxWorker {
         );
       if (job.kind === 'mastodon.publish_status') this.repository.completePublication(job, remote);
       else this.repository.completeEdit(job, remote);
+      this.logger.info('outbox_job_completed', {
+        attempt: job.attemptCount,
+        jobId: job.id,
+        kind: job.kind,
+        syndicationId: job.payload.syndicationId,
+      });
     } catch (error) {
       const permanent = error instanceof MastodonRequestError && error.permanent;
       if (permanent || job.attemptCount >= MAX_ATTEMPTS) {
         this.repository.fail(job, boundedError(error));
+        this.logger.error('outbox_job_failed', {
+          attempt: job.attemptCount,
+          error,
+          jobId: job.id,
+          kind: job.kind,
+          permanent,
+          syndicationId: job.payload.syndicationId,
+        });
       } else {
-        this.repository.reschedule(job, boundedError(error), new Date(Date.now() + retryDelay(job, error)));
+        const availableAt = new Date(Date.now() + retryDelay(job, error));
+        this.repository.reschedule(job, boundedError(error), availableAt);
+        this.logger.warn('outbox_job_rescheduled', {
+          attempt: job.attemptCount,
+          availableAt: availableAt.toISOString(),
+          error,
+          jobId: job.id,
+          kind: job.kind,
+          syndicationId: job.payload.syndicationId,
+        });
       }
     }
     return true;

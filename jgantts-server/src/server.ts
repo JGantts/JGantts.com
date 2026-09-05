@@ -6,6 +6,8 @@ import { MastodonCommentsService } from './comments/mastodon-comments-service';
 import { openContentDatabase } from './db/database';
 import { MediaRepository } from './media/media-repository';
 import { MediaService } from './media/media-service';
+import { HealthService } from './observability/health-service';
+import { createStructuredLogger } from './observability/logger';
 import { SITE_INDEX_PATH } from './paths';
 import { PostRepository } from './posts/post-repository';
 import { PostService } from './posts/post-service';
@@ -17,6 +19,7 @@ import { OutboxWorker } from './syndication/outbox-worker';
 import { SyndicationRepository } from './syndication/syndication-repository';
 
 export function startServer(): Server {
+  const logger = createStructuredLogger();
   const config = getRuntimeConfig();
   const appHtmlTemplate = readAppHtml(SITE_INDEX_PATH);
   ensureMediaDirectories(config.mediaRoot);
@@ -43,28 +46,38 @@ export function startServer(): Server {
     ? new OutboxWorker(
       syndicationRepository,
       mastodonClient as MastodonClient,
+      5_000,
+      logger,
     )
     : null;
   const mastodonComments = new MastodonCommentsService(
     new CommentCacheRepository(contentDatabase),
     syndicationRepository,
     mastodonClient,
+    logger,
+  );
+  const health = new HealthService(
+    contentDatabase,
+    config.mediaRoot,
+    mastodonSyndication.enabled,
   );
 
   if (!appHtmlTemplate) {
-    console.warn(`Built app HTML not found at ${SITE_INDEX_PATH}; serving maintenance page with status 503.`);
+    logger.warn('frontend_build_missing', { indexPath: SITE_INDEX_PATH });
   }
   if (process.env.NODE_ENV === 'production' && !config.siteOrigin) {
-    console.warn('SITE_ORIGIN is not set in production; falling back to request-derived URLs.');
+    logger.warn('site_origin_missing');
   }
   if (!mastodonSyndication.enabled) {
-    console.warn('Mastodon syndication is disabled; set SITE_ORIGIN, MASTODON_BASE_URL, and MASTODON_ACCESS_TOKEN to enable it.');
+    logger.warn('mastodon_syndication_disabled');
   }
 
   const server = createApp({
     adminToken: config.adminApiToken,
     appHtmlTemplate,
+    logger,
     services: {
+      health,
       mastodonComments,
       mastodonSyndication,
       media: mediaService,
@@ -72,7 +85,7 @@ export function startServer(): Server {
     },
     siteOrigin: config.siteOrigin,
   }).listen(config.port, () => {
-    console.log(`Server is running on http://localhost:${config.port}`);
+    logger.info('server_started', { port: config.port });
     outboxWorker?.start();
   });
   server.once('close', () => {
@@ -81,10 +94,10 @@ export function startServer(): Server {
   });
 
   const shutdown = (signal: NodeJS.Signals) => {
-    console.log(`${signal} received; closing HTTP server.`);
+    logger.info('server_shutdown_started', { signal });
     server.close((error) => {
       if (error) {
-        console.error('Failed to close HTTP server cleanly:', error);
+        logger.error('server_shutdown_failed', { error });
         process.exitCode = 1;
       }
     });

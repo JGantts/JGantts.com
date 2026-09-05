@@ -145,6 +145,32 @@ jobs:
           npm run build
         working-directory: ./jgantts-server/
 
+      - name: Back up production content
+        uses: appleboy/ssh-action@v0.1.2
+        with:
+          host: ${{ secrets.LINODE_IP }}
+          username: ${{ secrets.LINODE_USER }}
+          password: ${{ secrets.LINODE_PASSWORD }}
+          port: 22
+          script: |
+            set -eu
+            backup_root=/var/backups/jgantts-com/pre-deploy
+            backup_name="$(date -u +%Y%m%dT%H%M%SZ)-${{ github.sha }}"
+            backup_path="$backup_root/$backup_name"
+            server_root=/home/jgantts-com/node-js/jgantts-server
+
+            sudo install -d -o jgantts-com -g jgantts-com -m 0750 "$backup_root"
+            cd "$server_root"
+            sudo -u jgantts-com env \
+              NODE_ENV=production \
+              JGANTTS_DATA_ROOT=/var/lib/jgantts \
+              node dist/cli/backup-content.js "$backup_path"
+            sudo -u jgantts-com node -e 'const Database = require("better-sqlite3"); const database = new Database(process.argv[1], { readonly: true }); const result = database.pragma("integrity_check", { simple: true }); database.close(); if (result !== "ok") throw new Error(`SQLite integrity check failed: ${result}`);' "$backup_path/content.sqlite"
+            sudo -u jgantts-com test -d "$backup_path/media/originals"
+            sudo -u jgantts-com test -d "$backup_path/media/derived"
+            sudo -u jgantts-com ln -sfn "$backup_path" "$backup_root/latest"
+            echo "Verified pre-deploy backup: $backup_path"
+
       - name: Deploy JGantts Server
         uses: appleboy/scp-action@v1.0.0
         with:

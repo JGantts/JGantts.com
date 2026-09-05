@@ -1,6 +1,6 @@
 # Site-Owned Posts Roadmap
 
-Last updated: 2026-09-04
+Last updated: 2026-09-05
 
 ## Objective
 
@@ -33,13 +33,13 @@ Authoring -> JGantts database -> canonical post page
 
 ## Current state
 
-- Status: Phases 1–3 complete; Mastodon syndication is next.
+- Status: Phases 1–5 and production-operation items 7.1–7.5 are complete.
 - Active item: None.
-- Next item: 4.1 — add server-only Mastodon configuration and scoped credentials.
-- Existing implementation: `/photos` contains six hard-coded Mastodon status IDs.
-  The Vue client requests each status and its context directly from
-  `mastodon.social` and treats the Mastodon response as both post content and
-  comments.
+- Next item: 7.6 — run the production smoke tests after deployment.
+- Existing implementation: canonical posts, local media, private authoring,
+  Mastodon link syndication and reply projection are complete. Production has
+  persistent storage; the pending deploy adds expanded health/logging and a
+  verified pre-deploy backup gate.
 - Known unrelated working-tree changes existed when this roadmap was created;
   implementation must preserve them.
 
@@ -236,36 +236,15 @@ Mastodon link post, without coupling local availability to Mastodon.
 Exit condition: the site presents Mastodon discussion as a safe remote projection
 while clearly retaining Mastodon as its source of truth.
 
-### Phase 6 — Existing post migration
-
-- [ ] **6.1** Build a repeatable importer for the six currently hard-coded Mastodon
-  posts.
-- [ ] **6.2** Download and checksum original media; retain dates, alt text, content
-  warnings, and source URLs.
-- [ ] **6.3** Create local posts and syndication mappings without altering original
-  Mastodon timestamps or identities.
-- [ ] **6.4** Compare every migrated post and media asset against the remote source.
-- [ ] **6.5** Replace direct Mastodon post fetching in
-  `jgantts-com/src/views/photos/IndexView.vue` with the local post API.
-- [ ] **6.6** Remove the hard-coded Mastodon status-ID list.
-- [ ] **6.7** Redirect each legacy `/photos/:mastodonId` URL to its canonical post.
-- [ ] **6.8** Decide whether to edit historical Mastodon posts to add canonical
-  links; perform this only after canonical pages are live and verified.
-- [ ] **6.9** Verify migration and redirects in staging or locally before production
-  deployment.
-
-Exit condition: all existing photo posts remain accessible, are owned locally,
-and use Mastodon only for their remote discussion.
-
 ### Phase 7 — Production operations and launch
 
 - [x] **7.1** Provision persistent production data/media paths with least-privilege
   ownership for the systemd service.
 - [x] **7.2** Update deployment without copying over or deleting runtime content.
-- [ ] **7.3** Add a pre-deploy database backup and a documented rollback procedure.
-- [ ] **7.4** Add health checks for database readiness, media writability, outbox
+- [x] **7.3** Add a pre-deploy database backup and a documented rollback procedure.
+- [x] **7.4** Add health checks for database readiness, media writability, outbox
   backlog, and Mastodon degradation without making Mastodon a hard dependency.
-- [ ] **7.5** Add structured logs that never contain credentials or full private
+- [x] **7.5** Add structured logs that never contain credentials or full private
   request bodies.
 - [ ] **7.6** Run the complete server and client test suites and production smoke
   tests.
@@ -406,6 +385,32 @@ the live site is the demonstrable source of truth.
   Verified the API suite, production client build, browser authoring flow, and
   desktop/390 px mobile layouts with no horizontal overflow.
 
+### 2026-09-05 — Operational health and structured logging
+
+- Removed the existing-Mastodon-post migration phase from scope. Historical
+  photo pages remain a separate legacy experience rather than launch-blocking
+  canonical-post migration work.
+- Expanded `GET /api/health` with database readiness, persistent-media
+  readability/writability, pending/processing/failed outbox counts, stale worker
+  detection, and Mastodon configuration/degradation state.
+- Core storage failures return `503`; Mastodon being disabled or degraded stays
+  visible in the report without becoming a hard availability dependency.
+- Added JSON logs for request completion, server lifecycle, application errors,
+  outbox completion/retry/failure, and Mastodon comment degradation. Request
+  bodies, headers, query values, and credentials are excluded, with recursive
+  sensitive-key redaction as defense in depth.
+
+### 2026-09-05 — Pre-deploy backup and rollback
+
+- Added a blocking production pre-deploy backup before application files are
+  copied. It uses SQLite's online backup API, copies media, verifies SQLite
+  integrity and the media layout, and records the newest verified snapshot.
+- Backups are retained under `/var/backups/jgantts-com/pre-deploy`; the workflow
+  does not delete them or imply that same-host storage is disaster recovery.
+- Documented application-only rollback through a Git revert and non-destructive
+  content recovery into a fresh data root, including verification, activation,
+  and recovery if the health check fails.
+
 ## Definition of done
 
 This roadmap is complete when:
@@ -414,6 +419,5 @@ This roadmap is complete when:
 - Every post has a stable canonical page and correct initial-response metadata.
 - Mastodon receives a link post through a retry-safe asynchronous workflow.
 - Mastodon replies appear safely on the canonical page and link back to Mastodon.
-- Existing photo posts and URLs have been migrated without losing content.
 - Mastodon downtime does not prevent reading or publishing canonical posts.
 - Backup, restore, deployment, monitoring, and rollback procedures are verified.

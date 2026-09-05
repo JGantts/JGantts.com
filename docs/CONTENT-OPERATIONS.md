@@ -94,6 +94,24 @@ temporarily unavailable. A response explicitly distinguishes an unsyndicated
 post, an unavailable discussion, and a partial thread. Every displayed reply and
 the reply action link back to Mastodon, which remains authoritative.
 
+## Health and logs
+
+`GET /api/health` returns a non-cacheable operational report covering SQLite,
+persistent media directories, outbox backlog and failures, and Mastodon state.
+Database, media, or outbox inspection failure makes the endpoint return `503`.
+An old/failed Mastodon job reports `degraded` with HTTP `200`, because Mastodon
+must not become a hard dependency for the canonical site.
+
+The service writes one-line JSON logs to stdout/stderr for systemd/journald. It
+records request method, path (without query values), response status, duration,
+request ID, lifecycle events, outbox outcomes, and Mastodon comment failures.
+It does not log request bodies, authorization headers, cookies, or tokens, and
+redacts sensitive field names recursively. Inspect recent production events with:
+
+```sh
+journalctl -u jgantts-com-node-app --since "30 minutes ago" -o cat
+```
+
 ## Backup
 
 Run the application-aware backup command while the service is running or
@@ -109,6 +127,82 @@ JGANTTS_DATA_ROOT=/var/lib/jgantts npm run content:backup -- /srv/jgantts-backup
 The destination must not already exist. Copy the resulting directory to a
 different machine or storage provider; a backup on the same Linode is not a
 disaster-recovery backup.
+
+Every production site deployment now creates and verifies this snapshot before
+copying application files. Deployment stops immediately if the backup or SQLite
+integrity check fails. Snapshots are stored at:
+
+```text
+/var/backups/jgantts-com/pre-deploy/<UTC timestamp>-<Git commit SHA>/
+```
+
+`/var/backups/jgantts-com/pre-deploy/latest` points to the newest verified
+snapshot. Backups are deliberately not deleted by the deploy workflow; add
+off-host replication and an explicit retention policy before enabling cleanup.
+
+## Application rollback
+
+If content is healthy and only application code is bad, revert the bad commit
+on `prod` and push the revert. The normal deployment workflow will take another
+content backup, deploy that known Git revision, restart the service, and run the
+live smoke test. Do not replace `/var/lib/jgantts` for an application-only
+rollback.
+
+Before rolling back across a database migration, confirm that the older server
+can read the current schema. The migrations currently in this repository are
+additive, but that assumption must be reconsidered for every future migration.
+
+## Content rollback
+
+Content recovery is intentionally non-destructive: restore into a new root,
+verify it, and then change the service configuration. Never copy a backup over
+the live database.
+
+As root, choose an exact verified backup rather than relying blindly on the
+`latest` symlink:
+
+```sh
+BACKUP=/var/backups/jgantts-com/pre-deploy/20260905T120000Z-COMMIT_SHA
+RESTORE=/var/lib/jgantts-restores/20260905T123000Z
+
+test -f "$BACKUP/content.sqlite"
+test -d "$BACKUP/media/originals"
+test -d "$BACKUP/media/derived"
+test ! -e "$RESTORE"
+
+install -d -o jgantts-com -g jgantts-com -m 0750 "$RESTORE"
+cp --archive "$BACKUP/content.sqlite" "$RESTORE/content.sqlite"
+cp --archive "$BACKUP/media" "$RESTORE/media"
+chown -R jgantts-com:jgantts-com "$RESTORE"
+runuser -u jgantts-com -- test -r "$RESTORE/content.sqlite"
+runuser -u jgantts-com -- test -w "$RESTORE/media/originals"
+```
+
+Verify the restored database before activation:
+
+```sh
+cd /home/jgantts-com/node-js/jgantts-server
+runuser -u jgantts-com -- node -e 'const Database = require("better-sqlite3"); const database = new Database(process.argv[1], { readonly: true }); const result = database.pragma("integrity_check", { simple: true }); database.close(); if (result !== "ok") throw new Error(`SQLite integrity check failed: ${result}`);' "$RESTORE/content.sqlite"
+```
+
+To activate it, first preserve the protected environment file, then replace the
+data-root setting and restart:
+
+```sh
+ENV_BACKUP="/etc/jgantts-com/jgantts-com.env.before-content-restore.$(date -u +%Y%m%dT%H%M%SZ)"
+cp --archive /etc/jgantts-com/jgantts-com.env "$ENV_BACKUP"
+sed -i "s|^JGANTTS_DATA_ROOT=.*$|JGANTTS_DATA_ROOT=$RESTORE|" \
+  /etc/jgantts-com/jgantts-com.env
+grep -q '^JGANTTS_DATA_ROOT=' /etc/jgantts-com/jgantts-com.env || \
+  printf '\nJGANTTS_DATA_ROOT=%s\n' "$RESTORE" >> /etc/jgantts-com/jgantts-com.env
+systemctl restart jgantts-com-node-app
+curl --fail-with-body https://jgantts.com/api/health
+```
+
+If the health check fails, restore `$ENV_BACKUP` to
+`/etc/jgantts-com/jgantts-com.env` and restart the service. Keep both the former
+`/var/lib/jgantts` root and the selected backup until post pages, media,
+syndication state, and authoring have been checked.
 
 ## Restore rehearsal
 

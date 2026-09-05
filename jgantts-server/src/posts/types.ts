@@ -2,6 +2,7 @@ export type PostStatus = 'draft' | 'published' | 'archived';
 
 export interface Post {
   id: string;
+  title: string | null;
   slug: string;
   bodyMarkdown: string;
   bodyHtml: string;
@@ -16,6 +17,7 @@ export interface Post {
 
 export interface NewPost {
   id: string;
+  title?: string | null;
   slug: string;
   bodyMarkdown: string;
   bodyHtml: string;
@@ -28,6 +30,7 @@ export interface NewPost {
 }
 
 export interface PostChanges {
+  title?: string | null;
   slug?: string;
   bodyMarkdown?: string;
   bodyHtml?: string;

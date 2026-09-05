@@ -17,6 +17,7 @@ export interface AuthorPostInput {
   contentWarning?: string | null;
   excerpt?: string | null;
   slug: string;
+  title?: string | null;
 }
 
 export type AuthorPostChanges = Partial<AuthorPostInput>;
@@ -75,6 +76,7 @@ export class PostService {
     const bodyMarkdown = validateText(input.bodyMarkdown, 'bodyMarkdown', 100_000, true) as string;
     return this.posts.create({
       id: randomUUID(),
+      title: validateText(input.title ?? null, 'title', 200, false),
       slug,
       bodyMarkdown,
       bodyHtml: renderPostMarkdown(bodyMarkdown),
@@ -90,6 +92,14 @@ export class PostService {
   findBySlug(slug: string): Post | null {
     const post = this.posts.getBySlug(slug);
     return post?.status === 'published' ? post : null;
+  }
+
+  findAnyBySlug(slug: string): Post | null {
+    return this.posts.getBySlug(slug);
+  }
+
+  listAllPublished(): Post[] {
+    return this.posts.listAllPublished();
   }
 
   listPublished(options: { cursor?: string; limit?: number } = {}): PublicPostPage {
@@ -111,6 +121,9 @@ export class PostService {
   updateFromAuthor(id: string, changes: AuthorPostChanges): Post | null {
     if (Object.keys(changes).length === 0) throw new PostInputError('At least one post field is required.');
     const repositoryChanges: PostChanges = {};
+    if ('title' in changes) {
+      repositoryChanges.title = validateText(changes.title, 'title', 200, false);
+    }
     if ('slug' in changes) {
       const slug = validateSlug(changes.slug);
       const existing = this.posts.getBySlug(slug);

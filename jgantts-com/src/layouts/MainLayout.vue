@@ -6,6 +6,7 @@ import BuildInfo from '@/components/BuildInfo.vue'
 const route = useRoute()
 const darkModePreference = window.matchMedia('(prefers-color-scheme: dark)')
 const isPhotosPage = computed(() => route.path.startsWith('/photos'))
+const isPostsPage = computed(() => route.path.startsWith('/posts'))
 const layoutClass = computed(() => ({
   'layout--photos': isPhotosPage.value,
 }))
@@ -44,6 +45,7 @@ onBeforeUnmount(() => {
       <span class="header-lockup">
         <span class="site-wordmark"><span class="my-header-highlight">JGantts</span>.com</span>
         <span v-if="isPhotosPage" class="page-label">/photos</span>
+        <span v-else-if="isPostsPage" class="page-label">/posts</span>
       </span>
     </header>
     <router-view />

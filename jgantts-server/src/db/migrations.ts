@@ -107,6 +107,14 @@ export const migrations: readonly Migration[] = [
       ) STRICT;
     `,
   },
+  {
+    version: 2,
+    name: 'optional_post_titles',
+    sql: `
+      ALTER TABLE posts ADD COLUMN title TEXT;
+      ALTER TABLE post_revisions ADD COLUMN title TEXT;
+    `,
+  },
 ];
 
 export function migrateDatabase(database: Database.Database): void {

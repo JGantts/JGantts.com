@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 
-interface PageMeta {
+export interface PageMeta {
   title: string;
   description: string;
   socialTitle: string;
@@ -53,6 +53,16 @@ const ROUTE_META: ReadonlyArray<{ prefix: string; meta: PageMeta }> = [
       socialImage: '/social-media.png',
     },
   },
+  {
+    prefix: '/posts',
+    meta: {
+      title: 'Posts | JGantts',
+      description: 'Writing and photographs from Jacob Gantt, published here first.',
+      socialTitle: 'Posts | JGantts',
+      socialDescription: 'Writing and photographs from Jacob Gantt, published here first.',
+      socialImage: '/social-media.png',
+    },
+  },
 ];
 
 function firstHeaderValue(value: string | string[] | undefined): string {
@@ -60,7 +70,7 @@ function firstHeaderValue(value: string | string[] | undefined): string {
   return firstValue?.split(',')[0]?.trim() ?? '';
 }
 
-function getRequestOrigin(req: Request, configuredSiteOrigin: string): string {
+export function getRequestOrigin(req: Request, configuredSiteOrigin: string): string {
   if (configuredSiteOrigin) {
     return configuredSiteOrigin;
   }

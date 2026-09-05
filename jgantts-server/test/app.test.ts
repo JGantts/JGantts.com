@@ -283,6 +283,7 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   });
   const body = JSON.stringify({
     slug: 'first-local-post',
+    title: 'First local post',
     bodyMarkdown: '# Hello\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(2)) **world**',
     excerpt: 'A first post',
   });
@@ -328,6 +329,85 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.equal(JSON.parse(publishedResponse.body).status, 'published');
   assert.equal((await request(app, '/api/posts/canonical-local-post')).status, 200);
   assert.equal((await request(app, '/api/posts/first-local-post')).status, 200);
+});
+
+test('renders canonical post HTML, redirects old slugs, and preserves publication statuses', async (t) => {
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const repository = new PostRepository(database);
+  const posts = new PostService(repository);
+  const app = createApp({
+    appHtmlTemplate: TEMPLATE,
+    services: { posts },
+    siteOrigin: 'https://jgantts.com',
+  });
+  repository.create({
+    id: 'canonical-post',
+    title: 'A canonical <post>',
+    slug: 'first-canonical-slug',
+    bodyMarkdown: 'Owned here',
+    bodyHtml: '<p>Owned here</p>',
+    excerpt: 'The canonical description.',
+    status: 'published',
+    createdAt: '2026-09-04T10:00:00.000Z',
+    publishedAt: '2026-09-04T10:00:00.000Z',
+  });
+  repository.update('canonical-post', { slug: 'canonical-post' }, '2026-09-04T11:00:00.000Z');
+  repository.create({
+    id: 'draft-page', slug: 'draft-page', bodyMarkdown: 'Draft', bodyHtml: '<p>Draft</p>',
+  });
+  repository.create({
+    id: 'archived-page', slug: 'archived-page', bodyMarkdown: 'Gone', bodyHtml: '<p>Gone</p>',
+    status: 'archived',
+  });
+
+  const response = await request(app, '/posts/canonical-post?tracking=ignored');
+  assert.equal(response.status, 200);
+  assert.match(response.body, /<title>A canonical &lt;post&gt; \| JGantts<\/title>/);
+  assert.match(response.body, /property="og:type" content="article"/);
+  assert.match(response.body, /rel="canonical" href="https:\/\/jgantts\.com\/posts\/canonical-post"/);
+  assert.match(response.body, /property="article:published_time"/);
+  assert.match(response.body, /type="application\/ld\+json"/);
+  assert.match(response.body, /data-server-rendered-post/);
+  assert.match(response.body, /<p>Owned here<\/p>/);
+  assert.match(response.body, /id="__POST_DATA__"/);
+  assert.doesNotMatch(response.body, /<h1>A canonical <post><\/h1>/);
+
+  const redirect = await request(app, '/posts/first-canonical-slug');
+  assert.equal(redirect.status, 308);
+  assert.equal(redirect.headers.location, '/posts/canonical-post');
+  assert.equal((await request(app, '/posts/draft-page')).status, 404);
+  assert.equal((await request(app, '/posts/archived-page')).status, 410);
+  assert.equal((await request(app, '/posts/missing-page')).status, 404);
+});
+
+test('generates Atom and sitemap discovery documents from published posts', async (t) => {
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const repository = new PostRepository(database);
+  const posts = new PostService(repository);
+  repository.create({
+    id: 'feed-post', title: 'Feed & sitemap', slug: 'feed-post',
+    bodyMarkdown: 'Discoverable', bodyHtml: '<p>Discoverable</p>',
+    excerpt: 'Found everywhere', status: 'published',
+    publishedAt: '2026-09-04T12:00:00.000Z',
+  });
+  repository.create({
+    id: 'feed-draft', slug: 'feed-draft', bodyMarkdown: 'Hidden', bodyHtml: '<p>Hidden</p>',
+  });
+  const app = createApp({ appHtmlTemplate: TEMPLATE, services: { posts }, siteOrigin: 'https://jgantts.com' });
+
+  const feed = await request(app, '/feed.xml');
+  assert.equal(feed.status, 200);
+  assert.match(String(feed.headers['content-type']), /application\/atom\+xml/);
+  assert.match(feed.body, /Feed &amp; sitemap/);
+  assert.match(feed.body, /https:\/\/jgantts\.com\/posts\/feed-post/);
+  assert.doesNotMatch(feed.body, /feed-draft/);
+
+  const sitemap = await request(app, '/sitemap.xml');
+  assert.equal(sitemap.status, 200);
+  assert.match(sitemap.body, /https:\/\/jgantts\.com\/posts\/feed-post/);
+  assert.doesNotMatch(sitemap.body, /feed-draft/);
 });
 
 test('returns safe failures for disabled admin API and invalid author input', async (t) => {
@@ -419,6 +499,11 @@ test('uploads local media and serves immutable originals and derivatives', async
   assert.equal(post.media.length, 1);
   assert.equal(post.media[0].altText, 'A brown test rectangle');
   assert.ok(post.media[0].urls);
+
+  const canonicalPage = await request(app, '/posts/media-api-post');
+  assert.equal(canonicalPage.status, 200);
+  assert.match(canonicalPage.body, new RegExp(uploaded.urls.large.replaceAll('/', '\\/')));
+  assert.match(canonicalPage.body, /twitter:card" content="summary_large_image"/);
 });
 
 test('reads centralized build information for every API request', async () => {

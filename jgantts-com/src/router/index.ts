@@ -48,6 +48,16 @@ function upsertMetaTag(attribute: 'name' | 'property', key: string, content: str
   tag.setAttribute('content', content)
 }
 
+function upsertCanonicalLink(href: string) {
+  let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'canonical'
+    document.head.appendChild(link)
+  }
+  link.href = href
+}
+
 function resolveMeta(to: RouteLocationNormalized): Required<AppRouteMeta> {
   const routeMeta = to.meta as AppRouteMeta
   const socialImage = routeMeta.socialImage
@@ -225,6 +235,33 @@ const router = createRouter({
         socialImage: '/kovyalo-social-preview.svg',
       },
     },
+    {
+      path: '/posts',
+      component: MainLayout,
+      children: [
+        {
+          path: '',
+          name: 'Posts',
+          component: () => import('@/views/posts/PostsIndexView.vue'),
+          meta: {
+            title: 'Posts | JGantts',
+            description: 'Writing and photographs from Jacob Gantt, published here first.',
+            socialTitle: 'Posts | JGantts',
+            socialDescription: 'Writing and photographs from Jacob Gantt, published here first.',
+          },
+        },
+        {
+          path: ':slug',
+          name: 'Post',
+          component: () => import('@/views/posts/PostView.vue'),
+          props: true,
+          meta: {
+            title: 'Post | JGantts',
+            description: 'A post from Jacob Gantt on JGantts.com.',
+          },
+        },
+      ],
+    },
   ],
   scrollBehavior(
     to: RouteLocationNormalized,
@@ -263,6 +300,9 @@ router.afterEach((to) => {
   upsertMetaTag('name', 'twitter:title', meta.socialTitle)
   upsertMetaTag('name', 'twitter:description', meta.socialDescription)
   upsertMetaTag('name', 'twitter:image', meta.socialImage)
+  upsertCanonicalLink(new URL(to.path, window.location.origin).toString())
+  document.head.querySelectorAll('meta[property^="article:"]').forEach((tag) => tag.remove())
+  document.head.querySelector('#__POST_JSON_LD__')?.remove()
 })
 
 export default router

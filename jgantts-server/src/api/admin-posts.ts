@@ -1,7 +1,7 @@
 import express from 'express';
 import type { AuthorPostChanges, AuthorPostInput, PostService } from '../posts/post-service';
 
-const AUTHOR_FIELDS = new Set(['slug', 'bodyMarkdown', 'excerpt', 'contentWarning']);
+const AUTHOR_FIELDS = new Set(['slug', 'title', 'bodyMarkdown', 'excerpt', 'contentWarning']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

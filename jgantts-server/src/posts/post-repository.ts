@@ -11,6 +11,7 @@ import type {
 
 interface PostRow {
   id: string;
+  title: string | null;
   slug: string;
   body_markdown: string;
   body_html: string;
@@ -26,6 +27,7 @@ interface PostRow {
 function mapPost(row: PostRow): Post {
   return {
     id: row.id,
+    title: row.title,
     slug: row.slug,
     bodyMarkdown: row.body_markdown,
     bodyHtml: row.body_html,
@@ -50,14 +52,15 @@ export class PostRepository {
     return inTransaction(this.database, () => {
       this.database.prepare(`
         INSERT INTO posts (
-          id, slug, body_markdown, body_html, excerpt, content_warning, status,
+          id, title, slug, body_markdown, body_html, excerpt, content_warning, status,
           hero_media_id, created_at, published_at, updated_at
         ) VALUES (
-          @id, @slug, @bodyMarkdown, @bodyHtml, @excerpt, @contentWarning, @status,
+          @id, @title, @slug, @bodyMarkdown, @bodyHtml, @excerpt, @contentWarning, @status,
           @heroMediaId, @createdAt, @publishedAt, @updatedAt
         )
       `).run({
         ...input,
+        title: input.title ?? null,
         excerpt: input.excerpt ?? null,
         contentWarning: input.contentWarning ?? null,
         heroMediaId: input.heroMediaId ?? null,
@@ -117,6 +120,14 @@ export class PostRepository {
     };
   }
 
+  listAllPublished(): Post[] {
+    return (this.database.prepare(`
+      SELECT * FROM posts
+      WHERE status = 'published' AND published_at IS NOT NULL
+      ORDER BY published_at DESC, id DESC
+    `).all() as PostRow[]).map(mapPost);
+  }
+
   update(id: string, changes: PostChanges, updatedAt = new Date().toISOString()): Post | null {
     return inTransaction(this.database, () => {
       const current = this.getById(id);
@@ -131,6 +142,7 @@ export class PostRepository {
 
       this.database.prepare(`
         UPDATE posts SET
+          title = @title,
           slug = @slug,
           body_markdown = @bodyMarkdown,
           body_html = @bodyHtml,
@@ -154,10 +166,10 @@ export class PostRepository {
   private insertRevision(postId: string, revisionNumber: number, createdAt: string): void {
     this.database.prepare(`
       INSERT INTO post_revisions (
-        post_id, revision_number, slug, body_markdown, body_html, excerpt,
+        post_id, revision_number, title, slug, body_markdown, body_html, excerpt,
         content_warning, status, created_at
       )
-      SELECT id, ?, slug, body_markdown, body_html, excerpt, content_warning, status, ?
+      SELECT id, ?, title, slug, body_markdown, body_html, excerpt, content_warning, status, ?
       FROM posts WHERE id = ?
     `).run(revisionNumber, createdAt, postId);
   }

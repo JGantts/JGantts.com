@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import Database from 'better-sqlite3';
 import sharp from 'sharp';
 import { backupContent } from '../src/db/backup';
 import { inTransaction, openContentDatabase } from '../src/db/database';
@@ -35,6 +36,38 @@ test('configures and migrates a file database idempotently', (t) => {
   migrateDatabase(database);
   assert.equal(
     database.prepare('SELECT COUNT(*) FROM schema_migrations').pluck().get(),
+    migrations.length,
+  );
+});
+
+test('upgrades an existing version-one production schema with optional titles', (t) => {
+  const root = temporaryDirectory(t);
+  const databasePath = path.join(root, 'content.sqlite');
+  const oldDatabase = new Database(databasePath);
+  oldDatabase.exec(`
+    CREATE TABLE schema_migrations (
+      version INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      applied_at TEXT NOT NULL
+    ) STRICT;
+  `);
+  oldDatabase.exec(migrations[0].sql);
+  oldDatabase.prepare(`
+    INSERT INTO schema_migrations (version, name, applied_at) VALUES (1, ?, ?)
+  `).run(migrations[0].name, '2026-09-04T00:00:00.000Z');
+  oldDatabase.prepare(`
+    INSERT INTO posts (
+      id, slug, body_markdown, body_html, status, created_at, updated_at
+    ) VALUES ('old-post', 'old-post', 'Old', '<p>Old</p>', 'published', ?, ?)
+  `).run('2026-09-04T12:00:00.000Z', '2026-09-04T12:00:00.000Z');
+  oldDatabase.close();
+
+  const upgraded = openContentDatabase(databasePath);
+  t.after(() => upgraded.close());
+  const post = new PostRepository(upgraded).getBySlug('old-post');
+  assert.equal(post?.title, null);
+  assert.equal(
+    upgraded.prepare('SELECT COUNT(*) FROM schema_migrations').pluck().get(),
     migrations.length,
   );
 });

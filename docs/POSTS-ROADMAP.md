@@ -33,9 +33,9 @@ Authoring -> JGantts database -> canonical post page
 
 ## Current state
 
-- Status: Phases 1 and 2 complete; canonical page work is next.
+- Status: Phases 1–3 complete; Mastodon syndication is next.
 - Active item: None.
-- Next item: 3.1 — add the canonical `/posts/:slug` Vue route and view.
+- Next item: 4.1 — add server-only Mastodon configuration and scoped credentials.
 - Existing implementation: `/photos` contains six hard-coded Mastodon status IDs.
   The Vue client requests each status and its context directly from
   `mastodon.social` and treats the Mastodon response as both post content and
@@ -86,6 +86,7 @@ deployment workflow.
 ### Post
 
 - Immutable local ID: ULID or UUID.
+- Optional title, with an accessible fallback for titleless photo posts.
 - Unique current slug plus redirect records for prior slugs.
 - Source body in Markdown.
 - Derived, sanitized HTML.
@@ -160,18 +161,18 @@ JGantts.com without Mastodon.
 
 ### Phase 3 — Canonical pages and discovery
 
-- [ ] **3.1** Add `/posts/:slug` to the Vue router and render local post content.
-- [ ] **3.2** Add the posts index or adapt the current `/photos` experience to use
+- [x] **3.1** Add `/posts/:slug` to the Vue router and render local post content.
+- [x] **3.2** Add the posts index or adapt the current `/photos` experience to use
   local post records.
-- [ ] **3.3** Make Express resolve post metadata for the initial HTML response.
-- [ ] **3.4** Emit canonical URL, `og:type=article`, Open Graph, Twitter Card,
+- [x] **3.3** Make Express resolve post metadata for the initial HTML response.
+- [x] **3.4** Emit canonical URL, `og:type=article`, Open Graph, Twitter Card,
   publication timestamps, and JSON-LD metadata per post.
-- [ ] **3.5** Ensure canonical content has a useful no-JavaScript response or
+- [x] **3.5** Ensure canonical content has a useful no-JavaScript response or
   server-provided initial payload.
-- [ ] **3.6** Add draft, missing, and archived post behavior with correct HTTP
+- [x] **3.6** Add draft, missing, and archived post behavior with correct HTTP
   statuses.
-- [ ] **3.7** Generate RSS or Atom and update the sitemap from local posts.
-- [ ] **3.8** Add page and metadata integration tests, including social preview
+- [x] **3.7** Generate RSS or Atom and update the sitemap from local posts.
+- [x] **3.8** Add page and metadata integration tests, including social preview
   crawler requests.
 
 Exit condition: each published post is a stable, crawlable, shareable canonical
@@ -242,9 +243,9 @@ and use Mastodon only for their remote discussion.
 
 ### Phase 7 — Production operations and launch
 
-- [ ] **7.1** Provision persistent production data/media paths with least-privilege
+- [x] **7.1** Provision persistent production data/media paths with least-privilege
   ownership for the systemd service.
-- [ ] **7.2** Update deployment without copying over or deleting runtime content.
+- [x] **7.2** Update deployment without copying over or deleting runtime content.
 - [ ] **7.3** Add a pre-deploy database backup and a documented rollback procedure.
 - [ ] **7.4** Add health checks for database readiness, media writability, outbox
   backlog, and Mastodon degradation without making Mastodon a hard dependency.
@@ -313,6 +314,31 @@ the live site is the demonstrable source of truth.
   paths, reject path traversal, and return immutable cache headers.
 - Verified the complete Phase 2 server with 27 passing tests and a production
   build, including authenticated multipart upload and public media delivery.
+
+### 2026-09-04 — Production persistence provisioned
+
+- Provisioned `/var/lib/jgantts` and media subdirectories as mode `0750`, owned by
+  the `jgantts-com` systemd service account.
+- Installed the protected systemd environment file with the data root and admin
+  token; deployed Phase 2 successfully without placing runtime data in the
+  application deployment tree.
+- Verified the live health, public posts, error paths, and fail-closed admin API
+  on `jgantts.com` at commit `12a8038`.
+
+### 2026-09-04 — Canonical pages and discovery
+
+- Added an optional post title through a production-safe version-two migration;
+  titleless posts use “Post by Jacob Gantt” as their accessible fallback.
+- Added the `/posts` index and `/posts/:slug` Vue views with local media, content
+  notes, responsive presentation, loading, empty, and missing states.
+- Canonical requests now resolve through Express, redirect old slugs, return 404
+  for missing/draft posts and 410 for archived posts, and include useful readable
+  content plus an initial JSON payload before JavaScript runs.
+- Added canonical and article metadata, publication timestamps, Open Graph,
+  Twitter Card, JSON-LD, an Atom feed, and a database-driven sitemap.
+- Verified with 30 passing server tests, production server/client builds, and
+  browser QA at desktop and 390 px mobile widths, including client navigation
+  metadata and horizontal-overflow checks.
 
 ## Definition of done
 

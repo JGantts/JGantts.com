@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import type { Request } from 'express';
-import { getPageMeta } from './metadata';
+import { getPageMeta, type ResolvedPageMeta } from './metadata';
 
 const MAINTENANCE_MESSAGE = 'sorry, Jacob is doing his best. contact@JGantts.com';
 
-function escapeHtml(value: unknown): string {
+export function escapeHtml(value: unknown): string {
   return String(value)
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
@@ -78,14 +78,16 @@ export function renderAppHtml(
   req: Request,
   appHtmlTemplate: string,
   configuredSiteOrigin = '',
+  pageMetaOverride?: ResolvedPageMeta,
+  ogType = 'website',
 ): string {
-  const pageMeta = getPageMeta(req, configuredSiteOrigin);
+  const pageMeta = pageMetaOverride ?? getPageMeta(req, configuredSiteOrigin);
   const twitterCard = pageMeta.socialImage ? 'summary_large_image' : 'summary';
   const replacements = {
     __PAGE_TITLE__: pageMeta.title,
     __PAGE_DESCRIPTION__: pageMeta.description,
     __OG_URL__: pageMeta.url,
-    __OG_TYPE__: 'website',
+    __OG_TYPE__: ogType,
     __OG_TITLE__: pageMeta.socialTitle,
     __OG_DESCRIPTION__: pageMeta.socialDescription,
     __OG_IMAGE__: pageMeta.socialImage,
@@ -101,7 +103,7 @@ export function renderAppHtml(
   html = upsertTitle(html, pageMeta.title);
   html = upsertMeta(html, 'name', 'description', pageMeta.description);
   html = upsertMeta(html, 'property', 'og:url', pageMeta.url);
-  html = upsertMeta(html, 'property', 'og:type', 'website');
+  html = upsertMeta(html, 'property', 'og:type', ogType);
   html = upsertMeta(html, 'property', 'og:title', pageMeta.socialTitle);
   html = upsertMeta(html, 'property', 'og:description', pageMeta.socialDescription);
   html = upsertMeta(html, 'property', 'og:image', pageMeta.socialImage);

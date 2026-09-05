@@ -44,15 +44,23 @@ export interface UpdateMediaMetadataInput {
 
 function publicMedia(media: MediaRecord): PublicMedia {
   const base = `/media/${encodeURIComponent(media.id)}`;
-  const {
-    originalPath: _originalPath,
-    derivatives: _derivatives,
-    processingError: _processingError,
-    renditionManifest: _renditionManifest,
-    ...publicFields
-  } = media;
+  // Explicit fields keep future storage and processing details private by default.
   return {
-    ...publicFields,
+    id: media.id,
+    postId: media.postId,
+    mimeType: media.mimeType,
+    width: media.width,
+    height: media.height,
+    byteSize: media.byteSize,
+    checksumSha256: media.checksumSha256,
+    altText: media.altText,
+    caption: media.caption,
+    focalX: media.focalX,
+    focalY: media.focalY,
+    displayOrder: media.displayOrder,
+    processingState: media.processingState,
+    createdAt: media.createdAt,
+    updatedAt: media.updatedAt,
     urls: {
       original: `${base}/original`,
       large: `${base}/large`,

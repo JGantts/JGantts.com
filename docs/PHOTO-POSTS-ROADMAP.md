@@ -32,7 +32,7 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
 
 - Status: Phase 1 media lifecycle implementation in progress.
 - Active item: None.
-- Next item: 1.7 — normalize media across every delivery path.
+- Next item: 1.8 — complete media lifecycle edge-case coverage.
 - Already available: authenticated single-image upload after a draft exists;
   JPEG, PNG, WebP, and AVIF validation; required alt text; immutable local
   originals; 1,600 px and 480 px WebP derivatives; checksums; dimensions;
@@ -103,7 +103,7 @@ that post.
 - [x] **1.6** Add a batch-upload API contract with per-file results so one bad
   image does not discard successful uploads. Set explicit limits for file count
   and aggregate request size.
-- [ ] **1.7** Return normalized media consistently from admin, public-post, feed,
+- [x] **1.7** Return normalized media consistently from admin, public-post, feed,
   sitemap/metadata, and server-rendered page paths.
 - [ ] **1.8** Test authorization, validation, cross-post references, concurrent
   reorder attempts, partial batch failure, deletion, and old-record migration.
@@ -310,6 +310,20 @@ verified against the live domain.
   All 54 server tests, type checking, and the production server build pass.
 - Local Node 22.12/22.13 crashed in the installed SQLite native dependency even
   in a standalone database check. Validation passed using Node 22.23.2.
+
+### 2026-09-05 — Consistent media delivery
+
+- Made public media serialization an explicit field allowlist and aligned client
+  types with the lifecycle metadata returned by admin and public APIs. Storage
+  paths, processing error detail, and internal rendition manifests stay private.
+- Feed enclosures, JSON-LD images, sitemap image entries, and server-rendered
+  gallery links now use the existing large WebP rendition. Legacy original URLs
+  remain available, consistent with the staged source-privacy policy.
+- Server-rendered galleries carry escaped visible captions from normalized media.
+  Responsive rendition manifests and final gallery design remain in later phases.
+- Verified identical normalized media in admin list/detail, public list/detail,
+  and initial page data, plus rendition URLs across feed, sitemap, and JSON-LD.
+  All 54 server tests, type checking, and both production builds pass.
 
 ## Definition of done
 

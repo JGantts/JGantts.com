@@ -1,5 +1,15 @@
 export type PostMedia = {
   altText: string
+  byteSize: number
+  caption: string | null
+  checksumSha256: string
+  createdAt: string
+  displayOrder: number
+  focalX: number | null
+  focalY: number | null
+  postId: string
+  processingState: 'processing' | 'ready' | 'failed'
+  updatedAt: string
   height: number | null
   id: string
   mimeType: string

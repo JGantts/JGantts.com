@@ -716,6 +716,37 @@ test('uploads local media and serves immutable originals and derivatives', async
   assert.match(canonicalPage.body, new RegExp(uploaded.urls.large.replaceAll('/', '\\/')));
   assert.match(canonicalPage.body, /twitter:card" content="summary_large_image"/);
 
+  // Every post delivery path uses the same normalized media contract.
+  const normalized = media.listForPost('media-api-post');
+  const adminPost = await request(app, '/api/admin/posts/media-api-post', {
+    headers: { authorization: 'Bearer media-secret' },
+  });
+  const adminList = await request(app, '/api/admin/posts', {
+    headers: { authorization: 'Bearer media-secret' },
+  });
+  const publicList = await request(app, '/api/posts');
+  assert.deepEqual(JSON.parse(adminPost.body).media, normalized);
+  assert.deepEqual(JSON.parse(adminList.body).items[0].media, normalized);
+  assert.deepEqual(JSON.parse(publicList.body).items[0].media, normalized);
+  assert.deepEqual(JSON.parse(postResponse.body).media, normalized);
+  const initialData = canonicalPage.body.match(/<script id="__POST_DATA__" type="application\/json">(.*?)<\/script>/s);
+  assert.ok(initialData);
+  assert.deepEqual(JSON.parse(initialData[1]).media, normalized);
+  for (const field of ['originalPath', 'derivatives', 'processingError', 'renditionManifest']) {
+    assert.equal(Object.hasOwn(normalized[0], field), false);
+  }
+  const feedWithMedia = await request(app, '/feed.xml');
+  const sitemapWithMedia = await request(app, '/sitemap.xml');
+  assert.ok(feedWithMedia.body.includes(uploaded.urls.large));
+  assert.ok(feedWithMedia.body.includes('type="image/webp"'));
+  assert.ok(sitemapWithMedia.body.includes(uploaded.urls.large));
+  assert.match(sitemapWithMedia.body, /<image:image><image:loc>http/);
+  assert.ok(!feedWithMedia.body.includes(uploaded.urls.original));
+  assert.ok(!sitemapWithMedia.body.includes(uploaded.urls.original));
+  const jsonLd = canonicalPage.body.match(/<script id="__POST_JSON_LD__" type="application\/ld\+json">(.*?)<\/script>/s);
+  assert.ok(jsonLd);
+  assert.ok(JSON.parse(jsonLd[1]).image[0].endsWith(uploaded.urls.large));
+
   const deletionUrl = `/api/admin/media/${uploaded.id}`;
   assert.equal((await request(app, deletionUrl, { method: 'DELETE' })).status, 401);
   const headers = { authorization: 'Bearer media-secret' };

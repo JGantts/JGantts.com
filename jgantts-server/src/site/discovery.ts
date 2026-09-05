@@ -30,7 +30,7 @@ export function renderAtomFeed(
     const title = post.title || post.excerpt || 'Post by Jacob Gantt';
     const images = media?.listForPost(post.id) ?? [];
     const imageLinks = images.map((image) => (
-      `<link rel="enclosure" href="${escapeXml(new URL(image.urls.original, origin).toString())}" type="${escapeXml(image.mimeType)}" />`
+      `<link rel="enclosure" href="${escapeXml(new URL(image.urls.large, origin).toString())}" type="image/webp" />`
     )).join('');
     return `<entry>`
       + `<id>${escapeXml(url)}</id>`
@@ -60,6 +60,7 @@ export function renderSitemap(
   req: Request,
   posts: PostService,
   configuredSiteOrigin: string,
+  media?: MediaService,
 ): string {
   const origin = getRequestOrigin(req, configuredSiteOrigin);
   const staticPaths = ['/', '/posts', '/photos', '/holmes', '/kovyalo'];
@@ -68,10 +69,14 @@ export function renderSitemap(
   ));
   const postUrls = posts.listAllPublished().map((post) => (
     `<url><loc>${escapeXml(canonicalPostUrl(origin, post.slug))}</loc>`
-      + `<lastmod>${escapeXml(post.updatedAt)}</lastmod></url>`
+      + `<lastmod>${escapeXml(post.updatedAt)}</lastmod>`
+      + (media?.listForPost(post.id) ?? []).map((image) => (
+        `<image:image><image:loc>${escapeXml(new URL(image.urls.large, origin).toString())}</image:loc></image:image>`
+      )).join('')
+      + '</url>'
   ));
   return `<?xml version="1.0" encoding="UTF-8"?>`
-    + `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`
+    + `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">`
     + staticUrls.join('')
     + postUrls.join('')
     + `</urlset>`;

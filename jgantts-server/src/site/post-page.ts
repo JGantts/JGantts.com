@@ -78,7 +78,7 @@ export function renderCanonicalPostHtml(
     [data-server-rendered-post] p { margin: 1rem 0; }
   </style>`);
 
-  const images = post.media.map((item) => new URL(item.urls.original, meta.url).toString());
+  const images = post.media.map((item) => new URL(item.urls.large, meta.url).toString());
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
@@ -96,9 +96,11 @@ export function renderCanonicalPostHtml(
   );
 
   const mediaHtml = post.media.map((item) => (
-    `<a href="${escapeHtml(item.urls.original)}">`
+    `<figure><a href="${escapeHtml(item.urls.large)}">`
       + `<img src="${escapeHtml(item.urls.large)}" alt="${escapeHtml(item.altText)}" loading="eager" />`
       + '</a>'
+      + (item.caption ? `<figcaption>${escapeHtml(item.caption)}</figcaption>` : '')
+      + '</figure>'
   )).join('');
   const warningHtml = post.contentWarning
     ? `<p><strong>Content note:</strong> ${escapeHtml(post.contentWarning)}</p>`

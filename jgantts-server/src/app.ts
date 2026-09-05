@@ -65,6 +65,7 @@ export function createApp(options: AppOptions = {}): express.Express {
           req,
           postsService,
           configuredSiteOrigin,
+          options.services?.media,
         ));
     });
   }

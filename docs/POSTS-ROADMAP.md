@@ -35,6 +35,10 @@ Authoring -> JGantts database -> canonical post page
 
 - Status: Phases 1–5 and production-operation items 7.1–7.5 are complete.
 - Active item: None.
+- Revised URL target (not yet implemented): `/photos/:slug` is the canonical
+  public post URL; `/posts` routes become permanent redirects. Implementation
+  and compatibility checks are tracked in photo roadmap items 4.6 and 5.1.
+  Completed checklist entries below record the original implementation.
 - Next item: 7.6 — run the production smoke tests after deployment.
 - Existing implementation: canonical posts, local media, private authoring,
   Mastodon link syndication and reply projection are complete. Production has
@@ -49,8 +53,12 @@ Authoring -> JGantts database -> canonical post page
    URLs, and revision history.
 2. A local immutable ID identifies a post. Mastodon status IDs are external
    syndication identifiers, never local primary keys.
-3. Canonical public URLs use `/posts/:slug`. Old slugs and legacy
-   `/photos/:mastodonId` URLs redirect to the canonical URL.
+3. Canonical public URLs target `/photos/:slug`, with `/photos` as the gallery.
+   Permanently redirect `/posts` and `/posts/:slug` to their photo equivalents,
+   resolving old slugs to the current canonical URL. Preserve legacy
+   `/photos/:mastodonId` pages unless a verified local mapping supports a redirect;
+   define ID/slug collision handling before rollout. API and admin paths stay
+   unchanged. This revised target supersedes the implemented `/posts` routing.
 4. Publishing locally and syndicating to Mastodon are separate operations.
    Mastodon failure must not roll back local publication.
 5. Mastodon publication is performed through a durable database outbox with an
@@ -419,6 +427,16 @@ the live site is the demonstrable source of truth.
   frontend JavaScript. Explicit logout expires the cookie; rotating the server
   token invalidates existing sessions immediately.
 - Retained bearer-token authentication for scripts and direct API clients.
+
+### 2026-09-05 — Consolidate public photo URLs
+
+- User chose the existing photos page as the visual foundation and approved
+  `/photos` plus `/photos/:slug` as the public gallery and canonical detail URLs.
+- The original `/posts` implementation remains recorded above. Its replacement,
+  permanent redirects, legacy ID/slug compatibility, and metadata/discovery updates
+  are pending in `PHOTO-POSTS-ROADMAP.md` items 4.6 and 5.1.
+- Existing syndicated links must continue working through redirects. This change
+  does not rename API or private authoring routes or require historical import.
 
 ## Definition of done
 

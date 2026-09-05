@@ -8,7 +8,9 @@ Make photographs the primary content of JGantts.com posts. The authoring flow
 should begin with selecting and arranging photos, while titles and Markdown
 remain optional supporting material. Originals stay under site ownership;
 public pages deliver efficient renditions and Mastodon continues to receive a
-teaser linking to the canonical post.
+teaser linking to the canonical post. The existing `/photos` page and its visual
+architecture are the foundation: evolve its clustered masonry, photo expansion,
+and selected-post comments drawer to support site-owned posts.
 
 ```text
 Photo selection -> local originals -> image pipeline -> arranged post gallery
@@ -39,8 +41,13 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
   database fields for display order, focal point, and hero media; public media
   URLs; backup of database and media; metadata editing, transactional reorder,
   hero selection, safeguarded deletion, and bounded batch-upload APIs.
-- Current gaps: no pre-draft upload, gallery maintenance editor, visible
-  captions, upload progress, responsive `srcset`, lightbox, or focal-point controls.
+- URL direction (pending implementation): `/photos` is the gallery and
+  `/photos/:slug` is the sole canonical post URL; `/posts` routes redirect.
+- Visual direction: reuse the existing `/photos` page, clustered masonry,
+  expanded-photo dialog, and responsive comments drawer for local photo posts.
+- Current gaps: no pre-draft upload, gallery maintenance editor, client-visible
+  captions, upload progress, responsive `srcset`, or focal-point controls. The
+  existing photo viewer and drawer still need integration with local post data.
   The source privacy policy is documented; its rendition rollout remains pending.
 
 ## Fixed architecture decisions
@@ -65,6 +72,27 @@ Photo selection -> local originals -> image pipeline -> arranged post gallery
    Linode. Object storage is deferred until operational evidence requires it.
 10. Every destructive media action is explicit, authenticated, and safe around
     published posts and backups.
+
+11. The existing `/photos` experience is the visual baseline. Reuse and adapt
+    `PhotosLayout.vue`, `views/photos/IndexView.vue`,
+    `views/photos/ClusteredPhotoMasonry.vue`, and `views/photos/masonry.ts`.
+    Preserve clustered composition, spacing, responsive behavior, selection,
+    photo expansion, and the associated comments drawer while improving access
+    and performance.
+12. `/photos` is the gallery and `/photos/:slug` is the sole canonical URL for
+    site-owned posts, using the same visual components and interaction language.
+    Permanently redirect `/posts` to `/photos` and `/posts/:slug` to the current
+    canonical photo URL, including old-slug resolution. Keep API and private
+    editor paths unchanged; this is a public URL consolidation.
+    Preserve historical `/photos/:mastodonId` links through explicit compatibility
+    resolution. Redirect only when a verified local mapping exists; otherwise
+    retain the legacy page. Define and test ID/slug collision handling before
+    rollout so existing links cannot silently resolve to another post. Historical
+    import is not required to reuse the visual architecture.
+13. Decouple presentation from Mastodon-specific models through a normalized
+    gallery view model. Local post/media IDs and publication dates drive local
+    clusters; the server-provided Mastodon reply projection supplies discussion.
+    Keep gallery browsing functional when Mastodon is unavailable.
 
 ## Target media model
 
@@ -115,9 +143,9 @@ SQL or filesystem work by the client.
 
 - [ ] **2.1** Normalize EXIF orientation before recording width and height; add
   portrait, landscape, square, and rotated-fixture tests.
-- [ ] **2.2** Generate a responsive width set appropriate for thumbnails, index
-  cards, mobile detail, desktop detail, and high-density screens without
-  upscaling.
+- [ ] **2.2** Generate a responsive width set appropriate for the existing masonry
+  tile sizes, expanded-photo viewer, mobile detail, and high-density screens
+  without upscaling.
 - [ ] **2.3** Produce WebP and AVIF where worthwhile, retain a broadly compatible
   fallback, and record every rendition in the database manifest.
 - [ ] **2.4** Preserve intended color appearance with an explicit ICC/color-space
@@ -146,7 +174,7 @@ responsive rendition set that can be regenerated deterministically.
 - [ ] **3.4** Add keyboard-accessible drag reorder plus explicit move controls for
   touch and assistive technology; save one complete ordered list.
 - [ ] **3.5** Add hero-photo selection and a focal-point picker with an immediate
-  preview of index and social-preview crops.
+  preview of existing masonry tiles and social-preview crops.
 - [ ] **3.6** Add confirmed photo removal and clear warnings when changing a
   published post.
 - [ ] **3.7** Allow a photo-only post: title, excerpt, content warning, and Markdown
@@ -160,33 +188,58 @@ responsive rendition set that can be regenerated deterministically.
 Exit condition: a complete multi-photo post can be authored comfortably from
 desktop or mobile without leaving the private editor.
 
-### Phase 4 — Canonical gallery experience
+### Phase 4 — Integrate local posts into the existing photos experience
 
-- [ ] **4.1** Design the canonical post around the hero and gallery, with text as
-  supporting content and intentional treatment of mixed aspect ratios.
-- [ ] **4.2** Render semantic `<figure>`/`<figcaption>` markup, accurate dimensions,
-  responsive `<picture>` sources, and useful `sizes` values.
-- [ ] **4.3** Load the hero eagerly with high priority; lazy-load later photos and
-  reserve their exact aspect-ratio space to avoid layout shift.
-- [ ] **4.4** Add an accessible full-screen viewer with keyboard navigation,
-  visible focus, close behavior, swipe support, captions, and reduced-motion
-  handling. The page must remain fully usable without it.
-- [ ] **4.5** Apply focal points only to cropped contexts such as index cards and
-  social previews; show the full composition in the canonical gallery.
-- [ ] **4.6** Upgrade the posts index to a photo-led layout using the selected hero
-  and stable aspect ratios without creating an excessive initial download.
-- [ ] **4.7** Ensure no-JavaScript HTML contains the photo gallery, captions, alt
-  text, and stable links to public renditions.
-- [ ] **4.8** Verify accessibility, responsive behavior, touch targets, image
-  loading, layout shift, and keyboard operation across representative galleries.
+- [ ] **4.1** Capture desktop/mobile baselines of the existing `/photos` page and
+  adapt its shared layout, clustered masonry, spacing, and selected-post behavior
+  for site-owned posts. Introduce a normalized gallery view model so presentation
+  does not depend on Mastodon status or attachment shapes. Keep local and legacy
+  IDs distinct, including selection and stored exposure-history keys.
+- [ ] **4.2** Add semantic `<figure>`/`<figcaption>` markup, accurate dimensions,
+  responsive `<picture>` sources, and useful `sizes` values within the existing
+  masonry and expanded-photo components. Retain captions and required alt text.
+- [ ] **4.3** Adapt the existing loading/preloading behavior to local renditions.
+  Prioritize visible tiles and the selected photo, lazy-load offscreen photos,
+  and reserve layout space using normalized dimensions. Avoid eagerly loading
+  every original or every gallery image.
+- [ ] **4.4** Reuse the existing expanded-photo dialog and complete keyboard
+  navigation, visible focus, focus return, close behavior, swipe support,
+  captions, and reduced-motion handling. Preserve the full composition in the
+  viewer and a usable page without the dialog.
+- [ ] **4.5** Preserve the existing tile composition and grouping. Apply focal
+  points in cropped tiles and social previews, while retaining explicit gallery
+  order within each post. Hero selection must not silently reorder photos.
+- [ ] **4.6** Wire local photo posts into `/photos` with canonical detail at
+  `/photos/:slug`, reusing the existing visual components. Add permanent redirects
+  from `/posts` and `/posts/:slug`, resolving old slugs directly to the current
+  canonical URL without redirect loops. Preserve legacy `/photos/:mastodonId`
+  pages unless a verified local mapping supports a redirect. Define collision
+  handling for legacy IDs and local slugs before rollout, including existing
+  numeric slugs. Test direct visits, old links, missing/draft/archived responses,
+  selection, browser back/forward, and scroll restoration. Specify legacy/local
+  coexistence before changing data loading; historical import remains deferred.
+- [ ] **4.7** Ensure canonical no-JavaScript HTML contains the gallery, captions,
+  alt text, and stable rendition links. Reuse the existing responsive comments
+  drawer for local post text and normalized “Replies on Mastodon,” with source
+  links and honest empty/unavailable states. Keep canonical metadata correct
+  when selecting and navigating between posts.
+- [ ] **4.8** Compare against the captured `/photos` baseline at desktop and mobile
+  widths. Verify clustered layout, selection-linked drawer behavior, expansion,
+  touch targets, keyboard access, focus, image loading, layout shift, and
+  Mastodon-outage behavior with mixed aspect ratios and multi-photo posts.
 
-Exit condition: canonical posts feel purpose-built for photography and remain
-fast, accessible, crawlable, and useful without JavaScript.
+Exit condition: site-owned photo posts use the established `/photos` visual
+architecture, with working canonical URLs, accessible interactions, efficient
+local renditions, and useful no-JavaScript content.
 
 ### Phase 5 — Metadata, sharing, and syndication
 
 - [ ] **5.1** Use the selected hero consistently for Open Graph, Twitter Card,
-  JSON-LD, Atom, and index previews, with absolute canonical URLs.
+  JSON-LD, Atom, and index previews, with absolute `/photos/:slug` canonical URLs.
+  Update server/client canonical tags, internal links, sitemap, feed entry links
+  and IDs, and new Mastodon teasers together; document feed-ID migration behavior.
+  Existing syndicated `/posts` links remain usable through permanent redirects;
+  remote teaser edits remain explicit.
 - [ ] **5.2** Add a dedicated social-card crop or rendition if real-world link
   previews crop ordinary gallery images poorly.
 - [ ] **5.3** Keep Mastodon publishing link-first and verify that the canonical
@@ -342,14 +395,37 @@ verified against the live domain.
 - All 55 server tests, type checking, and the production server build pass on
   the verified Node 22 runtime. Phase 1 is complete.
 
+### 2026-09-05 — Preserve the existing photos visual architecture
+
+- User direction: use the existing photos page and its visual architecture.
+- Made `/photos` the primary browsing surface and the existing layout, clustered
+  masonry algorithm/component, photo dialog, and comments drawer the shared
+  implementation foundation. Phase 4 now integrates local data into that design.
+- Initially retained canonical `/posts/:slug` URLs (superseded by the URL
+  consolidation decision below), historical photo links, and site-owned storage. Legacy/local coexistence must be specified during integration;
+  historical Mastodon import remains outside this work.
+- Updated image sizing, authoring previews, and visual verification to target
+  the existing gallery. Phase 1 remains complete and item 2.1 remains next.
+
+### 2026-09-05 — Consolidate public URLs under /photos
+
+- User approved `/photos` for the gallery and `/photos/:slug` for each canonical
+  post. This supersedes the earlier `/posts/:slug` architecture decision.
+- Implementation is pending in 4.6 and 5.1: permanent redirects preserve existing
+  `/posts` links, while legacy Mastodon-ID photo links require explicit resolution
+  and collision tests. API and private authoring paths remain unchanged.
+- Canonical metadata, discovery documents, navigation, and new syndication links
+  must agree on the new URL. Phase 1 completion and the next item 2.1 are unchanged.
+
 ## Definition of done
 
 This roadmap is complete when:
 
 - An author can create, arrange, describe, preview, publish, edit, and remove a
   multi-photo post entirely through the private editor.
-- Canonical pages deliver responsive, accessible galleries with intentional
-  hero selection and no dependency on Mastodon.
+- `/photos` and canonical `/photos/:slug` pages reuse the existing clustered gallery,
+  photo expansion, and comments-drawer architecture with responsive, accessible
+  local media and no Mastodon dependency for reading the post.
 - Stored sources and public renditions follow a documented privacy policy and
   can be regenerated, backed up, and restored.
 - Social metadata and Mastodon link posts consistently point to the canonical

@@ -139,24 +139,15 @@ const selectedPostVisibility = ref(1)
 const commentsDrawerState = ref<0 | 1 | 2>(0)
 const commentsDrawerOpen = computed(() => commentsDrawerState.value > 0)
 const commentsDrawerFull = computed(() => commentsDrawerState.value === 2)
+const mobilePortraitDrawer = ref(false)
 const commentsDrawerDragging = ref(false)
 const commentsDrawerDragOffset = ref(0)
-const commentsDrawerDragProgress = ref(0)
-const commentsDrawerPreviewHeight = ref(0)
-const commentsDrawerPreviewWidth = computed(
-  () => `${91.111 + 8.889 * commentsDrawerDragProgress.value}%`,
-)
-const commentsDrawerPreviewFontSize = computed(
-  () => `${0.82 + 0.08 * commentsDrawerDragProgress.value}rem`,
-)
-const commentsDrawerPreviewLineHeight = computed(
-  () => `${1.35 + 0.13 * commentsDrawerDragProgress.value}`,
-)
 let commentsDrawerPointerStartY = 0
 let commentsDrawerPointerStartOffset = 0
 let commentsDrawerPointerStartedAt = 0
 let commentsDrawerPointerStartState: 0 | 1 | 2 = 0
-const commentsDrawerStateLabel = computed(() => ['Collapsed', 'Expanded', 'Fully expanded'][commentsDrawerState.value])
+let mobilePortraitDrawerQuery: MediaQueryList | null = null
+const commentsDrawerStateLabel = computed(() => ['Collapsed', 'Half expanded', 'Fully expanded'][commentsDrawerState.value])
 const activeToot = computed(() =>
   activeTootIndex.value === null ? null : allToots.value[activeTootIndex.value] ?? null,
 )
@@ -249,7 +240,12 @@ function syncSelectionFromRoute(postId = props.postId) {
 }
 
 function isMobilePortraitDrawer() {
-  return window.matchMedia('(max-width: 44rem) and (orientation: portrait)').matches
+  return mobilePortraitDrawerQuery?.matches
+    ?? window.matchMedia('(max-width: 44rem) and (orientation: portrait)').matches
+}
+
+function syncMobilePortraitDrawer() {
+  mobilePortraitDrawer.value = isMobilePortraitDrawer()
 }
 
 function stepCommentsDrawer(direction: -1 | 1) {
@@ -261,10 +257,10 @@ function stepCommentsDrawer(direction: -1 | 1) {
 }
 
 function commentsDrawerOffsets(panel: HTMLElement) {
-  const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
-  const collapsedHeight = 6.25 * rootFontSize
+  const handle = panel.querySelector<HTMLElement>('.comments-drawer-handle')
+  const collapsedHeight = handle?.offsetHeight ?? 72
   const closed = Math.max(0, panel.offsetHeight - collapsedHeight)
-  return [closed, Math.min(closed, window.innerHeight * 0.22), 0] as const
+  return [closed, Math.min(closed, window.innerHeight * 0.42), 0] as const
 }
 
 function startCommentsDrawerDrag(event: PointerEvent) {
@@ -281,7 +277,6 @@ function startCommentsDrawerDrag(event: PointerEvent) {
   commentsDrawerPointerStartOffset = commentsDrawerOffsets(panel)[commentsDrawerState.value]
   commentsDrawerPointerStartedAt = performance.now()
   commentsDrawerDragOffset.value = commentsDrawerPointerStartOffset
-  commentsDrawerDragProgress.value = commentsDrawerOpen.value ? 1 : 0
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
 }
 
@@ -298,19 +293,6 @@ function moveCommentsDrawer(event: PointerEvent) {
     closedOffset,
     Math.max(0, commentsDrawerPointerStartOffset + event.clientY - commentsDrawerPointerStartY),
   )
-  commentsDrawerDragProgress.value = closedOffset
-    ? 1 - commentsDrawerDragOffset.value / closedOffset
-    : 1
-
-  const preview = panel.querySelector<HTMLElement>(
-    '.comments-drawer-preview',
-  )
-  if (preview) {
-    const collapsedHeight = Number.parseFloat(getComputedStyle(preview).lineHeight) * 3
-    const expandedHeight = Math.min(preview.scrollHeight, window.innerHeight * 0.4)
-    commentsDrawerPreviewHeight.value = collapsedHeight
-      + (expandedHeight - collapsedHeight) * commentsDrawerDragProgress.value
-  }
 }
 
 function finishCommentsDrawerDrag(event: PointerEvent) {
@@ -332,7 +314,9 @@ function finishCommentsDrawerDrag(event: PointerEvent) {
   } else if (velocity > 0.35 || distance > 44) {
     commentsDrawerState.value = Math.max(0, commentsDrawerPointerStartState - 1) as 0 | 1 | 2
   } else if (Math.abs(distance) < 8 && elapsed < 350) {
-    commentsDrawerState.value = Math.min(2, commentsDrawerPointerStartState + 1) as 0 | 1 | 2
+    commentsDrawerState.value = commentsDrawerPointerStartState === 2
+      ? 1
+      : Math.min(2, commentsDrawerPointerStartState + 1) as 0 | 1 | 2
   } else {
     let nearestState: 0 | 1 | 2 = 0
     offsets.forEach((offset, index) => {
@@ -347,8 +331,6 @@ function finishCommentsDrawerDrag(event: PointerEvent) {
   }
   commentsDrawerDragging.value = false
   commentsDrawerDragOffset.value = 0
-  commentsDrawerDragProgress.value = commentsDrawerState.value > 0 ? 1 : 0
-  commentsDrawerPreviewHeight.value = 0
 }
 
 function cancelCommentsDrawerDrag() {
@@ -356,13 +338,6 @@ function cancelCommentsDrawerDrag() {
   commentsDrawerState.value = commentsDrawerPointerStartState
   commentsDrawerDragging.value = false
   commentsDrawerDragOffset.value = 0
-  commentsDrawerDragProgress.value = commentsDrawerState.value > 0 ? 1 : 0
-  commentsDrawerPreviewHeight.value = 0
-}
-
-function handleCommentsDrawerWheel(event: WheelEvent) {
-  if (!isMobilePortraitDrawer() || commentsDrawerFull.value) return
-  event.preventDefault()
 }
 
 async function scrollToRoutedPost(routeId: string, clusterId = routeId) {
@@ -423,6 +398,9 @@ function ensureTootLoaded(index: number): Promise<void> {
 }
 
 onMounted(async () => {
+  mobilePortraitDrawerQuery = window.matchMedia('(max-width: 44rem) and (orientation: portrait)')
+  syncMobilePortraitDrawer()
+  mobilePortraitDrawerQuery.addEventListener('change', syncMobilePortraitDrawer)
   document.addEventListener('click', handlePageClick)
 
   try {
@@ -515,6 +493,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  mobilePortraitDrawerQuery?.removeEventListener('change', syncMobilePortraitDrawer)
   document.removeEventListener('click', handlePageClick)
 })
 
@@ -648,46 +627,43 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
               :style="{
                 '--selected-post-visibility': selectedPostVisibility,
                 '--drawer-drag-offset': `${commentsDrawerDragOffset}px`,
-                '--drawer-drag-progress': commentsDrawerDragProgress,
-                '--drawer-preview-height': `${commentsDrawerPreviewHeight}px`,
-                '--drawer-preview-width': commentsDrawerPreviewWidth,
-                '--drawer-preview-font-size': commentsDrawerPreviewFontSize,
-                '--drawer-preview-line-height': commentsDrawerPreviewLineHeight,
               }"
               :aria-hidden="activeTootIndex !== tootIndex || selectedPostVisibility <= 0.01"
               aria-label="Post comments"
-              @wheel="handleCommentsDrawerWheel"
             >
-                <span
-                  class="comments-drawer-grabber"
-                  role="slider"
-                  tabindex="0"
-                  aria-label="Comments panel position"
-                  aria-valuemin="0"
-                  aria-valuemax="2"
-                  :aria-valuenow="commentsDrawerState"
-                  :aria-valuetext="commentsDrawerStateLabel"
-                  @keydown.up.prevent="stepCommentsDrawer(1)"
-                  @keydown.right.prevent="stepCommentsDrawer(1)"
-                  @keydown.down.prevent="stepCommentsDrawer(-1)"
-                  @keydown.left.prevent="stepCommentsDrawer(-1)"
-                  @pointerdown.stop="startCommentsDrawerDrag"
-                  @pointermove.stop="moveCommentsDrawer"
-                  @pointerup.stop="finishCommentsDrawerDrag"
-                  @pointercancel.stop="cancelCommentsDrawerDrag"
-                ></span>
+              <div
+                class="comments-drawer-handle"
+                role="slider"
+                tabindex="0"
+                aria-label="Comments panel position"
+                aria-valuemin="0"
+                aria-valuemax="2"
+                :aria-valuenow="commentsDrawerState"
+                :aria-valuetext="commentsDrawerStateLabel"
+                @keydown.up.prevent="stepCommentsDrawer(1)"
+                @keydown.right.prevent="stepCommentsDrawer(1)"
+                @keydown.down.prevent="stepCommentsDrawer(-1)"
+                @keydown.left.prevent="stepCommentsDrawer(-1)"
+                @pointerdown="startCommentsDrawerDrag"
+                @pointermove="moveCommentsDrawer"
+                @pointerup="finishCommentsDrawerDrag"
+                @pointercancel="cancelCommentsDrawerDrag"
+              >
+                <span class="comments-drawer-grabber" aria-hidden="true"></span>
+                <span class="comments-drawer-label">
+                  <strong>Comments</strong>
+                  <span>{{ formatCount(replyCountsByPostId.get(toot.post.id) ?? 0) }}</span>
+                </span>
+                <svg class="comments-drawer-chevron" aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="m6 15 6-6 6 6" />
+                </svg>
+              </div>
 
-              <div class="comments-drawer-scroll">
-                <div
-                  class="comments-drawer-handle"
-                  @pointerdown="commentsDrawerFull ? undefined : startCommentsDrawerDrag($event)"
-                  @pointermove="commentsDrawerFull ? undefined : moveCommentsDrawer($event)"
-                  @pointerup="commentsDrawerFull ? undefined : finishCommentsDrawerDrag($event)"
-                  @pointercancel="commentsDrawerFull ? undefined : cancelCommentsDrawerDrag()"
-                >
-                  <div class="comments-drawer-preview" v-html="toot.post.content"></div>
-                </div>
-
+              <div
+                class="comments-drawer-scroll"
+                :aria-hidden="mobilePortraitDrawer && !commentsDrawerOpen"
+                :inert="mobilePortraitDrawer && !commentsDrawerOpen"
+              >
                 <button
                   type="button"
                   class="comments-close"
@@ -722,7 +698,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                 </div>
 
                 <header class="comments-header">
-                  <h1>Comments</h1>
+                  <h1>Replies</h1>
                   <span>{{ formatCount(replyCountsByPostId.get(toot.post.id) ?? 0) }}</span>
                 </header>
 
@@ -1280,25 +1256,21 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   font-style: italic;
 }
 
-.comments-post-text :deep(.local-post-title em),
-.comments-drawer-preview :deep(.local-post-title em) {
+.comments-post-text :deep(.local-post-title em) {
   font-style: italic;
 }
 
-.comments-post-text :deep(.local-post-overlay),
-.comments-drawer-preview :deep(.local-post-overlay) {
+.comments-post-text :deep(.local-post-overlay) {
   display: grid;
   gap: 0.65rem;
 }
 
-.comments-post-text :deep(.local-post-overlay p),
-.comments-drawer-preview :deep(.local-post-overlay p) {
+.comments-post-text :deep(.local-post-overlay p) {
   display: block;
   margin: 0;
 }
 
-.comments-post-text :deep(.local-post-overlay p + p)::before,
-.comments-drawer-preview :deep(.local-post-overlay p + p)::before {
+.comments-post-text :deep(.local-post-overlay p + p)::before {
   content: none;
 }
 
@@ -1402,19 +1374,23 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
 @media (max-width: 44rem) and (orientation: portrait) {
   .comments-section {
-    --drawer-handle-height: 6.25rem;
+    --drawer-handle-height: 4.5rem;
     --drawer-closed-offset: calc(100% - var(--drawer-handle-height) - env(safe-area-inset-bottom, 0px));
 
+    border-radius: 1.1rem 1.1rem 0 0;
     bottom: 0;
+    display: grid;
     grid-column: 1;
-    height: min(78dvh, 40rem);
-    left: max(0.5rem, env(safe-area-inset-left, 0px));
+    grid-template-rows: var(--drawer-handle-height) minmax(0, 1fr);
+    height: calc(100dvh - max(0.5rem, env(safe-area-inset-top, 0px)));
+    left: max(0.35rem, env(safe-area-inset-left, 0px));
     max-height: none;
     padding: 0;
     position: fixed;
-    right: max(0.5rem, env(safe-area-inset-right, 0px));
+    right: max(0.35rem, env(safe-area-inset-right, 0px));
     top: auto;
     overflow-y: hidden;
+    opacity: 1;
     touch-action: pan-y;
     width: auto;
     transform: translateY(var(--drawer-closed-offset));
@@ -1422,7 +1398,13 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   }
 
   .comments-section.is-drawer-open {
-    transform: translateY(min(22dvh, var(--drawer-closed-offset)));
+    transform: translateY(min(42dvh, var(--drawer-closed-offset)));
+  }
+
+  .comments-section.is-drawer-open:not(.is-drawer-full) {
+    grid-template-rows:
+      var(--drawer-handle-height)
+      calc(100% - var(--drawer-handle-height) - min(42dvh, var(--drawer-closed-offset)));
   }
 
   .comments-section.is-drawer-full {
@@ -1435,9 +1417,12 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     display: block;
     height: 100%;
     overflow: hidden;
-    padding: 1rem 0.85rem 0.85rem;
+    padding: 0.4rem 0.85rem max(1rem, env(safe-area-inset-bottom, 0px));
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
   }
 
+  .comments-section.is-drawer-open .comments-drawer-scroll,
   .comments-section.is-drawer-full .comments-drawer-scroll {
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -1457,142 +1442,100 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     background: color-mix(in srgb, var(--photos-panel) 94%, transparent);
     border: 0;
     border-bottom: 1px solid var(--photos-border);
+    box-sizing: border-box;
     color: var(--photos-text);
     cursor: grab;
-    display: block;
-    margin: 0 -0.85rem 0.65rem;
-    min-height: calc(var(--drawer-handle-height) - 1rem);
-    padding: 0.15rem 1rem 0.75rem;
+    display: grid;
+    gap: 0.15rem 0.65rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 1rem minmax(0, 1fr);
+    margin: 0;
+    height: var(--drawer-handle-height);
+    min-height: 0;
+    padding: 0 1rem 0.55rem;
     position: relative;
-    transition: padding 240ms cubic-bezier(0.22, 0.72, 0.22, 1);
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
-  }
-
-  .comments-drawer-grabber {
-    background: color-mix(in srgb, var(--photos-panel) 94%, transparent);
-    cursor: grab;
-    display: block;
-    height: 1rem;
-    left: 0;
-    margin: 0;
-    position: absolute;
-    right: 0;
-    top: 0;
-    touch-action: none;
     z-index: 5;
   }
 
-  .comments-drawer-grabber:active {
-    cursor: grabbing;
-  }
-
-  .comments-drawer-grabber:focus-visible {
-    outline: 2px solid var(--photos-accent);
-    outline-offset: -2px;
-  }
-
-  .comments-drawer-grabber::after {
+  .comments-drawer-grabber {
+    align-self: center;
     background: var(--photos-border);
     border-radius: 999px;
-    content: '';
+    display: block;
+    grid-column: 1 / -1;
     height: 0.28rem;
-    left: 50%;
-    position: absolute;
-    top: 0.37rem;
-    transform: translateX(-50%);
-    width: 2.5rem;
+    justify-self: center;
+    width: 2.75rem;
+  }
+
+  .comments-drawer-handle:active {
+    cursor: grabbing;
   }
 
   .comments-drawer-handle:focus-visible {
     outline: 2px solid var(--photos-accent);
-    outline-offset: -3px;
+    outline-offset: -2px;
   }
 
-  .comments-drawer-preview {
-    box-sizing: border-box;
-    font-size: 0.82rem;
-    line-height: 1.35;
-    margin-inline: auto;
-    max-height: 4.05em;
-    overflow: hidden;
-    padding-right: 0.2rem;
-    position: relative;
-    text-align: left;
-    transition: max-height 320ms cubic-bezier(0.22, 0.72, 0.22, 1),
-      font-size 240ms ease,
-      line-height 240ms ease,
-      width 240ms ease;
-    width: 91.111%;
+  .comments-drawer-label {
+    align-items: baseline;
+    align-self: center;
+    display: flex;
+    gap: 0.55rem;
+    min-width: 0;
   }
 
-  .comments-drawer-preview::after {
-    background: linear-gradient(90deg, transparent, var(--photos-panel) 45%);
-    bottom: 0;
-    content: '\2026';
-    padding-left: 1.5rem;
-    position: absolute;
-    right: 0;
+  .comments-drawer-label strong {
+    font-size: 1rem;
+    font-weight: 850;
   }
 
-  .comments-section.is-drawer-open .comments-drawer-handle {
-    cursor: grab;
-    min-height: 0;
-    padding-bottom: 1rem;
-    padding-top: 0.35rem;
+  .comments-drawer-label span {
+    color: var(--photos-muted);
+    font-family: 'Azeret Mono Variable', monospace;
+    font-size: 0.75rem;
   }
 
-  .comments-section.is-drawer-open .comments-drawer-preview {
-    font-size: 0.9rem;
-    line-height: 1.48;
+  .comments-drawer-chevron {
+    align-self: center;
+    fill: none;
+    height: 1.15rem;
+    stroke: var(--photos-muted);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+    transition: transform 180ms ease;
+    width: 1.15rem;
+  }
+
+  .comments-section.is-drawer-full .comments-drawer-chevron {
+    transform: rotate(180deg);
+  }
+
+  .comments-panel-heading {
+    border-bottom: 1px solid color-mix(in srgb, var(--photos-border) 70%, transparent);
+    display: grid;
+    margin: 0 -0.85rem;
+    padding: 0.75rem 3.75rem 1rem 1rem;
+  }
+
+  .comments-post-text {
     max-height: none;
     overflow: visible;
-    width: 100%;
   }
 
-  .comments-section.is-drawer-open .comments-drawer-preview::after {
-    opacity: 0;
-    transition: opacity 100ms ease;
+  .comments-header {
+    margin-top: 0;
+    top: -0.4rem;
   }
 
-  .comments-section.is-drawer-dragging .comments-drawer-preview {
-    font-size: var(--drawer-preview-font-size);
-    line-height: var(--drawer-preview-line-height);
-    max-height: var(--drawer-preview-height);
-    transition: none;
-    width: var(--drawer-preview-width);
-  }
-
-  .comments-section.is-drawer-dragging .comments-drawer-preview::after {
-    opacity: calc(1 - var(--drawer-drag-progress));
-  }
-
-  .comments-drawer-preview :deep(p) {
-    display: inline;
-  }
-
-  .comments-drawer-preview :deep(p + p)::before {
-    content: ' ';
-  }
-
-  .comments-drawer-preview :deep(a) {
-    color: var(--photos-accent);
-    pointer-events: none;
-    text-decoration: underline;
-    text-decoration-color: color-mix(in srgb, var(--photos-accent) 35%, transparent);
-    text-underline-offset: 0.15em;
-  }
-
-  .comments-drawer-preview :deep(img) {
-    height: 1em;
-    vertical-align: -0.1em;
-    width: 1em;
-  }
-
-  .comments-panel-heading,
   .comments-close {
-    display: none;
+    display: inline-flex;
+    right: 0.85rem;
+    top: calc(var(--drawer-handle-height) + 0.85rem);
   }
 }
 

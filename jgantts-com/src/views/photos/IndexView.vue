@@ -648,6 +648,40 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                 @pointercancel="cancelCommentsDrawerDrag"
               >
                 <span class="comments-drawer-grabber" aria-hidden="true"></span>
+                <div class="comments-drawer-controls" aria-label="Comments panel controls">
+                  <button
+                    type="button"
+                    aria-label="Close comments"
+                    @click.stop="clearSelection"
+                    @pointerdown.stop
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                      <path d="M6 6l12 12M18 6 6 18" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Move comments panel up"
+                    :disabled="commentsDrawerState === 2"
+                    @click.stop="stepCommentsDrawer(1)"
+                    @pointerdown.stop
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                      <path d="m6 15 6-6 6 6" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Move comments panel down"
+                    :disabled="commentsDrawerState === 0"
+                    @click.stop="stepCommentsDrawer(-1)"
+                    @pointerdown.stop
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                </div>
                 <div class="comments-drawer-post">
                   <div class="comments-drawer-post-summary" v-html="toot.post.content"></div>
                   <time
@@ -661,21 +695,6 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                     {{ commentCountLabel(toot.post.id) }}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  class="comments-drawer-toggle"
-                  :aria-label="commentsDrawerFull ? 'Collapse comments panel' : 'Expand comments panel'"
-                  @click.stop="toggleCommentsDrawer"
-                  @keydown.up.prevent="stepCommentsDrawer(1)"
-                  @keydown.right.prevent="stepCommentsDrawer(1)"
-                  @keydown.down.prevent="stepCommentsDrawer(-1)"
-                  @keydown.left.prevent="stepCommentsDrawer(-1)"
-                  @pointerdown.stop
-                >
-                  <svg class="comments-drawer-chevron" aria-hidden="true" viewBox="0 0 24 24">
-                    <path d="m6 15 6-6 6 6" />
-                  </svg>
-                </button>
               </div>
 
               <button
@@ -1465,13 +1484,13 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     color: var(--photos-text);
     cursor: grab;
     display: grid;
-    gap: 0.1rem 0.65rem;
-    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.1rem;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 1rem minmax(0, 1fr);
     margin: 0;
     height: var(--drawer-handle-height);
     min-height: 0;
-    padding: 0 1rem 0.7rem;
+    padding: 0 1rem 0.7rem 3.6rem;
     position: relative;
     touch-action: none;
     user-select: none;
@@ -1492,6 +1511,55 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
   .comments-drawer-handle:active {
     cursor: grabbing;
+  }
+
+  .comments-drawer-controls {
+    display: grid;
+    gap: 0.18rem;
+    left: 0.55rem;
+    position: absolute;
+    top: 1rem;
+    z-index: 2;
+  }
+
+  .comments-drawer-controls button {
+    align-items: center;
+    background: var(--photos-control);
+    border: 1px solid var(--photos-border);
+    border-radius: 50%;
+    color: var(--photos-text);
+    cursor: pointer;
+    display: inline-flex;
+    height: 1.45rem;
+    justify-content: center;
+    padding: 0;
+    touch-action: manipulation;
+    width: 1.45rem;
+  }
+
+  .comments-drawer-controls button:disabled {
+    cursor: default;
+    opacity: 0.32;
+  }
+
+  .comments-drawer-controls button:not(:disabled):active {
+    background: var(--photos-control-hover);
+    border-color: var(--photos-accent);
+  }
+
+  .comments-drawer-controls button:focus-visible {
+    outline: 2px solid var(--photos-accent);
+    outline-offset: 1px;
+  }
+
+  .comments-drawer-controls svg {
+    fill: none;
+    height: 0.78rem;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+    width: 0.78rem;
   }
 
   .comments-drawer-post {
@@ -1559,42 +1627,6 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     width: 1em;
   }
 
-  .comments-drawer-toggle {
-    align-self: center;
-    background: transparent;
-    border: 0;
-    border-radius: 50%;
-    color: var(--photos-muted);
-    cursor: pointer;
-    display: inline-grid;
-    height: 2rem;
-    justify-content: center;
-    padding: 0;
-    place-items: center;
-    touch-action: manipulation;
-    width: 2rem;
-  }
-
-  .comments-drawer-toggle:focus-visible {
-    outline: 2px solid var(--photos-accent);
-    outline-offset: 1px;
-  }
-
-  .comments-drawer-chevron {
-    fill: none;
-    height: 1.15rem;
-    stroke: currentColor;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-width: 2;
-    transition: transform 180ms ease;
-    width: 1.15rem;
-  }
-
-  .comments-section.is-drawer-full .comments-drawer-chevron {
-    transform: rotate(180deg);
-  }
-
   .comments-panel-heading {
     display: none;
   }
@@ -1610,12 +1642,6 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   }
 
   .comments-close {
-    display: inline-flex;
-    right: 0.85rem;
-    top: calc(var(--drawer-handle-height) + 0.45rem);
-  }
-
-  .comments-section:not(.is-drawer-open) .comments-close {
     display: none;
   }
 }

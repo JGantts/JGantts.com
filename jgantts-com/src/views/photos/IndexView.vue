@@ -489,6 +489,7 @@ onMounted(async () => {
     syncSelectionFromRoute()
     loading.value = false
     if (props.postId && activeToot.value) {
+      if (isMobilePortraitDrawer()) commentsDrawerState.value = 1
       await scrollToRoutedPost(props.postId, activeToot.value.post.id)
     }
   } catch (err) {

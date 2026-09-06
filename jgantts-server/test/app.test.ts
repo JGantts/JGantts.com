@@ -350,7 +350,8 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
     bodyMarkdown: '# Hello\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(2)) **world**',
     location: 'New York',
     date: 20260906,
-    time: '21:05',
+    time: '21:15',
+    title: 'First local post',
   });
 
   assert.equal((await request(app, '/api/admin/posts', {
@@ -399,9 +400,11 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
     method: 'POST',
   });
   assert.equal(createdResponse.status, 201);
-  const created = JSON.parse(createdResponse.body) as { bodyHtml: string; id: string; slug: string; status: string; time: string };
+  const created = JSON.parse(createdResponse.body) as { bodyHtml: string; id: string; slug: string; status: string; time: string; title: string };
   assert.equal(created.status, 'draft');
-  assert.equal(created.time, '21:05');
+  assert.equal(created.time, '21:15');
+  assert.equal(created.title, 'First local post');
+  assert.equal(created.slug, 'first-local-post');
   assert.match(created.bodyHtml, /<h1>Hello<\/h1>/);
   assert.match(created.bodyHtml, /<strong>world<\/strong>/);
   assert.doesNotMatch(created.bodyHtml, /script|javascript:/i);
@@ -700,13 +703,14 @@ test('uploads local media and serves immutable originals and derivatives', async
 
   const editedResponse = await request(app, `/api/admin/media/${uploaded.id}`, {
     body: JSON.stringify({
-      altText: 'An updated brown rectangle', caption: 'A visible caption', time: '06:30', focalX: 0.4, focalY: 0.6,
+      altText: 'An updated brown rectangle', caption: 'A visible caption', title: 'Brown study', time: '06:30', focalX: 0.4, focalY: 0.6,
     }),
     headers: { authorization: 'Bearer media-secret', 'content-type': 'application/json' },
     method: 'PATCH',
   });
   assert.equal(editedResponse.status, 200);
   assert.equal(JSON.parse(editedResponse.body).caption, 'A visible caption');
+  assert.equal(JSON.parse(editedResponse.body).title, 'Brown study');
   assert.equal(JSON.parse(editedResponse.body).time, '06:30');
 
   const orderResponse = await request(app, '/api/admin/posts/media-api-post/media/order', {
@@ -933,7 +937,7 @@ test('gallery maintenance enforces auth and validation and serializes competing 
     assert.equal((await send(orderUrl, 'PUT', { mediaIds })).status, 400);
   }
   assert.equal((await send(heroUrl, 'PUT', { mediaId: foreign.id })).status, 400);
-  for (const body of [{ altText: '' }, { caption: 42 }, { time: '6:30 PM' }, { focalX: 0.5 }, { focalX: -1, focalY: 1 }, { postId: 'other' }]) {
+  for (const body of [{ altText: '' }, { caption: 42 }, { time: '6:30 PM' }, { time: '06:10' }, { focalX: 0.5 }, { focalX: -1, focalY: 1 }, { postId: 'other' }]) {
     assert.equal((await send(editUrl, 'PATCH', body)).status, 400);
   }
   assert.deepEqual(media.listForPost('gallery'), before);

@@ -57,6 +57,7 @@ export interface MediaFile {
 }
 
 export interface UpdateMediaMetadataInput {
+  title?: unknown;
   altText?: unknown;
   caption?: unknown;
   description?: unknown;
@@ -104,6 +105,7 @@ function publicMedia(media: MediaRecord): PublicMedia {
   // Explicit fields keep future storage and processing details private by default.
   return {
     id: media.id,
+    title: media.title,
     postId: media.postId,
     mimeType: media.mimeType,
     width: media.width,
@@ -374,6 +376,7 @@ export class MediaService {
       const createdAt = new Date().toISOString();
       return publicMedia(this.media.create({
         id,
+        title: null,
         postId: input.postId,
         originalPath: path.posix.join('originals', originalName),
         derivatives,
@@ -589,6 +592,7 @@ export class MediaService {
     };
     const description = input.description === undefined
       ? current.description : optionalText(input.description, 'description', 5_000);
+    const title = input.title === undefined ? current.title : optionalText(input.title, 'title', 200);
     const location = input.location === undefined
       ? current.location : optionalText(input.location, 'location', 500);
     const date = input.date === undefined ? current.date : validateEditorialDate(input.date);
@@ -603,6 +607,7 @@ export class MediaService {
     const updated = this.media.updateMetadata(id, {
       altText: altText.trim(),
       caption: typeof caption === 'string' ? caption.trim() || null : caption,
+      title,
       description,
       location,
       date,
@@ -664,8 +669,8 @@ function validateEditorialDate(value: unknown): number | null {
 
 function validateEditorialTime(value: unknown): string | null {
   if (value === null || value === '') return null;
-  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)) {
-    throw new PostInputError('time must use 24-hour HH:mm format or be null.');
+  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):(?:00|15|20|30|40|45)$/.test(value)) {
+    throw new PostInputError('time must use 24-hour HH:mm format at an allowed minute interval (:00, :15, :20, :30, :40, or :45), or be null.');
   }
   return value;
 }

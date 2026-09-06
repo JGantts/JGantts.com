@@ -5,6 +5,7 @@ import type { MediaDerivatives, MediaRecord, RenditionManifest } from './types';
 
 interface MediaRow {
   id: string;
+  title: string | null;
   description: string | null;
   location: string | null;
   date: number | null;
@@ -32,6 +33,7 @@ interface MediaRow {
 function mapMedia(row: MediaRow): MediaRecord {
   return {
     id: row.id,
+    title: row.title,
     description: row.description,
     location: row.location,
     date: row.date,
@@ -63,12 +65,12 @@ export class MediaRepository {
   create(media: MediaRecord): MediaRecord {
     this.database.prepare(`
       INSERT INTO media (
-        id, description, location, date, time, post_id, original_path, derived_json, mime_type, width, height,
+        id, title, description, location, date, time, post_id, original_path, derived_json, mime_type, width, height,
         byte_size, checksum_sha256, alt_text, caption, focal_x, focal_y,
         display_order, processing_state, processing_error, rendition_json,
         created_at, updated_at
       ) VALUES (
-        @id, @description, @location, @date, @time, @postId, @originalPath, @derivedJson, @mimeType, @width, @height,
+        @id, @title, @description, @location, @date, @time, @postId, @originalPath, @derivedJson, @mimeType, @width, @height,
         @byteSize, @checksumSha256, @altText, @caption, @focalX, @focalY,
         @displayOrder, @processingState, @processingError, @renditionJson,
         @createdAt, @updatedAt
@@ -152,11 +154,12 @@ export class MediaRepository {
 
   updateMetadata(
     id: string,
-    changes: Pick<MediaRecord, 'altText' | 'caption' | 'description' | 'location' | 'date' | 'time' | 'focalX' | 'focalY'>,
+    changes: Pick<MediaRecord, 'altText' | 'caption' | 'title' | 'description' | 'location' | 'date' | 'time' | 'focalX' | 'focalY'>,
     updatedAt: string,
   ): MediaRecord | null {
     const result = this.database.prepare(`
       UPDATE media SET
+        title = @title,
         description = @description,
         location = @location,
         date = @date,

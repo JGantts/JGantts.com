@@ -4,6 +4,7 @@ import { AdminApiError, adminRequest, createAdminSession, deleteAdminSession, js
 import type { PostMedia } from '@/posts/types'
 
 type AdminPost = {
+  title: string | null
   location: string | null
   date: number | null
   time: string | null
@@ -50,7 +51,7 @@ type UploadQueueItem = {
 }
 const uploadQueue = ref<UploadQueueItem[]>([])
 const uploadRunning = ref(false)
-const mediaDrafts = reactive<Record<string, { altText: string; caption: string; location: string; date: string; time: string }>>({})
+const mediaDrafts = reactive<Record<string, { altText: string; caption: string; title: string; location: string; date: string; time: string }>>({})
 const mediaSavingId = ref<string | null>(null)
 const mediaDialog = ref<HTMLDialogElement | null>(null)
 const editingMediaId = ref<string | null>(null)
@@ -59,8 +60,13 @@ const draggedMediaId = ref<string | null>(null)
 const syndication = ref<Syndication | null>(null)
 const teaser = ref('')
 let previewTimer: ReturnType<typeof setTimeout> | null = null
+const allowedMinutes = ['00', '15', '20', '30', '40', '45']
+const timeOptions = Array.from({ length: 24 }, (_, hour) =>
+  allowedMinutes.map((minute) => `${hour.toString().padStart(2, '0')}:${minute}`),
+).flat()
 
 const form = reactive({
+  title: '',
   location: '',
   date: '',
   time: '',
@@ -74,7 +80,7 @@ const filteredPosts = computed(() => {
   return posts.value.filter((post) => {
     if (postStatus.value !== 'all' && post.status !== postStatus.value) return false
     if (!query) return true
-    return [post.slug, post.location, post.date?.toString(), post.time, post.bodyMarkdown]
+    return [post.title, post.slug, post.location, post.date?.toString(), post.time, post.bodyMarkdown]
       .some((value) => value?.toLocaleLowerCase().includes(query))
   })
 })
@@ -93,13 +99,23 @@ function postThumbnails(post: AdminPost): PostMedia[] {
 }
 
 function postLabel(post: AdminPost): string {
-  return post.location || post.slug
+  return post.title || post.location || post.slug
 }
 
 function postDate(date: number | null): string {
   if (!date) return 'No date'
   const value = date.toString()
   return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`
+}
+
+function dateInputValue(date: number | null): string {
+  if (!date) return ''
+  const value = date.toString()
+  return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`
+}
+
+function storedDate(date: string): number | null {
+  return date ? Number(date.replaceAll('-', '')) : null
 }
 
 function openMediaDetails(item: PostMedia) {
@@ -127,7 +143,8 @@ function message(value: unknown): string {
 function copyToForm(post: AdminPost) {
   selectedId.value = post.id
   form.location = post.location ?? ''
-  form.date = post.date?.toString() ?? ''
+  form.title = post.title ?? ''
+  form.date = dateInputValue(post.date)
   form.time = post.time ?? ''
   form.bodyMarkdown = post.bodyMarkdown
   previewHtml.value = post.bodyHtml
@@ -136,7 +153,7 @@ function copyToForm(post: AdminPost) {
   error.value = ''
   syndication.value = null
   post.media.forEach((item) => {
-    mediaDrafts[item.id] = { altText: item.altText, caption: item.caption ?? '', location: item.location ?? '', date: item.date?.toString() ?? '', time: item.time ?? '' }
+    mediaDrafts[item.id] = { altText: item.altText, caption: item.caption ?? '', title: item.title ?? '', location: item.location ?? '', date: dateInputValue(item.date), time: item.time ?? '' }
   })
   if (post.status === 'published') void loadSyndication(post.id)
 }
@@ -185,6 +202,7 @@ async function signOut() {
   selectedId.value = null
   tokenInput.value = ''
   form.location = ''
+  form.title = ''
   form.date = ''
   form.time = ''
   form.bodyMarkdown = ''
@@ -214,7 +232,8 @@ async function loadPosts() {
 function authorBody() {
   return {
     location: form.location.trim() || null,
-    date: form.date ? Number(form.date) : null,
+    title: form.title.trim() || null,
+    date: storedDate(form.date),
     time: form.time || null,
     bodyMarkdown: form.bodyMarkdown,
   }
@@ -233,7 +252,7 @@ function replaceMedia(updated: PostMedia) {
   const media = post.media.map((item) => item.id === updated.id ? updated : item)
   const index = posts.value.findIndex(({ id }) => id === post.id)
   if (index !== -1) posts.value.splice(index, 1, { ...post, media })
-  mediaDrafts[updated.id] = { altText: updated.altText, caption: updated.caption ?? '', location: updated.location ?? '', date: updated.date?.toString() ?? '', time: updated.time ?? '' }
+  mediaDrafts[updated.id] = { altText: updated.altText, caption: updated.caption ?? '', title: updated.title ?? '', location: updated.location ?? '', date: dateInputValue(updated.date), time: updated.time ?? '' }
 }
 
 async function saveMedia(item: PostMedia) {
@@ -244,7 +263,7 @@ async function saveMedia(item: PostMedia) {
   try {
     const updated = await adminRequest<PostMedia>(
       `/api/admin/media/${item.id}`,
-      jsonRequest('PATCH', { altText: draft.altText, caption: draft.caption.trim() || null, location: draft.location.trim() || null, date: draft.date ? Number(draft.date) : null, time: draft.time || null, focalX: item.focalX, focalY: item.focalY }),
+      jsonRequest('PATCH', { altText: draft.altText, caption: draft.caption.trim() || null, title: draft.title.trim() || null, location: draft.location.trim() || null, date: storedDate(draft.date), time: draft.time || null, focalX: item.focalX, focalY: item.focalY }),
     )
     replaceMedia(updated)
     notice.value = 'Photo details saved.'
@@ -731,9 +750,17 @@ onBeforeUnmount(() => {
               <span class="status-chip">{{ selected?.status || 'unsaved' }}</span>
               <a v-if="selected?.status === 'published'" :href="`/posts/${selected.slug}`" target="_blank">View post ↗</a>
             </div>
+            <label>Title <input v-model="form.title" maxlength="200"></label>
             <label>Location <input v-model="form.location" maxlength="500"></label>
-            <label>Date <input v-model="form.date" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" placeholder="YYYYMMDD"></label>
-            <label>Time <input v-model="form.time" type="time" step="60"></label>
+            <div class="date-time-fields">
+              <label>Date <input v-model="form.date" type="date"></label>
+              <label>Time
+                <select v-model="form.time">
+                  <option value="">No time</option>
+                  <option v-for="time in timeOptions" :key="time" :value="time">{{ time }}</option>
+                </select>
+              </label>
+            </div>
             <label>Body (Markdown) <textarea v-model="form.bodyMarkdown" class="markdown-editor" maxlength="100000" required></textarea></label>
             <div class="editor-actions">
               <button :disabled="busy" type="submit">{{ busy ? 'Working…' : selectedId ? 'Save changes' : 'Create draft' }}</button>
@@ -779,12 +806,18 @@ onBeforeUnmount(() => {
           </header>
           <img :alt="editingMedia.altText" :src="editingMedia.urls.thumbnail">
           <p class="photo-technical">{{ editingMedia.width }} × {{ editingMedia.height }} · {{ editingMedia.processingState }}</p>
+          <label>Title <input v-model="mediaDrafts[editingMedia.id].title" maxlength="200"></label>
           <label>Alt text <textarea v-model="mediaDrafts[editingMedia.id].altText" maxlength="2000" rows="3" required></textarea></label>
           <label>Caption <textarea v-model="mediaDrafts[editingMedia.id].caption" maxlength="5000" rows="3"></textarea></label>
           <label>Location <input v-model="mediaDrafts[editingMedia.id].location" maxlength="500"></label>
           <div class="date-time-fields">
-            <label>Date <input v-model="mediaDrafts[editingMedia.id].date" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" placeholder="YYYYMMDD"></label>
-            <label>Time <input v-model="mediaDrafts[editingMedia.id].time" type="time" step="60"></label>
+            <label>Date <input v-model="mediaDrafts[editingMedia.id].date" type="date"></label>
+            <label>Time
+              <select v-model="mediaDrafts[editingMedia.id].time">
+                <option value="">No time</option>
+                <option v-for="time in timeOptions" :key="time" :value="time">{{ time }}</option>
+              </select>
+            </label>
           </div>
           <div class="editor-actions">
             <button :disabled="mediaSavingId === editingMedia.id || !mediaDrafts[editingMedia.id].altText.trim()" type="submit">
@@ -825,7 +858,7 @@ onBeforeUnmount(() => {
 .post-thumbnail-empty { align-items: center; background: color-mix(in srgb, var(--border) 50%, transparent); display: flex; height: 3.4rem; justify-content: center; }
 .editor-card { display: grid; gap: 2rem; padding: clamp(1rem, 3vw, 2rem); }
 label { display: grid; font-size: 0.85rem; font-weight: 600; gap: 0.4rem; }
-input, textarea { background: color-mix(in srgb, var(--bg) 90%, white 10%); border: 1px solid var(--border); border-radius: 0.5rem; box-sizing: border-box; color: inherit; font: inherit; padding: 0.7rem 0.8rem; width: 100%; }
+input, textarea, select { background: color-mix(in srgb, var(--bg) 90%, white 10%); border: 1px solid var(--border); border-radius: 0.5rem; box-sizing: border-box; color: inherit; font: inherit; padding: 0.7rem 0.8rem; width: 100%; }
 textarea { resize: vertical; }
 .markdown-editor { font-family: 'Azeret Mono Variable', monospace; min-height: 22rem; }
 button { background: var(--accent); border: 1px solid transparent; border-radius: 0.5rem; color: white; cursor: pointer; font: inherit; font-weight: 650; padding: 0.65rem 0.9rem; }

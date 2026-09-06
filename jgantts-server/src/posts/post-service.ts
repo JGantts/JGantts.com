@@ -17,6 +17,7 @@ export interface AuthorPostInput {
   date?: number | null;
   time?: string | null;
   location?: string | null;
+  title?: string | null;
   /** Internal compatibility hook. The authoring API always generates this. */
   slug?: string;
 }
@@ -41,8 +42,8 @@ function validateSlug(value: unknown): string {
   return slug;
 }
 
-function slugifyBody(bodyMarkdown: string): string {
-  const plainText = bodyMarkdown
+function slugifyPost(title: string | null | undefined, bodyMarkdown: string): string {
+  const plainText = (title?.trim() || bodyMarkdown)
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/<[^>]+>|[`*_~>#]/g, ' ')
@@ -72,8 +73,8 @@ function validateDate(value: unknown): number | null {
 
 function validateTime(value: unknown): string | null {
   if (value === null || value === undefined || value === '') return null;
-  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)) {
-    throw new PostInputError('time must use 24-hour HH:mm format or be null.');
+  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):(?:00|15|20|30|40|45)$/.test(value)) {
+    throw new PostInputError('time must use 24-hour HH:mm format at an allowed minute interval (:00, :15, :20, :30, :40, or :45), or be null.');
   }
   return value;
 }
@@ -110,7 +111,8 @@ export class PostService {
 
   createDraft(input: AuthorPostInput): Post {
     const bodyMarkdown = validateText(input.bodyMarkdown, 'bodyMarkdown', 100_000, true) as string;
-    const baseSlug = input.slug ? validateSlug(input.slug) : slugifyBody(bodyMarkdown);
+    const title = validateText(input.title ?? null, 'title', 200, false);
+    const baseSlug = input.slug ? validateSlug(input.slug) : slugifyPost(title, bodyMarkdown);
     let slug = baseSlug;
     for (let suffix = 2; this.posts.getBySlug(slug); suffix += 1) slug = `${baseSlug}-${suffix}`;
     return this.posts.create({
@@ -118,6 +120,7 @@ export class PostService {
       location: validateText(input.location ?? null, 'location', 500, false),
       date: validateDate(input.date),
       time: validateTime(input.time),
+      title,
       slug,
       bodyMarkdown,
       bodyHtml: renderPostMarkdown(bodyMarkdown),
@@ -182,6 +185,7 @@ export class PostService {
     if ('location' in changes) repositoryChanges.location = validateText(changes.location, 'location', 500, false);
     if ('date' in changes) repositoryChanges.date = validateDate(changes.date);
     if ('time' in changes) repositoryChanges.time = validateTime(changes.time);
+    if ('title' in changes) repositoryChanges.title = validateText(changes.title, 'title', 200, false);
     if ('slug' in changes) {
       const slug = validateSlug(changes.slug);
       const existing = this.posts.getBySlug(slug);
@@ -194,7 +198,7 @@ export class PostService {
       repositoryChanges.bodyHtml = renderPostMarkdown(bodyMarkdown);
       const current = this.posts.getById(id);
       if (current && current.slug === current.id) {
-        const baseSlug = slugifyBody(bodyMarkdown);
+        const baseSlug = slugifyPost(repositoryChanges.title ?? current.title, bodyMarkdown);
         let slug = baseSlug;
         for (let suffix = 2; this.posts.getBySlug(slug); suffix += 1) slug = `${baseSlug}-${suffix}`;
         repositoryChanges.slug = slug;

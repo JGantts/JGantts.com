@@ -18,6 +18,26 @@ const commentTree = ref<MastodonCommentNode[]>([])
 const commentsLoading = ref(false)
 const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' })
 
+function editorialDate(value: number | null): string | null {
+  if (!value) return null
+  const text = value.toString()
+  const date = new Date(Date.UTC(Number(text.slice(0, 4)), Number(text.slice(4, 6)) - 1, Number(text.slice(6, 8))))
+  return dateFormatter.format(date)
+}
+
+function editorialDateTime(date: number | null, time: string | null): string | null {
+  const formattedDate = editorialDate(date)
+  if (formattedDate && time) return `${formattedDate} at ${time}`
+  return formattedDate || time
+}
+
+function machineDateTime(date: number | null, time: string | null): string | undefined {
+  if (!date) return undefined
+  const value = date.toString()
+  const formatted = `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`
+  return time ? `${formatted}T${time}` : formatted
+}
+
 function initialPost(): CanonicalPost | null {
   const element = document.querySelector<HTMLScriptElement>('#__POST_DATA__')
   if (!element?.textContent) return null
@@ -30,7 +50,7 @@ function initialPost(): CanonicalPost | null {
 }
 
 function updateDocumentMeta(value: CanonicalPost) {
-  const title = value.location || 'Post by Jacob Gantt'
+  const title = value.title || value.location || 'Post by Jacob Gantt'
   const description = 'A post from Jacob Gantt on JGantts.com.'
   const image = (value.media.find((item) => item.id === value.heroMediaId) ?? value.media[0])?.urls.large
   const canonicalUrl = new URL(`/posts/${value.slug}`, window.location.origin).toString()
@@ -170,26 +190,45 @@ watch(() => props.slug, loadPost)
     <article v-else-if="post" class="post">
       <header class="post-header">
         <RouterLink class="back-link" to="/posts">← All posts</RouterLink>
-        <h1>{{ post.location || 'Post by Jacob Gantt' }}</h1>
-        <time :datetime="post.publishedAt">{{ dateFormatter.format(new Date(post.publishedAt)) }}</time>
+        <h1>{{ post.title || 'Post by Jacob Gantt' }}</h1>
+        <dl v-if="post.location || post.date || post.time" class="post-metadata">
+          <div v-if="post.location"><dt>Location</dt><dd>{{ post.location }}</dd></div>
+          <div v-if="post.date || post.time">
+            <dt>Date and time</dt>
+            <dd><time :datetime="machineDateTime(post.date, post.time)">{{ editorialDateTime(post.date, post.time) }}</time></dd>
+          </div>
+        </dl>
+        <p class="published-date">Published <time :datetime="post.publishedAt">{{ dateFormatter.format(new Date(post.publishedAt)) }}</time></p>
       </header>
 
 
       <div v-if="post.media.length" class="post-media">
-        <a
+        <figure
           v-for="item in post.media"
           :key="item.id"
-          :href="item.urls.original"
-          class="post-image-link"
+          class="post-photo"
         >
-          <img
-            :alt="item.altText"
-            :height="item.height || undefined"
-            loading="eager"
-            :src="item.urls.large"
-            :width="item.width || undefined"
-          >
-        </a>
+          <a :href="item.urls.original" class="post-image-link">
+            <img
+              :alt="item.altText"
+              :height="item.height || undefined"
+              loading="eager"
+              :src="item.urls.large"
+              :width="item.width || undefined"
+            >
+          </a>
+          <figcaption v-if="item.title || item.caption || item.location || item.date || item.time" class="photo-metadata">
+            <strong v-if="item.title">{{ item.title }}</strong>
+            <p v-if="item.caption">{{ item.caption }}</p>
+            <dl v-if="item.location || item.date || item.time">
+              <div v-if="item.location"><dt>Location</dt><dd>{{ item.location }}</dd></div>
+              <div v-if="item.date || item.time">
+                <dt>Date and time</dt>
+                <dd><time :datetime="machineDateTime(item.date, item.time)">{{ editorialDateTime(item.date, item.time) }}</time></dd>
+              </div>
+            </dl>
+          </figcaption>
+        </figure>
       </div>
 
       <div class="post-body" v-html="post.bodyHtml"></div>
@@ -270,11 +309,30 @@ watch(() => props.slug, loadPost)
   line-height: 1.45;
 }
 
-.post-header time,
+.published-date,
 .back-link {
   color: var(--muted);
   font-family: 'Azeret Mono Variable', monospace;
   font-size: 0.75rem;
+}
+
+.post-metadata,
+.photo-metadata dl {
+  display: grid;
+  gap: 0.4rem 1rem;
+}
+
+.post-metadata > div,
+.photo-metadata dl > div {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+}
+
+.post-metadata dt,
+.photo-metadata dt {
+  color: var(--muted);
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.72rem;
 }
 
 .back-link {
@@ -302,6 +360,11 @@ watch(() => props.slug, loadPost)
   display: block;
   width: 100%;
 }
+
+.post-photo { margin: 0; }
+.photo-metadata { display: grid; gap: 0.45rem; padding: 0.75rem 0.25rem 0; }
+.photo-metadata strong { font-size: 1.05rem; font-weight: 650; }
+.photo-metadata p { color: var(--muted); line-height: 1.5; }
 
 .post-image-link img {
   border-radius: 0.65rem;

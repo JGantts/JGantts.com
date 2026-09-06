@@ -1,4 +1,5 @@
 export type PostMedia = {
+  title: string | null
   location: string | null
   date: number | null
   time: string | null
@@ -47,6 +48,7 @@ export type PostMedia = {
 }
 
 export type CanonicalPost = {
+  title: string | null
   location: string | null
   date: number | null
   time: string | null

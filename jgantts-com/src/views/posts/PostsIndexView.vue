@@ -53,7 +53,7 @@ onMounted(() => loadPosts())
           :src="post.media[0].urls.thumbnail"
         >
         <span class="post-card-copy">
-          <strong>{{ post.location || 'Post by Jacob Gantt' }}</strong>
+          <strong>{{ post.title || post.location || 'Post by Jacob Gantt' }}</strong>
           <time :datetime="post.publishedAt">{{ formatter.format(new Date(post.publishedAt)) }}</time>
         </span>
       </RouterLink>

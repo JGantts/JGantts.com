@@ -210,6 +210,13 @@ export const migrations: readonly Migration[] = [
       ALTER TABLE media ADD COLUMN time TEXT;
     `,
   },
+  {
+    version: 9,
+    name: 'optional_photo_title',
+    sql: `
+      ALTER TABLE media ADD COLUMN title TEXT;
+    `,
+  },
 ];
 
 export function migrateDatabase(database: Database.Database): void {

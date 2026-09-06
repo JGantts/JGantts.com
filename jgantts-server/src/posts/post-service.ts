@@ -18,7 +18,6 @@ export interface AuthorPostInput {
   time?: string | null;
   location?: string | null;
   title?: string | null;
-  /** Internal compatibility hook. The authoring API always generates this. */
   slug?: string;
 }
 

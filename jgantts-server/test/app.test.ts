@@ -465,12 +465,24 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.equal(updatedResponse.status, 200);
   assert.equal(JSON.parse(updatedResponse.body).bodyHtml, '<p>Updated</p>\n');
 
+  const renamedResponse = await request(app, `/api/admin/posts/${created.id}`, {
+    body: JSON.stringify({ slug: 'manually-chosen-slug' }),
+    headers: {
+      authorization: 'Bearer test-admin-secret',
+      'content-type': 'application/json',
+    },
+    method: 'PATCH',
+  });
+  assert.equal(renamedResponse.status, 200);
+  assert.equal(JSON.parse(renamedResponse.body).slug, 'manually-chosen-slug');
+
   const publishedResponse = await request(app, `/api/admin/posts/${created.id}/publish`, {
     headers: { authorization: 'Bearer test-admin-secret' },
     method: 'POST',
   });
   assert.equal(publishedResponse.status, 200);
   assert.equal(JSON.parse(publishedResponse.body).status, 'published');
+  assert.equal((await request(app, '/api/posts/manually-chosen-slug')).status, 200);
   assert.equal((await request(app, `/api/posts/${created.slug}`)).status, 200);
 
   const unpublishedResponse = await request(app, `/api/admin/posts/${created.id}/unpublish`, {

@@ -74,6 +74,7 @@ const hourOptions = Array.from({ length: 24 }, (_, hour) => hour.toString().padS
 
 const form = reactive({
   title: '',
+  slug: '',
   location: '',
   date: '',
   time: '',
@@ -199,6 +200,7 @@ function copyToForm(post: AdminPost) {
   selectedId.value = post.id
   form.location = post.location ?? ''
   form.title = post.title ?? ''
+  form.slug = post.slug
   form.date = dateInputValue(post.date)
   form.time = post.time ?? ''
   form.bodyMarkdown = post.bodyMarkdown
@@ -258,6 +260,7 @@ async function signOut() {
   tokenInput.value = ''
   form.location = ''
   form.title = ''
+  form.slug = ''
   form.date = ''
   form.time = ''
   form.bodyMarkdown = ''
@@ -288,10 +291,22 @@ function authorBody() {
   return {
     location: form.location.trim() || null,
     title: form.title.trim() || null,
+    slug: form.slug.trim(),
     date: storedDate(form.date),
     time: form.time || null,
     bodyMarkdown: form.bodyMarkdown,
   }
+}
+
+function slugifyTitle() {
+  form.slug = form.title
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase()
+    .slice(0, 100)
+    .replace(/-+$/g, '')
 }
 
 function replacePost(post: AdminPost) {
@@ -803,9 +818,23 @@ onBeforeUnmount(() => {
           <form class="editor-form" @submit.prevent="save">
             <div class="status-row">
               <span class="status-chip">{{ selected?.status || 'unsaved' }}</span>
-              <a v-if="selected?.status === 'published'" :href="`/photos/${selected.slug}`" target="_blank">View post ↗</a>
+              <a v-if="selected?.status === 'published'" :href="`/photos/${encodeURIComponent(selected.slug)}`" target="_blank">View post ↗</a>
             </div>
             <label>Title <input v-model="form.title" maxlength="200"></label>
+            <label>
+              Slug
+              <span class="slug-input-row">
+                <input
+                  v-model="form.slug"
+                  maxlength="100"
+                  pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                  required
+                  title="Use lowercase letters, numbers, and single hyphens."
+                >
+                <button class="button-secondary" type="button" @click="slugifyTitle">Use title</button>
+              </span>
+              <small>URL-safe text: lowercase letters, numbers, and single hyphens. Changing it keeps the old URL working.</small>
+            </label>
             <label>Location <input v-model="form.location" maxlength="500"></label>
             <div class="date-time-selectors">
               <label>Year
@@ -959,7 +988,10 @@ onBeforeUnmount(() => {
 .post-thumbnail-empty { align-items: center; background: color-mix(in srgb, var(--border) 50%, transparent); display: flex; height: 3.4rem; justify-content: center; }
 .editor-card { display: grid; gap: 2rem; padding: clamp(1rem, 3vw, 2rem); }
 label { display: grid; font-size: 0.85rem; font-weight: 600; gap: 0.4rem; }
+label small { color: var(--muted); font-size: 0.72rem; font-weight: 400; }
 input, textarea, select { background: color-mix(in srgb, var(--bg) 90%, white 10%); border: 1px solid var(--border); border-radius: 0.5rem; box-sizing: border-box; color: inherit; font: inherit; padding: 0.7rem 0.8rem; width: 100%; }
+.slug-input-row { display: grid; gap: 0.5rem; grid-template-columns: minmax(0, 1fr) auto; }
+.slug-input-row button { white-space: nowrap; }
 textarea { resize: vertical; }
 .markdown-editor { font-family: 'Azeret Mono Variable', monospace; min-height: 22rem; }
 button { background: var(--accent); border: 1px solid transparent; border-radius: 0.5rem; color: white; cursor: pointer; font: inherit; font-weight: 650; padding: 0.65rem 0.9rem; }
@@ -1022,6 +1054,7 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   .upload-item img { width: 4rem; }
   .upload-item-actions { grid-column: 1 / -1; grid-template-columns: repeat(2, 1fr); }
   .editor-actions { align-items: stretch; flex-direction: column; }
+  .slug-input-row { grid-template-columns: 1fr; }
   .date-time-selectors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>

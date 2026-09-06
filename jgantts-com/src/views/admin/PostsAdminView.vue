@@ -58,7 +58,6 @@ const editingMediaId = ref<string | null>(null)
 const orderSaving = ref(false)
 const draggedMediaId = ref<string | null>(null)
 const syndication = ref<Syndication | null>(null)
-const teaser = ref('')
 let previewTimer: ReturnType<typeof setTimeout> | null = null
 const allowedMinutes = ['00', '15', '20', '30', '40', '45']
 const yearOptions = Array.from(
@@ -94,6 +93,26 @@ const filteredPosts = computed(() => {
 })
 const canPublish = computed(() => selected.value?.status === 'draft')
 const canSyndicate = computed(() => selected.value?.status === 'published')
+const mastodonTeaser = computed(() => {
+  let dateAndTime = ''
+  if (form.date) {
+    const [year, month, dayText] = form.date.split('-')
+    const day = Number(dayText)
+    const remainder = day % 100
+    const finalDigit = day % 10
+    const ordinal = remainder >= 11 && remainder <= 13 ? 'th' : finalDigit === 1 ? 'st' : finalDigit === 2 ? 'nd' : finalDigit === 3 ? 'rd' : 'th'
+    const monthName = new Intl.DateTimeFormat(undefined, { month: 'long', timeZone: 'UTC' })
+      .format(new Date(`${year}-${month}-01T00:00:00Z`))
+    dateAndTime = `${year}, ${monthName} ${day}${ordinal}`
+  }
+  if (form.time) {
+    const hour = Number(form.time.slice(0, 2))
+    const period = hour < 5 ? 'night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night'
+    const formattedTime = `${form.time} in the ${period}`
+    dateAndTime = dateAndTime ? `${dateAndTime}, ${formattedTime}` : formattedTime
+  }
+  return [form.title.trim(), form.location.trim(), dateAndTime].filter(Boolean).join('\n')
+})
 const syndicationButtonLabel = computed(() => {
   if (!syndication.value) return 'Publish link on Mastodon'
   if (syndication.value.state === 'published') return 'Update Mastodon teaser'
@@ -205,7 +224,6 @@ function copyToForm(post: AdminPost) {
   form.time = post.time ?? ''
   form.bodyMarkdown = post.bodyMarkdown
   previewHtml.value = post.bodyHtml
-  teaser.value = ''
   notice.value = ''
   error.value = ''
   syndication.value = null
@@ -518,16 +536,14 @@ async function syndicate() {
     ? 'Update the existing public Mastodon teaser now?'
     : 'Create the public Mastodon link post now?'
   if (!selectedId.value || !window.confirm(confirmation)) return
-  const requestedTeaser = teaser.value
   const saved = await save()
   if (!saved) return
-  teaser.value = requestedTeaser
   error.value = ''
   busy.value = true
   try {
     syndication.value = await adminRequest<Syndication>(
       `/api/admin/posts/${saved.id}/syndications/mastodon`,
-      jsonRequest(editing ? 'PATCH' : 'POST', { teaser: requestedTeaser }),
+      jsonRequest(editing ? 'PATCH' : 'POST'),
     )
     notice.value = editing ? 'Mastodon teaser update queued.' : 'Mastodon publication queued.'
   } catch (syndicationError) {
@@ -885,7 +901,8 @@ onBeforeUnmount(() => {
 
           <section v-if="canSyndicate" class="mastodon-panel" aria-labelledby="syndication-title">
             <div class="section-heading"><h2 id="syndication-title">Mastodon</h2><span>Explicit syndication only</span></div>
-            <label>Teaser <textarea v-model="teaser" maxlength="5000" rows="3"></textarea></label>
+            <label>Teaser <textarea :value="mastodonTeaser" readonly rows="3"></textarea></label>
+            <small>Generated automatically from the post title, location, date, and time.</small>
             <div class="editor-actions">
               <button :disabled="busy || syndication?.state === 'pending' || syndication?.state === 'failed'" type="button" @click="syndicate">
                 {{ syndicationButtonLabel }}

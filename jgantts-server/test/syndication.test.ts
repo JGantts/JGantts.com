@@ -5,7 +5,7 @@ import { openContentDatabase } from '../src/db/database';
 import { PostRepository } from '../src/posts/post-repository';
 import { PostService } from '../src/posts/post-service';
 import { MastodonClient, MastodonRequestError, type MastodonClientLike } from '../src/syndication/mastodon-client';
-import { buildMastodonStatus, MastodonSyndicationService } from '../src/syndication/mastodon-syndication-service';
+import { buildMastodonStatus, buildPostTeaser, MastodonSyndicationService } from '../src/syndication/mastodon-syndication-service';
 import { OutboxWorker } from '../src/syndication/outbox-worker';
 import { SyndicationRepository } from '../src/syndication/syndication-repository';
 import type { MastodonStatusResult } from '../src/syndication/types';
@@ -56,6 +56,9 @@ function publishedPost(posts: PostService): string {
   const post = posts.createDraft({
     slug: 'canonical-post',
     title: 'Canonical post',
+    location: 'New York, NY',
+    date: 20260904,
+    time: '12:00',
     bodyMarkdown: 'This content belongs to the site.',
     excerpt: 'A short introduction',
   });
@@ -69,6 +72,9 @@ test('builds a conservative Mastodon teaser within the instance limit', () => {
   assert.ok(Array.from(status).length <= 70);
   assert.match(status, /…\n\nhttps:\/\/jgantts\.com\/photos\/canonical-post$/);
   assert.equal(buildMastodonStatus('', url, 70), url);
+  assert.equal(buildMastodonStatus('Title\nLocation', url, 100), `Title\nLocation\n\n${url}`);
+  assert.equal(buildPostTeaser({ title: 'Title', location: 'New York, NY', date: 20260904, time: '13:30' }),
+    'Title\nNew York, NY\n2026, September 4th, 13:30 in the afternoon');
 });
 
 test('uses the Mastodon instance limit and sends authenticated idempotent status requests', async () => {
@@ -137,7 +143,7 @@ test('queues exactly one publication for a canonical post and rejects drafts', (
   assert.equal(firstJob.payload.idempotencyKey, first.syndication.idempotencyKey);
 
   posts.updateFromAuthor(postId, { bodyMarkdown: 'A later local revision' });
-  const repeated = service.queue(postId, 'A different teaser');
+  const repeated = service.queue(postId);
   assert.equal(repeated.queued, false);
   assert.equal(repeated.syndication.id, first.syndication.id);
   assert.equal(database.prepare('SELECT COUNT(*) AS count FROM syndications').get().count, 1);
@@ -148,13 +154,14 @@ test('publishes a queued status and saves its remote identity', async (t) => {
   const { database, posts, repository, service } = fixture();
   t.after(() => database.close());
   const postId = publishedPost(posts);
-  const queued = service.queue(postId, 'Read this on my site');
+  const queued = service.queue(postId);
   const mastodon = new FakeMastodonClient();
   const worker = new OutboxWorker(repository, mastodon);
 
   assert.equal(await worker.runOnce(), true);
   assert.equal(mastodon.publications.length, 1);
-  assert.match(mastodon.publications[0].text, /Read this on my site\n\nhttps:\/\/jgantts\.com/);
+  assert.match(mastodon.publications[0].text, /^Canonical post\nNew York, NY\n/);
+  assert.match(mastodon.publications[0].text, /\n\nhttps:\/\/jgantts\.com\/photos\/canonical-post$/);
   assert.equal(mastodon.publications[0].key, queued.syndication.idempotencyKey);
   const result = repository.getById(queued.syndication.id);
   assert.equal(result?.state, 'published');
@@ -228,10 +235,11 @@ test('queues remote teaser edits only through the explicit edit operation', asyn
 
   posts.updateFromAuthor(postId, { title: 'Updated locally' });
   assert.equal(mastodon.edits.length, 0);
-  service.queueEdit(postId, 'An explicitly updated teaser');
-  service.queueEdit(postId, 'An explicitly updated teaser');
+  service.queueEdit(postId);
+  service.queueEdit(postId);
+  posts.updateFromAuthor(postId, { title: 'Another local update' });
   assert.throws(
-    () => service.queueEdit(postId, 'A different request while queued'),
+    () => service.queueEdit(postId),
     /different Mastodon teaser edit is already queued/,
   );
   assert.equal(database.prepare(`
@@ -240,7 +248,7 @@ test('queues remote teaser edits only through the explicit edit operation', asyn
   await worker.runOnce();
   assert.equal(mastodon.edits.length, 1);
   assert.equal(mastodon.edits[0].id, 'remote-123');
-  assert.match(mastodon.edits[0].text, /An explicitly updated teaser/);
+  assert.match(mastodon.edits[0].text, /Updated locally/);
 });
 
 test('reclaims a processing job after a worker crash', (t) => {

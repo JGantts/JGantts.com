@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { PostService } from '../posts/post-service';
+import type { Post } from '../posts/types';
 import { SyndicationRepository } from './syndication-repository';
 import type { Syndication } from './types';
 
@@ -13,7 +14,10 @@ export function buildMastodonStatus(teaser: string, canonicalUrl: string, limit:
   const suffix = `\n\n${canonicalUrl}`;
   const suffixLength = codepoints(suffix).length;
   if (suffixLength > limit) throw new Error('The canonical URL exceeds the Mastodon character limit.');
-  const normalized = teaser.trim().replace(/\s+/g, ' ');
+  const normalized = teaser.trim().split(/\r?\n/)
+    .map((line) => line.trim().replace(/\s+/g, ' '))
+    .filter(Boolean)
+    .join('\n');
   if (!normalized) return canonicalUrl;
   const available = limit - suffixLength;
   const teaserCharacters = codepoints(normalized);
@@ -22,13 +26,27 @@ export function buildMastodonStatus(teaser: string, canonicalUrl: string, limit:
   return `${teaserCharacters.slice(0, available - 1).join('').trimEnd()}…${suffix}`;
 }
 
-function validateTeaser(value: unknown, fallback: string): string {
-  if (value === undefined || value === null) return fallback;
-  if (typeof value !== 'string') throw Object.assign(new Error('teaser must be a string.'), { status: 400 });
-  if (value.length > MAX_TEASER_SOURCE_LENGTH) {
-    throw Object.assign(new Error('teaser is too long.'), { status: 400 });
+export function buildPostTeaser(post: Pick<Post, 'title' | 'location' | 'date' | 'time'>): string {
+  let dateAndTime = '';
+  if (post.date) {
+    const value = String(post.date);
+    const year = Number(value.slice(0, 4));
+    const month = Number(value.slice(4, 6));
+    const day = Number(value.slice(6, 8));
+    const monthName = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' })
+      .format(new Date(Date.UTC(year, month - 1, day)));
+    const remainder = day % 100;
+    const finalDigit = day % 10;
+    const ordinal = remainder >= 11 && remainder <= 13 ? 'th' : finalDigit === 1 ? 'st' : finalDigit === 2 ? 'nd' : finalDigit === 3 ? 'rd' : 'th';
+    dateAndTime = `${year}, ${monthName} ${day}${ordinal}`;
   }
-  return value;
+  if (post.time) {
+    const hour = Number(post.time.slice(0, 2));
+    const period = hour < 5 ? 'night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+    const formattedTime = `${post.time} in the ${period}`;
+    dateAndTime = dateAndTime ? `${dateAndTime}, ${formattedTime}` : formattedTime;
+  }
+  return [post.title, post.location, dateAndTime].filter(Boolean).join('\n').slice(0, MAX_TEASER_SOURCE_LENGTH);
 }
 
 export class MastodonSyndicationService {
@@ -48,12 +66,11 @@ export class MastodonSyndicationService {
     return this.repository.getLatestForPost(postId);
   }
 
-  queue(postId: string, teaserValue?: unknown): { queued: boolean; syndication: Syndication } {
+  queue(postId: string): { queued: boolean; syndication: Syndication } {
     this.assertConfigured();
     const post = this.posts.findById(postId);
     if (!post) throw Object.assign(new Error('Post not found.'), { status: 404 });
-    const fallback = post.excerpt || post.title || '';
-    const teaser = validateTeaser(teaserValue, fallback);
+    const teaser = buildPostTeaser(post);
     return this.repository.queuePublication({
       canonicalUrl: `${this.siteOrigin}/photos/${encodeURIComponent(post.slug)}`,
       postId,
@@ -62,13 +79,13 @@ export class MastodonSyndicationService {
     });
   }
 
-  queueEdit(postId: string, teaserValue?: unknown): Syndication {
+  queueEdit(postId: string): Syndication {
     this.assertConfigured();
     const post = this.posts.findById(postId);
     if (!post) throw Object.assign(new Error('Post not found.'), { status: 404 });
     const syndication = this.repository.getLatestForPost(postId);
     if (!syndication) throw Object.assign(new Error('Post has not been syndicated.'), { status: 404 });
-    const teaser = validateTeaser(teaserValue, post.excerpt || post.title || '');
+    const teaser = buildPostTeaser(post);
     const canonicalUrl = `${this.siteOrigin}/photos/${encodeURIComponent(post.slug)}`;
     this.repository.queueEdit(syndication.id, {
       canonicalUrl,

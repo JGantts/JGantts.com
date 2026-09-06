@@ -19,12 +19,11 @@ function parseBody(value: unknown, partial: boolean): AuthorPostInput | AuthorPo
   return value as unknown as AuthorPostInput | AuthorPostChanges;
 }
 
-function parseSyndicationBody(value: unknown): { teaser?: unknown } {
-  if (value === undefined) return {};
+function validateEmptySyndicationBody(value: unknown): void {
+  if (value === undefined) return;
   if (!isRecord(value)) throw Object.assign(new Error('Request body must be an object.'), { status: 400 });
-  const unknownField = Object.keys(value).find((field) => field !== 'teaser');
-  if (unknownField) throw Object.assign(new Error(`Unknown syndication field: ${unknownField}`), { status: 400 });
-  return { teaser: value.teaser };
+  const field = Object.keys(value)[0];
+  if (field) throw Object.assign(new Error(`Unknown syndication field: ${field}`), { status: 400 });
 }
 
 export function createAdminPostsRouter(
@@ -174,8 +173,8 @@ export function createAdminPostsRouter(
 
     router.post('/:id/syndications/mastodon', (req, res, next) => {
       try {
-        const input = parseSyndicationBody(req.body);
-        const result = mastodon.queue(req.params.id, input.teaser);
+        validateEmptySyndicationBody(req.body);
+        const result = mastodon.queue(req.params.id);
         res.status(result.queued ? 202 : 200).set('Cache-Control', 'no-store').json(result.syndication);
       } catch (error) {
         next(error);
@@ -184,8 +183,8 @@ export function createAdminPostsRouter(
 
     router.patch('/:id/syndications/mastodon', (req, res, next) => {
       try {
-        const input = parseSyndicationBody(req.body);
-        const result = mastodon.queueEdit(req.params.id, input.teaser);
+        validateEmptySyndicationBody(req.body);
+        const result = mastodon.queueEdit(req.params.id);
         res.status(202).set('Cache-Control', 'no-store').json(result);
       } catch (error) {
         next(error);

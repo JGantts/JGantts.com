@@ -529,12 +529,17 @@ test('protects and idempotently queues the explicit Mastodon syndication API', a
   const pathname = `/api/admin/posts/${post.id}/syndications/mastodon`;
 
   assert.equal((await request(app, pathname, { method: 'POST' })).status, 401);
-  const first = await request(app, pathname, {
+  const customTeaser = await request(app, pathname, {
     body: JSON.stringify({ teaser: 'Read the canonical post' }),
     headers: {
       authorization: 'Bearer syndication-secret',
       'content-type': 'application/json',
     },
+    method: 'POST',
+  });
+  assert.equal(customTeaser.status, 400);
+  const first = await request(app, pathname, {
+    headers: { authorization: 'Bearer syndication-secret' },
     method: 'POST',
   });
   assert.equal(first.status, 202);

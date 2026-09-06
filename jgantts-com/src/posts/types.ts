@@ -1,4 +1,7 @@
 export type PostMedia = {
+  description: string | null
+  location: string | null
+  date: number | null
   altText: string
   byteSize: number
   caption: string | null
@@ -44,6 +47,9 @@ export type PostMedia = {
 }
 
 export type CanonicalPost = {
+  description: string | null
+  location: string | null
+  date: number | null
   bodyHtml: string
   contentWarning: string | null
   excerpt: string | null

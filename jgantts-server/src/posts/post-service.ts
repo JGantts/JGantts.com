@@ -14,6 +14,9 @@ export interface PublicPostPage {
 
 export interface AuthorPostInput {
   bodyMarkdown: string;
+  date?: number | null;
+  description?: string | null;
+  location?: string | null;
   contentWarning?: string | null;
   excerpt?: string | null;
   slug: string;
@@ -38,6 +41,22 @@ function validateSlug(value: unknown): string {
     throw new PostInputError('slug must contain lowercase letters, numbers, and single hyphens only.');
   }
   return slug;
+}
+
+function validateDate(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 10000101 || value > 99991231) {
+    throw new PostInputError('date must be a valid YYYYMMDD integer or null.');
+  }
+  const text = String(value);
+  const year = Number(text.slice(0, 4));
+  const month = Number(text.slice(4, 6));
+  const day = Number(text.slice(6, 8));
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== day) {
+    throw new PostInputError('date must be a valid YYYYMMDD integer or null.');
+  }
+  return value as number;
 }
 
 function encodeCursor(cursor: PublishedPostCursor): string {
@@ -76,6 +95,9 @@ export class PostService {
     const bodyMarkdown = validateText(input.bodyMarkdown, 'bodyMarkdown', 100_000, true) as string;
     return this.posts.create({
       id: randomUUID(),
+      description: validateText(input.description ?? null, 'description', 5_000, false),
+      location: validateText(input.location ?? null, 'location', 500, false),
+      date: validateDate(input.date),
       title: validateText(input.title ?? null, 'title', 200, false),
       slug,
       bodyMarkdown,
@@ -140,6 +162,9 @@ export class PostService {
   updateFromAuthor(id: string, changes: AuthorPostChanges): Post | null {
     if (Object.keys(changes).length === 0) throw new PostInputError('At least one post field is required.');
     const repositoryChanges: PostChanges = {};
+    if ('description' in changes) repositoryChanges.description = validateText(changes.description, 'description', 5_000, false);
+    if ('location' in changes) repositoryChanges.location = validateText(changes.location, 'location', 500, false);
+    if ('date' in changes) repositoryChanges.date = validateDate(changes.date);
     if ('title' in changes) {
       repositoryChanges.title = validateText(changes.title, 'title', 200, false);
     }

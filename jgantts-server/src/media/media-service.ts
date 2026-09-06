@@ -59,6 +59,9 @@ export interface MediaFile {
 export interface UpdateMediaMetadataInput {
   altText?: unknown;
   caption?: unknown;
+  description?: unknown;
+  location?: unknown;
+  date?: unknown;
   focalX?: unknown;
   focalY?: unknown;
 }
@@ -106,6 +109,9 @@ function publicMedia(media: MediaRecord): PublicMedia {
     height: media.height,
     byteSize: media.byteSize,
     checksumSha256: media.checksumSha256,
+    description: media.description,
+    location: media.location,
+    date: media.date,
     altText: media.altText,
     caption: media.caption,
     focalX: media.focalX,
@@ -376,6 +382,9 @@ export class MediaService {
         height: metadata.autoOrient.height,
         byteSize: input.buffer.length,
         checksumSha256: expectedChecksum,
+        description: null,
+        location: null,
+        date: null,
         altText: input.altText,
         caption: null,
         focalX: null,
@@ -566,6 +575,18 @@ export class MediaService {
     if (caption !== null && (typeof caption !== 'string' || caption.length > 5_000)) {
       throw new PostInputError('caption must be null or a string no longer than 5,000 characters.');
     }
+    const optionalText = (value: unknown, field: string, maximum: number): string | null => {
+      if (value === null) return null;
+      if (typeof value !== 'string' || value.length > maximum) {
+        throw new PostInputError(`${field} must be null or a string no longer than ${maximum.toLocaleString()} characters.`);
+      }
+      return value.trim() || null;
+    };
+    const description = input.description === undefined
+      ? current.description : optionalText(input.description, 'description', 5_000);
+    const location = input.location === undefined
+      ? current.location : optionalText(input.location, 'location', 500);
+    const date = input.date === undefined ? current.date : validateEditorialDate(input.date);
     const focalX = input.focalX === undefined ? current.focalX : input.focalX;
     const focalY = input.focalY === undefined ? current.focalY : input.focalY;
     const validCoordinate = (value: unknown) => value === null
@@ -576,6 +597,9 @@ export class MediaService {
     const updated = this.media.updateMetadata(id, {
       altText: altText.trim(),
       caption: typeof caption === 'string' ? caption.trim() || null : caption,
+      description,
+      location,
+      date,
       focalX: focalX as number | null,
       focalY: focalY as number | null,
     }, new Date().toISOString());
@@ -613,4 +637,20 @@ export class MediaService {
     if (!post) throw new PostInputError('postId does not identify a post.');
     return post.heroMediaId;
   }
+}
+
+function validateEditorialDate(value: unknown): number | null {
+  if (value === null || value === '') return null;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 10000101 || value > 99991231) {
+    throw new PostInputError('date must be a valid YYYYMMDD integer or null.');
+  }
+  const text = String(value);
+  const year = Number(text.slice(0, 4));
+  const month = Number(text.slice(4, 6));
+  const day = Number(text.slice(6, 8));
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== day) {
+    throw new PostInputError('date must be a valid YYYYMMDD integer or null.');
+  }
+  return value as number;
 }

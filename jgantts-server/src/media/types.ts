@@ -25,6 +25,9 @@ export interface RenditionManifest {
 
 export interface MediaRecord {
   id: string;
+  description: string | null;
+  location: string | null;
+  date: number | null;
   postId: string;
   originalPath: string;
   derivatives: MediaDerivatives;

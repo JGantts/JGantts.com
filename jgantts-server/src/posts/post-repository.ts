@@ -11,6 +11,9 @@ import type {
 
 interface PostRow {
   id: string;
+  description: string | null;
+  location: string | null;
+  date: number | null;
   title: string | null;
   slug: string;
   body_markdown: string;
@@ -27,6 +30,9 @@ interface PostRow {
 function mapPost(row: PostRow): Post {
   return {
     id: row.id,
+    description: row.description,
+    location: row.location,
+    date: row.date,
     title: row.title,
     slug: row.slug,
     bodyMarkdown: row.body_markdown,
@@ -52,14 +58,17 @@ export class PostRepository {
     return inTransaction(this.database, () => {
       this.database.prepare(`
         INSERT INTO posts (
-          id, title, slug, body_markdown, body_html, excerpt, content_warning, status,
+          id, description, location, date, title, slug, body_markdown, body_html, excerpt, content_warning, status,
           hero_media_id, created_at, published_at, updated_at
         ) VALUES (
-          @id, @title, @slug, @bodyMarkdown, @bodyHtml, @excerpt, @contentWarning, @status,
+          @id, @description, @location, @date, @title, @slug, @bodyMarkdown, @bodyHtml, @excerpt, @contentWarning, @status,
           @heroMediaId, @createdAt, @publishedAt, @updatedAt
         )
       `).run({
         ...input,
+        description: input.description ?? null,
+        location: input.location ?? null,
+        date: input.date ?? null,
         title: input.title ?? null,
         excerpt: input.excerpt ?? null,
         contentWarning: input.contentWarning ?? null,
@@ -149,6 +158,9 @@ export class PostRepository {
 
       this.database.prepare(`
         UPDATE posts SET
+          description = @description,
+          location = @location,
+          date = @date,
           title = @title,
           slug = @slug,
           body_markdown = @bodyMarkdown,
@@ -173,10 +185,10 @@ export class PostRepository {
   private insertRevision(postId: string, revisionNumber: number, createdAt: string): void {
     this.database.prepare(`
       INSERT INTO post_revisions (
-        post_id, revision_number, title, slug, body_markdown, body_html, excerpt,
+        post_id, revision_number, description, location, date, title, slug, body_markdown, body_html, excerpt,
         content_warning, status, created_at
       )
-      SELECT id, ?, title, slug, body_markdown, body_html, excerpt, content_warning, status, ?
+      SELECT id, ?, description, location, date, title, slug, body_markdown, body_html, excerpt, content_warning, status, ?
       FROM posts WHERE id = ?
     `).run(revisionNumber, createdAt, postId);
   }

@@ -4,6 +4,9 @@ import { AdminApiError, adminRequest, createAdminSession, deleteAdminSession, js
 import type { PostMedia } from '@/posts/types'
 
 type AdminPost = {
+  description: string | null
+  location: string | null
+  date: number | null
   bodyHtml: string
   bodyMarkdown: string
   contentWarning: string | null
@@ -48,7 +51,7 @@ type UploadQueueItem = {
 }
 const uploadQueue = ref<UploadQueueItem[]>([])
 const uploadRunning = ref(false)
-const mediaDrafts = reactive<Record<string, { altText: string; caption: string }>>({})
+const mediaDrafts = reactive<Record<string, { altText: string; caption: string; description: string; location: string; date: string }>>({})
 const mediaSavingId = ref<string | null>(null)
 const orderSaving = ref(false)
 const draggedMediaId = ref<string | null>(null)
@@ -57,6 +60,9 @@ const teaser = ref('')
 let previewTimer: ReturnType<typeof setTimeout> | null = null
 
 const form = reactive({
+  description: '',
+  location: '',
+  date: '',
   bodyMarkdown: '',
   contentWarning: '',
   excerpt: '',
@@ -84,6 +90,9 @@ function message(value: unknown): string {
 
 function copyToForm(post: AdminPost) {
   selectedId.value = post.id
+  form.description = post.description ?? ''
+  form.location = post.location ?? ''
+  form.date = post.date?.toString() ?? ''
   form.title = post.title ?? ''
   form.slug = post.slug
   form.excerpt = post.excerpt ?? ''
@@ -95,7 +104,7 @@ function copyToForm(post: AdminPost) {
   error.value = ''
   syndication.value = null
   post.media.forEach((item) => {
-    mediaDrafts[item.id] = { altText: item.altText, caption: item.caption ?? '' }
+    mediaDrafts[item.id] = { altText: item.altText, caption: item.caption ?? '', description: item.description ?? '', location: item.location ?? '', date: item.date?.toString() ?? '' }
   })
   if (post.status === 'published') void loadSyndication(post.id)
 }
@@ -144,6 +153,9 @@ async function signOut() {
   selectedId.value = null
   tokenInput.value = ''
   form.title = ''
+  form.description = ''
+  form.location = ''
+  form.date = ''
   form.slug = ''
   form.excerpt = ''
   form.contentWarning = ''
@@ -173,6 +185,9 @@ async function loadPosts() {
 
 function authorBody() {
   return {
+    description: form.description.trim() || null,
+    location: form.location.trim() || null,
+    date: form.date ? Number(form.date) : null,
     bodyMarkdown: form.bodyMarkdown,
     contentWarning: form.contentWarning.trim() || null,
     excerpt: form.excerpt.trim() || null,
@@ -194,7 +209,7 @@ function replaceMedia(updated: PostMedia) {
   const media = post.media.map((item) => item.id === updated.id ? updated : item)
   const index = posts.value.findIndex(({ id }) => id === post.id)
   if (index !== -1) posts.value.splice(index, 1, { ...post, media })
-  mediaDrafts[updated.id] = { altText: updated.altText, caption: updated.caption ?? '' }
+  mediaDrafts[updated.id] = { altText: updated.altText, caption: updated.caption ?? '', description: updated.description ?? '', location: updated.location ?? '', date: updated.date?.toString() ?? '' }
 }
 
 async function saveMedia(item: PostMedia) {
@@ -205,7 +220,7 @@ async function saveMedia(item: PostMedia) {
   try {
     const updated = await adminRequest<PostMedia>(
       `/api/admin/media/${item.id}`,
-      jsonRequest('PATCH', { altText: draft.altText, caption: draft.caption.trim() || null, focalX: item.focalX, focalY: item.focalY }),
+      jsonRequest('PATCH', { altText: draft.altText, caption: draft.caption.trim() || null, description: draft.description.trim() || null, location: draft.location.trim() || null, date: draft.date ? Number(draft.date) : null, focalX: item.focalX, focalY: item.focalY }),
     )
     replaceMedia(updated)
     notice.value = 'Photo details saved.'
@@ -626,6 +641,9 @@ onBeforeUnmount(() => {
                   </div>
                   <label>Alt text <textarea v-model="mediaDrafts[item.id].altText" maxlength="2000" rows="2" required></textarea></label>
                   <label>Caption <textarea v-model="mediaDrafts[item.id].caption" maxlength="5000" rows="2"></textarea></label>
+                  <label>Description <textarea v-model="mediaDrafts[item.id].description" maxlength="5000" rows="2"></textarea></label>
+                  <label>Location <input v-model="mediaDrafts[item.id].location" maxlength="500"></label>
+                  <label>Date <input v-model="mediaDrafts[item.id].date" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" placeholder="YYYYMMDD"></label>
                   <button :disabled="mediaSavingId === item.id || !mediaDrafts[item.id].altText.trim()" type="button" @click="saveMedia(item)">
                     {{ mediaSavingId === item.id ? 'Saving…' : 'Save photo details' }}
                   </button>
@@ -667,6 +685,9 @@ onBeforeUnmount(() => {
             </div>
             <label>Title <input v-model="form.title" maxlength="200"></label>
             <label>Slug <input v-model="form.slug" maxlength="100" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required></label>
+            <label>Description <textarea v-model="form.description" maxlength="5000" rows="3"></textarea></label>
+            <label>Location <input v-model="form.location" maxlength="500"></label>
+            <label>Date <input v-model="form.date" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" placeholder="YYYYMMDD"></label>
             <label>Excerpt <textarea v-model="form.excerpt" maxlength="5000" rows="2"></textarea></label>
             <label>Content note <input v-model="form.contentWarning" maxlength="500"></label>
             <label>Body (Markdown) <textarea v-model="form.bodyMarkdown" class="markdown-editor" maxlength="100000" required></textarea></label>

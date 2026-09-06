@@ -184,6 +184,23 @@ export const migrations: readonly Migration[] = [
       ) STRICT;
     `,
   },
+  {
+    version: 7,
+    name: 'post_and_photo_editorial_metadata',
+    sql: `
+      ALTER TABLE posts ADD COLUMN description TEXT;
+      ALTER TABLE posts ADD COLUMN location TEXT;
+      ALTER TABLE posts ADD COLUMN date INTEGER;
+
+      ALTER TABLE post_revisions ADD COLUMN description TEXT;
+      ALTER TABLE post_revisions ADD COLUMN location TEXT;
+      ALTER TABLE post_revisions ADD COLUMN date INTEGER;
+
+      ALTER TABLE media ADD COLUMN description TEXT;
+      ALTER TABLE media ADD COLUMN location TEXT;
+      ALTER TABLE media ADD COLUMN date INTEGER;
+    `,
+  },
 ];
 
 export function migrateDatabase(database: Database.Database): void {

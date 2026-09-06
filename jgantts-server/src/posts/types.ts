@@ -2,6 +2,9 @@ export type PostStatus = 'draft' | 'published' | 'archived';
 
 export interface Post {
   id: string;
+  description: string | null;
+  location: string | null;
+  date: number | null;
   title: string | null;
   slug: string;
   bodyMarkdown: string;
@@ -17,6 +20,9 @@ export interface Post {
 
 export interface NewPost {
   id: string;
+  description?: string | null;
+  location?: string | null;
+  date?: number | null;
   title?: string | null;
   slug: string;
   bodyMarkdown: string;
@@ -30,6 +36,9 @@ export interface NewPost {
 }
 
 export interface PostChanges {
+  description?: string | null;
+  location?: string | null;
+  date?: number | null;
   title?: string | null;
   slug?: string;
   bodyMarkdown?: string;

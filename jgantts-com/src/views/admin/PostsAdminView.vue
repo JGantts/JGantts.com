@@ -29,6 +29,8 @@ const tokenInput = ref('')
 const authenticated = ref(false)
 const checkingSession = ref(true)
 const posts = ref<AdminPost[]>([])
+const postQuery = ref('')
+const postStatus = ref<'all' | AdminPost['status']>('all')
 const selectedId = ref<string | null>(null)
 const notice = ref('')
 const error = ref('')
@@ -62,6 +64,15 @@ const form = reactive({
 })
 
 const selected = computed(() => posts.value.find((post) => post.id === selectedId.value) ?? null)
+const filteredPosts = computed(() => {
+  const query = postQuery.value.trim().toLocaleLowerCase()
+  return posts.value.filter((post) => {
+    if (postStatus.value !== 'all' && post.status !== postStatus.value) return false
+    if (!query) return true
+    return [post.slug, post.location, post.date?.toString(), post.bodyMarkdown]
+      .some((value) => value?.toLocaleLowerCase().includes(query))
+  })
+})
 const canPublish = computed(() => selected.value?.status === 'draft')
 const canSyndicate = computed(() => selected.value?.status === 'published')
 const syndicationButtonLabel = computed(() => {
@@ -70,6 +81,21 @@ const syndicationButtonLabel = computed(() => {
   if (syndication.value.state === 'pending') return 'Mastodon publication pending'
   return 'Retry required'
 })
+
+function postThumbnails(post: AdminPost): PostMedia[] {
+  const hero = post.media.find((item) => item.id === post.heroMediaId)
+  return hero ? [hero, ...post.media.filter((item) => item.id !== hero.id)].slice(0, 3) : post.media.slice(0, 3)
+}
+
+function postLabel(post: AdminPost): string {
+  return post.location || post.slug
+}
+
+function postDate(date: number | null): string {
+  if (!date) return 'No date'
+  const value = date.toString()
+  return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`
+}
 
 function message(value: unknown): string {
   if (value instanceof AdminApiError && value.status === 401) {
@@ -574,17 +600,48 @@ onBeforeUnmount(() => {
 
       <div class="admin-workspace">
         <aside class="post-list" aria-label="Posts">
+          <div class="post-list-controls">
+            <label>
+              <span>Find posts</span>
+              <input v-model="postQuery" type="search" placeholder="Search text, place, or date">
+            </label>
+            <label>
+              <span>Status</span>
+              <select v-model="postStatus">
+                <option value="all">All statuses</option>
+                <option value="draft">Drafts</option>
+                <option value="published">Published</option>
+                <option value="archived">Archived</option>
+              </select>
+            </label>
+            <span class="post-count">{{ filteredPosts.length }} of {{ posts.length }}</span>
+          </div>
           <button
-            v-for="post in posts"
+            v-for="post in filteredPosts"
             :key="post.id"
             :class="{ active: post.id === selectedId }"
             type="button"
             @click="copyToForm(post)"
           >
-            <strong>{{ post.slug }}</strong>
-            <span>{{ post.status }} · {{ post.slug }}</span>
+            <span v-if="post.media.length" class="post-thumbnails" aria-hidden="true">
+              <img
+                v-for="photo in postThumbnails(post)"
+                :key="photo.id"
+                alt=""
+                decoding="async"
+                loading="lazy"
+                :src="photo.urls.thumbnail"
+              >
+              <span v-if="post.media.length > 3" class="photo-count">+{{ post.media.length - 3 }}</span>
+            </span>
+            <span v-else class="post-thumbnail-empty" aria-hidden="true">No photos</span>
+            <span class="post-list-copy">
+              <strong>{{ postLabel(post) }}</strong>
+              <span>{{ postDate(post.date) }} · {{ post.status }}</span>
+            </span>
           </button>
           <p v-if="!posts.length">No saved posts yet.</p>
+          <p v-else-if="!filteredPosts.length">No posts match these filters.</p>
         </aside>
 
         <section class="editor-card">
@@ -703,14 +760,25 @@ onBeforeUnmount(() => {
 .login-card { display: grid; gap: 1rem; margin: 5rem auto; max-width: 30rem; padding: clamp(1.5rem, 5vw, 3rem); }
 .login-card h1, .admin-toolbar h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700; line-height: 1; }
 .login-card form, .editor-form, .upload-form, .mastodon-panel { display: grid; gap: 1rem; }
-.eyebrow, .section-heading span, .post-list span, .syndication-state { color: var(--muted); font-family: 'Azeret Mono Variable', monospace; font-size: 0.72rem; }
+.eyebrow, .section-heading span, .post-list-copy > span, .post-count, .post-list-controls label > span, .post-thumbnail-empty, .syndication-state { color: var(--muted); font-family: 'Azeret Mono Variable', monospace; font-size: 0.72rem; }
 .admin-toolbar, .toolbar-actions, .editor-actions, .status-row, .section-heading { align-items: center; display: flex; gap: 0.75rem; justify-content: space-between; }
 .admin-toolbar { margin-bottom: 1.25rem; }
-.admin-workspace { align-items: start; display: grid; gap: 1rem; grid-template-columns: minmax(13rem, 18rem) minmax(0, 1fr); }
-.post-list { display: grid; gap: 0.35rem; max-height: 75vh; overflow-y: auto; padding: 0.6rem; position: sticky; top: 1rem; }
-.post-list button { background: transparent; border: 0; border-radius: 0.65rem; color: inherit; display: grid; gap: 0.3rem; padding: 0.8rem; text-align: left; }
+.admin-workspace { align-items: start; display: grid; gap: 1rem; grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr); }
+.post-list { display: grid; gap: 0.35rem; max-height: calc(100vh - 2rem); overflow-y: auto; padding: 0.6rem; position: sticky; top: 1rem; }
+.post-list-controls { background: color-mix(in srgb, var(--bg) 94%, transparent); border-bottom: 1px solid var(--border); display: grid; gap: 0.55rem; margin: -0.6rem -0.6rem 0; padding: 0.75rem; position: sticky; top: -0.6rem; z-index: 2; }
+.post-list-controls label { gap: 0.25rem; }
+.post-list-controls input, .post-list-controls select { font-size: 0.78rem; padding: 0.5rem 0.6rem; }
+.post-count { justify-self: end; }
+.post-list button { align-items: center; background: transparent; border: 0; border-radius: 0.65rem; color: inherit; display: grid; gap: 0.65rem; grid-template-columns: 5.4rem minmax(0, 1fr); padding: 0.55rem; text-align: left; }
 .post-list button:hover, .post-list button.active { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .post-list strong { font-weight: 650; overflow-wrap: anywhere; }
+.post-list-copy { display: grid; gap: 0.3rem; min-width: 0; }
+.post-list-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.post-thumbnails { display: grid; grid-template-columns: repeat(3, 1fr); height: 3.4rem; overflow: hidden; position: relative; }
+.post-thumbnails img { height: 100%; min-width: 0; object-fit: cover; width: 100%; }
+.post-thumbnails img:only-child { grid-column: 1 / -1; }
+.photo-count { align-items: center; background: rgba(0, 0, 0, 0.68); bottom: 0; color: white; display: flex; font-size: 0.65rem; padding: 0.15rem 0.25rem; position: absolute; right: 0; }
+.post-thumbnail-empty { align-items: center; background: color-mix(in srgb, var(--border) 50%, transparent); display: flex; height: 3.4rem; justify-content: center; }
 .editor-card { display: grid; gap: 2rem; padding: clamp(1rem, 3vw, 2rem); }
 label { display: grid; font-size: 0.85rem; font-weight: 600; gap: 0.4rem; }
 input, textarea { background: color-mix(in srgb, var(--bg) 90%, white 10%); border: 1px solid var(--border); border-radius: 0.5rem; box-sizing: border-box; color: inherit; font: inherit; padding: 0.7rem 0.8rem; width: 100%; }
@@ -759,6 +827,7 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 @media (max-width: 48rem) {
   .admin-workspace { grid-template-columns: 1fr; }
   .post-list { max-height: 14rem; position: static; }
+  .post-list-controls { top: -0.6rem; }
   .admin-toolbar, .status-row, .section-heading { align-items: flex-start; flex-direction: column; }
   .upload-item { align-items: stretch; grid-template-columns: 4rem minmax(0, 1fr); }
   .upload-item img { width: 4rem; }

@@ -315,15 +315,15 @@ function updateSelectedPostVisibility() {
   if (!selectedPostElement) return
 
   const bounds = selectedPostElement.getBoundingClientRect()
-  const isMobile = window.matchMedia('(max-width: 44rem)').matches
+  const isMobilePortrait = window.matchMedia('(max-width: 44rem) and (orientation: portrait)').matches
   const commentsPanel = document.querySelector<HTMLElement>('.comments-section.is-active')
-  const mobilePanelBottom = isMobile && commentsPanel
-    ? window.innerHeight
-      - commentsPanel.offsetHeight
-      - (Number.parseFloat(getComputedStyle(commentsPanel).bottom) || 0)
+  // On mobile the fixed sheet occludes everything below its visible top edge.
+  // On wider layouts the comments panel sits beside the masonry, so only the
+  // browser viewport bounds the visible collection.
+  const visibleViewportBottom = isMobilePortrait && commentsPanel
+    ? Math.min(window.innerHeight, commentsPanel.getBoundingClientRect().top)
     : window.innerHeight
-  const visibleViewportBottom = Math.min(window.innerHeight, mobilePanelBottom)
-  const fadeDistance = Math.max(180, Math.min(360, window.innerHeight * 0.35))
+  const fadeDistance = 100
   const distancePastBoundary = bounds.bottom < 0
     ? -bounds.bottom
     : bounds.top > visibleViewportBottom
@@ -455,9 +455,14 @@ function handleExposurePageHide() {
   persistExposureHistory()
 }
 
-watch(() => props.activePostId, () => {
-  void observeSelectedPost()
-}, { immediate: true })
+watch(
+  [
+    () => props.activePostId,
+    () => masonry.value.clusters.map((cluster) => cluster.key).join(':'),
+  ],
+  () => { void observeSelectedPost() },
+  { immediate: true },
+)
 watch([() => props.activePostId, imageRecords], scheduleActivePostPhotoPreloads, { immediate: true })
 watch(
   () => masonry.value.clusters.map((cluster) => cluster.key).join(':'),

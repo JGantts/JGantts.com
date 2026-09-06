@@ -1428,7 +1428,6 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     right: max(0.35rem, env(safe-area-inset-right, 0px));
     top: auto;
     overflow-y: hidden;
-    opacity: 1;
     touch-action: pan-y;
     width: auto;
     transform: translateY(var(--drawer-closed-offset));

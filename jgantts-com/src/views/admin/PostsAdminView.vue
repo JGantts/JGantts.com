@@ -61,9 +61,16 @@ const syndication = ref<Syndication | null>(null)
 const teaser = ref('')
 let previewTimer: ReturnType<typeof setTimeout> | null = null
 const allowedMinutes = ['00', '15', '20', '30', '40', '45']
-const timeOptions = Array.from({ length: 24 }, (_, hour) =>
-  allowedMinutes.map((minute) => `${hour.toString().padStart(2, '0')}:${minute}`),
-).flat()
+const yearOptions = Array.from(
+  { length: new Date().getFullYear() + 10 - 1900 + 1 },
+  (_, index) => new Date().getFullYear() + 10 - index,
+)
+const monthOptions = [
+  ['01', 'January'], ['02', 'February'], ['03', 'March'], ['04', 'April'],
+  ['05', 'May'], ['06', 'June'], ['07', 'July'], ['08', 'August'],
+  ['09', 'September'], ['10', 'October'], ['11', 'November'], ['12', 'December'],
+]
+const hourOptions = Array.from({ length: 24 }, (_, hour) => hour.toString().padStart(2, '0'))
 
 const form = reactive({
   title: '',
@@ -116,6 +123,54 @@ function dateInputValue(date: number | null): string {
 
 function storedDate(date: string): number | null {
   return date ? Number(date.replaceAll('-', '')) : null
+}
+
+type DateTimeDraft = { date: string; time: string }
+type DatePart = 'year' | 'month' | 'day'
+
+function datePart(date: string, part: DatePart): string {
+  const [year = '', month = '', day = ''] = date.split('-')
+  return { year, month, day }[part]
+}
+
+function timePart(time: string, part: 'hour' | 'minute'): string {
+  const [hour = '', minute = ''] = time.split(':')
+  return part === 'hour' ? hour : minute
+}
+
+function daysFor(date: string): string[] {
+  const year = Number(datePart(date, 'year')) || new Date().getFullYear()
+  const month = Number(datePart(date, 'month')) || 1
+  const count = new Date(year, month, 0).getDate()
+  return Array.from({ length: count }, (_, index) => (index + 1).toString().padStart(2, '0'))
+}
+
+function updateDatePart(draft: DateTimeDraft, part: DatePart, value: string) {
+  if (!value) {
+    draft.date = ''
+    return
+  }
+  let year = datePart(draft.date, 'year') || new Date().getFullYear().toString()
+  let month = datePart(draft.date, 'month') || '01'
+  let day = datePart(draft.date, 'day') || '01'
+  if (part === 'year') year = value
+  if (part === 'month') month = value
+  if (part === 'day') day = value
+  const maximumDay = new Date(Number(year), Number(month), 0).getDate()
+  day = Math.min(Number(day), maximumDay).toString().padStart(2, '0')
+  draft.date = `${year}-${month}-${day}`
+}
+
+function updateTimePart(draft: DateTimeDraft, part: 'hour' | 'minute', value: string) {
+  if (!value) {
+    draft.time = ''
+    return
+  }
+  let hour = timePart(draft.time, 'hour') || '00'
+  let minute = timePart(draft.time, 'minute') || '00'
+  if (part === 'hour') hour = value
+  if (part === 'minute') minute = value
+  draft.time = `${hour}:${minute}`
 }
 
 function openMediaDetails(item: PostMedia) {
@@ -752,12 +807,35 @@ onBeforeUnmount(() => {
             </div>
             <label>Title <input v-model="form.title" maxlength="200"></label>
             <label>Location <input v-model="form.location" maxlength="500"></label>
-            <div class="date-time-fields">
-              <label>Date <input v-model="form.date" type="date"></label>
-              <label>Time
-                <select v-model="form.time">
-                  <option value="">No time</option>
-                  <option v-for="time in timeOptions" :key="time" :value="time">{{ time }}</option>
+            <div class="date-time-selectors">
+              <label>Year
+                <select :value="datePart(form.date, 'year')" @change="updateDatePart(form, 'year', ($event.target as HTMLSelectElement).value)">
+                  <option value="">—</option>
+                  <option v-for="year in yearOptions" :key="year" :value="year">{{ year }}</option>
+                </select>
+              </label>
+              <label>Month
+                <select :value="datePart(form.date, 'month')" @change="updateDatePart(form, 'month', ($event.target as HTMLSelectElement).value)">
+                  <option value="">—</option>
+                  <option v-for="([value, label]) in monthOptions" :key="value" :value="value">{{ value }} — {{ label }}</option>
+                </select>
+              </label>
+              <label>Day
+                <select :value="datePart(form.date, 'day')" @change="updateDatePart(form, 'day', ($event.target as HTMLSelectElement).value)">
+                  <option value="">—</option>
+                  <option v-for="day in daysFor(form.date)" :key="day" :value="day">{{ day }}</option>
+                </select>
+              </label>
+              <label>Hour
+                <select :value="timePart(form.time, 'hour')" @change="updateTimePart(form, 'hour', ($event.target as HTMLSelectElement).value)">
+                  <option value="">—</option>
+                  <option v-for="hour in hourOptions" :key="hour" :value="hour">{{ hour }}</option>
+                </select>
+              </label>
+              <label>Minute
+                <select :value="timePart(form.time, 'minute')" @change="updateTimePart(form, 'minute', ($event.target as HTMLSelectElement).value)">
+                  <option value="">—</option>
+                  <option v-for="minute in allowedMinutes" :key="minute" :value="minute">{{ minute }}</option>
                 </select>
               </label>
             </div>
@@ -810,12 +888,35 @@ onBeforeUnmount(() => {
           <label>Alt text <textarea v-model="mediaDrafts[editingMedia.id].altText" maxlength="2000" rows="3" required></textarea></label>
           <label>Caption <textarea v-model="mediaDrafts[editingMedia.id].caption" maxlength="5000" rows="3"></textarea></label>
           <label>Location <input v-model="mediaDrafts[editingMedia.id].location" maxlength="500"></label>
-          <div class="date-time-fields">
-            <label>Date <input v-model="mediaDrafts[editingMedia.id].date" type="date"></label>
-            <label>Time
-              <select v-model="mediaDrafts[editingMedia.id].time">
-                <option value="">No time</option>
-                <option v-for="time in timeOptions" :key="time" :value="time">{{ time }}</option>
+          <div class="date-time-selectors">
+            <label>Year
+              <select :value="datePart(mediaDrafts[editingMedia.id].date, 'year')" @change="updateDatePart(mediaDrafts[editingMedia.id], 'year', ($event.target as HTMLSelectElement).value)">
+                <option value="">—</option>
+                <option v-for="year in yearOptions" :key="year" :value="year">{{ year }}</option>
+              </select>
+            </label>
+            <label>Month
+              <select :value="datePart(mediaDrafts[editingMedia.id].date, 'month')" @change="updateDatePart(mediaDrafts[editingMedia.id], 'month', ($event.target as HTMLSelectElement).value)">
+                <option value="">—</option>
+                <option v-for="([value, label]) in monthOptions" :key="value" :value="value">{{ value }} — {{ label }}</option>
+              </select>
+            </label>
+            <label>Day
+              <select :value="datePart(mediaDrafts[editingMedia.id].date, 'day')" @change="updateDatePart(mediaDrafts[editingMedia.id], 'day', ($event.target as HTMLSelectElement).value)">
+                <option value="">—</option>
+                <option v-for="day in daysFor(mediaDrafts[editingMedia.id].date)" :key="day" :value="day">{{ day }}</option>
+              </select>
+            </label>
+            <label>Hour
+              <select :value="timePart(mediaDrafts[editingMedia.id].time, 'hour')" @change="updateTimePart(mediaDrafts[editingMedia.id], 'hour', ($event.target as HTMLSelectElement).value)">
+                <option value="">—</option>
+                <option v-for="hour in hourOptions" :key="hour" :value="hour">{{ hour }}</option>
+              </select>
+            </label>
+            <label>Minute
+              <select :value="timePart(mediaDrafts[editingMedia.id].time, 'minute')" @change="updateTimePart(mediaDrafts[editingMedia.id], 'minute', ($event.target as HTMLSelectElement).value)">
+                <option value="">—</option>
+                <option v-for="minute in allowedMinutes" :key="minute" :value="minute">{{ minute }}</option>
               </select>
             </label>
           </div>
@@ -909,7 +1010,9 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .media-details-form > img { aspect-ratio: 16 / 9; border-radius: 0.65rem; object-fit: cover; width: 100%; }
 .photo-technical { color: var(--muted); font-family: 'Azeret Mono Variable', monospace; font-size: 0.72rem; margin-top: -0.5rem; }
 .dialog-close { font-size: 1.6rem; line-height: 1; padding: 0.2rem 0.45rem; }
-.date-time-fields { display: grid; gap: 0.75rem; grid-template-columns: 1fr 1fr; }
+.date-time-selectors { display: grid; gap: 0.5rem; grid-template-columns: 1.05fr 1.6fr 0.8fr 0.8fr 0.8fr; }
+.date-time-selectors label { min-width: 0; }
+.date-time-selectors select { padding-left: 0.55rem; padding-right: 0.4rem; }
 @media (max-width: 48rem) {
   .admin-workspace { grid-template-columns: 1fr; }
   .post-list { max-height: 14rem; position: static; }
@@ -919,6 +1022,6 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   .upload-item img { width: 4rem; }
   .upload-item-actions { grid-column: 1 / -1; grid-template-columns: repeat(2, 1fr); }
   .editor-actions { align-items: stretch; flex-direction: column; }
-  .date-time-fields { grid-template-columns: 1fr; }
+  .date-time-selectors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>

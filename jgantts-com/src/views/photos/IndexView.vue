@@ -186,12 +186,13 @@ function localPostDateTime(post: CanonicalPost): { datetime: string; label: stri
 
 function localPostOverlay(post: CanonicalPost): string {
   const dateTime = localPostDateTime(post)
-  return [
+  const content = [
     post.title ? `<p class="local-post-title"><em>${escapeHtml(post.title)}</em></p>` : '',
     post.bodyHtml,
     post.location ? `<p class="local-post-location">${escapeHtml(post.location)}</p>` : '',
     dateTime ? `<p class="local-post-datetime"><time datetime="${dateTime.datetime}">${escapeHtml(dateTime.label)}</time></p>` : '',
   ].filter(Boolean).join('')
+  return `<div class="local-post-overlay">${content}</div>`
 }
 
 function selectToot(nextIndex: number) {
@@ -1233,6 +1234,28 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 .comments-post-text :deep(.local-post-title) {
   font-size: 1.05rem;
   font-style: italic;
+}
+
+.comments-post-text :deep(.local-post-title em),
+.comments-drawer-preview :deep(.local-post-title em) {
+  font-style: italic;
+}
+
+.comments-post-text :deep(.local-post-overlay),
+.comments-drawer-preview :deep(.local-post-overlay) {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.comments-post-text :deep(.local-post-overlay p),
+.comments-drawer-preview :deep(.local-post-overlay p) {
+  display: block;
+  margin: 0;
+}
+
+.comments-post-text :deep(.local-post-overlay p + p)::before,
+.comments-drawer-preview :deep(.local-post-overlay p + p)::before {
+  content: none;
 }
 
 .comments-post-text :deep(.local-post-location),

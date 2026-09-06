@@ -108,6 +108,24 @@ const props = defineProps<{
   postId?: string
 }>()
 const router = useRouter() 
+const preselectedPostStorageKey = 'photo-gallery-preselected-post-v1'
+
+function initialPreselectedPostId() {
+  const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+  try {
+    if (navigation?.type === 'reload') {
+      const storedPostId = sessionStorage.getItem(preselectedPostStorageKey)
+      if (storedPostId !== null) return storedPostId || undefined
+    }
+
+    sessionStorage.setItem(preselectedPostStorageKey, props.postId ?? '')
+  } catch {
+    // A blocked session store still gets correct behavior until the next full reload.
+  }
+  return props.postId
+}
+
+const initiallyRoutedPostId = initialPreselectedPostId()
 
 const toots = ref<(TootThread | null)[]>(tootIds.map(() => null))
 const localPosts = ref<CanonicalPost[]>([])
@@ -144,6 +162,11 @@ const activeToot = computed(() =>
 )
 const allToots = computed(() => [...toots.value.filter((toot): toot is TootThread => Boolean(toot)), ...localThreads.value])
 const photoPosts = computed(() => allToots.value.map((toot) => toot.post))
+const initiallyFeaturedPostId = computed(() => {
+  if (!initiallyRoutedPostId) return undefined
+  const localPost = localPosts.value.find((post) => post.slug === initiallyRoutedPostId)
+  return localPost ? `local:${localPost.id}` : initiallyRoutedPostId
+})
 const commentsByPostId = computed(() => {
   const comments = new Map<string, DisplayStatus[]>()
   allToots.value.forEach((toot) => {
@@ -585,6 +608,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
           <ClusteredPhotoMasonry
             :posts="photoPosts"
             :active-post-id="activeToot?.post.id"
+            :initially-featured-post-id="initiallyFeaturedPostId"
             @select="selectToot"
             @clear="clearSelection"
             @visibility="selectedPostVisibility = $event"

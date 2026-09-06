@@ -40,6 +40,7 @@ const maximumSessionAttentionSeconds = 15
 const props = defineProps<{
   posts: Array<PhotoPost | null>
   activePostId?: string
+  initiallyFeaturedPostId?: string
 }>()
 
 const emit = defineEmits<{
@@ -200,6 +201,7 @@ const masonry = computed(() =>
     columnCount.value,
     gap,
     targetGalleryHeight.value,
+    props.initiallyFeaturedPostId,
   ),
 )
 
@@ -453,7 +455,9 @@ function handleExposurePageHide() {
   persistExposureHistory()
 }
 
-watch(() => props.activePostId, observeSelectedPost)
+watch(() => props.activePostId, () => {
+  void observeSelectedPost()
+}, { immediate: true })
 watch([() => props.activePostId, imageRecords], scheduleActivePostPhotoPreloads, { immediate: true })
 watch(
   () => masonry.value.clusters.map((cluster) => cluster.key).join(':'),

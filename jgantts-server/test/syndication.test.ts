@@ -64,10 +64,10 @@ function publishedPost(posts: PostService): string {
 }
 
 test('builds a conservative Mastodon teaser within the instance limit', () => {
-  const url = 'https://jgantts.com/posts/canonical-post';
+  const url = 'https://jgantts.com/photos/canonical-post';
   const status = buildMastodonStatus('A deliberately long introduction to the canonical article', url, 70);
   assert.ok(Array.from(status).length <= 70);
-  assert.match(status, /…\n\nhttps:\/\/jgantts\.com\/posts\/canonical-post$/);
+  assert.match(status, /…\n\nhttps:\/\/jgantts\.com\/photos\/canonical-post$/);
   assert.equal(buildMastodonStatus('', url, 70), url);
 });
 
@@ -133,7 +133,7 @@ test('queues exactly one publication for a canonical post and rejects drafts', (
   assert.equal(first.syndication.state, 'pending');
   const firstJob = repository.claimNext(new Date('2100-09-04T12:01:00.000Z'));
   assert.ok(firstJob);
-  assert.equal(firstJob.payload.canonicalUrl, 'https://jgantts.com/posts/canonical-post');
+  assert.equal(firstJob.payload.canonicalUrl, 'https://jgantts.com/photos/canonical-post');
   assert.equal(firstJob.payload.idempotencyKey, first.syndication.idempotencyKey);
 
   posts.updateFromAuthor(postId, { bodyMarkdown: 'A later local revision' });

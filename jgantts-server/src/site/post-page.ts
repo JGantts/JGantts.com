@@ -52,7 +52,7 @@ export function getCanonicalPostMeta(
     socialTitle: title,
     socialDescription: descriptionFor(post),
     socialImage: image ? new URL(image, `${origin}/`).toString() : defaults.socialImage,
-    url: new URL(`/posts/${encodeURIComponent(post.slug)}`, `${origin}/`).toString(),
+    url: new URL(`/photos/${encodeURIComponent(post.slug)}`, `${origin}/`).toString(),
   };
 }
 

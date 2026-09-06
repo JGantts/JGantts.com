@@ -272,8 +272,7 @@ const router = createRouter({
         {
           path: ':slug',
           name: 'Post',
-          component: () => import('@/views/posts/PostView.vue'),
-          props: true,
+          redirect: (to) => `/photos/${encodeURIComponent(String(to.params.slug))}`,
           meta: {
             title: 'Post | JGantts',
             description: 'A post from Jacob Gantt on JGantts.com.',

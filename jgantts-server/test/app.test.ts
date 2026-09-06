@@ -574,11 +574,11 @@ test('renders canonical post HTML, redirects old slugs, and preserves publicatio
     status: 'archived',
   });
 
-  const response = await request(app, '/posts/canonical-post?tracking=ignored');
+  const response = await request(app, '/photos/canonical-post?tracking=ignored');
   assert.equal(response.status, 200);
   assert.match(response.body, /<title>A canonical &lt;post&gt; \| JGantts<\/title>/);
   assert.match(response.body, /property="og:type" content="article"/);
-  assert.match(response.body, /rel="canonical" href="https:\/\/jgantts\.com\/posts\/canonical-post"/);
+  assert.match(response.body, /rel="canonical" href="https:\/\/jgantts\.com\/photos\/canonical-post"/);
   assert.match(response.body, /property="article:published_time"/);
   assert.match(response.body, /type="application\/ld\+json"/);
   assert.match(response.body, /data-server-rendered-post/);
@@ -586,12 +586,15 @@ test('renders canonical post HTML, redirects old slugs, and preserves publicatio
   assert.match(response.body, /id="__POST_DATA__"/);
   assert.doesNotMatch(response.body, /<h1>A canonical <post><\/h1>/);
 
-  const redirect = await request(app, '/posts/first-canonical-slug');
+  const redirect = await request(app, '/photos/first-canonical-slug');
   assert.equal(redirect.status, 308);
-  assert.equal(redirect.headers.location, '/posts/canonical-post');
-  assert.equal((await request(app, '/posts/draft-page')).status, 404);
-  assert.equal((await request(app, '/posts/archived-page')).status, 410);
-  assert.equal((await request(app, '/posts/missing-page')).status, 404);
+  assert.equal(redirect.headers.location, '/photos/canonical-post');
+  assert.equal((await request(app, '/photos/draft-page')).status, 404);
+  assert.equal((await request(app, '/photos/archived-page')).status, 410);
+  assert.equal((await request(app, '/photos/missing-page')).status, 404);
+  const legacyRedirect = await request(app, '/posts/canonical-post');
+  assert.equal(legacyRedirect.status, 308);
+  assert.equal(legacyRedirect.headers.location, '/photos/canonical-post');
 });
 
 test('generates Atom and sitemap discovery documents from published posts', async (t) => {
@@ -614,12 +617,12 @@ test('generates Atom and sitemap discovery documents from published posts', asyn
   assert.equal(feed.status, 200);
   assert.match(String(feed.headers['content-type']), /application\/atom\+xml/);
   assert.match(feed.body, /Feed &amp; sitemap/);
-  assert.match(feed.body, /https:\/\/jgantts\.com\/posts\/feed-post/);
+  assert.match(feed.body, /https:\/\/jgantts\.com\/photos\/feed-post/);
   assert.doesNotMatch(feed.body, /feed-draft/);
 
   const sitemap = await request(app, '/sitemap.xml');
   assert.equal(sitemap.status, 200);
-  assert.match(sitemap.body, /https:\/\/jgantts\.com\/posts\/feed-post/);
+  assert.match(sitemap.body, /https:\/\/jgantts\.com\/photos\/feed-post/);
   assert.doesNotMatch(sitemap.body, /feed-draft/);
 });
 
@@ -756,7 +759,7 @@ test('uploads local media and serves immutable originals and derivatives', async
   assert.equal(post.media[0].altText, 'An updated brown rectangle');
   assert.ok(post.media[0].urls);
 
-  const canonicalPage = await request(app, '/posts/media-api-post');
+  const canonicalPage = await request(app, '/photos/media-api-post');
   assert.equal(canonicalPage.status, 200);
   assert.match(canonicalPage.body, new RegExp(uploaded.urls.large.replaceAll('/', '\\/')));
   assert.match(canonicalPage.body, /twitter:card" content="summary_large_image"/);

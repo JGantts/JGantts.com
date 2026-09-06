@@ -803,7 +803,7 @@ onBeforeUnmount(() => {
           <form class="editor-form" @submit.prevent="save">
             <div class="status-row">
               <span class="status-chip">{{ selected?.status || 'unsaved' }}</span>
-              <a v-if="selected?.status === 'published'" :href="`/posts/${selected.slug}`" target="_blank">View post ↗</a>
+              <a v-if="selected?.status === 'published'" :href="`/photos/${selected.slug}`" target="_blank">View post ↗</a>
             </div>
             <label>Title <input v-model="form.title" maxlength="200"></label>
             <label>Location <input v-model="form.location" maxlength="500"></label>

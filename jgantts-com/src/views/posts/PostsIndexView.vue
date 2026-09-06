@@ -44,7 +44,7 @@ onMounted(() => loadPosts())
         v-for="post in posts"
         :key="post.id"
         class="post-card"
-        :to="`/posts/${post.slug}`"
+        :to="`/photos/${post.slug}`"
       >
         <img
           v-if="post.media[0]"

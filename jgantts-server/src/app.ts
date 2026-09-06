@@ -77,7 +77,11 @@ export function createApp(options: AppOptions = {}): express.Express {
   }));
   app.use(express.static(publicRoot, { index: false }));
 
-  app.get('/posts/:slug', (req, res, next) => {
+  app.get('/posts/:slug', (req, res) => {
+    res.redirect(308, `/photos/${encodeURIComponent(req.params.slug)}`);
+  });
+
+  app.get('/photos/:slug', (req, res, next) => {
     try {
       if (!appHtmlTemplate) {
         res.status(503).type('html').set('Cache-Control', 'no-store').send(MAINTENANCE_HTML);
@@ -95,7 +99,7 @@ export function createApp(options: AppOptions = {}): express.Express {
         return;
       }
       if (post.slug !== req.params.slug) {
-        res.redirect(308, `/posts/${encodeURIComponent(post.slug)}`);
+        res.redirect(308, `/photos/${encodeURIComponent(post.slug)}`);
         return;
       }
       const page = {

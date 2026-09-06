@@ -13,7 +13,7 @@ function escapeXml(value: unknown): string {
 }
 
 function canonicalPostUrl(origin: string, slug: string): string {
-  return new URL(`/posts/${encodeURIComponent(slug)}`, `${origin}/`).toString();
+  return new URL(`/photos/${encodeURIComponent(slug)}`, `${origin}/`).toString();
 }
 
 export function renderAtomFeed(
@@ -46,10 +46,10 @@ export function renderAtomFeed(
 
   return `<?xml version="1.0" encoding="utf-8"?>`
     + `<feed xmlns="http://www.w3.org/2005/Atom">`
-    + `<id>${escapeXml(new URL('/posts', `${origin}/`).toString())}</id>`
+    + `<id>${escapeXml(new URL('/photos', `${origin}/`).toString())}</id>`
     + `<title>JGantts.com posts</title>`
     + `<link rel="self" href="${escapeXml(new URL('/feed.xml', `${origin}/`).toString())}" />`
-    + `<link rel="alternate" href="${escapeXml(new URL('/posts', `${origin}/`).toString())}" />`
+    + `<link rel="alternate" href="${escapeXml(new URL('/photos', `${origin}/`).toString())}" />`
     + `<updated>${escapeXml(updated)}</updated>`
     + `<author><name>Jacob Gantt</name></author>`
     + entries
@@ -63,7 +63,7 @@ export function renderSitemap(
   media?: MediaService,
 ): string {
   const origin = getRequestOrigin(req, configuredSiteOrigin);
-  const staticPaths = ['/', '/posts', '/photos', '/holmes', '/kovyalo'];
+  const staticPaths = ['/', '/photos', '/holmes', '/kovyalo'];
   const staticUrls = staticPaths.map((pathname) => (
     `<url><loc>${escapeXml(new URL(pathname, `${origin}/`).toString())}</loc></url>`
   ));

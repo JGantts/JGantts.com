@@ -53,7 +53,7 @@ function updateDocumentMeta(value: CanonicalPost) {
   const title = value.title || value.location || 'Post by Jacob Gantt'
   const description = 'A post from Jacob Gantt on JGantts.com.'
   const image = (value.media.find((item) => item.id === value.heroMediaId) ?? value.media[0])?.urls.large
-  const canonicalUrl = new URL(`/posts/${value.slug}`, window.location.origin).toString()
+  const canonicalUrl = new URL(`/photos/${value.slug}`, window.location.origin).toString()
   const setMeta = (attribute: 'name' | 'property', key: string, content: string) => {
     let element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`)
     if (!element) {
@@ -166,7 +166,7 @@ async function loadPost() {
     post.value = loaded
     updateDocumentMeta(loaded)
     void loadComments(loaded.slug)
-    if (loaded.slug !== props.slug) await router.replace(`/posts/${loaded.slug}`)
+    if (loaded.slug !== props.slug) await router.replace(`/photos/${loaded.slug}`)
   } catch (loadError) {
     error.value = loadError instanceof Error ? loadError.message : 'The post could not be loaded.'
     post.value = null
@@ -185,11 +185,11 @@ watch(() => props.slug, loadPost)
     <section v-else-if="error" class="post-state" role="alert">
       <h1>Post unavailable</h1>
       <p>{{ error }}</p>
-      <RouterLink to="/posts">Browse posts</RouterLink>
+      <RouterLink to="/photos">Browse photos</RouterLink>
     </section>
     <article v-else-if="post" class="post">
       <header class="post-header">
-        <RouterLink class="back-link" to="/posts">← All posts</RouterLink>
+        <RouterLink class="back-link" to="/photos">← All photos</RouterLink>
         <h1>{{ post.title || 'Post by Jacob Gantt' }}</h1>
         <dl v-if="post.location || post.date || post.time" class="post-metadata">
           <div v-if="post.location"><dt>Location</dt><dd>{{ post.location }}</dd></div>

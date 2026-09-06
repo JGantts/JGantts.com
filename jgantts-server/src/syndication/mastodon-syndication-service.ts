@@ -55,7 +55,7 @@ export class MastodonSyndicationService {
     const fallback = post.excerpt || post.title || '';
     const teaser = validateTeaser(teaserValue, fallback);
     return this.repository.queuePublication({
-      canonicalUrl: `${this.siteOrigin}/posts/${encodeURIComponent(post.slug)}`,
+      canonicalUrl: `${this.siteOrigin}/photos/${encodeURIComponent(post.slug)}`,
       postId,
       remoteInstance: this.mastodonOrigin,
       teaser,
@@ -69,7 +69,7 @@ export class MastodonSyndicationService {
     const syndication = this.repository.getLatestForPost(postId);
     if (!syndication) throw Object.assign(new Error('Post has not been syndicated.'), { status: 404 });
     const teaser = validateTeaser(teaserValue, post.excerpt || post.title || '');
-    const canonicalUrl = `${this.siteOrigin}/posts/${encodeURIComponent(post.slug)}`;
+    const canonicalUrl = `${this.siteOrigin}/photos/${encodeURIComponent(post.slug)}`;
     this.repository.queueEdit(syndication.id, {
       canonicalUrl,
       idempotencyKey: createHash('sha256')

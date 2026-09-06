@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { AdminApiError, adminRequest, createAdminSession, deleteAdminSession, jsonRequest } from '@/admin/api'
+import { formatEditorialDateTime } from '@/posts/editorial-date-time'
 import type { PostMedia } from '@/posts/types'
 
 type AdminPost = {
@@ -94,23 +95,7 @@ const filteredPosts = computed(() => {
 const canPublish = computed(() => selected.value?.status === 'draft')
 const canSyndicate = computed(() => selected.value?.status === 'published')
 const mastodonTeaser = computed(() => {
-  let dateAndTime = ''
-  if (form.date) {
-    const [year, month, dayText] = form.date.split('-')
-    const day = Number(dayText)
-    const remainder = day % 100
-    const finalDigit = day % 10
-    const ordinal = remainder >= 11 && remainder <= 13 ? 'th' : finalDigit === 1 ? 'st' : finalDigit === 2 ? 'nd' : finalDigit === 3 ? 'rd' : 'th'
-    const monthName = new Intl.DateTimeFormat(undefined, { month: 'long', timeZone: 'UTC' })
-      .format(new Date(`${year}-${month}-01T00:00:00Z`))
-    dateAndTime = `${year}, ${monthName} ${day}${ordinal}`
-  }
-  if (form.time) {
-    const hour = Number(form.time.slice(0, 2))
-    const period = hour < 5 ? 'night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night'
-    const formattedTime = `${form.time} in the ${period}`
-    dateAndTime = dateAndTime ? `${dateAndTime}, ${formattedTime}` : formattedTime
-  }
+  const dateAndTime = formatEditorialDateTime(storedDate(form.date), form.time || null)
   return [form.title.trim(), form.location.trim(), dateAndTime].filter(Boolean).join('\n')
 })
 const syndicationButtonLabel = computed(() => {

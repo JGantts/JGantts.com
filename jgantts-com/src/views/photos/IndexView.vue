@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ClusteredPhotoMasonry from './ClusteredPhotoMasonry.vue'
 import MediaCarousel from '@/components/MediaCarousel.vue'
+import { formatEditorialDateTime, machineEditorialDateTime } from '@/posts/editorial-date-time'
 import type { CanonicalPost } from '@/posts/types'
 
 type MastodonAccount = {
@@ -163,8 +164,6 @@ const formatter = new Intl.DateTimeFormat(undefined, {
   timeStyle: 'short',
 })
 const numberFormatter = new Intl.NumberFormat()
-const editorialDateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'long', timeZone: 'UTC' })
-
 function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -175,13 +174,9 @@ function escapeHtml(value: string): string {
 }
 
 function localPostDateTime(post: CanonicalPost): { datetime: string; label: string } | null {
-  if (!post.date && !post.time) return null
-  if (!post.date) return { datetime: post.time!, label: post.time! }
-  const value = post.date.toString()
-  const machineDate = `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`
-  const date = new Date(`${machineDate}T00:00:00Z`)
-  const label = `${editorialDateFormatter.format(date)}${post.time ? ` at ${post.time}` : ''}`
-  return { datetime: `${machineDate}${post.time ? `T${post.time}` : ''}`, label }
+  const label = formatEditorialDateTime(post.date, post.time)
+  const datetime = machineEditorialDateTime(post.date, post.time)
+  return label && datetime ? { datetime, label } : null
 }
 
 function localPostOverlay(post: CanonicalPost): string {

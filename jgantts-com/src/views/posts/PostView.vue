@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { formatEditorialDateTime, machineEditorialDateTime } from '@/posts/editorial-date-time'
 import type {
   CanonicalPost,
   MastodonCommentNode,
@@ -17,26 +18,6 @@ const comments = ref<MastodonCommentsResponse | null>(null)
 const commentTree = ref<MastodonCommentNode[]>([])
 const commentsLoading = ref(false)
 const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' })
-
-function editorialDate(value: number | null): string | null {
-  if (!value) return null
-  const text = value.toString()
-  const date = new Date(Date.UTC(Number(text.slice(0, 4)), Number(text.slice(4, 6)) - 1, Number(text.slice(6, 8))))
-  return dateFormatter.format(date)
-}
-
-function editorialDateTime(date: number | null, time: string | null): string | null {
-  const formattedDate = editorialDate(date)
-  if (formattedDate && time) return `${formattedDate} at ${time}`
-  return formattedDate || time
-}
-
-function machineDateTime(date: number | null, time: string | null): string | undefined {
-  if (!date) return undefined
-  const value = date.toString()
-  const formatted = `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`
-  return time ? `${formatted}T${time}` : formatted
-}
 
 function initialPost(): CanonicalPost | null {
   const element = document.querySelector<HTMLScriptElement>('#__POST_DATA__')
@@ -195,7 +176,7 @@ watch(() => props.slug, loadPost)
           <div v-if="post.location"><dt>Location</dt><dd>{{ post.location }}</dd></div>
           <div v-if="post.date || post.time">
             <dt>Date and time</dt>
-            <dd><time :datetime="machineDateTime(post.date, post.time)">{{ editorialDateTime(post.date, post.time) }}</time></dd>
+            <dd><time :datetime="machineEditorialDateTime(post.date, post.time)">{{ formatEditorialDateTime(post.date, post.time) }}</time></dd>
           </div>
         </dl>
         <p class="published-date">Published <time :datetime="post.publishedAt">{{ dateFormatter.format(new Date(post.publishedAt)) }}</time></p>
@@ -224,7 +205,7 @@ watch(() => props.slug, loadPost)
               <div v-if="item.location"><dt>Location</dt><dd>{{ item.location }}</dd></div>
               <div v-if="item.date || item.time">
                 <dt>Date and time</dt>
-                <dd><time :datetime="machineDateTime(item.date, item.time)">{{ editorialDateTime(item.date, item.time) }}</time></dd>
+                <dd><time :datetime="machineEditorialDateTime(item.date, item.time)">{{ formatEditorialDateTime(item.date, item.time) }}</time></dd>
               </div>
             </dl>
           </figcaption>

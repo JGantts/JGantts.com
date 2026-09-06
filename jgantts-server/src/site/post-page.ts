@@ -37,6 +37,28 @@ export function heroMediaFor(post: CanonicalPostPage): PublicMedia | null {
   return post.media.find((item) => item.id === post.heroMediaId) ?? post.media[0] ?? null;
 }
 
+function socialImageFor(post: CanonicalPostPage) {
+  const hero = heroMediaFor(post);
+  if (!hero) return null;
+  const compatibleRendition = hero.renditions
+    .filter((rendition) => rendition.format === 'jpeg' || rendition.format === 'png')
+    .sort((left, right) => right.width - left.width)[0];
+  if (compatibleRendition) {
+    return {
+      height: compatibleRendition.height,
+      mimeType: compatibleRendition.format === 'png' ? 'image/png' : 'image/jpeg',
+      url: compatibleRendition.url,
+      width: compatibleRendition.width,
+    };
+  }
+  return {
+    height: hero.height,
+    mimeType: hero.mimeType,
+    url: hero.urls.original,
+    width: hero.width,
+  };
+}
+
 export function getCanonicalPostMeta(
   req: Request,
   post: CanonicalPostPage,
@@ -44,7 +66,7 @@ export function getCanonicalPostMeta(
 ): ResolvedPageMeta {
   const defaults = getPageMeta(req, configuredSiteOrigin);
   const origin = getRequestOrigin(req, configuredSiteOrigin);
-  const image = heroMediaFor(post)?.urls.large;
+  const image = socialImageFor(post)?.url;
   const title = titleFor(post);
   return {
     title: `${title} | JGantts`,
@@ -63,7 +85,14 @@ export function renderCanonicalPostHtml(
   configuredSiteOrigin: string,
 ): string {
   const meta = getCanonicalPostMeta(req, post, configuredSiteOrigin);
+  const socialImage = socialImageFor(post);
   let html = renderAppHtml(req, appHtmlTemplate, configuredSiteOrigin, meta, 'article');
+  if (socialImage) {
+    html = upsertMeta(html, 'property', 'og:image:secure_url', meta.socialImage);
+    html = upsertMeta(html, 'property', 'og:image:type', socialImage.mimeType);
+    html = upsertMeta(html, 'property', 'og:image:width', String(socialImage.width));
+    html = upsertMeta(html, 'property', 'og:image:height', String(socialImage.height));
+  }
   html = upsertMeta(html, 'property', 'article:published_time', post.publishedAt ?? '');
   html = upsertMeta(html, 'property', 'article:modified_time', post.updatedAt);
   html = insertBeforeHeadClose(

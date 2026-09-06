@@ -780,6 +780,19 @@ test('uploads local media and serves immutable originals and derivatives', async
   assert.equal(canonicalPage.status, 200);
   assert.match(canonicalPage.body, new RegExp(uploaded.urls.large.replaceAll('/', '\\/')));
   assert.match(canonicalPage.body, /twitter:card" content="summary_large_image"/);
+  const socialJpeg = uploaded.renditions
+    .filter((rendition) => rendition.format === 'jpeg')
+    .sort((left, right) => right.width - left.width)[0]!;
+  assert.match(canonicalPage.body, new RegExp(
+    `property="og:image" content="http[^\"]+${socialJpeg.url.replaceAll('/', '\\/')}"`,
+  ));
+  assert.match(canonicalPage.body, /property="og:image:type" content="image\/jpeg"/);
+  assert.match(canonicalPage.body, new RegExp(
+    `property="og:image:width" content="${socialJpeg.width}"`,
+  ));
+  assert.match(canonicalPage.body, new RegExp(
+    `property="og:image:height" content="${socialJpeg.height}"`,
+  ));
 
   // Every post delivery path uses the same normalized media contract.
   const normalized = media.listForPost('media-api-post');

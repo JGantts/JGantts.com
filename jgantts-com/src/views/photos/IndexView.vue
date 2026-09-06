@@ -163,6 +163,36 @@ const formatter = new Intl.DateTimeFormat(undefined, {
   timeStyle: 'short',
 })
 const numberFormatter = new Intl.NumberFormat()
+const editorialDateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'long', timeZone: 'UTC' })
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
+
+function localPostDateTime(post: CanonicalPost): { datetime: string; label: string } | null {
+  if (!post.date && !post.time) return null
+  if (!post.date) return { datetime: post.time!, label: post.time! }
+  const value = post.date.toString()
+  const machineDate = `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`
+  const date = new Date(`${machineDate}T00:00:00Z`)
+  const label = `${editorialDateFormatter.format(date)}${post.time ? ` at ${post.time}` : ''}`
+  return { datetime: `${machineDate}${post.time ? `T${post.time}` : ''}`, label }
+}
+
+function localPostOverlay(post: CanonicalPost): string {
+  const dateTime = localPostDateTime(post)
+  return [
+    post.title ? `<p class="local-post-title"><em>${escapeHtml(post.title)}</em></p>` : '',
+    post.bodyHtml,
+    post.location ? `<p class="local-post-location">${escapeHtml(post.location)}</p>` : '',
+    dateTime ? `<p class="local-post-datetime"><time datetime="${dateTime.datetime}">${escapeHtml(dateTime.label)}</time></p>` : '',
+  ].filter(Boolean).join('')
+}
 
 function selectToot(nextIndex: number) {
   const post = allToots.value[nextIndex]?.post
@@ -372,7 +402,7 @@ onMounted(async () => {
         localThreads.value = localPosts.value.map((post) => ({
           post: {
             account: { acct: 'jgantts', avatar: '/favicon.png', display_name: 'Jacob Gantt', url: '/', username: 'jgantts' },
-            content: post.bodyHtml,
+            content: localPostOverlay(post),
             created_at: post.publishedAt,
             favourites_count: 0,
             id: `local:${post.id}`,
@@ -641,7 +671,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                   </header>
 
                   <div class="comments-post-text" v-html="toot.post.content"></div>
-                  <time class="comments-post-date" :datetime="toot.post.created_at">
+                  <time v-if="!toot.post.id.startsWith('local:')" class="comments-post-date" :datetime="toot.post.created_at">
                     {{ formatDate(toot.post.created_at) }}
                   </time>
                 </div>
@@ -1198,6 +1228,18 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
 .comments-post-text :deep(p + p) {
   margin-top: 0.65rem;
+}
+
+.comments-post-text :deep(.local-post-title) {
+  font-size: 1.05rem;
+  font-style: italic;
+}
+
+.comments-post-text :deep(.local-post-location),
+.comments-post-text :deep(.local-post-datetime) {
+  color: var(--photos-muted);
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.75rem;
 }
 
 .comments-post-text :deep(a) {

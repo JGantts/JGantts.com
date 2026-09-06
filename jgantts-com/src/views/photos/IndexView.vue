@@ -332,17 +332,17 @@ function handleCommentsDrawerWheel(event: WheelEvent) {
   event.preventDefault()
 }
 
-async function scrollToRoutedPost(postId: string) {
+async function scrollToRoutedPost(routeId: string, clusterId = routeId) {
   await nextTick()
 
   // ResizeObserver supplies the masonry width on the next frame. Retry briefly so
   // direct links land correctly even when photos and layout initialize at once.
   for (let attempt = 0; attempt < 12; attempt += 1) {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-    if (props.postId !== postId) return
+    if (props.postId !== routeId) return
 
     const cluster = document.querySelector<HTMLElement>(
-      `[data-cluster-key="${CSS.escape(postId)}"]`,
+      `[data-cluster-key="${CSS.escape(clusterId)}"]`,
     )
     if (cluster && cluster.offsetHeight > 0) {
       const topBreathingRoom = Math.max(24, Math.min(48, window.innerHeight * 0.04))
@@ -399,7 +399,13 @@ onMounted(async () => {
       fetch('/api/posts?limit=50').then(async (response) => {
         if (!response.ok) return
         const page = await response.json() as { items?: CanonicalPost[] }
-        localPosts.value = (page.items ?? []).filter((post) => post.media.length > 0)
+        const routedSlug = props.postId
+        const items = page.items ?? []
+        if (routedSlug && !tootIds.includes(routedSlug) && !items.some((post) => post.slug === routedSlug)) {
+          const routedResponse = await fetch(`/api/posts/${encodeURIComponent(routedSlug)}`)
+          if (routedResponse.ok) items.push(await routedResponse.json() as CanonicalPost)
+        }
+        localPosts.value = items.filter((post) => post.media.length > 0)
         localThreads.value = localPosts.value.map((post) => ({
           post: {
             account: { acct: 'jgantts', avatar: '/favicon.png', display_name: 'Jacob Gantt', url: '/', username: 'jgantts' },
@@ -460,9 +466,12 @@ onMounted(async () => {
       }),
     ])
 
+    // The first route sync runs before the asynchronous local-post collection is
+    // available. Resolve it again now so a hard refresh retains the selected post.
+    syncSelectionFromRoute()
     loading.value = false
-    if (props.postId && tootIds.includes(props.postId)) {
-      await scrollToRoutedPost(props.postId)
+    if (props.postId && activeToot.value) {
+      await scrollToRoutedPost(props.postId, activeToot.value.post.id)
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Could not load Mastodon conversation'

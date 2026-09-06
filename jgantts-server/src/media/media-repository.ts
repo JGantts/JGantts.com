@@ -8,6 +8,7 @@ interface MediaRow {
   description: string | null;
   location: string | null;
   date: number | null;
+  time: string | null;
   post_id: string;
   original_path: string;
   derived_json: string;
@@ -34,6 +35,7 @@ function mapMedia(row: MediaRow): MediaRecord {
     description: row.description,
     location: row.location,
     date: row.date,
+    time: row.time,
     postId: row.post_id,
     originalPath: row.original_path,
     derivatives: JSON.parse(row.derived_json) as MediaDerivatives,
@@ -61,12 +63,12 @@ export class MediaRepository {
   create(media: MediaRecord): MediaRecord {
     this.database.prepare(`
       INSERT INTO media (
-        id, description, location, date, post_id, original_path, derived_json, mime_type, width, height,
+        id, description, location, date, time, post_id, original_path, derived_json, mime_type, width, height,
         byte_size, checksum_sha256, alt_text, caption, focal_x, focal_y,
         display_order, processing_state, processing_error, rendition_json,
         created_at, updated_at
       ) VALUES (
-        @id, @description, @location, @date, @postId, @originalPath, @derivedJson, @mimeType, @width, @height,
+        @id, @description, @location, @date, @time, @postId, @originalPath, @derivedJson, @mimeType, @width, @height,
         @byteSize, @checksumSha256, @altText, @caption, @focalX, @focalY,
         @displayOrder, @processingState, @processingError, @renditionJson,
         @createdAt, @updatedAt
@@ -150,7 +152,7 @@ export class MediaRepository {
 
   updateMetadata(
     id: string,
-    changes: Pick<MediaRecord, 'altText' | 'caption' | 'description' | 'location' | 'date' | 'focalX' | 'focalY'>,
+    changes: Pick<MediaRecord, 'altText' | 'caption' | 'description' | 'location' | 'date' | 'time' | 'focalX' | 'focalY'>,
     updatedAt: string,
   ): MediaRecord | null {
     const result = this.database.prepare(`
@@ -158,6 +160,7 @@ export class MediaRepository {
         description = @description,
         location = @location,
         date = @date,
+        time = @time,
         alt_text = @altText,
         caption = @caption,
         focal_x = @focalX,

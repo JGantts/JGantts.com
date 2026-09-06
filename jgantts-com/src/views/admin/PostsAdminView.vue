@@ -6,6 +6,7 @@ import type { PostMedia } from '@/posts/types'
 type AdminPost = {
   location: string | null
   date: number | null
+  time: string | null
   bodyHtml: string
   bodyMarkdown: string
   createdAt: string
@@ -49,8 +50,10 @@ type UploadQueueItem = {
 }
 const uploadQueue = ref<UploadQueueItem[]>([])
 const uploadRunning = ref(false)
-const mediaDrafts = reactive<Record<string, { altText: string; caption: string; location: string; date: string }>>({})
+const mediaDrafts = reactive<Record<string, { altText: string; caption: string; location: string; date: string; time: string }>>({})
 const mediaSavingId = ref<string | null>(null)
+const mediaDialog = ref<HTMLDialogElement | null>(null)
+const editingMediaId = ref<string | null>(null)
 const orderSaving = ref(false)
 const draggedMediaId = ref<string | null>(null)
 const syndication = ref<Syndication | null>(null)
@@ -60,16 +63,18 @@ let previewTimer: ReturnType<typeof setTimeout> | null = null
 const form = reactive({
   location: '',
   date: '',
+  time: '',
   bodyMarkdown: '',
 })
 
 const selected = computed(() => posts.value.find((post) => post.id === selectedId.value) ?? null)
+const editingMedia = computed(() => selected.value?.media.find((item) => item.id === editingMediaId.value) ?? null)
 const filteredPosts = computed(() => {
   const query = postQuery.value.trim().toLocaleLowerCase()
   return posts.value.filter((post) => {
     if (postStatus.value !== 'all' && post.status !== postStatus.value) return false
     if (!query) return true
-    return [post.slug, post.location, post.date?.toString(), post.bodyMarkdown]
+    return [post.slug, post.location, post.date?.toString(), post.time, post.bodyMarkdown]
       .some((value) => value?.toLocaleLowerCase().includes(query))
   })
 })
@@ -97,6 +102,20 @@ function postDate(date: number | null): string {
   return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`
 }
 
+function openMediaDetails(item: PostMedia) {
+  editingMediaId.value = item.id
+  requestAnimationFrame(() => mediaDialog.value?.showModal())
+}
+
+function closeMediaDetails() {
+  mediaDialog.value?.close()
+  editingMediaId.value = null
+}
+
+function closeMediaDialogBackdrop(event: MouseEvent) {
+  if (event.target === event.currentTarget) closeMediaDetails()
+}
+
 function message(value: unknown): string {
   if (value instanceof AdminApiError && value.status === 401) {
     authenticated.value = false
@@ -109,6 +128,7 @@ function copyToForm(post: AdminPost) {
   selectedId.value = post.id
   form.location = post.location ?? ''
   form.date = post.date?.toString() ?? ''
+  form.time = post.time ?? ''
   form.bodyMarkdown = post.bodyMarkdown
   previewHtml.value = post.bodyHtml
   teaser.value = ''
@@ -116,7 +136,7 @@ function copyToForm(post: AdminPost) {
   error.value = ''
   syndication.value = null
   post.media.forEach((item) => {
-    mediaDrafts[item.id] = { altText: item.altText, caption: item.caption ?? '', location: item.location ?? '', date: item.date?.toString() ?? '' }
+    mediaDrafts[item.id] = { altText: item.altText, caption: item.caption ?? '', location: item.location ?? '', date: item.date?.toString() ?? '', time: item.time ?? '' }
   })
   if (post.status === 'published') void loadSyndication(post.id)
 }
@@ -166,6 +186,7 @@ async function signOut() {
   tokenInput.value = ''
   form.location = ''
   form.date = ''
+  form.time = ''
   form.bodyMarkdown = ''
   previewHtml.value = ''
 }
@@ -194,6 +215,7 @@ function authorBody() {
   return {
     location: form.location.trim() || null,
     date: form.date ? Number(form.date) : null,
+    time: form.time || null,
     bodyMarkdown: form.bodyMarkdown,
   }
 }
@@ -211,7 +233,7 @@ function replaceMedia(updated: PostMedia) {
   const media = post.media.map((item) => item.id === updated.id ? updated : item)
   const index = posts.value.findIndex(({ id }) => id === post.id)
   if (index !== -1) posts.value.splice(index, 1, { ...post, media })
-  mediaDrafts[updated.id] = { altText: updated.altText, caption: updated.caption ?? '', location: updated.location ?? '', date: updated.date?.toString() ?? '' }
+  mediaDrafts[updated.id] = { altText: updated.altText, caption: updated.caption ?? '', location: updated.location ?? '', date: updated.date?.toString() ?? '', time: updated.time ?? '' }
 }
 
 async function saveMedia(item: PostMedia) {
@@ -222,10 +244,11 @@ async function saveMedia(item: PostMedia) {
   try {
     const updated = await adminRequest<PostMedia>(
       `/api/admin/media/${item.id}`,
-      jsonRequest('PATCH', { altText: draft.altText, caption: draft.caption.trim() || null, location: draft.location.trim() || null, date: draft.date ? Number(draft.date) : null, focalX: item.focalX, focalY: item.focalY }),
+      jsonRequest('PATCH', { altText: draft.altText, caption: draft.caption.trim() || null, location: draft.location.trim() || null, date: draft.date ? Number(draft.date) : null, time: draft.time || null, focalX: item.focalX, focalY: item.focalY }),
     )
     replaceMedia(updated)
     notice.value = 'Photo details saved.'
+    closeMediaDetails()
   } catch (mediaError) {
     error.value = message(mediaError)
   } finally {
@@ -663,7 +686,6 @@ onBeforeUnmount(() => {
                   <span class="focal-marker" :style="{ left: `${(item.focalX ?? 0.5) * 100}%`, top: `${(item.focalY ?? 0.5) * 100}%` }"></span>
                 </button>
                 <figcaption>
-                  <span>Photo {{ index + 1 }} · {{ item.width }} × {{ item.height }} · {{ item.processingState }}</span>
                   <div class="media-order-actions">
                     <button class="button-secondary" :class="{ 'is-selected': selected?.heroMediaId === item.id }" type="button" @click="selectHero(item)">{{ selected?.heroMediaId === item.id ? 'Hero photo' : 'Set as hero' }}</button>
                     <button class="button-quiet" type="button" @click="removeMedia(item)">Remove photo</button>
@@ -672,13 +694,7 @@ onBeforeUnmount(() => {
                     <button class="button-secondary" :disabled="orderSaving || index === 0" type="button" @click="moveMedia(index, -1)">Move earlier</button>
                     <button class="button-secondary" :disabled="orderSaving || index === selected.media.length - 1" type="button" @click="moveMedia(index, 1)">Move later</button>
                   </div>
-                  <label>Alt text <textarea v-model="mediaDrafts[item.id].altText" maxlength="2000" rows="2" required></textarea></label>
-                  <label>Caption <textarea v-model="mediaDrafts[item.id].caption" maxlength="5000" rows="2"></textarea></label>
-                  <label>Location <input v-model="mediaDrafts[item.id].location" maxlength="500"></label>
-                  <label>Date <input v-model="mediaDrafts[item.id].date" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" placeholder="YYYYMMDD"></label>
-                  <button :disabled="mediaSavingId === item.id || !mediaDrafts[item.id].altText.trim()" type="button" @click="saveMedia(item)">
-                    {{ mediaSavingId === item.id ? 'Saving…' : 'Save photo details' }}
-                  </button>
+                  <button class="button-secondary" type="button" @click="openMediaDetails(item)">Edit photo details</button>
                 </figcaption>
               </figure>
             </div>
@@ -717,6 +733,7 @@ onBeforeUnmount(() => {
             </div>
             <label>Location <input v-model="form.location" maxlength="500"></label>
             <label>Date <input v-model="form.date" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" placeholder="YYYYMMDD"></label>
+            <label>Time <input v-model="form.time" type="time" step="60"></label>
             <label>Body (Markdown) <textarea v-model="form.bodyMarkdown" class="markdown-editor" maxlength="100000" required></textarea></label>
             <div class="editor-actions">
               <button :disabled="busy" type="submit">{{ busy ? 'Working…' : selectedId ? 'Save changes' : 'Create draft' }}</button>
@@ -750,6 +767,33 @@ onBeforeUnmount(() => {
           <p v-if="error" class="message message--error" role="alert">{{ error }}</p>
         </section>
       </div>
+
+      <dialog ref="mediaDialog" class="media-dialog" @click="closeMediaDialogBackdrop" @close="editingMediaId = null">
+        <form v-if="editingMedia" class="media-details-form" @submit.prevent="saveMedia(editingMedia)">
+          <header>
+            <div>
+              <p class="eyebrow">Photo details</p>
+              <h2>Edit photo</h2>
+            </div>
+            <button class="button-quiet dialog-close" type="button" aria-label="Close photo details" @click="closeMediaDetails">×</button>
+          </header>
+          <img :alt="editingMedia.altText" :src="editingMedia.urls.thumbnail">
+          <p class="photo-technical">{{ editingMedia.width }} × {{ editingMedia.height }} · {{ editingMedia.processingState }}</p>
+          <label>Alt text <textarea v-model="mediaDrafts[editingMedia.id].altText" maxlength="2000" rows="3" required></textarea></label>
+          <label>Caption <textarea v-model="mediaDrafts[editingMedia.id].caption" maxlength="5000" rows="3"></textarea></label>
+          <label>Location <input v-model="mediaDrafts[editingMedia.id].location" maxlength="500"></label>
+          <div class="date-time-fields">
+            <label>Date <input v-model="mediaDrafts[editingMedia.id].date" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" placeholder="YYYYMMDD"></label>
+            <label>Time <input v-model="mediaDrafts[editingMedia.id].time" type="time" step="60"></label>
+          </div>
+          <div class="editor-actions">
+            <button :disabled="mediaSavingId === editingMedia.id || !mediaDrafts[editingMedia.id].altText.trim()" type="submit">
+              {{ mediaSavingId === editingMedia.id ? 'Saving…' : 'Save photo details' }}
+            </button>
+            <button class="button-secondary" type="button" @click="closeMediaDetails">Cancel</button>
+          </div>
+        </form>
+      </dialog>
     </template>
   </main>
 </template>
@@ -824,6 +868,15 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .upload-item-actions { display: grid; gap: 0.4rem; }
 .message { background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 0.5rem; padding: 0.75rem; }
 .message--error { color: #e5484d; }
+.media-dialog { background: var(--bg); border: 1px solid var(--border); border-radius: 1rem; color: inherit; max-height: calc(100dvh - 2rem); max-width: 34rem; padding: 0; width: calc(100% - 2rem); }
+.media-dialog::backdrop { background: rgba(0, 0, 0, 0.68); backdrop-filter: blur(3px); }
+.media-details-form { display: grid; gap: 1rem; padding: clamp(1rem, 4vw, 1.5rem); }
+.media-details-form header { align-items: start; display: flex; justify-content: space-between; }
+.media-details-form h2 { font-size: 1.4rem; font-weight: 650; }
+.media-details-form > img { aspect-ratio: 16 / 9; border-radius: 0.65rem; object-fit: cover; width: 100%; }
+.photo-technical { color: var(--muted); font-family: 'Azeret Mono Variable', monospace; font-size: 0.72rem; margin-top: -0.5rem; }
+.dialog-close { font-size: 1.6rem; line-height: 1; padding: 0.2rem 0.45rem; }
+.date-time-fields { display: grid; gap: 0.75rem; grid-template-columns: 1fr 1fr; }
 @media (max-width: 48rem) {
   .admin-workspace { grid-template-columns: 1fr; }
   .post-list { max-height: 14rem; position: static; }
@@ -833,5 +886,6 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   .upload-item img { width: 4rem; }
   .upload-item-actions { grid-column: 1 / -1; grid-template-columns: repeat(2, 1fr); }
   .editor-actions { align-items: stretch; flex-direction: column; }
+  .date-time-fields { grid-template-columns: 1fr; }
 }
 </style>

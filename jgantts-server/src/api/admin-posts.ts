@@ -3,7 +3,7 @@ import type { AuthorPostChanges, AuthorPostInput, PostService } from '../posts/p
 import type { MediaService } from '../media/media-service';
 import type { MastodonSyndicationService } from '../syndication/mastodon-syndication-service';
 
-const AUTHOR_FIELDS = new Set(['bodyMarkdown', 'location', 'date']);
+const AUTHOR_FIELDS = new Set(['bodyMarkdown', 'location', 'date', 'time']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

@@ -15,6 +15,7 @@ export interface PublicPostPage {
 export interface AuthorPostInput {
   bodyMarkdown: string;
   date?: number | null;
+  time?: string | null;
   location?: string | null;
   /** Internal compatibility hook. The authoring API always generates this. */
   slug?: string;
@@ -69,6 +70,14 @@ function validateDate(value: unknown): number | null {
   return value as number;
 }
 
+function validateTime(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)) {
+    throw new PostInputError('time must use 24-hour HH:mm format or be null.');
+  }
+  return value;
+}
+
 function encodeCursor(cursor: PublishedPostCursor): string {
   return Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
 }
@@ -108,6 +117,7 @@ export class PostService {
       id: randomUUID(),
       location: validateText(input.location ?? null, 'location', 500, false),
       date: validateDate(input.date),
+      time: validateTime(input.time),
       slug,
       bodyMarkdown,
       bodyHtml: renderPostMarkdown(bodyMarkdown),
@@ -171,6 +181,7 @@ export class PostService {
     const repositoryChanges: PostChanges = {};
     if ('location' in changes) repositoryChanges.location = validateText(changes.location, 'location', 500, false);
     if ('date' in changes) repositoryChanges.date = validateDate(changes.date);
+    if ('time' in changes) repositoryChanges.time = validateTime(changes.time);
     if ('slug' in changes) {
       const slug = validateSlug(changes.slug);
       const existing = this.posts.getBySlug(slug);

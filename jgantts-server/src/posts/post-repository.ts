@@ -14,6 +14,7 @@ interface PostRow {
   description: string | null;
   location: string | null;
   date: number | null;
+  time: string | null;
   title: string | null;
   slug: string;
   body_markdown: string;
@@ -33,6 +34,7 @@ function mapPost(row: PostRow): Post {
     description: row.description,
     location: row.location,
     date: row.date,
+    time: row.time,
     title: row.title,
     slug: row.slug,
     bodyMarkdown: row.body_markdown,
@@ -58,10 +60,10 @@ export class PostRepository {
     return inTransaction(this.database, () => {
       this.database.prepare(`
         INSERT INTO posts (
-          id, description, location, date, title, slug, body_markdown, body_html, excerpt, content_warning, status,
+          id, description, location, date, time, title, slug, body_markdown, body_html, excerpt, content_warning, status,
           hero_media_id, created_at, published_at, updated_at
         ) VALUES (
-          @id, @description, @location, @date, @title, @slug, @bodyMarkdown, @bodyHtml, @excerpt, @contentWarning, @status,
+          @id, @description, @location, @date, @time, @title, @slug, @bodyMarkdown, @bodyHtml, @excerpt, @contentWarning, @status,
           @heroMediaId, @createdAt, @publishedAt, @updatedAt
         )
       `).run({
@@ -69,6 +71,7 @@ export class PostRepository {
         description: input.description ?? null,
         location: input.location ?? null,
         date: input.date ?? null,
+        time: input.time ?? null,
         title: input.title ?? null,
         excerpt: input.excerpt ?? null,
         contentWarning: input.contentWarning ?? null,
@@ -161,6 +164,7 @@ export class PostRepository {
           description = @description,
           location = @location,
           date = @date,
+          time = @time,
           title = @title,
           slug = @slug,
           body_markdown = @bodyMarkdown,
@@ -185,10 +189,10 @@ export class PostRepository {
   private insertRevision(postId: string, revisionNumber: number, createdAt: string): void {
     this.database.prepare(`
       INSERT INTO post_revisions (
-        post_id, revision_number, description, location, date, title, slug, body_markdown, body_html, excerpt,
+        post_id, revision_number, description, location, date, time, title, slug, body_markdown, body_html, excerpt,
         content_warning, status, created_at
       )
-      SELECT id, ?, description, location, date, title, slug, body_markdown, body_html, excerpt, content_warning, status, ?
+      SELECT id, ?, description, location, date, time, title, slug, body_markdown, body_html, excerpt, content_warning, status, ?
       FROM posts WHERE id = ?
     `).run(revisionNumber, createdAt, postId);
   }

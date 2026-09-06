@@ -319,7 +319,7 @@ test('uses PNG rather than JPEG as the compatible fallback for transparency', as
   assert.ok(uploaded.renditions.every(({ format }) => format !== 'jpeg'));
 });
 
-test('converts profiled images to sRGB and strips private metadata from every rendition', async (t) => {
+test('does not promote embedded photo metadata and strips it from every rendition', async (t) => {
   const root = temporaryDirectory(t);
   const database = openContentDatabase(':memory:');
   t.after(() => database.close());
@@ -327,12 +327,13 @@ test('converts profiled images to sRGB and strips private metadata from every re
   posts.create({ id: 'profiled', slug: 'profiled', bodyMarkdown: '', bodyHtml: '' });
   const service = new MediaService(new MediaRepository(database), posts, path.join(root, 'media'));
   const privateMarker = 'private-location-marker';
+  const captureTime = '2026-09-06T14:35:00-04:00';
   const source = await sharp({
     create: { width: 800, height: 400, channels: 3, background: { r: 210, g: 70, b: 40 } },
   })
     .withIccProfile('p3')
-    .withExif({ IFD0: { Artist: privateMarker } })
-    .withXmp(`<x:xmpmeta xmlns:x="adobe:ns:meta/"><private>${privateMarker}</private></x:xmpmeta>`)
+    .withExif({ IFD0: { Artist: privateMarker, DateTime: '2026:09:06 14:35:00' } })
+    .withXmp(`<x:xmpmeta xmlns:x="adobe:ns:meta/" xmlns:exif="http://ns.adobe.com/exif/1.0/" xmlns:photoshop="http://ns.adobe.com/photoshop/1.0/"><exif:GPSLatitude>40.7128</exif:GPSLatitude><exif:GPSLongitude>-74.0060</exif:GPSLongitude><photoshop:DateCreated>${captureTime}</photoshop:DateCreated><private>${privateMarker}</private></x:xmpmeta>`)
     .jpeg()
     .toBuffer();
   const sourceMetadata = await sharp(source).metadata();
@@ -341,6 +342,13 @@ test('converts profiled images to sRGB and strips private metadata from every re
   assert.ok(sourceMetadata.xmp);
 
   const uploaded = await service.uploadImage({ postId: 'profiled', altText: 'Profiled image', buffer: source });
+  assert.equal(uploaded.location, null);
+  assert.equal(uploaded.date, null);
+  assert.equal(uploaded.time, null);
+  const parentPost = posts.getById('profiled')!;
+  assert.equal(parentPost.location, null);
+  assert.equal(parentPost.date, null);
+  assert.equal(parentPost.time, null);
   assert.ok(uploaded.renditions.some(({ format }) => format === 'avif'));
   assert.ok(uploaded.placeholder);
   for (const rendition of [...uploaded.renditions, uploaded.placeholder]) {

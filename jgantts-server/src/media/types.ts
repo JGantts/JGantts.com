@@ -28,6 +28,7 @@ export interface MediaRecord {
   description: string | null;
   location: string | null;
   date: number | null;
+  time: string | null;
   postId: string;
   originalPath: string;
   derivatives: MediaDerivatives;

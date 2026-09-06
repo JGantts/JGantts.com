@@ -62,6 +62,7 @@ export interface UpdateMediaMetadataInput {
   description?: unknown;
   location?: unknown;
   date?: unknown;
+  time?: unknown;
   focalX?: unknown;
   focalY?: unknown;
 }
@@ -112,6 +113,7 @@ function publicMedia(media: MediaRecord): PublicMedia {
     description: media.description,
     location: media.location,
     date: media.date,
+    time: media.time,
     altText: media.altText,
     caption: media.caption,
     focalX: media.focalX,
@@ -382,9 +384,12 @@ export class MediaService {
         height: metadata.autoOrient.height,
         byteSize: input.buffer.length,
         checksumSha256: expectedChecksum,
+        // Editorial metadata is author-owned. Never infer these values from
+        // EXIF/XMP (especially GPS coordinates or capture timestamps).
         description: null,
         location: null,
         date: null,
+        time: null,
         altText: input.altText,
         caption: null,
         focalX: null,
@@ -587,6 +592,7 @@ export class MediaService {
     const location = input.location === undefined
       ? current.location : optionalText(input.location, 'location', 500);
     const date = input.date === undefined ? current.date : validateEditorialDate(input.date);
+    const time = input.time === undefined ? current.time : validateEditorialTime(input.time);
     const focalX = input.focalX === undefined ? current.focalX : input.focalX;
     const focalY = input.focalY === undefined ? current.focalY : input.focalY;
     const validCoordinate = (value: unknown) => value === null
@@ -600,6 +606,7 @@ export class MediaService {
       description,
       location,
       date,
+      time,
       focalX: focalX as number | null,
       focalY: focalY as number | null,
     }, new Date().toISOString());
@@ -653,4 +660,12 @@ function validateEditorialDate(value: unknown): number | null {
     throw new PostInputError('date must be a valid YYYYMMDD integer or null.');
   }
   return value as number;
+}
+
+function validateEditorialTime(value: unknown): string | null {
+  if (value === null || value === '') return null;
+  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)) {
+    throw new PostInputError('time must use 24-hour HH:mm format or be null.');
+  }
+  return value;
 }

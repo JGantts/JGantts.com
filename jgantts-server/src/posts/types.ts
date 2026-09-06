@@ -5,6 +5,7 @@ export interface Post {
   description: string | null;
   location: string | null;
   date: number | null;
+  time: string | null;
   title: string | null;
   slug: string;
   bodyMarkdown: string;
@@ -23,6 +24,7 @@ export interface NewPost {
   description?: string | null;
   location?: string | null;
   date?: number | null;
+  time?: string | null;
   title?: string | null;
   slug: string;
   bodyMarkdown: string;
@@ -39,6 +41,7 @@ export interface PostChanges {
   description?: string | null;
   location?: string | null;
   date?: number | null;
+  time?: string | null;
   title?: string | null;
   slug?: string;
   bodyMarkdown?: string;

@@ -64,7 +64,13 @@ export class MastodonClient implements MastodonClientLike {
   }
 
   async getStatusContext(statusId: string): Promise<MastodonStatusContext> {
-    const response = await this.request(`/api/v1/statuses/${encodeURIComponent(statusId)}/context`);
+    // Public status threads do not require a user token. Keeping this request
+    // anonymous also lets comments continue loading if a publishing credential
+    // is rotated, revoked, or temporarily misconfigured.
+    const response = await this.request(
+      `/api/v1/statuses/${encodeURIComponent(statusId)}/context`,
+      { authenticated: false },
+    );
     const body = await response.json() as Partial<MastodonStatusContext>;
     if (!Array.isArray(body.ancestors) || !Array.isArray(body.descendants)) {
       throw new MastodonRequestError('Mastodon returned an invalid status context.', response.status);

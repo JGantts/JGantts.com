@@ -116,7 +116,7 @@ test('uses the Mastodon instance limit and sends authenticated idempotent status
   });
   assert.deepEqual(await client.getStatusContext('status/id'), { ancestors: [], descendants: [] });
   assert.equal(requests[2].url, 'https://mastodon.social/api/v1/statuses/status%2Fid/context');
-  assert.equal(requests[2].headers.get('authorization'), 'Bearer secret-token');
+  assert.equal(requests[2].headers.get('authorization'), null);
 });
 
 test('captures Mastodon rate-limit retry timing without exposing credentials', async () => {

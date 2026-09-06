@@ -320,13 +320,19 @@ function finishCommentsDrawerDrag(event: PointerEvent) {
   const handle = panel?.querySelector<HTMLElement>('.comments-drawer-handle')
   if (!panel || !handle) return
   const elapsed = Math.max(1, performance.now() - commentsDrawerPointerStartedAt)
-  const velocity = (event.clientY - commentsDrawerPointerStartY) / elapsed
+  const distance = event.clientY - commentsDrawerPointerStartY
+  const velocity = distance / elapsed
   const offsets = commentsDrawerOffsets(panel)
 
-  if (velocity < -0.35) {
+  // A bottom sheet should respond to an intentional swipe without requiring the
+  // user to drag through half of a tall viewport. Keep distance as a fallback
+  // for slower, deliberate swipes (especially useful with a thumb).
+  if (velocity < -0.35 || distance < -44) {
     commentsDrawerState.value = Math.min(2, commentsDrawerPointerStartState + 1) as 0 | 1 | 2
-  } else if (velocity > 0.35) {
+  } else if (velocity > 0.35 || distance > 44) {
     commentsDrawerState.value = Math.max(0, commentsDrawerPointerStartState - 1) as 0 | 1 | 2
+  } else if (Math.abs(distance) < 8 && elapsed < 350) {
+    commentsDrawerState.value = Math.min(2, commentsDrawerPointerStartState + 1) as 0 | 1 | 2
   } else {
     let nearestState: 0 | 1 | 2 = 0
     offsets.forEach((offset, index) => {
@@ -339,6 +345,15 @@ function finishCommentsDrawerDrag(event: PointerEvent) {
     })
     commentsDrawerState.value = nearestState
   }
+  commentsDrawerDragging.value = false
+  commentsDrawerDragOffset.value = 0
+  commentsDrawerDragProgress.value = commentsDrawerState.value > 0 ? 1 : 0
+  commentsDrawerPreviewHeight.value = 0
+}
+
+function cancelCommentsDrawerDrag() {
+  if (!commentsDrawerDragging.value) return
+  commentsDrawerState.value = commentsDrawerPointerStartState
   commentsDrawerDragging.value = false
   commentsDrawerDragOffset.value = 0
   commentsDrawerDragProgress.value = commentsDrawerState.value > 0 ? 1 : 0
@@ -642,10 +657,6 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
               :aria-hidden="activeTootIndex !== tootIndex || selectedPostVisibility <= 0.01"
               aria-label="Post comments"
               @wheel="handleCommentsDrawerWheel"
-              @pointerdown="commentsDrawerFull ? undefined : startCommentsDrawerDrag($event)"
-              @pointermove="commentsDrawerFull ? undefined : moveCommentsDrawer($event)"
-              @pointerup="commentsDrawerFull ? undefined : finishCommentsDrawerDrag($event)"
-              @pointercancel="commentsDrawerFull ? undefined : finishCommentsDrawerDrag($event)"
             >
                 <span
                   class="comments-drawer-grabber"
@@ -663,12 +674,16 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                   @pointerdown.stop="startCommentsDrawerDrag"
                   @pointermove.stop="moveCommentsDrawer"
                   @pointerup.stop="finishCommentsDrawerDrag"
-                  @pointercancel.stop="finishCommentsDrawerDrag"
+                  @pointercancel.stop="cancelCommentsDrawerDrag"
                 ></span>
 
               <div class="comments-drawer-scroll">
                 <div
                   class="comments-drawer-handle"
+                  @pointerdown="commentsDrawerFull ? undefined : startCommentsDrawerDrag($event)"
+                  @pointermove="commentsDrawerFull ? undefined : moveCommentsDrawer($event)"
+                  @pointerup="commentsDrawerFull ? undefined : finishCommentsDrawerDrag($event)"
+                  @pointercancel="commentsDrawerFull ? undefined : cancelCommentsDrawerDrag()"
                 >
                   <div class="comments-drawer-preview" v-html="toot.post.content"></div>
                 </div>
@@ -1400,7 +1415,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     right: max(0.5rem, env(safe-area-inset-right, 0px));
     top: auto;
     overflow-y: hidden;
-    touch-action: none;
+    touch-action: pan-y;
     width: auto;
     transform: translateY(var(--drawer-closed-offset));
     transition: transform 240ms cubic-bezier(0.22, 0.72, 0.22, 1), opacity 160ms ease;
@@ -1450,6 +1465,9 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     padding: 0.15rem 1rem 0.75rem;
     position: relative;
     transition: padding 240ms cubic-bezier(0.22, 0.72, 0.22, 1);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .comments-drawer-grabber {

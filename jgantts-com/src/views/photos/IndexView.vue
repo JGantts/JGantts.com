@@ -147,7 +147,6 @@ let commentsDrawerPointerStartOffset = 0
 let commentsDrawerPointerStartedAt = 0
 let commentsDrawerPointerStartState: 0 | 1 | 2 = 0
 let mobilePortraitDrawerQuery: MediaQueryList | null = null
-const commentsDrawerStateLabel = computed(() => ['Collapsed', 'Half expanded', 'Fully expanded'][commentsDrawerState.value])
 const activeToot = computed(() =>
   activeTootIndex.value === null ? null : allToots.value[activeTootIndex.value] ?? null,
 )
@@ -256,6 +255,13 @@ function stepCommentsDrawer(direction: -1 | 1) {
   commentsDrawerDragOffset.value = 0
 }
 
+function toggleCommentsDrawer() {
+  commentsDrawerState.value = commentsDrawerState.value === 2
+    ? 1
+    : Math.min(2, commentsDrawerState.value + 1) as 0 | 1 | 2
+  commentsDrawerDragOffset.value = 0
+}
+
 function commentsDrawerOffsets(panel: HTMLElement) {
   const handle = panel.querySelector<HTMLElement>('.comments-drawer-handle')
   const collapsedHeight = handle?.offsetHeight ?? 72
@@ -314,9 +320,7 @@ function finishCommentsDrawerDrag(event: PointerEvent) {
   } else if (velocity > 0.35 || distance > 44) {
     commentsDrawerState.value = Math.max(0, commentsDrawerPointerStartState - 1) as 0 | 1 | 2
   } else if (Math.abs(distance) < 8 && elapsed < 350) {
-    commentsDrawerState.value = commentsDrawerPointerStartState === 2
-      ? 1
-      : Math.min(2, commentsDrawerPointerStartState + 1) as 0 | 1 | 2
+    toggleCommentsDrawer()
   } else {
     let nearestState: 0 | 1 | 2 = 0
     offsets.forEach((offset, index) => {
@@ -574,6 +578,11 @@ function formatCount(value: number): string {
   return numberFormatter.format(value)
 }
 
+function commentCountLabel(postId: string): string {
+  const count = replyCountsByPostId.value.get(postId) ?? 0
+  return `${formatCount(count)} ${count === 1 ? 'comment' : 'comments'}`
+}
+
 function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): number {
   if (!poll.votes_count) {
     return 0
@@ -633,48 +642,58 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
             >
               <div
                 class="comments-drawer-handle"
-                role="slider"
-                tabindex="0"
-                aria-label="Comments panel position"
-                aria-valuemin="0"
-                aria-valuemax="2"
-                :aria-valuenow="commentsDrawerState"
-                :aria-valuetext="commentsDrawerStateLabel"
-                @keydown.up.prevent="stepCommentsDrawer(1)"
-                @keydown.right.prevent="stepCommentsDrawer(1)"
-                @keydown.down.prevent="stepCommentsDrawer(-1)"
-                @keydown.left.prevent="stepCommentsDrawer(-1)"
                 @pointerdown="startCommentsDrawerDrag"
                 @pointermove="moveCommentsDrawer"
                 @pointerup="finishCommentsDrawerDrag"
                 @pointercancel="cancelCommentsDrawerDrag"
               >
                 <span class="comments-drawer-grabber" aria-hidden="true"></span>
-                <span class="comments-drawer-label">
-                  <strong>Comments</strong>
-                  <span>{{ formatCount(replyCountsByPostId.get(toot.post.id) ?? 0) }}</span>
-                </span>
-                <svg class="comments-drawer-chevron" aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="m6 15 6-6 6 6" />
-                </svg>
+                <div class="comments-drawer-post">
+                  <div class="comments-drawer-post-summary" v-html="toot.post.content"></div>
+                  <time
+                    v-if="!toot.post.id.startsWith('local:')"
+                    class="comments-drawer-post-date"
+                    :datetime="toot.post.created_at"
+                  >
+                    {{ formatDate(toot.post.created_at) }}
+                  </time>
+                  <span class="comments-drawer-comments-meta">
+                    {{ commentCountLabel(toot.post.id) }}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  class="comments-drawer-toggle"
+                  :aria-label="commentsDrawerFull ? 'Collapse comments panel' : 'Expand comments panel'"
+                  @click.stop="toggleCommentsDrawer"
+                  @keydown.up.prevent="stepCommentsDrawer(1)"
+                  @keydown.right.prevent="stepCommentsDrawer(1)"
+                  @keydown.down.prevent="stepCommentsDrawer(-1)"
+                  @keydown.left.prevent="stepCommentsDrawer(-1)"
+                  @pointerdown.stop
+                >
+                  <svg class="comments-drawer-chevron" aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="m6 15 6-6 6 6" />
+                  </svg>
+                </button>
               </div>
+
+              <button
+                type="button"
+                class="comments-close"
+                aria-label="Close comments"
+                @click="clearSelection"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
 
               <div
                 class="comments-drawer-scroll"
                 :aria-hidden="mobilePortraitDrawer && !commentsDrawerOpen"
                 :inert="mobilePortraitDrawer && !commentsDrawerOpen"
               >
-                <button
-                  type="button"
-                  class="comments-close"
-                  aria-label="Close comments"
-                  @click="clearSelection"
-                >
-                  <svg aria-hidden="true" viewBox="0 0 24 24">
-                    <path d="M6 6l12 12M18 6 6 18" />
-                  </svg>
-                </button>
-
                 <div class="comments-panel-heading" v-memo="[toot.post.id]">
                   <header class="post-meta-header">
                     <a :href="toot.post.account.url" class="author-link">
@@ -1374,7 +1393,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
 @media (max-width: 44rem) and (orientation: portrait) {
   .comments-section {
-    --drawer-handle-height: 4.5rem;
+    --drawer-handle-height: 7.25rem;
     --drawer-closed-offset: calc(100% - var(--drawer-handle-height) - env(safe-area-inset-bottom, 0px));
 
     border-radius: 1.1rem 1.1rem 0 0;
@@ -1446,13 +1465,13 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     color: var(--photos-text);
     cursor: grab;
     display: grid;
-    gap: 0.15rem 0.65rem;
+    gap: 0.1rem 0.65rem;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: 1rem minmax(0, 1fr);
     margin: 0;
     height: var(--drawer-handle-height);
     min-height: 0;
-    padding: 0 1rem 0.55rem;
+    padding: 0 1rem 0.7rem;
     position: relative;
     touch-action: none;
     user-select: none;
@@ -1475,35 +1494,96 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     cursor: grabbing;
   }
 
-  .comments-drawer-handle:focus-visible {
-    outline: 2px solid var(--photos-accent);
-    outline-offset: -2px;
-  }
-
-  .comments-drawer-label {
-    align-items: baseline;
-    align-self: center;
-    display: flex;
-    gap: 0.55rem;
+  .comments-drawer-post {
+    align-self: stretch;
+    display: grid;
+    gap: 0.18rem;
+    grid-template-columns: minmax(0, 1fr) auto;
     min-width: 0;
+    overflow: hidden;
   }
 
-  .comments-drawer-label strong {
+  .comments-drawer-post-summary {
+    font-size: 0.85rem;
+    grid-column: 1 / -1;
+    line-height: 1.3;
+    max-height: 4.35rem;
+    overflow: hidden;
+  }
+
+  .comments-drawer-post-summary :deep(p) {
+    margin: 0;
+  }
+
+  .comments-drawer-post-summary :deep(.local-post-overlay) {
+    display: grid;
+    gap: 0.08rem;
+  }
+
+  .comments-drawer-post-summary :deep(.local-post-title) {
     font-size: 1rem;
     font-weight: 850;
   }
 
-  .comments-drawer-label span {
+  .comments-drawer-post-summary :deep(.local-post-location),
+  .comments-drawer-post-summary :deep(.local-post-datetime),
+  .comments-drawer-post-date,
+  .comments-drawer-comments-meta {
     color: var(--photos-muted);
     font-family: 'Azeret Mono Variable', monospace;
-    font-size: 0.75rem;
+    font-size: 0.62rem;
+    line-height: 1.25;
+  }
+
+  .comments-drawer-post-date {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .comments-drawer-comments-meta {
+    color: var(--photos-accent);
+    font-weight: 700;
+    justify-self: end;
+  }
+
+  .comments-drawer-post-summary :deep(a) {
+    color: inherit;
+    pointer-events: none;
+    text-decoration: none;
+  }
+
+  .comments-drawer-post-summary :deep(img) {
+    height: 1em;
+    vertical-align: -0.1em;
+    width: 1em;
+  }
+
+  .comments-drawer-toggle {
+    align-self: center;
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    color: var(--photos-muted);
+    cursor: pointer;
+    display: inline-grid;
+    height: 2rem;
+    justify-content: center;
+    padding: 0;
+    place-items: center;
+    touch-action: manipulation;
+    width: 2rem;
+  }
+
+  .comments-drawer-toggle:focus-visible {
+    outline: 2px solid var(--photos-accent);
+    outline-offset: 1px;
   }
 
   .comments-drawer-chevron {
-    align-self: center;
     fill: none;
     height: 1.15rem;
-    stroke: var(--photos-muted);
+    stroke: currentColor;
     stroke-linecap: round;
     stroke-linejoin: round;
     stroke-width: 2;
@@ -1516,26 +1596,27 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   }
 
   .comments-panel-heading {
-    border-bottom: 1px solid color-mix(in srgb, var(--photos-border) 70%, transparent);
-    display: grid;
-    margin: 0 -0.85rem;
-    padding: 0.75rem 3.75rem 1rem 1rem;
-  }
-
-  .comments-post-text {
-    max-height: none;
-    overflow: visible;
+    display: none;
   }
 
   .comments-header {
     margin-top: 0;
+    padding-right: 3.5rem;
     top: -0.4rem;
+  }
+
+  .comments-header span {
+    display: none;
   }
 
   .comments-close {
     display: inline-flex;
     right: 0.85rem;
-    top: calc(var(--drawer-handle-height) + 0.85rem);
+    top: calc(var(--drawer-handle-height) + 0.45rem);
+  }
+
+  .comments-section:not(.is-drawer-open) .comments-close {
+    display: none;
   }
 }
 

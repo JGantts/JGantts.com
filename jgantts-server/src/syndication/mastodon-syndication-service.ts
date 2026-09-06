@@ -42,8 +42,8 @@ export function buildPostTeaser(post: Pick<Post, 'title' | 'location' | 'date' |
   }
   if (post.time) {
     const hour = Number(post.time.slice(0, 2));
-    const period = hour < 5 ? 'night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
-    const formattedTime = `${post.time} in the ${period}`;
+    const period = hour === 0 || hour === 24 ? 'midnight' : hour < 5 ? 'at night' : hour < 12 ? 'in the morning' : hour === 12 ? 'noon' : hour < 17 ? 'in the afternoon' : hour < 21 ? 'in the evening' : 'at night';
+    const formattedTime = `${post.time} ${period}`;
     dateAndTime = dateAndTime ? `${dateAndTime}, ${formattedTime}` : formattedTime;
   }
   return [post.title, post.location, dateAndTime].filter(Boolean).join('\n').slice(0, MAX_TEASER_SOURCE_LENGTH);

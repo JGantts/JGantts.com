@@ -10,11 +10,13 @@ function ordinalSuffix(day: number): string {
 
 function dayPeriod(time: string): string {
   const hour = Number(time.slice(0, 2))
-  if (hour < 5) return 'night'
-  if (hour < 12) return 'morning'
-  if (hour < 17) return 'afternoon'
-  if (hour < 21) return 'evening'
-  return 'night'
+  if (hour === 0 || hour === 24) return 'midnight'
+  if (hour < 5) return 'at night'
+  if (hour < 12) return 'in the morning'
+  if (hour === 12) return 'noon'
+  if (hour < 17) return 'in the afternoon'
+  if (hour < 21) return 'in the evening'
+  return 'at night'
 }
 
 export function formatEditorialDateTime(date: number | null, time: string | null): string | null {
@@ -29,7 +31,7 @@ export function formatEditorialDateTime(date: number | null, time: string | null
     formatted = `${year}, ${monthName} ${day}${ordinalSuffix(day)}`
   }
   if (time) {
-    const formattedTime = `${time} in the ${dayPeriod(time)}`
+    const formattedTime = `${time} ${dayPeriod(time)}`
     formatted = formatted ? `${formatted}, ${formattedTime}` : formattedTime
   }
   return formatted || null

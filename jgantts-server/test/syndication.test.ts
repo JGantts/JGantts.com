@@ -75,6 +75,13 @@ test('builds a conservative Mastodon teaser within the instance limit', () => {
   assert.equal(buildMastodonStatus('Title\nLocation', url, 100), `Title\nLocation\n\n${url}`);
   assert.equal(buildPostTeaser({ title: 'Title', location: 'New York, NY', date: 20260904, time: '13:30' }),
     'Title\nNew York, NY\n2026, September 4th, 13:30 in the afternoon');
+  assert.equal(buildPostTeaser({ title: null, location: null, date: null, time: '04:00' }), '04:00 at night');
+  assert.equal(buildPostTeaser({ title: null, location: null, date: null, time: '00:00' }), '00:00 midnight');
+  assert.equal(buildPostTeaser({ title: null, location: null, date: null, time: '24:00' }), '24:00 midnight');
+  assert.equal(buildPostTeaser({ title: null, location: null, date: null, time: '09:15' }), '09:15 in the morning');
+  assert.equal(buildPostTeaser({ title: null, location: null, date: null, time: '12:00' }), '12:00 noon');
+  assert.equal(buildPostTeaser({ title: null, location: null, date: null, time: '18:20' }), '18:20 in the evening');
+  assert.equal(buildPostTeaser({ title: null, location: null, date: null, time: '21:45' }), '21:45 at night');
 });
 
 test('uses the Mastodon instance limit and sends authenticated idempotent status requests', async () => {

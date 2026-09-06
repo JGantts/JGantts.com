@@ -105,7 +105,7 @@ export function createAdminMediaRouter(media: MediaService): express.Router {
       if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
         throw Object.assign(new Error('Request body must be an object.'), { status: 400 });
       }
-      const allowed = new Set(['altText', 'caption', 'description', 'location', 'date', 'focalX', 'focalY']);
+      const allowed = new Set(['altText', 'caption', 'location', 'date', 'focalX', 'focalY']);
       const unknown = Object.keys(req.body).find((field) => !allowed.has(field));
       if (unknown) throw Object.assign(new Error(`Unknown media field: ${unknown}`), { status: 400 });
       const result = media.updateMetadata(req.params.id, req.body);

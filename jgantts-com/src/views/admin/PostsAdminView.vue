@@ -4,21 +4,17 @@ import { AdminApiError, adminRequest, createAdminSession, deleteAdminSession, js
 import type { PostMedia } from '@/posts/types'
 
 type AdminPost = {
-  description: string | null
   location: string | null
   date: number | null
   bodyHtml: string
   bodyMarkdown: string
-  contentWarning: string | null
   createdAt: string
-  excerpt: string | null
   heroMediaId: string | null
   id: string
   media: PostMedia[]
   publishedAt: string | null
   slug: string
   status: 'draft' | 'published' | 'archived'
-  title: string | null
   updatedAt: string
 }
 
@@ -51,7 +47,7 @@ type UploadQueueItem = {
 }
 const uploadQueue = ref<UploadQueueItem[]>([])
 const uploadRunning = ref(false)
-const mediaDrafts = reactive<Record<string, { altText: string; caption: string; description: string; location: string; date: string }>>({})
+const mediaDrafts = reactive<Record<string, { altText: string; caption: string; location: string; date: string }>>({})
 const mediaSavingId = ref<string | null>(null)
 const orderSaving = ref(false)
 const draggedMediaId = ref<string | null>(null)
@@ -60,14 +56,9 @@ const teaser = ref('')
 let previewTimer: ReturnType<typeof setTimeout> | null = null
 
 const form = reactive({
-  description: '',
   location: '',
   date: '',
   bodyMarkdown: '',
-  contentWarning: '',
-  excerpt: '',
-  slug: '',
-  title: '',
 })
 
 const selected = computed(() => posts.value.find((post) => post.id === selectedId.value) ?? null)
@@ -90,21 +81,16 @@ function message(value: unknown): string {
 
 function copyToForm(post: AdminPost) {
   selectedId.value = post.id
-  form.description = post.description ?? ''
   form.location = post.location ?? ''
   form.date = post.date?.toString() ?? ''
-  form.title = post.title ?? ''
-  form.slug = post.slug
-  form.excerpt = post.excerpt ?? ''
-  form.contentWarning = post.contentWarning ?? ''
   form.bodyMarkdown = post.bodyMarkdown
   previewHtml.value = post.bodyHtml
-  teaser.value = post.excerpt ?? post.title ?? ''
+  teaser.value = ''
   notice.value = ''
   error.value = ''
   syndication.value = null
   post.media.forEach((item) => {
-    mediaDrafts[item.id] = { altText: item.altText, caption: item.caption ?? '', description: item.description ?? '', location: item.location ?? '', date: item.date?.toString() ?? '' }
+    mediaDrafts[item.id] = { altText: item.altText, caption: item.caption ?? '', location: item.location ?? '', date: item.date?.toString() ?? '' }
   })
   if (post.status === 'published') void loadSyndication(post.id)
 }
@@ -152,13 +138,8 @@ async function signOut() {
   posts.value = []
   selectedId.value = null
   tokenInput.value = ''
-  form.title = ''
-  form.description = ''
   form.location = ''
   form.date = ''
-  form.slug = ''
-  form.excerpt = ''
-  form.contentWarning = ''
   form.bodyMarkdown = ''
   previewHtml.value = ''
 }
@@ -185,14 +166,9 @@ async function loadPosts() {
 
 function authorBody() {
   return {
-    description: form.description.trim() || null,
     location: form.location.trim() || null,
     date: form.date ? Number(form.date) : null,
     bodyMarkdown: form.bodyMarkdown,
-    contentWarning: form.contentWarning.trim() || null,
-    excerpt: form.excerpt.trim() || null,
-    slug: form.slug.trim(),
-    title: form.title.trim() || null,
   }
 }
 
@@ -209,7 +185,7 @@ function replaceMedia(updated: PostMedia) {
   const media = post.media.map((item) => item.id === updated.id ? updated : item)
   const index = posts.value.findIndex(({ id }) => id === post.id)
   if (index !== -1) posts.value.splice(index, 1, { ...post, media })
-  mediaDrafts[updated.id] = { altText: updated.altText, caption: updated.caption ?? '', description: updated.description ?? '', location: updated.location ?? '', date: updated.date?.toString() ?? '' }
+  mediaDrafts[updated.id] = { altText: updated.altText, caption: updated.caption ?? '', location: updated.location ?? '', date: updated.date?.toString() ?? '' }
 }
 
 async function saveMedia(item: PostMedia) {
@@ -220,7 +196,7 @@ async function saveMedia(item: PostMedia) {
   try {
     const updated = await adminRequest<PostMedia>(
       `/api/admin/media/${item.id}`,
-      jsonRequest('PATCH', { altText: draft.altText, caption: draft.caption.trim() || null, description: draft.description.trim() || null, location: draft.location.trim() || null, date: draft.date ? Number(draft.date) : null, focalX: item.focalX, focalY: item.focalY }),
+      jsonRequest('PATCH', { altText: draft.altText, caption: draft.caption.trim() || null, location: draft.location.trim() || null, date: draft.date ? Number(draft.date) : null, focalX: item.focalX, focalY: item.focalY }),
     )
     replaceMedia(updated)
     notice.value = 'Photo details saved.'
@@ -605,7 +581,7 @@ onBeforeUnmount(() => {
             type="button"
             @click="copyToForm(post)"
           >
-            <strong>{{ post.title || post.slug }}</strong>
+            <strong>{{ post.slug }}</strong>
             <span>{{ post.status }} · {{ post.slug }}</span>
           </button>
           <p v-if="!posts.length">No saved posts yet.</p>
@@ -641,7 +617,6 @@ onBeforeUnmount(() => {
                   </div>
                   <label>Alt text <textarea v-model="mediaDrafts[item.id].altText" maxlength="2000" rows="2" required></textarea></label>
                   <label>Caption <textarea v-model="mediaDrafts[item.id].caption" maxlength="5000" rows="2"></textarea></label>
-                  <label>Description <textarea v-model="mediaDrafts[item.id].description" maxlength="5000" rows="2"></textarea></label>
                   <label>Location <input v-model="mediaDrafts[item.id].location" maxlength="500"></label>
                   <label>Date <input v-model="mediaDrafts[item.id].date" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" placeholder="YYYYMMDD"></label>
                   <button :disabled="mediaSavingId === item.id || !mediaDrafts[item.id].altText.trim()" type="button" @click="saveMedia(item)">
@@ -683,13 +658,8 @@ onBeforeUnmount(() => {
               <span class="status-chip">{{ selected?.status || 'unsaved' }}</span>
               <a v-if="selected?.status === 'published'" :href="`/posts/${selected.slug}`" target="_blank">View post ↗</a>
             </div>
-            <label>Title <input v-model="form.title" maxlength="200"></label>
-            <label>Slug <input v-model="form.slug" maxlength="100" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required></label>
-            <label>Description <textarea v-model="form.description" maxlength="5000" rows="3"></textarea></label>
             <label>Location <input v-model="form.location" maxlength="500"></label>
             <label>Date <input v-model="form.date" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" placeholder="YYYYMMDD"></label>
-            <label>Excerpt <textarea v-model="form.excerpt" maxlength="5000" rows="2"></textarea></label>
-            <label>Content note <input v-model="form.contentWarning" maxlength="500"></label>
             <label>Body (Markdown) <textarea v-model="form.bodyMarkdown" class="markdown-editor" maxlength="100000" required></textarea></label>
             <div class="editor-actions">
               <button :disabled="busy" type="submit">{{ busy ? 'Working…' : selectedId ? 'Save changes' : 'Create draft' }}</button>

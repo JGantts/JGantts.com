@@ -30,8 +30,8 @@ function initialPost(): CanonicalPost | null {
 }
 
 function updateDocumentMeta(value: CanonicalPost) {
-  const title = value.title || 'Post by Jacob Gantt'
-  const description = value.excerpt || 'A post from Jacob Gantt on JGantts.com.'
+  const title = value.location || 'Post by Jacob Gantt'
+  const description = 'A post from Jacob Gantt on JGantts.com.'
   const image = (value.media.find((item) => item.id === value.heroMediaId) ?? value.media[0])?.urls.large
   const canonicalUrl = new URL(`/posts/${value.slug}`, window.location.origin).toString()
   const setMeta = (attribute: 'name' | 'property', key: string, content: string) => {
@@ -170,14 +170,10 @@ watch(() => props.slug, loadPost)
     <article v-else-if="post" class="post">
       <header class="post-header">
         <RouterLink class="back-link" to="/posts">← All posts</RouterLink>
-        <h1>{{ post.title || 'Post by Jacob Gantt' }}</h1>
-        <p v-if="post.excerpt" class="post-excerpt">{{ post.excerpt }}</p>
+        <h1>{{ post.location || 'Post by Jacob Gantt' }}</h1>
         <time :datetime="post.publishedAt">{{ dateFormatter.format(new Date(post.publishedAt)) }}</time>
       </header>
 
-      <p v-if="post.contentWarning" class="content-warning">
-        <strong>Content note:</strong> {{ post.contentWarning }}
-      </p>
 
       <div v-if="post.media.length" class="post-media">
         <a

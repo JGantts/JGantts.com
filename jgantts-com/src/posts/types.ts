@@ -1,5 +1,4 @@
 export type PostMedia = {
-  description: string | null
   location: string | null
   date: number | null
   altText: string
@@ -47,18 +46,14 @@ export type PostMedia = {
 }
 
 export type CanonicalPost = {
-  description: string | null
   location: string | null
   date: number | null
   bodyHtml: string
-  contentWarning: string | null
-  excerpt: string | null
   heroMediaId: string | null
   id: string
   media: PostMedia[]
   publishedAt: string
   slug: string
-  title: string | null
   updatedAt: string
 }
 

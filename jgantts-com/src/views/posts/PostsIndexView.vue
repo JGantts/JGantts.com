@@ -53,8 +53,7 @@ onMounted(() => loadPosts())
           :src="post.media[0].urls.thumbnail"
         >
         <span class="post-card-copy">
-          <strong>{{ post.title || post.excerpt || 'Post by Jacob Gantt' }}</strong>
-          <span v-if="post.title && post.excerpt">{{ post.excerpt }}</span>
+          <strong>{{ post.location || 'Post by Jacob Gantt' }}</strong>
           <time :datetime="post.publishedAt">{{ formatter.format(new Date(post.publishedAt)) }}</time>
         </span>
       </RouterLink>

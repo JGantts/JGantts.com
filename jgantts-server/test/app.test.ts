@@ -347,10 +347,9 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
     siteOrigin: 'https://jgantts.com',
   });
   const body = JSON.stringify({
-    slug: 'first-local-post',
-    title: 'First local post',
     bodyMarkdown: '# Hello\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(2)) **world**',
-    excerpt: 'A first post',
+    location: 'New York',
+    date: 20260906,
   });
 
   assert.equal((await request(app, '/api/admin/posts', {
@@ -399,12 +398,12 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
     method: 'POST',
   });
   assert.equal(createdResponse.status, 201);
-  const created = JSON.parse(createdResponse.body) as { bodyHtml: string; id: string; status: string };
+  const created = JSON.parse(createdResponse.body) as { bodyHtml: string; id: string; slug: string; status: string };
   assert.equal(created.status, 'draft');
   assert.match(created.bodyHtml, /<h1>Hello<\/h1>/);
   assert.match(created.bodyHtml, /<strong>world<\/strong>/);
   assert.doesNotMatch(created.bodyHtml, /script|javascript:/i);
-  assert.equal((await request(app, '/api/posts/first-local-post')).status, 404);
+  assert.equal((await request(app, `/api/posts/${created.slug}`)).status, 404);
 
   const listResponse = await request(app, '/api/admin/posts', {
     headers: { authorization: 'Bearer test-admin-secret' },
@@ -417,7 +416,7 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
     headers: { authorization: 'Bearer test-admin-secret' },
   });
   assert.equal(getResponse.status, 200);
-  assert.equal(JSON.parse(getResponse.body).slug, 'first-local-post');
+  assert.equal(JSON.parse(getResponse.body).slug, created.slug);
 
   const emptyDraftResponse = await request(app, '/api/admin/posts/empty', {
     headers: { authorization: 'Bearer test-admin-secret' },
@@ -451,7 +450,7 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.doesNotMatch(JSON.parse(previewResponse.body).bodyHtml, /script|bad\(\)/i);
 
   const updatedResponse = await request(app, `/api/admin/posts/${created.id}`, {
-    body: JSON.stringify({ slug: 'canonical-local-post', bodyMarkdown: 'Updated' }),
+    body: JSON.stringify({ bodyMarkdown: 'Updated' }),
     headers: {
       authorization: 'Bearer test-admin-secret',
       'content-type': 'application/json',
@@ -467,8 +466,7 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   });
   assert.equal(publishedResponse.status, 200);
   assert.equal(JSON.parse(publishedResponse.body).status, 'published');
-  assert.equal((await request(app, '/api/posts/canonical-local-post')).status, 200);
-  assert.equal((await request(app, '/api/posts/first-local-post')).status, 200);
+  assert.equal((await request(app, `/api/posts/${created.slug}`)).status, 200);
 
   const unpublishedResponse = await request(app, `/api/admin/posts/${created.id}/unpublish`, {
     headers: { authorization: 'Bearer test-admin-secret' },
@@ -476,7 +474,7 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   });
   assert.equal(unpublishedResponse.status, 200);
   assert.equal(JSON.parse(unpublishedResponse.body).status, 'draft');
-  assert.equal((await request(app, '/api/posts/canonical-local-post')).status, 404);
+  assert.equal((await request(app, `/api/posts/${created.slug}`)).status, 404);
 
   const archivedResponse = await request(app, `/api/admin/posts/${created.id}/archive`, {
     headers: { authorization: 'Bearer test-admin-secret' },

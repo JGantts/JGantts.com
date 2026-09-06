@@ -15,12 +15,9 @@ export interface PublicPostPage {
 export interface AuthorPostInput {
   bodyMarkdown: string;
   date?: number | null;
-  description?: string | null;
   location?: string | null;
-  contentWarning?: string | null;
-  excerpt?: string | null;
-  slug: string;
-  title?: string | null;
+  /** Internal compatibility hook. The authoring API always generates this. */
+  slug?: string;
 }
 
 export type AuthorPostChanges = Partial<AuthorPostInput>;
@@ -41,6 +38,19 @@ function validateSlug(value: unknown): string {
     throw new PostInputError('slug must contain lowercase letters, numbers, and single hyphens only.');
   }
   return slug;
+}
+
+function slugifyBody(bodyMarkdown: string): string {
+  const plainText = bodyMarkdown
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/<[^>]+>|[`*_~>#]/g, ' ')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase()
+    .slice(0, 80)
+    .replace(/-+$/g, '');
+  return plainText || 'post';
 }
 
 function validateDate(value: unknown): number | null {
@@ -90,20 +100,17 @@ export class PostService {
   }
 
   createDraft(input: AuthorPostInput): Post {
-    const slug = validateSlug(input.slug);
-    if (this.posts.getBySlug(slug)) throw new PostConflictError('That post slug is already in use.');
     const bodyMarkdown = validateText(input.bodyMarkdown, 'bodyMarkdown', 100_000, true) as string;
+    const baseSlug = input.slug ? validateSlug(input.slug) : slugifyBody(bodyMarkdown);
+    let slug = baseSlug;
+    for (let suffix = 2; this.posts.getBySlug(slug); suffix += 1) slug = `${baseSlug}-${suffix}`;
     return this.posts.create({
       id: randomUUID(),
-      description: validateText(input.description ?? null, 'description', 5_000, false),
       location: validateText(input.location ?? null, 'location', 500, false),
       date: validateDate(input.date),
-      title: validateText(input.title ?? null, 'title', 200, false),
       slug,
       bodyMarkdown,
       bodyHtml: renderPostMarkdown(bodyMarkdown),
-      excerpt: validateText(input.excerpt ?? null, 'excerpt', 5_000, false),
-      contentWarning: validateText(input.contentWarning ?? null, 'contentWarning', 500, false),
     });
   }
 
@@ -162,12 +169,8 @@ export class PostService {
   updateFromAuthor(id: string, changes: AuthorPostChanges): Post | null {
     if (Object.keys(changes).length === 0) throw new PostInputError('At least one post field is required.');
     const repositoryChanges: PostChanges = {};
-    if ('description' in changes) repositoryChanges.description = validateText(changes.description, 'description', 5_000, false);
     if ('location' in changes) repositoryChanges.location = validateText(changes.location, 'location', 500, false);
     if ('date' in changes) repositoryChanges.date = validateDate(changes.date);
-    if ('title' in changes) {
-      repositoryChanges.title = validateText(changes.title, 'title', 200, false);
-    }
     if ('slug' in changes) {
       const slug = validateSlug(changes.slug);
       const existing = this.posts.getBySlug(slug);
@@ -178,17 +181,13 @@ export class PostService {
       const bodyMarkdown = validateText(changes.bodyMarkdown, 'bodyMarkdown', 100_000, true) as string;
       repositoryChanges.bodyMarkdown = bodyMarkdown;
       repositoryChanges.bodyHtml = renderPostMarkdown(bodyMarkdown);
-    }
-    if ('excerpt' in changes) {
-      repositoryChanges.excerpt = validateText(changes.excerpt, 'excerpt', 5_000, false);
-    }
-    if ('contentWarning' in changes) {
-      repositoryChanges.contentWarning = validateText(
-        changes.contentWarning,
-        'contentWarning',
-        500,
-        false,
-      );
+      const current = this.posts.getById(id);
+      if (current && current.slug === current.id) {
+        const baseSlug = slugifyBody(bodyMarkdown);
+        let slug = baseSlug;
+        for (let suffix = 2; this.posts.getBySlug(slug); suffix += 1) slug = `${baseSlug}-${suffix}`;
+        repositoryChanges.slug = slug;
+      }
     }
     return this.posts.update(id, repositoryChanges);
   }

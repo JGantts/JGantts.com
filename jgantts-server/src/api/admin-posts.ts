@@ -3,7 +3,7 @@ import type { AuthorPostChanges, AuthorPostInput, PostService } from '../posts/p
 import type { MediaService } from '../media/media-service';
 import type { MastodonSyndicationService } from '../syndication/mastodon-syndication-service';
 
-const AUTHOR_FIELDS = new Set(['slug', 'title', 'bodyMarkdown', 'excerpt', 'contentWarning', 'description', 'location', 'date']);
+const AUTHOR_FIELDS = new Set(['bodyMarkdown', 'location', 'date']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -13,8 +13,8 @@ function parseBody(value: unknown, partial: boolean): AuthorPostInput | AuthorPo
   if (!isRecord(value)) throw Object.assign(new Error('Request body must be an object.'), { status: 400 });
   const unknownField = Object.keys(value).find((field) => !AUTHOR_FIELDS.has(field));
   if (unknownField) throw Object.assign(new Error(`Unknown post field: ${unknownField}`), { status: 400 });
-  if (!partial && (!('slug' in value) || !('bodyMarkdown' in value))) {
-    throw Object.assign(new Error('slug and bodyMarkdown are required.'), { status: 400 });
+  if (!partial && !('bodyMarkdown' in value)) {
+    throw Object.assign(new Error('bodyMarkdown is required.'), { status: 400 });
   }
   return value as unknown as AuthorPostInput | AuthorPostChanges;
 }

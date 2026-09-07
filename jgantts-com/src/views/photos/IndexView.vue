@@ -156,6 +156,10 @@ let mobilePortraitDrawerQuery: MediaQueryList | null = null
 const activeToot = computed(() =>
   activeTootIndex.value === null ? null : allToots.value[activeTootIndex.value] ?? null,
 )
+const activeSharePhotoUrl = computed(() => {
+  const attachment = activeToot.value?.post.media_attachments.find((item) => item.type === 'image')
+  return attachment?.url || attachment?.preview_url || ''
+})
 const allToots = computed(() => [...toots.value.filter((toot): toot is TootThread => Boolean(toot)), ...localThreads.value])
 const photoPosts = computed(() => allToots.value.map((toot) => toot.post))
 const initiallyFeaturedPostId = computed(() => {
@@ -930,23 +934,37 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
       aria-labelledby="photo-qr-dialog-title"
       @click="closeQrFromBackdrop"
     >
+      <img
+        v-if="activeSharePhotoUrl"
+        :src="activeSharePhotoUrl"
+        alt=""
+        class="photo-qr-dialog-backdrop"
+        aria-hidden="true"
+        @click="closeQrFullscreen"
+      >
       <div class="photo-qr-dialog-content">
-        <header>
-          <div>
-            <h2 id="photo-qr-dialog-title">Scan this photo post</h2>
-            <p>Point a phone camera at the code to open it.</p>
+        <figure v-if="activeSharePhotoUrl" class="photo-qr-dialog-photo">
+          <img :src="activeSharePhotoUrl" alt="The photo being shared">
+          <figcaption>{{ activeToot ? photoShareTitle(activeToot.post) : 'Photo by Jacob Gantt' }}</figcaption>
+        </figure>
+        <div class="photo-qr-dialog-share">
+          <header>
+            <div>
+              <h2 id="photo-qr-dialog-title">Scan to view this photo</h2>
+              <p>Point a phone camera at the code.</p>
+            </div>
+            <button type="button" class="photo-qr-dialog-close" aria-label="Close full-screen QR code" @click="closeQrFullscreen">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
+            </button>
+          </header>
+          <img v-if="shareQrCodeUrl" :src="shareQrCodeUrl" alt="QR code for this photo post" class="photo-qr-dialog-code">
+          <p v-if="activeToot" class="photo-qr-dialog-url">{{ photoShareUrl(activeToot.post) }}</p>
+          <div v-if="activeToot" class="photo-qr-dialog-actions">
+            <button type="button" @click="copyPhotoShareLink(activeToot.post)">Copy link</button>
+            <a :href="shareQrCodeUrl" :download="`${photoRouteId(activeToot.post)}-qr-code.png`">Download QR code</a>
           </div>
-          <button type="button" class="photo-qr-dialog-close" aria-label="Close full-screen QR code" @click="closeQrFullscreen">
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
-          </button>
-        </header>
-        <img v-if="shareQrCodeUrl" :src="shareQrCodeUrl" alt="QR code for this photo post">
-        <p v-if="activeToot" class="photo-qr-dialog-url">{{ photoShareUrl(activeToot.post) }}</p>
-        <div v-if="activeToot" class="photo-qr-dialog-actions">
-          <button type="button" @click="copyPhotoShareLink(activeToot.post)">Copy link</button>
-          <a :href="shareQrCodeUrl" :download="`${photoRouteId(activeToot.post)}-qr-code.png`">Download QR code</a>
+          <p class="photo-qr-dialog-status" role="status" aria-live="polite">{{ shareCopyStatus }}</p>
         </div>
-        <p class="photo-qr-dialog-status" role="status" aria-live="polite">{{ shareCopyStatus }}</p>
       </div>
     </dialog>
   </main>
@@ -1663,7 +1681,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .photo-qr-dialog {
-  background: rgba(17, 20, 19, 0.96);
+  background: rgba(17, 20, 19, 0.7);
   border: 0;
   box-sizing: border-box;
   display: none;
@@ -1680,29 +1698,81 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .photo-qr-dialog::backdrop {
-  background: rgba(17, 20, 19, 0.96);
+  background: rgba(17, 20, 19, 0.88);
+}
+
+.photo-qr-dialog-backdrop {
+  filter: blur(20px) brightness(0.42) saturate(0.8);
+  height: calc(100% + 3rem);
+  inset: -1.5rem;
+  object-fit: cover;
+  opacity: 0.7;
+  pointer-events: auto;
+  position: fixed;
+  transform: scale(1.04);
+  width: calc(100% + 3rem);
 }
 
 .photo-qr-dialog-content {
-  align-items: center;
-  background: white;
+  background: rgba(255, 255, 255, 0.96);
   border-radius: clamp(0.75rem, 2vw, 1.25rem);
+  box-shadow: 0 1.5rem 5rem rgba(0, 0, 0, 0.38);
   box-sizing: border-box;
   color: #211d1a;
-  display: flex;
+  display: grid;
   flex: 1;
-  flex-direction: column;
-  gap: clamp(0.5rem, 1.5vh, 1rem);
-  justify-content: center;
+  gap: clamp(0.8rem, 2vw, 1.5rem);
+  grid-template-columns: minmax(0, 0.9fr) minmax(18rem, 1fr);
   margin: auto;
   max-height: 100%;
-  max-width: 58rem;
+  max-width: 72rem;
   overflow: auto;
   padding: clamp(1rem, 3vmin, 2rem);
+  position: relative;
+  width: 100%;
+  z-index: 1;
+}
+
+.photo-qr-dialog-photo {
+  align-self: stretch;
+  background: #171918;
+  border-radius: 0.75rem;
+  display: grid;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.photo-qr-dialog-photo img {
+  height: 100%;
+  max-height: calc(100dvh - 4rem);
+  min-height: 18rem;
+  object-fit: cover;
   width: 100%;
 }
 
-.photo-qr-dialog-content > header {
+.photo-qr-dialog-photo figcaption {
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.82));
+  bottom: 0;
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 650;
+  left: 0;
+  padding: 2.5rem 1rem 1rem;
+  position: absolute;
+  right: 0;
+}
+
+.photo-qr-dialog-share {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.5rem, 1.5vh, 1rem);
+  justify-content: center;
+  min-width: 0;
+}
+
+.photo-qr-dialog-share > header {
   align-items: flex-start;
   display: flex;
   gap: 1rem;
@@ -1711,25 +1781,25 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   width: 100%;
 }
 
-.photo-qr-dialog-content h2 {
+.photo-qr-dialog-share h2 {
   font-size: clamp(1.15rem, 3vw, 1.65rem);
   font-weight: 800;
 }
 
-.photo-qr-dialog-content header p {
+.photo-qr-dialog-share header p {
   color: #6d6257;
   font-size: clamp(0.75rem, 2vw, 0.9rem);
   margin-top: 0.25rem;
 }
 
-.photo-qr-dialog-content > img {
+.photo-qr-dialog-code {
   flex: 0 1 auto;
-  height: min(70vmin, calc(100dvh - 13rem));
+  height: min(48vmin, calc(100dvh - 13rem));
   image-rendering: pixelated;
   min-height: 10rem;
   min-width: 10rem;
   object-fit: contain;
-  width: min(70vmin, calc(100vw - 3rem));
+  width: min(48vmin, calc(50vw - 4rem));
 }
 
 .photo-qr-dialog-url {
@@ -1807,6 +1877,24 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   color: #6d6257;
   font-size: 0.72rem;
   min-height: 1em;
+}
+
+@media (max-width: 46rem) {
+  .photo-qr-dialog-content {
+    background: rgba(255, 255, 255, 0.94);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .photo-qr-dialog-photo {
+    display: none;
+  }
+
+  .photo-qr-dialog-code {
+    height: min(72vmin, calc(100dvh - 14rem));
+    width: min(72vmin, calc(100vw - 3.5rem));
+  }
 }
 
 .comments-header h1 {

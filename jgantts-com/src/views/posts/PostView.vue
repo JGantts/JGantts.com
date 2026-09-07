@@ -404,8 +404,9 @@ watch(() => props.slug, loadPost)
 .share-button {
   align-items: center; background: var(--accent); border: 1px solid var(--accent);
   border-radius: 999px; color: var(--bg); cursor: pointer; display: inline-flex;
+  box-sizing: border-box;
   font-family: 'Azeret Mono Variable', monospace; font-size: 0.78rem; font-weight: 650;
-  gap: 0.45rem; list-style: none; padding: 0.65rem 0.9rem;
+  gap: 0.45rem; list-style: none; min-height: 44px; padding: 0.65rem 0.9rem;
 }
 .share-button::-webkit-details-marker,
 .qr-share > summary::-webkit-details-marker { display: none; }
@@ -421,7 +422,8 @@ watch(() => props.slug, loadPost)
 .share-popover {
   background: var(--bg); border: 1px solid var(--border); border-radius: 0.75rem;
   box-shadow: 0 0.75rem 2rem color-mix(in srgb, var(--text) 16%, transparent);
-  display: grid; font-size: 0.9rem; gap: 0.15rem; left: 0; min-width: 15rem;
+  box-sizing: border-box; display: grid; font-size: 0.9rem; gap: 0.15rem; left: 0;
+  min-width: min(15rem, calc(100vw - 2.5rem));
   padding: 0.65rem; position: absolute; top: calc(100% + 0.5rem); z-index: 5;
 }
 .share-heading {
@@ -431,7 +433,8 @@ watch(() => props.slug, loadPost)
 .share-popover > a,
 .share-popover > button,
 .qr-share > summary {
-  border-radius: 0.4rem; color: var(--text); cursor: pointer; display: block;
+  align-items: center; border-radius: 0.4rem; box-sizing: border-box; color: var(--text);
+  cursor: pointer; display: flex; min-height: 44px;
   padding: 0.55rem; text-align: left; text-decoration: none;
 }
 .share-popover > a:hover,
@@ -586,6 +589,12 @@ watch(() => props.slug, loadPost)
 @media (max-width: 34rem) {
   .comments-heading {
     flex-direction: column;
+  }
+
+  .post-metadata > div,
+  .photo-metadata dl > div {
+    gap: 0.2rem;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

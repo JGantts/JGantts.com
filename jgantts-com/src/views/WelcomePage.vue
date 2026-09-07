@@ -67,7 +67,8 @@ const JgLink = defineComponent({
     />
     <JgLink
       :header="'Amateur Photographer'"
-      :subtext="['to do']"
+      :href="'/photos'"
+      :subtext="['jgantts.com', 'photos']"
     />
     <JgLink
       :header="'UTC -4/-5'"

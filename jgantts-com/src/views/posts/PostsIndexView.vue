@@ -136,11 +136,13 @@ onMounted(() => loadPosts())
 .post-card-copy {
   display: grid;
   gap: 0.4rem;
+  min-width: 0;
 }
 
 .post-card-copy strong {
   font-size: 1.25em;
   font-weight: 650;
+  overflow-wrap: anywhere;
 }
 
 .post-card-copy span,

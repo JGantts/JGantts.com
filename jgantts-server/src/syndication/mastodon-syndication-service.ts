@@ -3,6 +3,7 @@ import type { PostService } from '../posts/post-service';
 import type { Post } from '../posts/types';
 import { SyndicationRepository } from './syndication-repository';
 import type { Syndication } from './types';
+import { revisionedPostPath } from '../site/revision-url';
 
 const MAX_TEASER_SOURCE_LENGTH = 5_000;
 
@@ -66,13 +67,26 @@ export class MastodonSyndicationService {
     return this.repository.getLatestForPost(postId);
   }
 
+  private canonicalUrl(post: Post): string {
+    return `${this.siteOrigin}${revisionedPostPath(post.slug, this.posts.currentRevision(post.id),
+      this.posts.hasMultiplePublishedRevisions(post.id))}`;
+  }
+
+  listForPost(postId: string): Syndication[] {
+    return this.repository.listForPost(postId);
+  }
+
+  listPublicationHistory(postId: string) {
+    return this.repository.listPublicationHistory(postId);
+  }
+
   queue(postId: string): { queued: boolean; syndication: Syndication } {
     this.assertConfigured();
     const post = this.posts.findById(postId);
     if (!post) throw Object.assign(new Error('Post not found.'), { status: 404 });
     const teaser = buildPostTeaser(post);
     return this.repository.queuePublication({
-      canonicalUrl: `${this.siteOrigin}/photos/${encodeURIComponent(post.slug)}`,
+      canonicalUrl: this.canonicalUrl(post),
       postId,
       remoteInstance: this.mastodonOrigin,
       teaser,
@@ -86,7 +100,7 @@ export class MastodonSyndicationService {
     const syndication = this.repository.getLatestForPost(postId);
     if (!syndication) throw Object.assign(new Error('Post has not been syndicated.'), { status: 404 });
     const teaser = buildPostTeaser(post);
-    const canonicalUrl = `${this.siteOrigin}/photos/${encodeURIComponent(post.slug)}`;
+    const canonicalUrl = this.canonicalUrl(post);
     this.repository.queueEdit(syndication.id, {
       canonicalUrl,
       idempotencyKey: createHash('sha256')

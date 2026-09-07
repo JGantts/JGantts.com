@@ -86,13 +86,14 @@ export interface RegenerationResult {
   error?: string;
 }
 
-function publicMedia(media: MediaRecord): PublicMedia {
+function publicMedia(media: MediaRecord, revision: number, versioned: boolean): PublicMedia {
   const base = `/media/${encodeURIComponent(media.id)}`;
+  const withRevision = (url: string) => versioned ? `${url}?rev=${revision}` : url;
   const manifest = media.renditionManifest as Partial<RenditionManifest>;
   const storedRenditions = Array.isArray(manifest.renditions) ? manifest.renditions : [];
   const toPublicRendition = ({ path: _path, ...rendition }: MediaRendition) => ({
       ...rendition,
-      url: `${base}/${encodeURIComponent(rendition.variant)}`,
+      url: withRevision(`${base}/${encodeURIComponent(rendition.variant)}`),
     });
   const renditions = storedRenditions
     .filter((rendition) => rendition.purpose !== 'placeholder')
@@ -126,10 +127,10 @@ function publicMedia(media: MediaRecord): PublicMedia {
     createdAt: media.createdAt,
     updatedAt: media.updatedAt,
     renditions,
-    urls: {
-      original: `${base}/original`,
-      large: `${base}/large`,
-      thumbnail: `${base}/thumbnail`,
+      urls: {
+        original: withRevision(`${base}/original`),
+        large: withRevision(`${base}/large`),
+        thumbnail: withRevision(`${base}/thumbnail`),
     },
   };
 }
@@ -374,7 +375,7 @@ export class MediaService {
       promoteStagedFiles(stagedFiles, promotedPaths, this.processingHooks);
 
       const createdAt = new Date().toISOString();
-      return publicMedia(this.media.create({
+      const created = this.media.create({
         id,
         title: null,
         postId: input.postId,
@@ -406,7 +407,9 @@ export class MediaService {
         renditionManifest: { version: 1, renditions },
         createdAt,
         updatedAt: createdAt,
-      }));
+      });
+      if (this.posts.getById(input.postId)?.status === 'published') this.posts.update(input.postId, {});
+      return publicMedia(created, this.posts.getCurrentRevision(input.postId), this.posts.getPublishedRevisionCount(input.postId) > 1);
     } catch (error) {
       for (const promotedPath of promotedPaths) fs.rmSync(promotedPath, { force: true });
       throw error;
@@ -456,7 +459,9 @@ export class MediaService {
   }
 
   listForPost(postId: string): PublicMedia[] {
-    return this.media.listByPostId(postId).map(publicMedia);
+    const revision = this.posts.getCurrentRevision(postId);
+    const versioned = this.posts.getPublishedRevisionCount(postId) > 1;
+    return this.media.listByPostId(postId).map((media) => publicMedia(media, revision, versioned));
   }
 
   async regenerateAll(options: { concurrency?: number; dryRun?: boolean } = {}): Promise<RegenerationResult[]> {
@@ -548,6 +553,7 @@ export class MediaService {
 
   deleteImage(id: string): void {
     // Commit the logical deletion and its cleanup journal together before removing bytes.
+    const media = this.media.getById(id);
     this.media.beginDeletion(id);
     const paths = this.media.pendingDeletionPaths(id);
     if (!paths) return;
@@ -565,6 +571,7 @@ export class MediaService {
       });
       for (const file of files) fs.rmSync(file, { force: true });
       this.media.completeDeletion(id);
+      if (media) this.posts.update(media.postId, {});
     } catch {
       throw Object.assign(new Error('Photo removed; file cleanup is pending. Retry this deletion.'), {
         status: 503,
@@ -615,7 +622,19 @@ export class MediaService {
       focalX: focalX as number | null,
       focalY: focalY as number | null,
     }, new Date().toISOString());
-    return updated ? publicMedia(updated) : null;
+    if (!updated) return null;
+    this.posts.update(updated.postId, {});
+    return publicMedia(updated, this.posts.getCurrentRevision(updated.postId), this.posts.getPublishedRevisionCount(updated.postId) > 1);
+  }
+
+  currentRevisionForMedia(id: string): number | null {
+    const media = this.media.getById(id);
+    return media ? this.posts.getCurrentRevision(media.postId) : null;
+  }
+
+  hasMultiplePublishedRevisionsForMedia(id: string): boolean {
+    const media = this.media.getById(id);
+    return media ? this.posts.getPublishedRevisionCount(media.postId) > 1 : false;
   }
 
   reorder(postId: string, orderedIds: unknown): PublicMedia[] {
@@ -632,7 +651,11 @@ export class MediaService {
     ) {
       throw new PostInputError('mediaIds must contain every photo for the post exactly once.');
     }
-    return this.media.reorder(postId, proposed, new Date().toISOString()).map(publicMedia);
+    const reordered = this.media.reorder(postId, proposed, new Date().toISOString());
+    this.posts.update(postId, {});
+    const nextRevision = this.posts.getCurrentRevision(postId);
+    const nextVersioned = this.posts.getPublishedRevisionCount(postId) > 1;
+    return reordered.map((media) => publicMedia(media, nextRevision, nextVersioned));
   }
 
   selectHero(postId: string, mediaId: unknown): string | null {

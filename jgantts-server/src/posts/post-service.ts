@@ -140,6 +140,18 @@ export class PostService {
     return this.posts.getById(id);
   }
 
+  currentRevision(id: string): number {
+    return this.posts.getCurrentRevision(id);
+  }
+
+  hasMultiplePublishedRevisions(id: string): boolean {
+    return this.posts.getPublishedRevisionCount(id) > 1;
+  }
+
+  publishedRevisions(id: string) {
+    return this.posts.listPublishedRevisions(id);
+  }
+
   findBySlug(slug: string): Post | null {
     const post = this.posts.getBySlug(slug);
     return post?.status === 'published' ? post : null;

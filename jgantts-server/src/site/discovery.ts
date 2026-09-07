@@ -2,6 +2,7 @@ import type { Request } from 'express';
 import type { MediaService } from '../media/media-service';
 import type { PostService } from '../posts/post-service';
 import { getRequestOrigin } from './metadata';
+import { revisionedPostPath } from './revision-url';
 
 function escapeXml(value: unknown): string {
   return String(value)
@@ -12,8 +13,8 @@ function escapeXml(value: unknown): string {
     .replace(/'/g, '&apos;');
 }
 
-function canonicalPostUrl(origin: string, slug: string): string {
-  return new URL(`/photos/${encodeURIComponent(slug)}`, `${origin}/`).toString();
+function canonicalPostUrl(origin: string, posts: PostService, post: { id: string; slug: string }): string {
+  return new URL(revisionedPostPath(post.slug, posts.currentRevision(post.id), posts.hasMultiplePublishedRevisions(post.id)), `${origin}/`).toString();
 }
 
 export function renderAtomFeed(
@@ -26,7 +27,7 @@ export function renderAtomFeed(
   const published = posts.listAllPublished().slice(0, 50);
   const updated = published[0]?.updatedAt ?? new Date(0).toISOString();
   const entries = published.map((post) => {
-    const url = canonicalPostUrl(origin, post.slug);
+    const url = canonicalPostUrl(origin, posts, post);
     const title = post.title || post.excerpt || 'Post by Jacob Gantt';
     const images = media?.listForPost(post.id) ?? [];
     const imageLinks = images.map((image) => (
@@ -68,7 +69,7 @@ export function renderSitemap(
     `<url><loc>${escapeXml(new URL(pathname, `${origin}/`).toString())}</loc></url>`
   ));
   const postUrls = posts.listAllPublished().map((post) => (
-    `<url><loc>${escapeXml(canonicalPostUrl(origin, post.slug))}</loc>`
+    `<url><loc>${escapeXml(canonicalPostUrl(origin, posts, post))}</loc>`
       + `<lastmod>${escapeXml(post.updatedAt)}</lastmod>`
       + (media?.listForPost(post.id) ?? []).map((image) => (
         `<image:image><image:loc>${escapeXml(new URL(image.urls.large, origin).toString())}</image:loc></image:image>`

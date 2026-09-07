@@ -91,6 +91,29 @@ export class PostRepository {
     return row ? mapPost(row) : null;
   }
 
+  getCurrentRevision(id: string): number {
+    const row = this.database.prepare(`
+      SELECT COALESCE(MAX(revision_number), 1) AS number
+      FROM post_revisions WHERE post_id = ? AND status = 'published'
+    `).get(id) as { number: number };
+    return row.number;
+  }
+
+  getPublishedRevisionCount(id: string): number {
+    const row = this.database.prepare(`SELECT COUNT(*) AS count FROM post_revisions WHERE post_id = ? AND status = 'published'`).get(id) as { count: number };
+    return row.count;
+  }
+
+  listPublishedRevisions(id: string): Array<{ revision: number; slug: string; title: string | null; createdAt: string; media: unknown[] }> {
+    const rows = this.database.prepare(`
+      SELECT revision_number AS revision, slug, title, created_at AS createdAt, media_json AS mediaJson
+      FROM post_revisions LEFT JOIN post_revision_media_snapshots USING (post_id, revision_number)
+      WHERE post_id = ? AND status = 'published'
+      ORDER BY revision_number DESC
+    `).all(id) as Array<{ revision: number; slug: string; title: string | null; createdAt: string; mediaJson: string | null }>;
+    return rows.map(({ mediaJson, ...row }) => ({ ...row, media: mediaJson ? JSON.parse(mediaJson) as unknown[] : [] }));
+  }
+
   getBySlug(slug: string): Post | null {
     const row = this.database.prepare(`
       SELECT posts.*
@@ -181,7 +204,8 @@ export class PostRepository {
         SELECT COALESCE(MAX(revision_number), 0) + 1 AS number
         FROM post_revisions WHERE post_id = ?
       `).get(id) as { number: number }).number;
-      this.insertRevision(id, revision, updatedAt);
+    this.insertRevision(id, revision, updatedAt);
+      this.snapshotMedia(id, revision);
       return this.getById(id);
     });
   }
@@ -195,5 +219,25 @@ export class PostRepository {
       SELECT id, ?, description, location, date, time, title, slug, body_markdown, body_html, excerpt, content_warning, status, ?
       FROM posts WHERE id = ?
     `).run(revisionNumber, createdAt, postId);
+  }
+
+  private snapshotMedia(postId: string, revisionNumber: number): void {
+    const media = this.database.prepare(`
+      SELECT id, title, description, location, date, time, alt_text AS altText, caption,
+        focal_x AS focalX, focal_y AS focalY, display_order AS displayOrder,
+        id = (SELECT hero_media_id FROM posts WHERE posts.id = ?) AS isHero,
+        width, height, mime_type AS mimeType, checksum_sha256 AS checksumSha256,
+        rendition_json AS renditionJson
+      FROM media WHERE post_id = ? ORDER BY display_order, id
+    `).all(postId, postId).map((row) => {
+      const record = row as { renditionJson: string; [key: string]: unknown };
+      const { renditionJson, ...snapshot } = record;
+      const manifest = JSON.parse(renditionJson) as { renditions?: Array<{ variant: string; format: string; width: number; height: number }> };
+      return { ...snapshot, renditions: manifest.renditions ?? [] };
+    });
+    this.database.prepare(`
+      INSERT OR REPLACE INTO post_revision_media_snapshots (post_id, revision_number, media_json)
+      VALUES (?, ?, ?)
+    `).run(postId, revisionNumber, JSON.stringify(media));
   }
 }

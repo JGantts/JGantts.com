@@ -3,6 +3,7 @@ import type { PublicMedia } from '../media/media-service';
 import type { Post } from '../posts/types';
 import { escapeHtml, renderAppHtml, upsertMeta } from './html';
 import { getPageMeta, getRequestOrigin, type ResolvedPageMeta } from './metadata';
+import { revisionedPostPath } from './revision-url';
 
 export interface CanonicalPostPage extends Post {
   media: PublicMedia[];
@@ -74,8 +75,13 @@ export function getCanonicalPostMeta(
     socialTitle: title,
     socialDescription: descriptionFor(post),
     socialImage: image ? new URL(image, `${origin}/`).toString() : defaults.socialImage,
-    url: new URL(`/photos/${encodeURIComponent(post.slug)}`, `${origin}/`).toString(),
+    url: new URL(revisionedPostPath(post.slug, postRevision(post), Boolean(post.revision)), `${origin}/`).toString(),
   };
+}
+
+function postRevision(post: Post): number {
+  // The server injects the current revision on the page object.
+  return post.revision ?? 1;
 }
 
 export function renderCanonicalPostHtml(

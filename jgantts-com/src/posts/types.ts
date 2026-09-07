@@ -59,6 +59,7 @@ export type CanonicalPost = {
   publishedAt: string
   slug: string
   updatedAt: string
+  revision?: number
 }
 
 export type PostPage = {

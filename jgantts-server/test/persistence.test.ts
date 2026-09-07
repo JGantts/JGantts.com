@@ -142,6 +142,12 @@ test('post repository creates, updates, versions, and resolves prior slugs', (t)
       .pluck().get(created.id),
     2,
   );
+  posts.update(created.id, { status: 'published' }, '2026-09-04T14:00:00.000Z');
+  const publishedHistory = posts.listPublishedRevisions(created.id);
+  assert.equal(publishedHistory.length, 1);
+  assert.deepEqual(publishedHistory[0]?.media, []);
+  posts.update(created.id, { bodyMarkdown: 'Published again' }, '2026-09-04T15:00:00.000Z');
+  assert.deepEqual(posts.listPublishedRevisions(created.id).map((item) => item.revision), [4, 3]);
 });
 
 test('backs up and restores both the database and media', async (t) => {
@@ -219,12 +225,17 @@ test('stores original images, generates derivatives, and resolves safe public fi
   const second = await service.uploadImage({
     altText: 'Second photo', buffer: original, displayOrder: 0, postId: 'media-post',
   });
+  posts.update('media-post', { status: 'published' });
   const edited = service.updateMetadata(uploaded.id, {
     altText: 'Updated description', caption: 'Visible caption', focalX: 0.25, focalY: 0.75,
   });
   assert.equal(edited?.altText, 'Updated description');
   assert.equal(edited?.caption, 'Visible caption');
   assert.equal(edited?.focalX, 0.25);
+  assert.match(edited?.urls.large ?? '', /\?rev=4$/);
+  const publishedHistory = posts.listPublishedRevisions('media-post');
+  assert.ok(publishedHistory.length >= 2);
+  assert.equal((publishedHistory[0]?.media.find((item) => (item as { id: string }).id === uploaded.id) as { altText?: string })?.altText, 'Updated description');
   assert.throws(
     () => service.updateMetadata(uploaded.id, { focalX: 2, focalY: 0.5 }),
     /focalX and focalY/,

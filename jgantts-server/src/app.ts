@@ -10,6 +10,7 @@ import { SITE_DIST_ROOT, SITE_INDEX_PATH, SITE_PUBLIC_ROOT } from './paths';
 import { MAINTENANCE_HTML, readAppHtml, renderAppHtml } from './site/html';
 import { renderAtomFeed, renderSitemap } from './site/discovery';
 import { renderCanonicalPostHtml } from './site/post-page';
+import { revisionedPostPath } from './site/revision-url';
 
 export interface AppOptions {
   adminToken?: string;
@@ -78,7 +79,7 @@ export function createApp(options: AppOptions = {}): express.Express {
   app.use(express.static(publicRoot, { index: false }));
 
   app.get('/posts/:slug', (req, res) => {
-    res.redirect(308, `/photos/${encodeURIComponent(req.params.slug)}`);
+    res.redirect(308, `/photos/${encodeURIComponent(req.params.slug)}${req.url.includes('?') ? `?${new URLSearchParams(req.query as Record<string, string>).toString()}` : ''}`);
   });
 
   app.get('/photos/:slug', (req, res, next) => {
@@ -99,11 +100,20 @@ export function createApp(options: AppOptions = {}): express.Express {
         return;
       }
       if (post.slug !== req.params.slug) {
-        res.redirect(308, `/photos/${encodeURIComponent(post.slug)}`);
+        res.redirect(308, revisionedPostPath(post.slug, options.services?.posts?.currentRevision(post.id) ?? 1,
+          options.services?.posts?.hasMultiplePublishedRevisions(post.id) ?? false));
+        return;
+      }
+      const currentRevision = options.services?.posts?.currentRevision(post.id) ?? 1;
+      const versioned = options.services?.posts?.hasMultiplePublishedRevisions(post.id) ?? false;
+      const requestedRevision = Number(req.query.rev);
+      if (versioned && req.query.rev !== undefined && requestedRevision !== currentRevision) {
+        res.redirect(308, revisionedPostPath(post.slug, currentRevision, true));
         return;
       }
       const page = {
         ...post,
+        revision: versioned ? currentRevision : undefined,
         media: options.services?.media?.listForPost(post.id) ?? [],
       };
       res.status(200).type('html').set('Cache-Control', 'no-cache')

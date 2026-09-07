@@ -34,7 +34,7 @@ function updateDocumentMeta(value: CanonicalPost) {
   const title = value.title || value.location || 'Post by Jacob Gantt'
   const description = 'A post from Jacob Gantt on JGantts.com.'
   const image = (value.media.find((item) => item.id === value.heroMediaId) ?? value.media[0])?.urls.large
-  const canonicalUrl = new URL(`/photos/${value.slug}`, window.location.origin).toString()
+  const canonicalUrl = new URL(`/photos/${value.slug}${value.revision ? `?rev=${value.revision}` : ''}`, window.location.origin).toString()
   const setMeta = (attribute: 'name' | 'property', key: string, content: string) => {
     let element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`)
     if (!element) {

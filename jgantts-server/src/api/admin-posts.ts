@@ -34,6 +34,7 @@ export function createAdminPostsRouter(
   const router = express.Router();
   const responsePost = (post: NonNullable<ReturnType<PostService['findById']>>) => ({
     ...post,
+    ...(posts.hasMultiplePublishedRevisions(post.id) ? { revision: posts.currentRevision(post.id) } : {}),
     media: media?.listForPost(post.id) ?? [],
   });
 
@@ -159,6 +160,16 @@ export function createAdminPostsRouter(
       return;
     }
     res.set('Cache-Control', 'no-store').json(responsePost(post));
+  });
+
+  router.get('/:id/history', (req, res) => {
+    const post = posts.findById(req.params.id);
+    if (!post) { res.status(404).json({ error: { code: 'not_found', message: 'Post not found.' } }); return; }
+    res.set('Cache-Control', 'no-store').json({
+      revisions: posts.publishedRevisions(post.id),
+      syndications: mastodon?.listForPost(post.id) ?? [],
+      publicationHistory: mastodon?.listPublicationHistory(post.id) ?? [],
+    });
   });
 
   if (mastodon) {

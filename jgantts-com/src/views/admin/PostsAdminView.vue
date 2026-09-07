@@ -19,6 +19,13 @@ type AdminPost = {
   slug: string
   status: 'draft' | 'published' | 'archived'
   updatedAt: string
+  revision?: number
+}
+type RevisionPhoto = { id: string; title: string | null; altText: string; caption: string | null; displayOrder: number; focalX: number | null; focalY: number | null; width: number | null; height: number | null; isHero: boolean }
+type RevisionSyndication = { publicationRevision: number; state: string; remoteUrl: string | null; remoteStatusId: string | null; updatedAt: string }
+type PublishedRevision = { revision: number; slug: string; title: string | null; createdAt: string; media: RevisionPhoto[] }
+function formatHistoryDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 type Syndication = {
@@ -59,6 +66,8 @@ const editingMediaId = ref<string | null>(null)
 const orderSaving = ref(false)
 const draggedMediaId = ref<string | null>(null)
 const syndication = ref<Syndication | null>(null)
+const revisionHistory = ref<PublishedRevision[]>([])
+const revisionSyndications = ref<RevisionSyndication[]>([])
 let previewTimer: ReturnType<typeof setTimeout> | null = null
 const allowedMinutes = ['00', '15', '20', '30', '40', '45']
 const yearOptions = Array.from(
@@ -212,10 +221,12 @@ function copyToForm(post: AdminPost) {
   notice.value = ''
   error.value = ''
   syndication.value = null
+  revisionHistory.value = []
+  revisionSyndications.value = []
   post.media.forEach((item) => {
     mediaDrafts[item.id] = { altText: item.altText, caption: item.caption ?? '', title: item.title ?? '', location: item.location ?? '', date: dateInputValue(item.date), time: item.time ?? '' }
   })
-  if (post.status === 'published') void loadSyndication(post.id)
+  if (post.status === 'published') { void loadSyndication(post.id); void loadHistory(post.id) }
 }
 
 async function newDraft() {
@@ -513,6 +524,14 @@ async function loadSyndication(postId: string) {
   } catch (loadError) {
     if (!(loadError instanceof AdminApiError && loadError.status === 404)) error.value = message(loadError)
   }
+}
+
+async function loadHistory(postId: string) {
+  try {
+    const result = await adminRequest<{ revisions: PublishedRevision[]; syndications: RevisionSyndication[]; publicationHistory: RevisionSyndication[] }>(`/api/admin/posts/${postId}/history`)
+    revisionHistory.value = result.revisions
+    revisionSyndications.value = result.publicationHistory
+  } catch { revisionHistory.value = []; revisionSyndications.value = [] }
 }
 
 async function syndicate() {
@@ -819,7 +838,7 @@ onBeforeUnmount(() => {
           <form class="editor-form" @submit.prevent="save">
             <div class="status-row">
               <span class="status-chip">{{ selected?.status || 'unsaved' }}</span>
-              <a v-if="selected?.status === 'published'" :href="`/photos/${encodeURIComponent(selected.slug)}`" target="_blank">View post ↗</a>
+              <a v-if="selected?.status === 'published'" :href="`/photos/${encodeURIComponent(selected.slug)}${selected.revision ? `?rev=${selected.revision}` : ''}`" target="_blank">View post ↗</a>
             </div>
             <label>Title <input v-model="form.title" maxlength="200"></label>
             <label>
@@ -897,6 +916,27 @@ onBeforeUnmount(() => {
             </div>
             <p v-if="syndication" class="syndication-state">State: {{ syndication.state }} · attempts: {{ syndication.attemptCount }}</p>
             <p v-if="syndication?.lastError" class="message message--error">{{ syndication.lastError }}</p>
+          </section>
+
+          <section v-if="selected && revisionHistory.length" class="mastodon-panel" aria-labelledby="history-title">
+            <div class="section-heading"><h2 id="history-title">Published revisions</h2><span>{{ revisionHistory.length }}</span></div>
+            <ul>
+              <li v-for="item in revisionHistory" :key="item.revision">
+                <a :href="`/photos/${encodeURIComponent(item.slug)}${revisionHistory.length > 1 ? `?rev=${item.revision}` : ''}`" target="_blank">Revision {{ item.revision }}</a>
+                · {{ formatHistoryDate(item.createdAt) }}
+                <span v-if="item.title"> · {{ item.title }}</span>
+                <ul v-if="item.media.length">
+                  <li v-for="photo in item.media" :key="photo.id">
+                    <img class="revision-photo-thumb" :src="`/media/${encodeURIComponent(photo.id)}/thumbnail`" alt="">
+                    Photo {{ photo.displayOrder + 1 }}<span v-if="photo.isHero"> · hero</span>
+                    · {{ photo.altText }}<span v-if="photo.caption"> · “{{ photo.caption }}”</span>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+            <p v-if="revisionSyndications.length" class="syndication-state">
+              Mastodon: <span v-for="item in revisionSyndications" :key="item.publicationRevision">r{{ item.publicationRevision }} {{ item.state }}<a v-if="item.remoteUrl" :href="item.remoteUrl" target="_blank"> ↗</a>{{ ' ' }}</span>
+            </p>
           </section>
 
           <p v-if="notice" class="message" role="status">{{ notice }}</p>
@@ -1003,6 +1043,7 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .status-chip { border: 1px solid var(--border); border-radius: 999px; font-family: 'Azeret Mono Variable', monospace; font-size: 0.7rem; padding: 0.25rem 0.55rem; }
 .status-row a, .editor-actions a { color: var(--accent); font-size: 0.8rem; }
 .preview, .media-panel, .mastodon-panel { border-top: 1px solid var(--border); padding-top: 1.5rem; }
+.revision-photo-thumb { width: 3rem; height: 3rem; object-fit: cover; vertical-align: middle; margin-right: .5rem; border-radius: .25rem; background: var(--surface); }
 .media-panel--primary { border-top: 0; padding-top: 0; }
 .section-heading { align-items: baseline; margin-bottom: 1rem; }
 .section-heading h2 { font-size: 1.25rem; font-weight: 650; }

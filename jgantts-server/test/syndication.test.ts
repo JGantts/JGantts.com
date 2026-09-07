@@ -256,6 +256,10 @@ test('queues remote teaser edits only through the explicit edit operation', asyn
   assert.equal(mastodon.edits.length, 1);
   assert.equal(mastodon.edits[0].id, 'remote-123');
   assert.match(mastodon.edits[0].text, /Updated locally/);
+  assert.deepEqual(
+    database.prepare(`SELECT publication_revision AS revision FROM mastodon_publication_history WHERE post_id = ? ORDER BY revision DESC`).all(postId),
+    [{ revision: 3 }, { revision: 2 }],
+  );
 });
 
 test('reclaims a processing job after a worker crash', (t) => {

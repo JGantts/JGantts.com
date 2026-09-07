@@ -88,6 +88,20 @@ export class SyndicationRepository {
     return row ? mapSyndication(row) : null;
   }
 
+  listForPost(postId: string): Syndication[] {
+    return (this.database.prepare(`SELECT * FROM syndications WHERE post_id = ? ORDER BY publication_revision DESC, id DESC`)
+      .all(postId) as SyndicationRow[]).map(mapSyndication);
+  }
+
+  listPublicationHistory(postId: string): Array<{ revision: number; state: string; remoteStatusId: string | null; remoteUrl: string | null; createdAt: string; updatedAt: string }> {
+    return this.database.prepare(`
+      SELECT publication_revision AS revision, state, remote_status_id AS remoteStatusId,
+        remote_url AS remoteUrl, created_at AS createdAt, updated_at AS updatedAt
+      FROM mastodon_publication_history WHERE post_id = ?
+      ORDER BY publication_revision DESC, id DESC
+    `).all(postId) as Array<{ revision: number; state: string; remoteStatusId: string | null; remoteUrl: string | null; createdAt: string; updatedAt: string }>;
+  }
+
   queuePublication(input: {
     canonicalUrl: string;
     postId: string;
@@ -119,6 +133,8 @@ export class SyndicationRepository {
         ) VALUES (?, 'mastodon', ?, 'pending', ?, ?, ?, ?)
       `).run(input.postId, input.remoteInstance, post.revision, key, now, now);
       const syndicationId = Number(result.lastInsertRowid);
+      this.database.prepare(`INSERT INTO mastodon_publication_history (post_id, publication_revision, state, created_at, updated_at) VALUES (?, ?, 'pending', ?, ?)`)
+        .run(input.postId, post.revision, now, now);
       this.insertJob('mastodon.publish_status', syndicationId, {
         canonicalUrl: input.canonicalUrl,
         idempotencyKey: key,
@@ -145,10 +161,18 @@ export class SyndicationRepository {
         if (activeJob.payload.idempotencyKey === payload.idempotencyKey) return activeJob;
         throw Object.assign(new Error('A different Mastodon teaser edit is already queued.'), { status: 409 });
       }
-      return this.insertJob('mastodon.edit_status', syndicationId, {
+      const job = this.insertJob('mastodon.edit_status', syndicationId, {
         ...payload,
         syndicationId,
       }, now);
+      const revision = this.database.prepare(`
+        SELECT s.post_id AS post_id,
+          COALESCE((SELECT MAX(revision_number) FROM post_revisions WHERE post_id = s.post_id AND status = 'published'), s.publication_revision) AS publication_revision
+        FROM syndications s WHERE s.id = ?
+      `).get(syndicationId) as { publication_revision: number; post_id: string };
+      this.database.prepare(`INSERT INTO mastodon_publication_history (post_id, publication_revision, state, created_at, updated_at) VALUES (?, ?, 'pending', ?, ?)`)
+        .run(revision.post_id, revision.publication_revision, now, now);
+      return job;
     });
   }
 
@@ -182,6 +206,8 @@ export class SyndicationRepository {
         UPDATE syndications SET state = 'published', remote_status_id = ?, remote_url = ?,
           last_error = NULL, updated_at = ? WHERE id = ?
       `).run(remote.id, remote.url, now, job.payload.syndicationId);
+      this.database.prepare(`UPDATE mastodon_publication_history SET state = 'published', remote_status_id = ?, remote_url = ?, updated_at = ? WHERE id = (SELECT id FROM mastodon_publication_history WHERE post_id = (SELECT post_id FROM syndications WHERE id = ?) ORDER BY id DESC LIMIT 1)`)
+        .run(remote.id, remote.url, now, job.payload.syndicationId);
     });
   }
 
@@ -192,6 +218,8 @@ export class SyndicationRepository {
         UPDATE syndications SET remote_status_id = ?, remote_url = ?, last_error = NULL, updated_at = ?
         WHERE id = ?
       `).run(remote.id, remote.url, now, job.payload.syndicationId);
+      this.database.prepare(`UPDATE mastodon_publication_history SET state = 'published', remote_status_id = ?, remote_url = ?, updated_at = ? WHERE id = (SELECT id FROM mastodon_publication_history WHERE post_id = (SELECT post_id FROM syndications WHERE id = ?) ORDER BY id DESC LIMIT 1)`)
+        .run(remote.id, remote.url, now, job.payload.syndicationId);
     });
   }
 
@@ -221,6 +249,8 @@ export class SyndicationRepository {
           UPDATE syndications SET last_error = ?, updated_at = ? WHERE id = ?
         `).run(error, now, job.payload.syndicationId);
       }
+      this.database.prepare(`UPDATE mastodon_publication_history SET state = 'failed', updated_at = ? WHERE id = (SELECT id FROM mastodon_publication_history WHERE post_id = (SELECT post_id FROM syndications WHERE id = ?) ORDER BY id DESC LIMIT 1)`)
+        .run(now, job.payload.syndicationId);
     });
   }
 

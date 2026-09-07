@@ -482,6 +482,18 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   });
   assert.equal(publishedResponse.status, 200);
   assert.equal(JSON.parse(publishedResponse.body).status, 'published');
+  const historyResponse = await request(app, `/api/admin/posts/${created.id}/history`, {
+    headers: { authorization: 'Bearer test-admin-secret' },
+  });
+  assert.equal(historyResponse.status, 200);
+  const history = JSON.parse(historyResponse.body) as {
+    revisions: Array<{ revision: number; slug: string; media: unknown[] }>;
+    syndications: unknown[];
+  };
+  assert.ok(history.revisions.length >= 1);
+  assert.equal(history.revisions[0]?.slug, 'manually-chosen-slug');
+  assert.deepEqual(history.revisions[0]?.media, []);
+  assert.deepEqual(history.syndications, []);
   assert.equal((await request(app, '/api/posts/manually-chosen-slug')).status, 200);
   assert.equal((await request(app, `/api/posts/${created.slug}`)).status, 200);
 
@@ -595,7 +607,7 @@ test('renders canonical post HTML, redirects old slugs, and preserves publicatio
   assert.equal(response.status, 200);
   assert.match(response.body, /<title>A canonical &lt;post&gt; \| JGantts<\/title>/);
   assert.match(response.body, /property="og:type" content="article"/);
-  assert.match(response.body, /rel="canonical" href="https:\/\/jgantts\.com\/photos\/canonical-post"/);
+  assert.match(response.body, /rel="canonical" href="https:\/\/jgantts\.com\/photos\/canonical-post\?rev=2"/);
   assert.match(response.body, /property="article:published_time"/);
   assert.match(response.body, /type="application\/ld\+json"/);
   assert.match(response.body, /data-server-rendered-post/);
@@ -605,13 +617,17 @@ test('renders canonical post HTML, redirects old slugs, and preserves publicatio
 
   const redirect = await request(app, '/photos/first-canonical-slug');
   assert.equal(redirect.status, 308);
-  assert.equal(redirect.headers.location, '/photos/canonical-post');
+  assert.equal(redirect.headers.location, '/photos/canonical-post?rev=2');
   assert.equal((await request(app, '/photos/draft-page')).status, 404);
   assert.equal((await request(app, '/photos/archived-page')).status, 410);
   assert.equal((await request(app, '/photos/missing-page')).status, 404);
   const legacyRedirect = await request(app, '/posts/canonical-post');
   assert.equal(legacyRedirect.status, 308);
   assert.equal(legacyRedirect.headers.location, '/photos/canonical-post');
+
+  const stale = await request(app, '/photos/canonical-post?rev=1');
+  assert.equal(stale.status, 308);
+  assert.equal(stale.headers.location, '/photos/canonical-post?rev=2');
 });
 
 test('generates Atom and sitemap discovery documents from published posts', async (t) => {
@@ -824,6 +840,12 @@ test('uploads local media and serves immutable originals and derivatives', async
   const jsonLd = canonicalPage.body.match(/<script id="__POST_JSON_LD__" type="application\/ld\+json">(.*?)<\/script>/s);
   assert.ok(jsonLd);
   assert.ok(JSON.parse(jsonLd[1]).image[0].endsWith(uploaded.urls.large));
+
+  postRepository.update('media-api-post', { bodyMarkdown: 'A later published revision' });
+  const currentImageRevision = postRepository.getCurrentRevision('media-api-post');
+  const staleImage = await request(app, `/media/${uploaded.id}/large?rev=${currentImageRevision - 1}`);
+  assert.equal(staleImage.status, 308);
+  assert.equal(staleImage.headers.location, `/media/${uploaded.id}/large?rev=${currentImageRevision}`);
 
   const deletionUrl = `/api/admin/media/${uploaded.id}`;
   assert.equal((await request(app, deletionUrl, { method: 'DELETE' })).status, 401);

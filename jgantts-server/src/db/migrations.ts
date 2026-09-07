@@ -217,6 +217,37 @@ export const migrations: readonly Migration[] = [
       ALTER TABLE media ADD COLUMN title TEXT;
     `,
   },
+  {
+    version: 10,
+    name: 'published_revision_photo_snapshots',
+    sql: `
+      CREATE TABLE post_revision_media_snapshots (
+        post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        revision_number INTEGER NOT NULL,
+        media_json TEXT NOT NULL,
+        PRIMARY KEY (post_id, revision_number),
+        FOREIGN KEY (post_id, revision_number) REFERENCES post_revisions(post_id, revision_number) ON DELETE CASCADE
+      ) STRICT;
+    `,
+  },
+  {
+    version: 11,
+    name: 'mastodon_publication_history',
+    sql: `
+      CREATE TABLE mastodon_publication_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        publication_revision INTEGER NOT NULL,
+        state TEXT NOT NULL CHECK (state IN ('pending', 'published', 'failed')),
+        remote_status_id TEXT,
+        remote_url TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      ) STRICT;
+      CREATE INDEX mastodon_publication_history_post_idx
+        ON mastodon_publication_history(post_id, publication_revision DESC, id DESC);
+    `,
+  },
 ];
 
 export function migrateDatabase(database: Database.Database): void {

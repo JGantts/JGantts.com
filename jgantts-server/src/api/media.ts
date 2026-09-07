@@ -20,6 +20,15 @@ export function createMediaRouter(media: MediaService): express.Router {
       res.sendStatus(404);
       return;
     }
+    const currentRevision = media.currentRevisionForMedia(req.params.id);
+    if (typeof req.query.rev === 'string' && !media.hasMultiplePublishedRevisionsForMedia(req.params.id)) {
+      res.redirect(308, `/media${req.path}`);
+      return;
+    }
+    if (typeof req.query.rev === 'string' && Number(req.query.rev) !== currentRevision) {
+      res.redirect(308, `/media${req.path}?rev=${currentRevision}`);
+      return;
+    }
     res.set({
       'Cache-Control': 'public, max-age=31536000, immutable',
       'Content-Type': file.mimeType,

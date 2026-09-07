@@ -17,6 +17,7 @@ export interface Post {
   createdAt: string;
   publishedAt: string | null;
   updatedAt: string;
+  revision?: number;
 }
 
 export interface NewPost {

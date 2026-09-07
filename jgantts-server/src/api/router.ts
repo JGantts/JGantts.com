@@ -80,6 +80,7 @@ export function createApiRouter(
   });
 
   if (services.posts) {
+    const postService = services.posts;
     router.use(
       '/admin/posts',
       createAdminAuth(options.adminToken ?? ''),
@@ -102,6 +103,8 @@ export function createApiRouter(
           ...page,
           items: page.items.map((post) => ({
             ...post,
+            ...(services.posts?.hasMultiplePublishedRevisions(post.id)
+              ? { revision: services.posts.currentRevision(post.id) } : {}),
             media: services.media?.listForPost(post.id) ?? [],
           })),
         });
@@ -145,6 +148,8 @@ export function createApiRouter(
         'Content-Location': `/api/posts/${encodeURIComponent(post.slug)}`,
       }).json({
         ...post,
+        ...(postService.hasMultiplePublishedRevisions(post.id)
+          ? { revision: postService.currentRevision(post.id) } : {}),
         media: services.media?.listForPost(post.id) ?? [],
       });
     });

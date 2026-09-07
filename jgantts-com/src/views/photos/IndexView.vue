@@ -152,6 +152,9 @@ let commentsDrawerPointerStartY = 0
 let commentsDrawerPointerStartOffset = 0
 let commentsDrawerPointerStartedAt = 0
 let commentsDrawerPointerStartState: 0 | 1 | 2 = 0
+let commentsDrawerPointerLastY = 0
+let commentsDrawerPointerLastAt = 0
+let commentsDrawerVelocity = 0
 let mobilePortraitDrawerQuery: MediaQueryList | null = null
 let qrPreviousDocumentOverflow: string | null = null
 const activeToot = computed(() =>
@@ -374,8 +377,51 @@ function commentsDrawerOffsets(panel: HTMLElement) {
   return [closed, Math.min(closed, window.innerHeight * 0.42), 0] as const
 }
 
+function nearestCommentsDrawerState(
+  offsets: readonly number[],
+  targetOffset: number,
+): 0 | 1 | 2 {
+  let nearestState: 0 | 1 | 2 = 0
+  offsets.forEach((offset, index) => {
+    if (Math.abs(offset - targetOffset) < Math.abs(offsets[nearestState] - targetOffset)) {
+      nearestState = index as 0 | 1 | 2
+    }
+  })
+  return nearestState
+}
+
+function updateCommentsDrawerDrag(event: PointerEvent, panel: HTMLElement) {
+  const now = performance.now()
+  const elapsed = now - commentsDrawerPointerLastAt
+  const movement = event.clientY - commentsDrawerPointerLastY
+
+  if (elapsed > 80 && Math.abs(movement) < 1) {
+    // Releasing after a short hold should settle from position, not preserve an
+    // earlier flick that the user intentionally stopped.
+    commentsDrawerVelocity = 0
+  } else if (elapsed > 0 && movement !== 0) {
+    const instantaneousVelocity = movement / elapsed
+    // Favor the most recent movement while retaining enough history to smooth
+    // sparse touch events. Velocity is measured in pixels per millisecond.
+    commentsDrawerVelocity = commentsDrawerVelocity * 0.35 + instantaneousVelocity * 0.65
+  }
+
+  commentsDrawerPointerLastY = event.clientY
+  commentsDrawerPointerLastAt = now
+
+  const [closedOffset] = commentsDrawerOffsets(panel)
+  commentsDrawerDragOffset.value = Math.min(
+    closedOffset,
+    Math.max(0, commentsDrawerPointerStartOffset + event.clientY - commentsDrawerPointerStartY),
+  )
+}
+
 function startCommentsDrawerDrag(event: PointerEvent) {
   if (!isMobilePortraitDrawer() || (event.pointerType === 'mouse' && event.button !== 0)) return
+  if (
+    event.target instanceof Element
+    && event.target.closest('button, a, input, select, textarea')
+  ) return
 
   const panel = (event.currentTarget as HTMLElement).closest<HTMLElement>('.comments-section')
   if (!panel) return
@@ -387,6 +433,9 @@ function startCommentsDrawerDrag(event: PointerEvent) {
   commentsDrawerPointerStartY = event.clientY
   commentsDrawerPointerStartOffset = commentsDrawerOffsets(panel)[commentsDrawerState.value]
   commentsDrawerPointerStartedAt = performance.now()
+  commentsDrawerPointerLastAt = commentsDrawerPointerStartedAt
+  commentsDrawerPointerLastY = event.clientY
+  commentsDrawerVelocity = 0
   commentsDrawerDragOffset.value = commentsDrawerPointerStartOffset
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
 }
@@ -396,51 +445,55 @@ function moveCommentsDrawer(event: PointerEvent) {
 
   const panel = (event.currentTarget as HTMLElement).closest<HTMLElement>('.comments-section')
   if (!panel) return
-  const handle = panel.querySelector<HTMLElement>('.comments-drawer-handle')
-  if (!handle) return
-
-  const [closedOffset] = commentsDrawerOffsets(panel)
-  commentsDrawerDragOffset.value = Math.min(
-    closedOffset,
-    Math.max(0, commentsDrawerPointerStartOffset + event.clientY - commentsDrawerPointerStartY),
-  )
+  updateCommentsDrawerDrag(event, panel)
 }
 
 function finishCommentsDrawerDrag(event: PointerEvent) {
   if (!commentsDrawerDragging.value) return
 
   const panel = (event.currentTarget as HTMLElement).closest<HTMLElement>('.comments-section')
-  const handle = panel?.querySelector<HTMLElement>('.comments-drawer-handle')
-  if (!panel || !handle) return
+  if (!panel) {
+    cancelCommentsDrawerDrag()
+    return
+  }
+
+  updateCommentsDrawerDrag(event, panel)
   const elapsed = Math.max(1, performance.now() - commentsDrawerPointerStartedAt)
   const distance = event.clientY - commentsDrawerPointerStartY
-  const velocity = distance / elapsed
   const offsets = commentsDrawerOffsets(panel)
 
-  // A bottom sheet should respond to an intentional swipe without requiring the
-  // user to drag through half of a tall viewport. Keep distance as a fallback
-  // for slower, deliberate swipes (especially useful with a thumb).
-  if (velocity < -0.35 || distance < -44) {
-    commentsDrawerState.value = Math.min(2, commentsDrawerPointerStartState + 1) as 0 | 1 | 2
-  } else if (velocity > 0.35 || distance > 44) {
-    commentsDrawerState.value = Math.max(0, commentsDrawerPointerStartState - 1) as 0 | 1 | 2
-  } else if (Math.abs(distance) < 8 && elapsed < 350) {
+  if (Math.abs(distance) < 8 && elapsed < 350) {
     toggleCommentsDrawer()
   } else {
-    let nearestState: 0 | 1 | 2 = 0
-    offsets.forEach((offset, index) => {
-      if (
-        Math.abs(offset - commentsDrawerDragOffset.value)
-        < Math.abs(offsets[nearestState] - commentsDrawerDragOffset.value)
-      ) {
-        nearestState = index as 0 | 1 | 2
-      }
-    })
-    commentsDrawerState.value = nearestState
+    const [closedOffset] = offsets
+    const projectedOffset = Math.min(
+      closedOffset,
+      Math.max(0, commentsDrawerDragOffset.value + commentsDrawerVelocity * 180),
+    )
+    let targetState = nearestCommentsDrawerState(offsets, projectedOffset)
+
+    // A clear flick always advances by at least one stop. Longer drags can still
+    // cross both stops because the final live position drives the snap target.
+    if (commentsDrawerVelocity < -0.3) {
+      targetState = Math.max(
+        targetState,
+        Math.min(2, commentsDrawerPointerStartState + 1),
+      ) as 0 | 1 | 2
+    } else if (commentsDrawerVelocity > 0.3) {
+      targetState = Math.min(
+        targetState,
+        Math.max(0, commentsDrawerPointerStartState - 1),
+      ) as 0 | 1 | 2
+    }
+
+    commentsDrawerState.value = targetState
   }
   if (commentsDrawerState.value === 0) closePhotoShareMenus()
   commentsDrawerDragging.value = false
   commentsDrawerDragOffset.value = 0
+
+  const handle = event.currentTarget as HTMLElement
+  if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId)
 }
 
 function cancelCommentsDrawerDrag() {
@@ -766,6 +819,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                 @pointermove="moveCommentsDrawer"
                 @pointerup="finishCommentsDrawerDrag"
                 @pointercancel="cancelCommentsDrawerDrag"
+                @lostpointercapture="cancelCommentsDrawerDrag"
               >
                 <span class="comments-drawer-grabber" aria-hidden="true"></span>
                 <div class="comments-drawer-controls" aria-label="Comments panel controls">

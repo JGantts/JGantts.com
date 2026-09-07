@@ -260,6 +260,12 @@ function closeQrFromBackdrop(event: MouseEvent) {
   if (event.target === event.currentTarget) closeQrFullscreen()
 }
 
+function closePhotoShareMenus() {
+  document.querySelectorAll<HTMLDetailsElement>('.photo-share-menu[open]').forEach((menu) => {
+    menu.open = false
+  })
+}
+
 const formatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
   timeStyle: 'short',
@@ -306,6 +312,7 @@ function selectToot(nextIndex: number) {
 }
 
 function clearSelection() {
+  closePhotoShareMenus()
   activeTootIndex.value = null
   selectedPostVisibility.value = 1
   commentsDrawerState.value = 0
@@ -344,6 +351,7 @@ function stepCommentsDrawer(direction: -1 | 1) {
 }
 
 function lowerCommentsDrawer() {
+  closePhotoShareMenus()
   commentsDrawerState.value = 0
   commentsDrawerDragOffset.value = 0
 }
@@ -426,6 +434,7 @@ function finishCommentsDrawerDrag(event: PointerEvent) {
     })
     commentsDrawerState.value = nearestState
   }
+  if (commentsDrawerState.value === 0) closePhotoShareMenus()
   commentsDrawerDragging.value = false
   commentsDrawerDragOffset.value = 0
 }
@@ -465,9 +474,7 @@ watch(() => props.postId, (postId) => {
 
 watch(activeToot, (toot) => {
   shareCopyStatus.value = ''
-  document.querySelectorAll<HTMLDetailsElement>('.photo-share-menu[open]').forEach((menu) => {
-    menu.open = false
-  })
+  closePhotoShareMenus()
   void preparePhotoQrCode(toot?.post)
 })
 
@@ -477,11 +484,7 @@ function handlePageClick(event: MouseEvent) {
 
   const target = event.target
   if (!(target instanceof Element)) return
-  if (!target.closest('.photo-share-menu')) {
-    document.querySelectorAll<HTMLDetailsElement>('.photo-share-menu[open]').forEach((menu) => {
-      menu.open = false
-    })
-  }
+  if (!target.closest('.photo-share-menu')) closePhotoShareMenus()
   if (target.closest('.comments-section') || target.closest('.photo-lightbox')) return
 
   const photoCard = target.closest('.photo-card')
@@ -1554,7 +1557,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   font-weight: 700;
   gap: 0.4rem;
   list-style: none;
-  min-height: 2.75rem;
+  min-height: 44px;
   padding: 0.55rem 0.75rem;
 }
 
@@ -1624,7 +1627,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   color: var(--photos-text);
   cursor: pointer;
   display: flex;
-  min-height: 2.75rem;
+  min-height: 44px;
   padding: 0.5rem 0.45rem;
   text-align: left;
   text-decoration: none;
@@ -1864,9 +1867,9 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   cursor: pointer;
   display: inline-flex;
   flex: 0 0 auto;
-  height: 2.75rem;
+  height: 44px;
   justify-content: center;
-  width: 2.75rem;
+  width: 44px;
 }
 
 .photo-qr-dialog-close svg {
@@ -1902,7 +1905,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   font-family: 'Azeret Mono Variable', monospace;
   font-size: 0.72rem;
   font-weight: 700;
-  min-height: 2.75rem;
+  min-height: 44px;
   padding: 0.6rem 0.8rem;
   text-decoration: none;
 }
@@ -2042,7 +2045,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
 @media (max-width: 44rem) and (orientation: portrait) {
   .comments-section {
-    --drawer-handle-height: 9rem;
+    --drawer-handle-height: 7.5rem;
     --drawer-closed-offset: calc(100% - var(--drawer-handle-height));
 
     border-radius: 1.1rem 1.1rem 0 0;
@@ -2115,7 +2118,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     display: grid;
     gap: 0.1rem;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 1rem 2.75rem minmax(0, 1fr);
+    grid-template-rows: 1rem 44px minmax(0, 1fr);
     margin: 0;
     height: var(--drawer-handle-height);
     min-height: 0;
@@ -2159,11 +2162,11 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     color: var(--photos-text);
     cursor: pointer;
     display: inline-flex;
-    height: 2.75rem;
+    height: 44px;
     justify-content: center;
     padding: 0;
     touch-action: manipulation;
-    width: 2.75rem;
+    width: 44px;
   }
 
   .comments-drawer-controls button:disabled {
@@ -2205,7 +2208,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     font-size: 0.85rem;
     grid-column: 1 / -1;
     line-height: 1.3;
-    max-height: 2.65rem;
+    max-height: 2.3rem;
     overflow: hidden;
   }
 

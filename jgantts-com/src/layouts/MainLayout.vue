@@ -10,6 +10,7 @@ const isPostsPage = computed(() => route.path.startsWith('/posts'))
 const isAdminPage = computed(() => route.path.startsWith('/admin'))
 const layoutClass = computed(() => ({
   'layout--photos': isPhotosPage.value,
+  'layout--photo-selected': isPhotosPage.value && Boolean(route.params.postId),
 }))
 const pageColors = computed(() =>
   route.path.startsWith('/photos')
@@ -120,7 +121,7 @@ body {
 }
 
 @media (max-width: 44rem) {
-  .layout--photos {
+  .layout--photos.layout--photo-selected {
     /* Blank runway after the footer for lifting the page bottom above mobile overlays. */
     padding-bottom: max(min(42dvh, 28rem), env(safe-area-inset-bottom, 0px));
   }

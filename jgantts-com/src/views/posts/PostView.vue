@@ -2,6 +2,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatEditorialDateTime, machineEditorialDateTime } from '@/posts/editorial-date-time'
+import { postPath } from '@/posts/post-url'
 import type {
   CanonicalPost,
   MastodonCommentNode,
@@ -40,7 +41,7 @@ function updateDocumentMeta(value: CanonicalPost) {
     formatEditorialDateTime(value.date, value.time) || '',
   ].filter(Boolean).join('\n') || 'A post from Jacob Gantt on JGantts.com.'
   const image = (value.media.find((item) => item.id === value.heroMediaId) ?? value.media[0])?.urls.large
-  const canonicalUrl = new URL(`/photos/${value.slug}${value.revision ? `?rev=${value.revision}` : ''}`, window.location.origin).toString()
+  const canonicalUrl = new URL(postPath(value), window.location.origin).toString()
   const setMeta = (attribute: 'name' | 'property', key: string, content: string) => {
     let element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`)
     if (!element) {

@@ -2,7 +2,7 @@ import path from 'node:path';
 import express from 'express';
 import { createMediaRouter } from './api/media';
 import { createApiRouter, type ApiServices, type BuildInfoProvider } from './api/router';
-import { loadBuildInfo, type BuildInfo } from './build-info';
+import { loadBuildInfo, publicBuildId, type BuildInfo } from './build-info';
 import { normalizeSiteOrigin } from './config';
 import { createErrorHandler } from './middleware/error-handler';
 import { createRequestLogger, NOOP_LOGGER, type StructuredLogger } from './observability/logger';
@@ -99,20 +99,25 @@ export function createApp(options: AppOptions = {}): express.Express {
           .send(renderAppHtml(req, appHtmlTemplate, configuredSiteOrigin));
         return;
       }
-      if (post.slug !== req.params.slug) {
-        res.redirect(308, revisionedPostPath(post.slug, options.services?.posts?.currentRevision(post.id) ?? 1,
-          options.services?.posts?.hasMultiplePublishedRevisions(post.id) ?? false));
-        return;
-      }
       const currentRevision = options.services?.posts?.currentRevision(post.id) ?? 1;
       const versioned = options.services?.posts?.hasMultiplePublishedRevisions(post.id) ?? false;
+      const build = publicBuildId(getBuildInfo());
+      if (post.slug !== req.params.slug) {
+        res.redirect(308, revisionedPostPath(post.slug, currentRevision, versioned, build));
+        return;
+      }
       const requestedRevision = Number(req.query.rev);
       if (versioned && req.query.rev !== undefined && requestedRevision !== currentRevision) {
-        res.redirect(308, revisionedPostPath(post.slug, currentRevision, true));
+        res.redirect(308, revisionedPostPath(post.slug, currentRevision, true, build));
+        return;
+      }
+      if (build && req.query.build !== build) {
+        res.redirect(302, revisionedPostPath(post.slug, currentRevision, versioned, build));
         return;
       }
       const page = {
         ...post,
+        ...(build ? { build } : {}),
         revision: versioned ? currentRevision : undefined,
         media: options.services?.media?.listForPost(post.id) ?? [],
       };

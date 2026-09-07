@@ -5,6 +5,7 @@ import ClusteredPhotoMasonry from './ClusteredPhotoMasonry.vue'
 import MediaCarousel from '@/components/MediaCarousel.vue'
 import { formatEditorialDateTime, machineEditorialDateTime } from '@/posts/editorial-date-time'
 import type { CanonicalPost } from '@/posts/types'
+import { postPath } from '@/posts/post-url'
 
 type MastodonAccount = {
   acct: string
@@ -447,8 +448,8 @@ onMounted(async () => {
             sensitive: false,
             spoiler_text: '',
             tags: [],
-            uri: `/photos/${post.slug}${post.revision ? `?rev=${post.revision}` : ''}`,
-            url: `/photos/${post.slug}${post.revision ? `?rev=${post.revision}` : ''}`,
+            uri: postPath(post),
+            url: postPath(post),
             visibility: 'public' as const,
             in_reply_to_id: null,
           },

@@ -6,6 +6,7 @@ import { getPageMeta, getRequestOrigin, type ResolvedPageMeta } from './metadata
 import { revisionedPostPath } from './revision-url';
 
 export interface CanonicalPostPage extends Post {
+  build?: string;
   media: PublicMedia[];
 }
 
@@ -115,7 +116,7 @@ export function getCanonicalPostMeta(
     socialTitle: title,
     socialDescription: descriptionFor(post),
     socialImage: image ? new URL(image, `${origin}/`).toString() : defaults.socialImage,
-    url: new URL(revisionedPostPath(post.slug, postRevision(post), Boolean(post.revision)), `${origin}/`).toString(),
+    url: new URL(revisionedPostPath(post.slug, postRevision(post), Boolean(post.revision), post.build), `${origin}/`).toString(),
   };
 }
 

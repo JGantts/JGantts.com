@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import type { CanonicalPost, PostPage } from '@/posts/types'
+import { postPath } from '@/posts/post-url'
 
 const posts = ref<CanonicalPost[]>([])
 const nextCursor = ref<string | null>(null)
@@ -44,7 +45,7 @@ onMounted(() => loadPosts())
         v-for="post in posts"
         :key="post.id"
         class="post-card"
-        :to="`/photos/${post.slug}${post.revision ? `?rev=${post.revision}` : ''}`"
+        :to="postPath(post)"
       >
         <img
           v-if="post.media[0]"

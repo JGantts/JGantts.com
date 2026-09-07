@@ -12,6 +12,10 @@ export const DEV_BUILD_INFO: BuildInfo = {
   commitMessage: 'Local development build',
 };
 
+export function publicBuildId(buildInfo: BuildInfo): string | undefined {
+  return buildInfo.commitId === 'dev' ? undefined : buildInfo.commitId.slice(0, 12).toLowerCase();
+}
+
 const DEFAULT_BUILD_INFO_PATH = path.join(SERVER_ROOT, 'dist', 'build-info.json');
 
 function isBuildInfo(value: unknown): value is BuildInfo {

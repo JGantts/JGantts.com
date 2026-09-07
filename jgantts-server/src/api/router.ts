@@ -1,5 +1,6 @@
 import express from 'express';
 import type { BuildInfo } from '../build-info';
+import { publicBuildId } from '../build-info';
 import type { MastodonCommentsService } from '../comments/mastodon-comments-service';
 import type { MediaService } from '../media/media-service';
 import { ADMIN_SESSION_COOKIE, adminTokenMatches, createAdminAuth } from '../middleware/admin-auth';
@@ -103,10 +104,12 @@ export function createApiRouter(
           throw badRequest('Post cursor must be a single string.');
         }
         const page = services.posts?.listPublished({ cursor: rawCursor, limit });
+        const build = publicBuildId(getBuildInfo());
         res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120').json(page && {
           ...page,
           items: page.items.map((post) => ({
             ...post,
+            ...(build ? { build } : {}),
             ...(services.posts?.hasMultiplePublishedRevisions(post.id)
               ? { revision: services.posts.currentRevision(post.id) } : {}),
             media: services.media?.listForPost(post.id) ?? [],
@@ -147,11 +150,13 @@ export function createApiRouter(
         });
         return;
       }
+      const build = publicBuildId(getBuildInfo());
       res.set({
         'Cache-Control': 'public, max-age=30, stale-while-revalidate=120',
         'Content-Location': `/api/posts/${encodeURIComponent(post.slug)}`,
       }).json({
         ...post,
+        ...(build ? { build } : {}),
         ...(postService.hasMultiplePublishedRevisions(post.id)
           ? { revision: postService.currentRevision(post.id) } : {}),
         media: services.media?.listForPost(post.id) ?? [],

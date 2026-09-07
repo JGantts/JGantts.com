@@ -647,6 +647,34 @@ test('renders canonical post HTML, redirects old slugs, and preserves publicatio
   assert.equal(stale.headers.location, '/photos/canonical-post?rev=2');
 });
 
+test('uses the deployed commit as a separate post preview build revision', async (t) => {
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const repository = new PostRepository(database);
+  const posts = new PostService(repository);
+  repository.create({
+    id: 'build-post', slug: 'build-post', bodyMarkdown: 'Fresh preview',
+    bodyHtml: '<p>Fresh preview</p>', status: 'published',
+  });
+  const app = createApp({
+    appHtmlTemplate: TEMPLATE,
+    buildInfo: BUILD_INFO,
+    services: { posts },
+    siteOrigin: 'https://jgantts.com',
+  });
+
+  const redirected = await request(app, '/photos/build-post');
+  assert.equal(redirected.status, 302);
+  assert.equal(redirected.headers.location, '/photos/build-post?build=0123456789ab');
+
+  const current = await request(app, '/photos/build-post?build=0123456789ab');
+  assert.equal(current.status, 200);
+  assert.match(current.body, /property="og:url" content="https:\/\/jgantts\.com\/photos\/build-post\?build=0123456789ab"/);
+
+  const apiPost = await request(app, '/api/posts/build-post');
+  assert.equal(JSON.parse(apiPost.body).build, '0123456789ab');
+});
+
 test('generates Atom and sitemap discovery documents from published posts', async (t) => {
   const database = openContentDatabase(':memory:');
   t.after(() => database.close());

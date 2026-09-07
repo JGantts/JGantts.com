@@ -48,6 +48,7 @@ export type PostMedia = {
 }
 
 export type CanonicalPost = {
+  build?: string
   title: string | null
   location: string | null
   date: number | null

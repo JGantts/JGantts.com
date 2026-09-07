@@ -93,6 +93,7 @@ type DisplayStatus = ThreadedStatus & {
 type TootThread = {
   comments: ThreadedStatus[]
   post: MastodonStatus
+  remoteUrl: string | null
 }
 
 const host = 'mastodon.social'
@@ -252,6 +253,11 @@ function stepCommentsDrawer(direction: -1 | 1) {
     2,
     Math.max(0, commentsDrawerState.value + direction),
   ) as 0 | 1 | 2
+  commentsDrawerDragOffset.value = 0
+}
+
+function lowerCommentsDrawer() {
+  commentsDrawerState.value = 0
   commentsDrawerDragOffset.value = 0
 }
 
@@ -447,12 +453,17 @@ onMounted(async () => {
             in_reply_to_id: null,
           },
           comments: [],
+          remoteUrl: null,
         }))
         await Promise.all(localThreads.value.map(async (thread, index) => {
           try {
             const commentsResponse = await fetch(`/api/posts/${encodeURIComponent(localPosts.value[index]!.slug)}/comments/mastodon`)
             if (!commentsResponse.ok) return
-            const result = await commentsResponse.json() as { comments?: Array<Record<string, any>> }
+            const result = await commentsResponse.json() as {
+              comments?: Array<Record<string, any>>
+              remoteUrl?: string | null
+            }
+            thread.remoteUrl = result.remoteUrl ?? null
             const statuses = (result.comments ?? []).map((comment) => ({
               account: { acct: comment.account.handle, avatar: comment.account.avatarUrl ?? '/favicon.png', display_name: comment.account.displayName, url: comment.account.url, username: comment.account.handle },
               content: comment.contentHtml,
@@ -523,6 +534,7 @@ async function loadToot(tootId: string): Promise<TootThread> {
   return {
     post,
     comments: buildCommentTree(context.descendants ?? []),
+    remoteUrl: post.url,
   }
 }
 
@@ -672,9 +684,9 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                   </button>
                   <button
                     type="button"
-                    aria-label="Move comments panel down"
+                    aria-label="Move comments panel fully down"
                     :disabled="commentsDrawerState === 0"
-                    @click.stop="stepCommentsDrawer(-1)"
+                    @click.stop="lowerCommentsDrawer"
                     @pointerdown.stop
                   >
                     <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -737,7 +749,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
                 <header class="comments-header">
                   <h1>Replies</h1>
-                  <span>{{ formatCount(replyCountsByPostId.get(toot.post.id) ?? 0) }}</span>
+                  <span>{{ formatCount(replyCountsByPostId.get(toot.post.id) ?? 0) }} {{ (replyCountsByPostId.get(toot.post.id) ?? 0) === 1 ? 'reply' : 'replies' }}</span>
                 </header>
 
                 <ol
@@ -789,6 +801,14 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                 </ol>
 
                 <p v-else class="empty-state" v-memo="[toot.post.id]">No comments yet.</p>
+
+                <a
+                  v-if="toot.remoteUrl"
+                  class="mastodon-reply-link"
+                  :href="toot.remoteUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >Reply on Mastodon <span aria-hidden="true">↗</span></a>
               </div>
             </section>
           </template>
@@ -1346,6 +1366,31 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   color: var(--photos-muted);
   font-family: 'Azeret Mono Variable', monospace;
   font-size: 0.78rem;
+}
+
+.mastodon-reply-link {
+  align-items: center;
+  border: 1px solid var(--photos-border);
+  border-radius: 0.45rem;
+  color: var(--photos-accent);
+  display: flex;
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.74rem;
+  font-weight: 700;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  text-decoration: none;
+}
+
+.mastodon-reply-link:hover {
+  background: var(--photos-accent-soft);
+  border-color: var(--photos-accent);
+}
+
+.mastodon-reply-link span {
+  color: inherit;
+  font: inherit;
 }
 
 .comments-close {

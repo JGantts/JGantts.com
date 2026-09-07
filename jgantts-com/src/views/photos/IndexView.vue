@@ -147,6 +147,7 @@ const commentsDrawerDragging = ref(false)
 const commentsDrawerDragOffset = ref(0)
 const shareQrCodeUrl = ref('')
 const shareCopyStatus = ref('')
+const qrDialogRef = ref<HTMLDialogElement | null>(null)
 let commentsDrawerPointerStartY = 0
 let commentsDrawerPointerStartOffset = 0
 let commentsDrawerPointerStartedAt = 0
@@ -225,6 +226,19 @@ async function copyPhotoShareLink(post: MastodonStatus) {
     shareCopyStatus.value = 'Could not copy the link.'
   }
   window.setTimeout(() => { shareCopyStatus.value = '' }, 2500)
+}
+
+function openQrFullscreen() {
+  if (!shareQrCodeUrl.value || !qrDialogRef.value) return
+  qrDialogRef.value.showModal()
+}
+
+function closeQrFullscreen() {
+  qrDialogRef.value?.close()
+}
+
+function closeQrFromBackdrop(event: MouseEvent) {
+  if (event.target === event.currentTarget) closeQrFullscreen()
 }
 
 const formatter = new Intl.DateTimeFormat(undefined, {
@@ -825,7 +839,15 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                       <details class="photo-qr-share">
                         <summary>Share as QR code</summary>
                         <div class="photo-qr-panel">
-                          <img v-if="shareQrCodeUrl" :src="shareQrCodeUrl" alt="QR code for this photo post">
+                          <button
+                            v-if="shareQrCodeUrl"
+                            type="button"
+                            class="photo-qr-fullscreen-trigger"
+                            aria-label="Enlarge QR code to fill the window"
+                            @click="openQrFullscreen"
+                          >
+                            <img :src="shareQrCodeUrl" alt="QR code for this photo post">
+                          </button>
                           <p v-else>QR code unavailable.</p>
                           <p>Scan to open this photo post</p>
                           <a v-if="shareQrCodeUrl" :href="shareQrCodeUrl" :download="`${photoRouteId(toot.post)}-qr-code.png`">Download QR code</a>
@@ -897,6 +919,19 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
           </template>
       </section>
     </section>
+
+    <dialog
+      ref="qrDialogRef"
+      class="photo-qr-dialog"
+      aria-label="Full-screen QR code"
+      @click="closeQrFromBackdrop"
+    >
+      <button type="button" class="photo-qr-dialog-close" aria-label="Close full-screen QR code" @click="closeQrFullscreen">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
+      </button>
+      <img v-if="shareQrCodeUrl" :src="shareQrCodeUrl" alt="QR code for this photo post">
+      <p>Scan to open this photo post</p>
+    </dialog>
   </main>
 </template>
 
@@ -1549,11 +1584,26 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   text-align: center;
 }
 
-.photo-qr-panel img {
+.photo-qr-fullscreen-trigger {
+  background: white;
+  border: 0;
+  border-radius: 0.3rem;
+  cursor: zoom-in;
+  display: block;
+  padding: 0;
+}
+
+.photo-qr-fullscreen-trigger img {
   background: white;
   border-radius: 0.3rem;
+  display: block;
   height: min(10rem, 100%);
   width: min(10rem, 100%);
+}
+
+.photo-qr-fullscreen-trigger:focus-visible {
+  outline: 2px solid var(--photos-accent);
+  outline-offset: 2px;
 }
 
 .photo-qr-panel p {
@@ -1564,6 +1614,75 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 .photo-qr-panel a {
   color: var(--photos-accent);
   font-size: 0.7rem;
+}
+
+.photo-qr-dialog {
+  align-items: center;
+  background: white;
+  border: 0;
+  box-sizing: border-box;
+  color: #211d1a;
+  display: none;
+  height: 100dvh;
+  justify-content: center;
+  margin: 0;
+  max-height: none;
+  max-width: none;
+  padding: clamp(1rem, 4vmin, 3rem);
+  width: 100vw;
+}
+
+.photo-qr-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.photo-qr-dialog::backdrop {
+  background: white;
+}
+
+.photo-qr-dialog > img {
+  height: min(82vmin, calc(100dvh - 7rem));
+  image-rendering: pixelated;
+  object-fit: contain;
+  width: min(82vmin, calc(100vw - 2rem));
+}
+
+.photo-qr-dialog > p {
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: clamp(0.75rem, 2vw, 1rem);
+  text-align: center;
+}
+
+.photo-qr-dialog-close {
+  align-items: center;
+  background: #eee5db;
+  border: 1px solid #d6c8b8;
+  border-radius: 50%;
+  color: #211d1a;
+  cursor: pointer;
+  display: inline-flex;
+  height: 2.5rem;
+  justify-content: center;
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  top: max(1rem, env(safe-area-inset-top, 0px));
+  width: 2.5rem;
+}
+
+.photo-qr-dialog-close svg {
+  fill: none;
+  height: 1.2rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
+  width: 1.2rem;
+}
+
+.photo-qr-dialog-close:focus-visible {
+  outline: 2px solid #2f7568;
+  outline-offset: 2px;
 }
 
 .comments-header h1 {

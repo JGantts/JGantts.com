@@ -48,7 +48,7 @@ export type PostMedia = {
 }
 
 export type CanonicalPost = {
-  build?: string
+  canonicalUrl: string
   title: string | null
   location: string | null
   date: number | null
@@ -59,6 +59,8 @@ export type CanonicalPost = {
   id: string
   media: PostMedia[]
   publishedAt: string
+  preview: string
+  shareUrl: string
   slug: string
   updatedAt: string
   revision?: number

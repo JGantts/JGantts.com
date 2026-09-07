@@ -100,6 +100,11 @@ what was published and where it was syndicated.
 
 ## Implementation status
 
+Share-preview cache identity is specified separately in
+`PREVIEW-URL-ROADMAP.md`. That companion roadmap keeps the numeric published
+revision model here stable while replacing deployment-derived `build` URLs with
+content-derived `preview` tokens.
+
 Completed:
 
 - Published-only revision counting with clean first-publication URLs.

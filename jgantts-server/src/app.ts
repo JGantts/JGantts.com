@@ -2,7 +2,7 @@ import path from 'node:path';
 import express from 'express';
 import { createMediaRouter } from './api/media';
 import { createApiRouter, type ApiServices, type BuildInfoProvider } from './api/router';
-import { loadBuildInfo, publicBuildId, type BuildInfo } from './build-info';
+import { loadBuildInfo, type BuildInfo } from './build-info';
 import { normalizeSiteOrigin } from './config';
 import { createErrorHandler } from './middleware/error-handler';
 import { createRequestLogger, NOOP_LOGGER, type StructuredLogger } from './observability/logger';
@@ -11,6 +11,7 @@ import { MAINTENANCE_HTML, readAppHtml, renderAppHtml } from './site/html';
 import { renderAtomFeed, renderSitemap } from './site/discovery';
 import { renderCanonicalPostHtml } from './site/post-page';
 import { revisionedPostPath } from './site/revision-url';
+import { resolvePostPreview } from './site/post-preview';
 
 export interface AppOptions {
   adminToken?: string;
@@ -101,25 +102,30 @@ export function createApp(options: AppOptions = {}): express.Express {
       }
       const currentRevision = options.services?.posts?.currentRevision(post.id) ?? 1;
       const versioned = options.services?.posts?.hasMultiplePublishedRevisions(post.id) ?? false;
-      const build = publicBuildId(getBuildInfo());
+      const media = options.services?.media?.listForPost(post.id) ?? [];
+      const preview = resolvePostPreview(post, media).token;
+      const shareRequest = req.query.preview !== undefined || req.query.build !== undefined;
       if (post.slug !== req.params.slug) {
-        res.redirect(308, revisionedPostPath(post.slug, currentRevision, versioned, build));
+        res.redirect(308, revisionedPostPath(post.slug, currentRevision, versioned, shareRequest ? preview : undefined));
         return;
       }
       const requestedRevision = Number(req.query.rev);
       if (versioned && req.query.rev !== undefined && requestedRevision !== currentRevision) {
-        res.redirect(308, revisionedPostPath(post.slug, currentRevision, true, build));
+        res.redirect(308, revisionedPostPath(post.slug, currentRevision, true, shareRequest ? preview : undefined));
         return;
       }
-      if (build && req.query.build !== build) {
-        res.redirect(302, revisionedPostPath(post.slug, currentRevision, versioned, build));
+      if (req.query.build !== undefined || (req.query.preview !== undefined && req.query.preview !== preview)) {
+        res.set('Cache-Control', 'no-store')
+          .redirect(302, revisionedPostPath(post.slug, currentRevision, versioned, preview));
         return;
       }
       const page = {
         ...post,
-        ...(build ? { build } : {}),
+        canonicalUrl: revisionedPostPath(post.slug, currentRevision, versioned),
+        preview,
         revision: versioned ? currentRevision : undefined,
-        media: options.services?.media?.listForPost(post.id) ?? [],
+        shareUrl: revisionedPostPath(post.slug, currentRevision, versioned, preview),
+        media,
       };
       res.status(200).type('html').set('Cache-Control', 'no-cache')
         .send(renderCanonicalPostHtml(req, appHtmlTemplate, page, configuredSiteOrigin));

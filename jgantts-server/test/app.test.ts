@@ -635,6 +635,10 @@ test('renders canonical post HTML, redirects old slugs, and preserves publicatio
   const redirect = await request(app, '/photos/first-canonical-slug');
   assert.equal(redirect.status, 308);
   assert.equal(redirect.headers.location, '/photos/canonical-post?rev=2');
+  const currentPost = JSON.parse((await request(app, '/api/posts/canonical-post')).body) as { preview: string };
+  const shareRedirect = await request(app, `/photos/first-canonical-slug?preview=${currentPost.preview}`);
+  assert.equal(shareRedirect.status, 308);
+  assert.equal(shareRedirect.headers.location, `/photos/canonical-post?rev=2&preview=${currentPost.preview}`);
   assert.equal((await request(app, '/photos/draft-page')).status, 404);
   assert.equal((await request(app, '/photos/archived-page')).status, 410);
   assert.equal((await request(app, '/photos/missing-page')).status, 404);
@@ -645,9 +649,12 @@ test('renders canonical post HTML, redirects old slugs, and preserves publicatio
   const stale = await request(app, '/photos/canonical-post?rev=1');
   assert.equal(stale.status, 308);
   assert.equal(stale.headers.location, '/photos/canonical-post?rev=2');
+  const staleShare = await request(app, `/photos/canonical-post?rev=1&preview=${currentPost.preview}`);
+  assert.equal(staleShare.status, 308);
+  assert.equal(staleShare.headers.location, `/photos/canonical-post?rev=2&preview=${currentPost.preview}`);
 });
 
-test('uses the deployed commit as a separate post preview build revision', async (t) => {
+test('uses a content-derived preview URL while keeping the canonical URL stable', async (t) => {
   const database = openContentDatabase(':memory:');
   t.after(() => database.close());
   const repository = new PostRepository(database);
@@ -658,21 +665,29 @@ test('uses the deployed commit as a separate post preview build revision', async
   });
   const app = createApp({
     appHtmlTemplate: TEMPLATE,
-    buildInfo: BUILD_INFO,
     services: { posts },
     siteOrigin: 'https://jgantts.com',
   });
 
-  const redirected = await request(app, '/photos/build-post');
-  assert.equal(redirected.status, 302);
-  assert.equal(redirected.headers.location, '/photos/build-post?build=0123456789ab');
-
-  const current = await request(app, '/photos/build-post?build=0123456789ab');
-  assert.equal(current.status, 200);
-  assert.match(current.body, /property="og:url" content="https:\/\/jgantts\.com\/photos\/build-post\?build=0123456789ab"/);
+  const canonical = await request(app, '/photos/build-post');
+  assert.equal(canonical.status, 200);
+  assert.match(canonical.body, /rel="canonical" href="https:\/\/jgantts\.com\/photos\/build-post"/);
 
   const apiPost = await request(app, '/api/posts/build-post');
-  assert.equal(JSON.parse(apiPost.body).build, '0123456789ab');
+  const preview = JSON.parse(apiPost.body).preview as string;
+  assert.match(preview, /^[0-9a-f]{16}$/);
+
+  const current = await request(app, `/photos/build-post?preview=${preview}`);
+  assert.equal(current.status, 200);
+  assert.match(current.body, new RegExp(`property="og:url" content="https://jgantts\\.com/photos/build-post\\?preview=${preview}"`));
+  assert.match(current.body, /rel="canonical" href="https:\/\/jgantts\.com\/photos\/build-post"/);
+
+  for (const staleUrl of ['/photos/build-post?preview=stale', '/photos/build-post?build=0123456789ab']) {
+    const stale = await request(app, staleUrl);
+    assert.equal(stale.status, 302);
+    assert.equal(stale.headers.location, `/photos/build-post?preview=${preview}`);
+    assert.equal(stale.headers['cache-control'], 'no-store');
+  }
 });
 
 test('generates Atom and sitemap discovery documents from published posts', async (t) => {

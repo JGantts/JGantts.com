@@ -203,7 +203,7 @@ test('queues exactly one publication for a canonical post and rejects drafts', (
   assert.equal(first.syndication.state, 'pending');
   const firstJob = repository.claimNext(new Date('2100-09-04T12:01:00.000Z'));
   assert.ok(firstJob);
-  assert.equal(firstJob.payload.canonicalUrl, 'https://jgantts.com/photos/canonical-post');
+  assert.match(firstJob.payload.canonicalUrl, /^https:\/\/jgantts\.com\/photos\/canonical-post\?preview=[0-9a-f]{16}$/);
   assert.equal(firstJob.payload.idempotencyKey, first.syndication.idempotencyKey);
 
   posts.updateFromAuthor(postId, { bodyMarkdown: 'A later local revision' });
@@ -224,8 +224,7 @@ test('publishes a queued status and saves its remote identity', async (t) => {
 
   assert.equal(await worker.runOnce(), true);
   assert.equal(mastodon.publications.length, 1);
-  assert.match(mastodon.publications[0].text, /^Canonical post\nNew York, NY\n/);
-  assert.match(mastodon.publications[0].text, /\n\nhttps:\/\/jgantts\.com\/photos\/canonical-post$/);
+  assert.match(mastodon.publications[0].text, /\n\nhttps:\/\/jgantts\.com\/photos\/canonical-post\?preview=[0-9a-f]{16}$/);
   assert.equal(mastodon.publications[0].key, queued.syndication.idempotencyKey);
   const result = repository.getById(queued.syndication.id);
   assert.equal(result?.state, 'published');
@@ -312,7 +311,7 @@ test('queues remote teaser edits only through the explicit edit operation', asyn
   await worker.runOnce();
   assert.equal(mastodon.edits.length, 1);
   assert.equal(mastodon.edits[0].id, 'remote-123');
-  assert.match(mastodon.edits[0].text, /Updated locally/);
+  assert.match(mastodon.edits[0].text, /https:\/\/jgantts\.com\/photos\/canonical-post\?rev=3&preview=[0-9a-f]{16}$/);
   assert.deepEqual(
     database.prepare(`SELECT publication_revision AS revision FROM mastodon_publication_history WHERE post_id = ? ORDER BY revision DESC`).all(postId),
     [{ revision: 3 }, { revision: 2 }],

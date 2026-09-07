@@ -1,6 +1,5 @@
 import express from 'express';
 import type { BuildInfo } from '../build-info';
-import { publicBuildId } from '../build-info';
 import type { MastodonCommentsService } from '../comments/mastodon-comments-service';
 import type { MediaService } from '../media/media-service';
 import { ADMIN_SESSION_COOKIE, adminTokenMatches, createAdminAuth } from '../middleware/admin-auth';
@@ -11,6 +10,8 @@ import type { FacebookSyndicationService } from '../syndication/facebook-syndica
 import type { FacebookClientLike } from '../syndication/facebook-client';
 import { createAdminMediaRouter } from './admin-media';
 import { createAdminPostsRouter } from './admin-posts';
+import { resolvePostPreview } from '../site/post-preview';
+import { revisionedPostPath } from '../site/revision-url';
 
 export type BuildInfoProvider = () => BuildInfo;
 
@@ -104,16 +105,22 @@ export function createApiRouter(
           throw badRequest('Post cursor must be a single string.');
         }
         const page = services.posts?.listPublished({ cursor: rawCursor, limit });
-        const build = publicBuildId(getBuildInfo());
         res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120').json(page && {
           ...page,
-          items: page.items.map((post) => ({
-            ...post,
-            ...(build ? { build } : {}),
-            ...(services.posts?.hasMultiplePublishedRevisions(post.id)
-              ? { revision: services.posts.currentRevision(post.id) } : {}),
-            media: services.media?.listForPost(post.id) ?? [],
-          })),
+          items: page.items.map((post) => {
+            const media = services.media?.listForPost(post.id) ?? [];
+            const preview = resolvePostPreview(post, media).token;
+            const revision = services.posts?.currentRevision(post.id) ?? 1;
+            const versioned = services.posts?.hasMultiplePublishedRevisions(post.id) ?? false;
+            return {
+              ...post,
+              canonicalUrl: revisionedPostPath(post.slug, revision, versioned),
+              preview,
+              shareUrl: revisionedPostPath(post.slug, revision, versioned, preview),
+              ...(versioned ? { revision } : {}),
+              media,
+            };
+          }),
         });
       } catch (error) {
         if (error instanceof RangeError || error instanceof TypeError) {
@@ -150,16 +157,20 @@ export function createApiRouter(
         });
         return;
       }
-      const build = publicBuildId(getBuildInfo());
+      const media = services.media?.listForPost(post.id) ?? [];
+      const preview = resolvePostPreview(post, media).token;
+      const revision = postService.currentRevision(post.id);
+      const versioned = postService.hasMultiplePublishedRevisions(post.id);
       res.set({
         'Cache-Control': 'public, max-age=30, stale-while-revalidate=120',
         'Content-Location': `/api/posts/${encodeURIComponent(post.slug)}`,
       }).json({
         ...post,
-        ...(build ? { build } : {}),
-        ...(postService.hasMultiplePublishedRevisions(post.id)
-          ? { revision: postService.currentRevision(post.id) } : {}),
-        media: services.media?.listForPost(post.id) ?? [],
+        canonicalUrl: revisionedPostPath(post.slug, revision, versioned),
+        preview,
+        shareUrl: revisionedPostPath(post.slug, revision, versioned, preview),
+        ...(versioned ? { revision } : {}),
+        media,
       });
     });
   }

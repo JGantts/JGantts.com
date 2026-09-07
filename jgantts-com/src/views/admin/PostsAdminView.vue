@@ -5,6 +5,7 @@ import { formatEditorialDateTime } from '@/posts/editorial-date-time'
 import type { PostMedia } from '@/posts/types'
 
 type AdminPost = {
+  canonicalUrl: string
   title: string | null
   location: string | null
   date: number | null
@@ -17,6 +18,7 @@ type AdminPost = {
   media: PostMedia[]
   publishedAt: string | null
   slug: string
+  shareUrl: string
   status: 'draft' | 'published' | 'archived'
   updatedAt: string
   revision?: number
@@ -876,7 +878,7 @@ onBeforeUnmount(() => {
           <form class="editor-form" @submit.prevent="save">
             <div class="status-row">
               <span class="status-chip">{{ selected?.status || 'unsaved' }}</span>
-              <a v-if="selected?.status === 'published'" :href="`/photos/${encodeURIComponent(selected.slug)}${selected.revision ? `?rev=${selected.revision}` : ''}`" target="_blank">View post ↗</a>
+              <a v-if="selected?.status === 'published'" :href="selected.shareUrl" target="_blank">View post ↗</a>
             </div>
             <label>Title <input v-model="form.title" maxlength="200"></label>
             <label>

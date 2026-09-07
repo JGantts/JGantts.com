@@ -4,6 +4,8 @@ import type { Post } from '../posts/types';
 import { SyndicationRepository } from './syndication-repository';
 import type { Syndication } from './types';
 import { revisionedPostPath } from '../site/revision-url';
+import type { MediaService } from '../media/media-service';
+import { resolvePostPreview } from '../site/post-preview';
 
 const MAX_TEASER_SOURCE_LENGTH = 5_000;
 
@@ -57,6 +59,7 @@ export class MastodonSyndicationService {
     private readonly siteOrigin: string,
     private readonly mastodonOrigin: string,
     private readonly hasAccessToken: boolean,
+    private readonly media?: MediaService,
   ) {}
 
   get enabled(): boolean {
@@ -68,8 +71,9 @@ export class MastodonSyndicationService {
   }
 
   private canonicalUrl(post: Post): string {
+    const preview = resolvePostPreview(post, this.media?.listForPost(post.id) ?? []).token;
     return `${this.siteOrigin}${revisionedPostPath(post.slug, this.posts.currentRevision(post.id),
-      this.posts.hasMultiplePublishedRevisions(post.id))}`;
+      this.posts.hasMultiplePublishedRevisions(post.id), preview)}`;
   }
 
   listForPost(postId: string): Syndication[] {

@@ -4,6 +4,8 @@ import type { MediaService } from '../media/media-service';
 import type { MastodonSyndicationService } from '../syndication/mastodon-syndication-service';
 import type { FacebookSyndicationService } from '../syndication/facebook-syndication-service';
 import type { FacebookClientLike } from '../syndication/facebook-client';
+import { resolvePostPreview } from '../site/post-preview';
+import { revisionedPostPath } from '../site/revision-url';
 
 const AUTHOR_FIELDS = new Set(['bodyMarkdown', 'location', 'date', 'time', 'title', 'slug']);
 
@@ -36,11 +38,20 @@ export function createAdminPostsRouter(
   facebookClient?: FacebookClientLike,
 ): express.Router {
   const router = express.Router();
-  const responsePost = (post: NonNullable<ReturnType<PostService['findById']>>) => ({
-    ...post,
-    ...(posts.hasMultiplePublishedRevisions(post.id) ? { revision: posts.currentRevision(post.id) } : {}),
-    media: media?.listForPost(post.id) ?? [],
-  });
+  const responsePost = (post: NonNullable<ReturnType<PostService['findById']>>) => {
+    const postMedia = media?.listForPost(post.id) ?? [];
+    const preview = resolvePostPreview(post, postMedia).token;
+    const revision = posts.currentRevision(post.id);
+    const versioned = posts.hasMultiplePublishedRevisions(post.id);
+    return {
+      ...post,
+      canonicalUrl: revisionedPostPath(post.slug, revision, versioned),
+      preview,
+      shareUrl: revisionedPostPath(post.slug, revision, versioned, preview),
+      ...(versioned ? { revision } : {}),
+      media: postMedia,
+    };
+  };
 
   router.get('/', (_req, res) => {
     res.set('Cache-Control', 'no-store').json({

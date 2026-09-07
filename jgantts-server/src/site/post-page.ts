@@ -4,10 +4,13 @@ import type { Post } from '../posts/types';
 import { escapeHtml, renderAppHtml, upsertMeta } from './html';
 import { getPageMeta, getRequestOrigin, type ResolvedPageMeta } from './metadata';
 import { revisionedPostPath } from './revision-url';
+import { resolvePostPreview } from './post-preview';
 
 export interface CanonicalPostPage extends Post {
-  build?: string;
+  canonicalUrl?: string;
   media: PublicMedia[];
+  preview?: string;
+  shareUrl?: string;
 }
 
 function safeJson(value: unknown): string {
@@ -27,78 +30,8 @@ function insertBeforeBodyClose(html: string, value: string): string {
   return html.replace(/<\/body\s*>/i, `  ${value}\n  </body>`);
 }
 
-function firstLine(value: string | null): string {
-  return value?.split(/\r?\n/, 1)[0]?.trim() ?? '';
-}
-
-function editorialDateTimeFor(post: Post): string {
-  let formatted = '';
-  if (post.date) {
-    const value = String(post.date);
-    const year = Number(value.slice(0, 4));
-    const month = Number(value.slice(4, 6));
-    const day = Number(value.slice(6, 8));
-    const monthName = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' })
-      .format(new Date(Date.UTC(year, month - 1, day)));
-    const remainder = day % 100;
-    const suffix = remainder >= 11 && remainder <= 13
-      ? 'th'
-      : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[day % 10] ?? 'th';
-    formatted = `${year}, ${monthName} ${day}${suffix}`;
-  }
-  if (post.time) {
-    const hour = Number(post.time.slice(0, 2));
-    let period = 'at night';
-    if (hour === 0 || hour === 24) period = 'midnight';
-    else if (hour < 5) period = 'at night';
-    else if (hour < 12) period = 'in the morning';
-    else if (hour === 12) period = 'noon';
-    else if (hour < 17) period = 'in the afternoon';
-    else if (hour < 21) period = 'in the evening';
-    const formattedTime = `${post.time} ${period}`;
-    formatted = formatted ? `${formatted}, ${formattedTime}` : formattedTime;
-  }
-  return formatted;
-}
-
-function descriptionFor(post: Post): string {
-  const lines = [
-    firstLine(post.title),
-    firstLine(post.bodyMarkdown),
-    firstLine(post.location),
-    editorialDateTimeFor(post),
-  ].filter(Boolean);
-  return lines.join('\n') || 'A post from Jacob Gantt on JGantts.com.';
-}
-
-function titleFor(post: Post): string {
-  return post.title?.trim() || 'Post by Jacob Gantt';
-}
-
 export function heroMediaFor(post: CanonicalPostPage): PublicMedia | null {
   return post.media.find((item) => item.id === post.heroMediaId) ?? post.media[0] ?? null;
-}
-
-function socialImageFor(post: CanonicalPostPage) {
-  const hero = heroMediaFor(post);
-  if (!hero) return null;
-  const compatibleRendition = hero.renditions
-    .filter((rendition) => rendition.format === 'jpeg' || rendition.format === 'png')
-    .sort((left, right) => right.width - left.width)[0];
-  if (compatibleRendition) {
-    return {
-      height: compatibleRendition.height,
-      mimeType: compatibleRendition.format === 'png' ? 'image/png' : 'image/jpeg',
-      url: compatibleRendition.url,
-      width: compatibleRendition.width,
-    };
-  }
-  return {
-    height: hero.height,
-    mimeType: hero.mimeType,
-    url: hero.urls.original,
-    width: hero.width,
-  };
 }
 
 export function getCanonicalPostMeta(
@@ -108,15 +41,15 @@ export function getCanonicalPostMeta(
 ): ResolvedPageMeta {
   const defaults = getPageMeta(req, configuredSiteOrigin);
   const origin = getRequestOrigin(req, configuredSiteOrigin);
-  const image = socialImageFor(post)?.url;
-  const title = titleFor(post);
+  const preview = resolvePostPreview(post, post.media);
+  const image = preview.image?.url;
   return {
-    title: `${title} | JGantts`,
-    description: descriptionFor(post),
-    socialTitle: title,
-    socialDescription: descriptionFor(post),
+    title: `${preview.title} | JGantts`,
+    description: preview.description,
+    socialTitle: preview.title,
+    socialDescription: preview.description,
     socialImage: image ? new URL(image, `${origin}/`).toString() : defaults.socialImage,
-    url: new URL(revisionedPostPath(post.slug, postRevision(post), Boolean(post.revision), post.build), `${origin}/`).toString(),
+    url: new URL(revisionedPostPath(post.slug, postRevision(post), Boolean(post.revision)), `${origin}/`).toString(),
   };
 }
 
@@ -132,8 +65,17 @@ export function renderCanonicalPostHtml(
   configuredSiteOrigin: string,
 ): string {
   const meta = getCanonicalPostMeta(req, post, configuredSiteOrigin);
-  const socialImage = socialImageFor(post);
+  const preview = resolvePostPreview(post, post.media);
+  const socialImage = preview.image;
   let html = renderAppHtml(req, appHtmlTemplate, configuredSiteOrigin, meta, 'article');
+  if (post.preview) {
+    const origin = getRequestOrigin(req, configuredSiteOrigin);
+    const shareUrl = new URL(
+      revisionedPostPath(post.slug, postRevision(post), Boolean(post.revision), post.preview),
+      `${origin}/`,
+    ).toString();
+    html = upsertMeta(html, 'property', 'og:url', shareUrl);
+  }
   if (socialImage) {
     html = upsertMeta(html, 'property', 'og:image:secure_url', meta.socialImage);
     html = upsertMeta(html, 'property', 'og:image:type', socialImage.mimeType);
@@ -158,8 +100,8 @@ export function renderCanonicalPostHtml(
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
-    headline: titleFor(post),
-    description: descriptionFor(post),
+    headline: preview.title,
+    description: preview.description,
     datePublished: post.publishedAt,
     dateModified: post.updatedAt,
     mainEntityOfPage: meta.url,
@@ -182,7 +124,7 @@ export function renderCanonicalPostHtml(
     ? `<p><strong>Content note:</strong> ${escapeHtml(post.contentWarning)}</p>`
     : '';
   const initialArticle = `<article data-server-rendered-post>`
-    + `<h1>${escapeHtml(titleFor(post))}</h1>`
+    + `<h1>${escapeHtml(preview.title)}</h1>`
     + `<time datetime="${escapeHtml(post.publishedAt)}">${escapeHtml(post.publishedAt)}</time>`
     + warningHtml
     + mediaHtml

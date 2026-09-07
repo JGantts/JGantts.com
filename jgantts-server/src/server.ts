@@ -43,11 +43,12 @@ export function startServer(): Server {
     config.siteOrigin,
     config.mastodonOrigin,
     Boolean(config.mastodonAccessToken),
+    mediaService,
   );
   const facebookClient = config.facebookPageId && config.facebookAccessToken && config.facebookGraphApiVersion
     ? new FacebookClient(config.facebookPageId, config.facebookAccessToken, config.facebookGraphApiVersion) : null;
   const facebookSyndication = new FacebookSyndicationService(
-    syndicationRepository, postService, config.siteOrigin, config.facebookPageId, Boolean(config.facebookAccessToken && config.facebookGraphApiVersion),
+    syndicationRepository, postService, config.siteOrigin, config.facebookPageId, Boolean(config.facebookAccessToken && config.facebookGraphApiVersion), mediaService,
   );
   const outboxWorker = mastodonSyndication.enabled || facebookSyndication.enabled
     ? new OutboxWorker(

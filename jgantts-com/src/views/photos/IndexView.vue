@@ -339,7 +339,11 @@ function isMobilePortraitDrawer() {
 }
 
 function syncMobilePortraitDrawer() {
+  const wasMobilePortrait = mobilePortraitDrawer.value
   mobilePortraitDrawer.value = isMobilePortraitDrawer()
+  if (wasMobilePortrait !== mobilePortraitDrawer.value && props.postId && activeToot.value) {
+    void scrollToRoutedPost(props.postId, activeToot.value.post.id)
+  }
 }
 
 function stepCommentsDrawer(direction: -1 | 1) {
@@ -1599,15 +1603,13 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .photo-share-menu[open] {
-  display: grid;
+  display: block;
   grid-column: 1 / -1;
-  grid-template-columns: minmax(0, 1fr) auto;
   width: 100%;
 }
 
 .photo-share-menu[open] > .photo-share-button {
-  grid-column: 2;
-  justify-self: end;
+  margin-left: auto;
 }
 
 .photo-share-popover > p:first-child {
@@ -1942,6 +1944,41 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   .photo-qr-dialog-code {
     height: min(72vmin, calc(100dvh - 14rem));
     width: min(72vmin, calc(100vw - 3.5rem));
+  }
+}
+
+@media (orientation: landscape) and (max-height: 36rem) {
+  .photo-qr-dialog-content {
+    gap: 0.75rem;
+    grid-template-columns: minmax(0, 0.75fr) minmax(17rem, 1fr);
+    overflow: hidden;
+    padding: 0.75rem;
+  }
+
+  .photo-qr-dialog-photo figcaption,
+  .photo-qr-dialog-share header p {
+    display: none;
+  }
+
+  .photo-qr-dialog-share {
+    gap: 0.35rem;
+  }
+
+  .photo-qr-dialog-share h2 {
+    font-size: 1rem;
+  }
+
+  .photo-qr-dialog-code {
+    height: min(35vmin, calc(100dvh - 11rem));
+    min-height: 7rem;
+    min-width: 7rem;
+    width: min(35vmin, calc(50vw - 3rem));
+  }
+
+  .photo-qr-dialog-actions button,
+  .photo-qr-dialog-actions a {
+    min-height: 40px;
+    padding: 0.45rem 0.7rem;
   }
 }
 

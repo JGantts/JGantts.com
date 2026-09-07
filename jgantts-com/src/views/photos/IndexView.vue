@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import QRCode from 'qrcode'
 import ClusteredPhotoMasonry from './ClusteredPhotoMasonry.vue'
 import MediaCarousel from '@/components/MediaCarousel.vue'
 import { formatEditorialDateTime, machineEditorialDateTime } from '@/posts/editorial-date-time'
@@ -144,6 +145,8 @@ const commentsDrawerFull = computed(() => commentsDrawerState.value === 2)
 const mobilePortraitDrawer = ref(false)
 const commentsDrawerDragging = ref(false)
 const commentsDrawerDragOffset = ref(0)
+const shareQrCodeUrl = ref('')
+const shareCopyStatus = ref('')
 let commentsDrawerPointerStartY = 0
 let commentsDrawerPointerStartOffset = 0
 let commentsDrawerPointerStartedAt = 0
@@ -173,6 +176,56 @@ const replyCountsByPostId = computed(() => {
   })
   return counts
 })
+
+function photoRouteId(post: MastodonStatus) {
+  const localPost = localPosts.value.find((candidate) => `local:${candidate.id}` === post.id)
+  return localPost?.slug ?? post.id
+}
+
+function photoShareUrl(post: MastodonStatus) {
+  return new URL(`/photos/${encodeURIComponent(photoRouteId(post))}`, window.location.origin).toString()
+}
+
+function photoShareTitle(post: MastodonStatus) {
+  const localPost = localPosts.value.find((candidate) => `local:${candidate.id}` === post.id)
+  return localPost?.title || 'A photo by Jacob Gantt'
+}
+
+function photoSocialShareUrl(network: 'facebook' | 'x' | 'linkedin', post: MastodonStatus) {
+  const url = encodeURIComponent(photoShareUrl(post))
+  const title = encodeURIComponent(photoShareTitle(post))
+  if (network === 'facebook') return `https://www.facebook.com/sharer/sharer.php?u=${url}`
+  if (network === 'linkedin') return `https://www.linkedin.com/sharing/share-offsite/?url=${url}`
+  return `https://twitter.com/intent/tweet?url=${url}&text=${title}`
+}
+
+function photoEmailShareUrl(post: MastodonStatus) {
+  const subject = encodeURIComponent(photoShareTitle(post))
+  const body = encodeURIComponent(`I thought you might enjoy this:\n\n${photoShareUrl(post)}`)
+  return `mailto:?subject=${subject}&body=${body}`
+}
+
+async function preparePhotoQrCode(post: MastodonStatus | undefined) {
+  shareQrCodeUrl.value = ''
+  if (!post) return
+  try {
+    shareQrCodeUrl.value = await QRCode.toDataURL(photoShareUrl(post), {
+      errorCorrectionLevel: 'M', margin: 2, width: 512,
+    })
+  } catch {
+    shareQrCodeUrl.value = ''
+  }
+}
+
+async function copyPhotoShareLink(post: MastodonStatus) {
+  try {
+    await navigator.clipboard.writeText(photoShareUrl(post))
+    shareCopyStatus.value = 'Link copied!'
+  } catch {
+    shareCopyStatus.value = 'Could not copy the link.'
+  }
+  window.setTimeout(() => { shareCopyStatus.value = '' }, 2500)
+}
 
 const formatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
@@ -375,6 +428,11 @@ async function scrollToRoutedPost(routeId: string, clusterId = routeId) {
 
 watch(() => props.postId, (postId) => {
   syncSelectionFromRoute(postId)
+})
+
+watch(activeToot, (toot) => {
+  shareCopyStatus.value = ''
+  void preparePhotoQrCode(toot?.post)
 })
 
 function handlePageClick(event: MouseEvent) {
@@ -747,6 +805,31 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                     {{ formatDate(toot.post.created_at) }}
                   </time>
                 </div>
+
+                <details class="photo-share-menu">
+                  <summary class="photo-share-button" aria-label="Share this photo post">
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
+                    Share
+                  </summary>
+                  <div class="photo-share-popover">
+                    <p>Share this photo post</p>
+                    <a :href="photoSocialShareUrl('facebook', toot.post)" target="_blank" rel="noopener noreferrer">Share on Facebook <span aria-hidden="true">↗</span></a>
+                    <a :href="photoSocialShareUrl('x', toot.post)" target="_blank" rel="noopener noreferrer">Share on X <span aria-hidden="true">↗</span></a>
+                    <a :href="photoSocialShareUrl('linkedin', toot.post)" target="_blank" rel="noopener noreferrer">Share on LinkedIn <span aria-hidden="true">↗</span></a>
+                    <a :href="photoEmailShareUrl(toot.post)">Share by email</a>
+                    <button type="button" @click="copyPhotoShareLink(toot.post)">Copy link</button>
+                    <p class="photo-share-status" role="status" aria-live="polite">{{ shareCopyStatus }}</p>
+                    <details class="photo-qr-share">
+                      <summary>Share as QR code</summary>
+                      <div class="photo-qr-panel">
+                        <img v-if="shareQrCodeUrl" :src="shareQrCodeUrl" alt="QR code for this photo post">
+                        <p v-else>QR code unavailable.</p>
+                        <p>Scan to open this photo post</p>
+                        <a v-if="shareQrCodeUrl" :href="shareQrCodeUrl" :download="`${photoRouteId(toot.post)}-qr-code.png`">Download QR code</a>
+                      </div>
+                    </details>
+                  </div>
+                </details>
 
                 <header class="comments-header">
                   <h1>Replies</h1>
@@ -1356,6 +1439,128 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   font-family: 'Azeret Mono Variable', monospace;
   font-size: 0.62rem;
   line-height: 1.3;
+}
+
+.photo-share-menu {
+  margin: 0.55rem 0.15rem 0.75rem;
+}
+
+.photo-share-button {
+  align-items: center;
+  background: var(--photos-accent);
+  border: 1px solid var(--photos-accent);
+  border-radius: 999px;
+  color: var(--photos-panel);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  gap: 0.4rem;
+  list-style: none;
+  padding: 0.55rem 0.75rem;
+}
+
+.photo-share-button::-webkit-details-marker,
+.photo-qr-share > summary::-webkit-details-marker {
+  display: none;
+}
+
+.photo-share-button svg {
+  fill: currentColor;
+  height: 0.9rem;
+  width: 0.9rem;
+}
+
+.photo-share-button:hover {
+  filter: brightness(1.08);
+}
+
+.photo-share-button:focus-visible,
+.photo-share-popover a:focus-visible,
+.photo-share-popover button:focus-visible,
+.photo-qr-share > summary:focus-visible {
+  outline: 2px solid var(--photos-accent);
+  outline-offset: 2px;
+}
+
+.photo-share-popover {
+  background: var(--photos-panel);
+  border: 1px solid var(--photos-border);
+  border-radius: 0.65rem;
+  box-shadow: 0 0.55rem 1.5rem color-mix(in srgb, var(--photos-text) 15%, transparent);
+  display: grid;
+  gap: 0.12rem;
+  margin-top: 0.45rem;
+  padding: 0.55rem;
+}
+
+.photo-share-popover > p:first-child {
+  color: var(--photos-muted);
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.64rem;
+  padding: 0.3rem 0.45rem;
+  text-transform: uppercase;
+}
+
+.photo-share-popover > a,
+.photo-share-popover > button,
+.photo-qr-share > summary {
+  border-radius: 0.35rem;
+  color: var(--photos-text);
+  cursor: pointer;
+  display: block;
+  padding: 0.5rem 0.45rem;
+  text-align: left;
+  text-decoration: none;
+}
+
+.photo-share-popover > a:hover,
+.photo-share-popover > button:hover,
+.photo-qr-share > summary:hover {
+  background: var(--photos-accent-soft);
+}
+
+.photo-share-status {
+  color: var(--photos-muted);
+  font-size: 0.68rem;
+  min-height: 1em;
+  padding: 0 0.45rem;
+}
+
+.photo-qr-share {
+  border-top: 1px solid var(--photos-border);
+  margin-top: 0.2rem;
+  padding-top: 0.2rem;
+}
+
+.photo-qr-share > summary {
+  list-style: none;
+}
+
+.photo-qr-panel {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
+  padding: 0.5rem 0.45rem 0.3rem;
+  text-align: center;
+}
+
+.photo-qr-panel img {
+  background: white;
+  border-radius: 0.3rem;
+  height: min(10rem, 100%);
+  width: min(10rem, 100%);
+}
+
+.photo-qr-panel p {
+  color: var(--photos-muted);
+  font-size: 0.68rem;
+}
+
+.photo-qr-panel a {
+  color: var(--photos-accent);
+  font-size: 0.7rem;
 }
 
 .comments-header h1 {

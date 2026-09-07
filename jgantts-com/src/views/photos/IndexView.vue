@@ -153,12 +153,13 @@ let commentsDrawerPointerStartOffset = 0
 let commentsDrawerPointerStartedAt = 0
 let commentsDrawerPointerStartState: 0 | 1 | 2 = 0
 let mobilePortraitDrawerQuery: MediaQueryList | null = null
+let qrPreviousDocumentOverflow: string | null = null
 const activeToot = computed(() =>
   activeTootIndex.value === null ? null : allToots.value[activeTootIndex.value] ?? null,
 )
 const activeSharePhotoUrl = computed(() => {
   const attachment = activeToot.value?.post.media_attachments.find((item) => item.type === 'image')
-  return attachment?.url || attachment?.preview_url || ''
+  return attachment?.preview_url || attachment?.url || ''
 })
 const allToots = computed(() => [...toots.value.filter((toot): toot is TootThread => Boolean(toot)), ...localThreads.value])
 const photoPosts = computed(() => allToots.value.map((toot) => toot.post))
@@ -234,11 +235,25 @@ async function copyPhotoShareLink(post: MastodonStatus) {
 
 function openQrFullscreen() {
   if (!shareQrCodeUrl.value || !qrDialogRef.value) return
-  qrDialogRef.value.showModal()
+  if (qrDialogRef.value.open) return
+  qrPreviousDocumentOverflow = document.documentElement.style.overflow
+  document.documentElement.style.overflow = 'hidden'
+  try {
+    qrDialogRef.value.showModal()
+  } catch {
+    restoreQrDocumentOverflow()
+  }
 }
 
 function closeQrFullscreen() {
-  qrDialogRef.value?.close()
+  if (qrDialogRef.value?.open) qrDialogRef.value.close()
+  else restoreQrDocumentOverflow()
+}
+
+function restoreQrDocumentOverflow() {
+  if (qrPreviousDocumentOverflow === null) return
+  document.documentElement.style.overflow = qrPreviousDocumentOverflow
+  qrPreviousDocumentOverflow = null
 }
 
 function closeQrFromBackdrop(event: MouseEvent) {
@@ -450,6 +465,9 @@ watch(() => props.postId, (postId) => {
 
 watch(activeToot, (toot) => {
   shareCopyStatus.value = ''
+  document.querySelectorAll<HTMLDetailsElement>('.photo-share-menu[open]').forEach((menu) => {
+    menu.open = false
+  })
   void preparePhotoQrCode(toot?.post)
 })
 
@@ -459,6 +477,11 @@ function handlePageClick(event: MouseEvent) {
 
   const target = event.target
   if (!(target instanceof Element)) return
+  if (!target.closest('.photo-share-menu')) {
+    document.querySelectorAll<HTMLDetailsElement>('.photo-share-menu[open]').forEach((menu) => {
+      menu.open = false
+    })
+  }
   if (target.closest('.comments-section') || target.closest('.photo-lightbox')) return
 
   const photoCard = target.closest('.photo-card')
@@ -587,6 +610,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   mobilePortraitDrawerQuery?.removeEventListener('change', syncMobilePortraitDrawer)
   document.removeEventListener('click', handlePageClick)
+  restoreQrDocumentOverflow()
 })
 
 async function loadToot(tootId: string): Promise<TootThread> {
@@ -933,6 +957,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
       class="photo-qr-dialog"
       aria-labelledby="photo-qr-dialog-title"
       @click="closeQrFromBackdrop"
+      @close="restoreQrDocumentOverflow"
     >
       <img
         v-if="activeSharePhotoUrl"
@@ -1002,6 +1027,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   color: var(--photos-text);
   font-size: 0.85rem;
   min-height: 100vh;
+  min-height: 100dvh;
   padding-bottom: var(--photos-gutter);
   padding-left: calc(var(--photos-gutter) + env(safe-area-inset-left, 0px));
   padding-right: calc(var(--photos-gutter) + env(safe-area-inset-right, 0px));
@@ -1519,6 +1545,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   background: var(--photos-accent);
   border: 1px solid var(--photos-accent);
   border-radius: 999px;
+  box-sizing: border-box;
   color: var(--photos-panel);
   cursor: pointer;
   display: inline-flex;
@@ -1527,6 +1554,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   font-weight: 700;
   gap: 0.4rem;
   list-style: none;
+  min-height: 2.75rem;
   padding: 0.55rem 0.75rem;
 }
 
@@ -1560,12 +1588,23 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   box-shadow: 0 0.55rem 1.5rem color-mix(in srgb, var(--photos-text) 15%, transparent);
   display: grid;
   gap: 0.12rem;
-  min-width: 14rem;
+  box-sizing: border-box;
+  grid-column: 1 / -1;
+  margin-top: 0.45rem;
   padding: 0.55rem;
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.45rem);
-  z-index: 4;
+  width: 100%;
+}
+
+.photo-share-menu[open] {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  width: 100%;
+}
+
+.photo-share-menu[open] > .photo-share-button {
+  grid-column: 2;
+  justify-self: end;
 }
 
 .photo-share-popover > p:first-child {
@@ -1579,10 +1618,13 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 .photo-share-popover > a,
 .photo-share-popover > button,
 .photo-qr-share > summary {
+  align-items: center;
   border-radius: 0.35rem;
+  box-sizing: border-box;
   color: var(--photos-text);
   cursor: pointer;
-  display: block;
+  display: flex;
+  min-height: 2.75rem;
   padding: 0.5rem 0.45rem;
   text-align: left;
   text-decoration: none;
@@ -1822,9 +1864,9 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   cursor: pointer;
   display: inline-flex;
   flex: 0 0 auto;
-  height: 2.25rem;
+  height: 2.75rem;
   justify-content: center;
-  width: 2.25rem;
+  width: 2.75rem;
 }
 
 .photo-qr-dialog-close svg {
@@ -1850,14 +1892,17 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
 .photo-qr-dialog-actions button,
 .photo-qr-dialog-actions a {
+  align-items: center;
   background: #2f7568;
   border: 1px solid #2f7568;
   border-radius: 999px;
   color: white;
   cursor: pointer;
+  display: inline-flex;
   font-family: 'Azeret Mono Variable', monospace;
   font-size: 0.72rem;
   font-weight: 700;
+  min-height: 2.75rem;
   padding: 0.6rem 0.8rem;
   text-decoration: none;
 }
@@ -1997,8 +2042,8 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
 @media (max-width: 44rem) and (orientation: portrait) {
   .comments-section {
-    --drawer-handle-height: 7.25rem;
-    --drawer-closed-offset: calc(100% - var(--drawer-handle-height) - env(safe-area-inset-bottom, 0px));
+    --drawer-handle-height: 9rem;
+    --drawer-closed-offset: calc(100% - var(--drawer-handle-height));
 
     border-radius: 1.1rem 1.1rem 0 0;
     bottom: 0;
@@ -2070,11 +2115,11 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     display: grid;
     gap: 0.1rem;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 1rem minmax(0, 1fr);
+    grid-template-rows: 1rem 2.75rem minmax(0, 1fr);
     margin: 0;
     height: var(--drawer-handle-height);
     min-height: 0;
-    padding: 0 1rem 0.7rem 3.6rem;
+    padding: 0 0.75rem max(0.65rem, env(safe-area-inset-bottom, 0px));
     position: relative;
     touch-action: none;
     user-select: none;
@@ -2098,11 +2143,11 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   }
 
   .comments-drawer-controls {
-    display: grid;
-    gap: 0.18rem;
-    left: 0.55rem;
-    position: absolute;
-    top: 1rem;
+    align-items: center;
+    display: flex;
+    gap: 0.4rem;
+    grid-row: 2;
+    justify-content: flex-start;
     z-index: 2;
   }
 
@@ -2114,11 +2159,11 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     color: var(--photos-text);
     cursor: pointer;
     display: inline-flex;
-    height: 1.45rem;
+    height: 2.75rem;
     justify-content: center;
     padding: 0;
     touch-action: manipulation;
-    width: 1.45rem;
+    width: 2.75rem;
   }
 
   .comments-drawer-controls button:disabled {
@@ -2138,12 +2183,12 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
   .comments-drawer-controls svg {
     fill: none;
-    height: 0.78rem;
+    height: 1rem;
     stroke: currentColor;
     stroke-linecap: round;
     stroke-linejoin: round;
     stroke-width: 2;
-    width: 0.78rem;
+    width: 1rem;
   }
 
   .comments-drawer-post {
@@ -2151,6 +2196,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     display: grid;
     gap: 0.18rem;
     grid-template-columns: minmax(0, 1fr) auto;
+    grid-row: 3;
     min-width: 0;
     overflow: hidden;
   }
@@ -2159,7 +2205,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     font-size: 0.85rem;
     grid-column: 1 / -1;
     line-height: 1.3;
-    max-height: 4.35rem;
+    max-height: 2.65rem;
     overflow: hidden;
   }
 

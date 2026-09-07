@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import QRCode from 'qrcode'
 import { formatEditorialDateTime, machineEditorialDateTime } from '@/posts/editorial-date-time'
 import { canonicalPostPath, postPath } from '@/posts/post-url'
 import type {
@@ -18,7 +19,51 @@ const error = ref('')
 const comments = ref<MastodonCommentsResponse | null>(null)
 const commentTree = ref<MastodonCommentNode[]>([])
 const commentsLoading = ref(false)
+const qrCodeUrl = ref('')
+const copyStatus = ref('')
 const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' })
+
+function currentShareUrl(value: CanonicalPost) {
+  return new URL(postPath(value), window.location.origin).toString()
+}
+
+function shareTitle(value: CanonicalPost) {
+  return value.title || value.location || 'Post by Jacob Gantt'
+}
+
+function socialShareUrl(network: 'facebook' | 'x' | 'linkedin', value: CanonicalPost) {
+  const url = encodeURIComponent(currentShareUrl(value))
+  const title = encodeURIComponent(shareTitle(value))
+  if (network === 'facebook') return `https://www.facebook.com/sharer/sharer.php?u=${url}`
+  if (network === 'linkedin') return `https://www.linkedin.com/sharing/share-offsite/?url=${url}`
+  return `https://twitter.com/intent/tweet?url=${url}&text=${title}`
+}
+
+function emailShareUrl(value: CanonicalPost) {
+  const subject = encodeURIComponent(shareTitle(value))
+  const body = encodeURIComponent(`I thought you might enjoy this:\n\n${currentShareUrl(value)}`)
+  return `mailto:?subject=${subject}&body=${body}`
+}
+
+async function prepareQrCode(value: CanonicalPost) {
+  try {
+    qrCodeUrl.value = await QRCode.toDataURL(currentShareUrl(value), {
+      errorCorrectionLevel: 'M', margin: 2, width: 512,
+    })
+  } catch {
+    qrCodeUrl.value = ''
+  }
+}
+
+async function copyShareLink(value: CanonicalPost) {
+  try {
+    await navigator.clipboard.writeText(currentShareUrl(value))
+    copyStatus.value = 'Link copied!'
+  } catch {
+    copyStatus.value = 'Could not copy the link.'
+  }
+  window.setTimeout(() => { copyStatus.value = '' }, 2500)
+}
 
 function initialPost(): CanonicalPost | null {
   const element = document.querySelector<HTMLScriptElement>('#__POST_DATA__')
@@ -138,6 +183,7 @@ async function loadPost() {
   if (embedded) {
     post.value = embedded
     updateDocumentMeta(embedded)
+    void prepareQrCode(embedded)
     loading.value = false
     void loadComments(embedded.slug)
     return
@@ -154,6 +200,7 @@ async function loadPost() {
     const loaded = await response.json() as CanonicalPost
     post.value = loaded
     updateDocumentMeta(loaded)
+    void prepareQrCode(loaded)
     void loadComments(loaded.slug)
     if (loaded.slug !== props.slug) await router.replace(`/photos/${loaded.slug}`)
   } catch (loadError) {
@@ -188,6 +235,30 @@ watch(() => props.slug, loadPost)
           </div>
         </dl>
         <p class="published-date">Published <time :datetime="post.publishedAt">{{ dateFormatter.format(new Date(post.publishedAt)) }}</time></p>
+        <details class="share-menu">
+          <summary class="share-button" aria-label="Share this post">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
+            Share
+          </summary>
+          <div class="share-popover">
+            <p class="share-heading">Share this post</p>
+            <a :href="socialShareUrl('facebook', post)" target="_blank" rel="noopener noreferrer">Share on Facebook <span aria-hidden="true">↗</span></a>
+            <a :href="socialShareUrl('x', post)" target="_blank" rel="noopener noreferrer">Share on X <span aria-hidden="true">↗</span></a>
+            <a :href="socialShareUrl('linkedin', post)" target="_blank" rel="noopener noreferrer">Share on LinkedIn <span aria-hidden="true">↗</span></a>
+            <a :href="emailShareUrl(post)">Share by email</a>
+            <button type="button" @click="copyShareLink(post)">Copy link</button>
+            <p class="copy-status" role="status" aria-live="polite">{{ copyStatus }}</p>
+            <details class="qr-share">
+              <summary>Share as QR code</summary>
+              <div class="qr-code-panel">
+                <img v-if="qrCodeUrl" :src="qrCodeUrl" alt="QR code for this post">
+                <p v-else>QR code unavailable.</p>
+                <p>Scan to open this post</p>
+                <a v-if="qrCodeUrl" :href="qrCodeUrl" :download="`${post.slug}-qr-code.png`">Download QR code</a>
+              </div>
+            </details>
+          </div>
+        </details>
       </header>
 
 
@@ -328,6 +399,51 @@ watch(() => props.slug, loadPost)
 .back-link {
   justify-self: start;
 }
+
+.share-menu { justify-self: start; position: relative; }
+.share-button {
+  align-items: center; background: var(--accent); border: 1px solid var(--accent);
+  border-radius: 999px; color: var(--bg); cursor: pointer; display: inline-flex;
+  font-family: 'Azeret Mono Variable', monospace; font-size: 0.78rem; font-weight: 650;
+  gap: 0.45rem; list-style: none; padding: 0.65rem 0.9rem;
+}
+.share-button::-webkit-details-marker,
+.qr-share > summary::-webkit-details-marker { display: none; }
+.share-button svg { fill: currentColor; height: 1rem; width: 1rem; }
+.share-button:hover { filter: brightness(1.1); }
+.share-button:focus-visible,
+.share-popover a:focus-visible,
+.share-popover button:focus-visible,
+.qr-share > summary:focus-visible {
+  outline: 0.2rem solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 0.2rem;
+}
+.share-popover {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 0.75rem;
+  box-shadow: 0 0.75rem 2rem color-mix(in srgb, var(--text) 16%, transparent);
+  display: grid; font-size: 0.9rem; gap: 0.15rem; left: 0; min-width: 15rem;
+  padding: 0.65rem; position: absolute; top: calc(100% + 0.5rem); z-index: 5;
+}
+.share-heading {
+  color: var(--muted); font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.7rem; padding: 0.35rem 0.55rem; text-transform: uppercase;
+}
+.share-popover > a,
+.share-popover > button,
+.qr-share > summary {
+  border-radius: 0.4rem; color: var(--text); cursor: pointer; display: block;
+  padding: 0.55rem; text-align: left; text-decoration: none;
+}
+.share-popover > a:hover,
+.share-popover > button:hover,
+.qr-share > summary:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.copy-status { color: var(--muted); font-size: 0.75rem; min-height: 1em; padding: 0 0.55rem; }
+.qr-share { border-top: 1px solid var(--border); margin-top: 0.25rem; padding-top: 0.25rem; }
+.qr-share > summary { list-style: none; }
+.qr-code-panel { display: grid; gap: 0.5rem; justify-items: center; padding: 0.6rem 0.55rem 0.35rem; text-align: center; }
+.qr-code-panel img { background: white; border-radius: 0.35rem; height: 10rem; width: 10rem; }
+.qr-code-panel p { color: var(--muted); font-size: 0.75rem; }
+.qr-code-panel a { color: var(--accent); font-size: 0.78rem; }
 
 .content-warning {
   border-left: 0.25rem solid var(--accent);

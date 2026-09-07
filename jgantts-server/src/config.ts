@@ -63,6 +63,13 @@ export function normalizeMastodonOrigin(value: string | undefined): string {
   return parsed.origin;
 }
 
+export function normalizeFacebookGraphApiVersion(value: string | undefined): string {
+  if (!value?.trim()) return '';
+  const version = value.trim();
+  if (!/^v\d+\.\d+$/.test(version)) throw new Error('FACEBOOK_GRAPH_API_VERSION must look like v25.0.');
+  return version;
+}
+
 export function parsePort(value: string | undefined): number {
   const port = value === undefined || value === '' ? DEFAULT_PORT : Number(value);
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
@@ -80,10 +87,18 @@ export interface RuntimeConfig {
   mastodonOrigin: string;
   port: number;
   siteOrigin: string;
+  facebookPageId: string;
+  facebookAccessToken: string;
+  facebookGraphApiVersion: string;
 }
 
 export function getRuntimeConfig(environment: NodeJS.ProcessEnv = process.env): RuntimeConfig {
   const dataRoot = resolveDataRoot(environment.JGANTTS_DATA_ROOT, environment);
+  const facebookPageId = environment.FACEBOOK_PAGE_ID?.trim() ?? '';
+  const facebookAccessToken = environment.FACEBOOK_PAGE_ACCESS_TOKEN?.trim() ?? '';
+  const facebookGraphApiVersion = normalizeFacebookGraphApiVersion(environment.FACEBOOK_GRAPH_API_VERSION);
+  const facebookParts = [facebookPageId, facebookAccessToken, facebookGraphApiVersion].filter(Boolean).length;
+  if (facebookParts !== 0 && facebookParts !== 3) throw new Error('FACEBOOK_PAGE_ID, FACEBOOK_PAGE_ACCESS_TOKEN, and FACEBOOK_GRAPH_API_VERSION must be configured together.');
   return {
     adminApiToken: environment.JGANTTS_ADMIN_TOKEN?.trim() ?? '',
     dataRoot,
@@ -93,5 +108,8 @@ export function getRuntimeConfig(environment: NodeJS.ProcessEnv = process.env): 
     mastodonOrigin: normalizeMastodonOrigin(environment.MASTODON_BASE_URL),
     port: parsePort(environment.PORT),
     siteOrigin: normalizeSiteOrigin(environment.SITE_ORIGIN),
+    facebookPageId,
+    facebookAccessToken,
+    facebookGraphApiVersion,
   };
 }

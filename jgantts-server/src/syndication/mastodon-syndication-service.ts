@@ -77,7 +77,7 @@ export class MastodonSyndicationService {
   }
 
   listPublicationHistory(postId: string) {
-    return this.repository.listPublicationHistory(postId);
+    return this.repository.listPublicationHistory(postId).filter((item) => item.destination === 'mastodon');
   }
 
   queue(postId: string): { queued: boolean; syndication: Syndication } {

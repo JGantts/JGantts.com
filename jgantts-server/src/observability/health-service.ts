@@ -6,6 +6,7 @@ export interface HealthReport {
   checks: {
     database: { status: 'ok' | 'unhealthy' };
     mastodon: { configured: boolean; status: 'ok' | 'disabled' | 'degraded' };
+    facebook: { configured: boolean; status: 'ok' | 'disabled' | 'degraded' };
     media: { status: 'ok' | 'unhealthy' };
     outbox: {
       failed: number;
@@ -35,6 +36,7 @@ export class HealthService {
     private readonly database: ContentDatabase,
     private readonly mediaRoot: string,
     private readonly mastodonConfigured: boolean,
+    private readonly facebookConfigured = false,
   ) {}
 
   inspect(now = new Date()): HealthReport {
@@ -94,14 +96,16 @@ export class HealthService {
     const mastodonStatus = !this.mastodonConfigured
       ? 'disabled'
       : outbox.status === 'degraded' ? 'degraded' : 'ok';
+    const facebookStatus = !this.facebookConfigured ? 'disabled' : outbox.status === 'degraded' ? 'degraded' : 'ok';
     return {
       checks: {
         database: { status: databaseStatus },
         mastodon: { configured: this.mastodonConfigured, status: mastodonStatus },
+        facebook: { configured: this.facebookConfigured, status: facebookStatus },
         media: { status: mediaStatus },
         outbox,
       },
-      status: coreUnhealthy ? 'unhealthy' : mastodonStatus === 'degraded' ? 'degraded' : 'ok',
+      status: coreUnhealthy ? 'unhealthy' : mastodonStatus === 'degraded' || facebookStatus === 'degraded' ? 'degraded' : 'ok',
       timestamp: now.toISOString(),
     };
   }

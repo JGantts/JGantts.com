@@ -22,7 +22,7 @@ type AdminPost = {
   revision?: number
 }
 type RevisionPhoto = { id: string; title: string | null; altText: string; caption: string | null; displayOrder: number; focalX: number | null; focalY: number | null; width: number | null; height: number | null; isHero: boolean }
-type RevisionSyndication = { publicationRevision: number; state: string; remoteUrl: string | null; remoteStatusId: string | null; updatedAt: string }
+type RevisionSyndication = { publicationRevision: number; destination?: string; state: string; remoteUrl: string | null; remoteStatusId: string | null; updatedAt: string }
 type PublishedRevision = { revision: number; slug: string; title: string | null; createdAt: string; media: RevisionPhoto[] }
 function formatHistoryDate(value: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -32,7 +32,7 @@ type Syndication = {
   attemptCount: number
   lastError: string | null
   remoteUrl: string | null
-  state: 'pending' | 'published' | 'failed'
+  state: 'pending' | 'published' | 'failed' | 'uncertain'
 }
 
 const tokenInput = ref('')
@@ -66,6 +66,8 @@ const editingMediaId = ref<string | null>(null)
 const orderSaving = ref(false)
 const draggedMediaId = ref<string | null>(null)
 const syndication = ref<Syndication | null>(null)
+const facebookSyndication = ref<Syndication | null>(null)
+const facebookCandidates = ref<Array<{ id: string; url: string }>>([])
 const revisionHistory = ref<PublishedRevision[]>([])
 const revisionSyndications = ref<RevisionSyndication[]>([])
 let previewTimer: ReturnType<typeof setTimeout> | null = null
@@ -221,12 +223,48 @@ function copyToForm(post: AdminPost) {
   notice.value = ''
   error.value = ''
   syndication.value = null
+  facebookSyndication.value = null
+  facebookCandidates.value = []
   revisionHistory.value = []
   revisionSyndications.value = []
   post.media.forEach((item) => {
     mediaDrafts[item.id] = { altText: item.altText, caption: item.caption ?? '', title: item.title ?? '', location: item.location ?? '', date: dateInputValue(item.date), time: item.time ?? '' }
   })
-  if (post.status === 'published') { void loadSyndication(post.id); void loadHistory(post.id) }
+  if (post.status === 'published') { void loadSyndication(post.id); void loadFacebookSyndication(post.id); void loadHistory(post.id) }
+}
+
+async function loadFacebookSyndication(postId: string) {
+  try { facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${postId}/syndications/facebook`) }
+  catch (loadError) { if (!(loadError instanceof AdminApiError && loadError.status === 404)) error.value = message(loadError) }
+}
+
+async function syndicateFacebook() {
+  if (!selectedId.value || !window.confirm('Create the public Facebook Page link post now?')) return
+  const saved = await save(); if (!saved) return
+  try { facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${saved.id}/syndications/facebook`, jsonRequest('POST')); notice.value = 'Facebook publication queued.' }
+  catch (publishError) { error.value = message(publishError) }
+}
+
+async function retryFacebookSyndication() {
+  if (!selectedId.value) return
+  try { facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${selectedId.value}/syndications/facebook/retry`, jsonRequest('POST')); notice.value = 'Facebook publication queued again.' }
+  catch (retryError) { error.value = message(retryError) }
+}
+
+async function reconcileFacebookSyndication() {
+  if (!selectedId.value) return
+  try {
+    const result = await adminRequest<{ syndication: Syndication; candidates: Array<{ id: string; url: string }> }>(`/api/admin/posts/${selectedId.value}/syndications/facebook/reconcile`, jsonRequest('POST'))
+    facebookSyndication.value = result.syndication
+    facebookCandidates.value = result.candidates
+    notice.value = result.candidates.length === 1 ? 'Facebook publication attached.' : 'No single Facebook match was found; review candidates before resolving.'
+  } catch (reconcileError) { error.value = message(reconcileError) }
+}
+
+async function resolveFacebookCandidate(candidate: { id: string; url: string }) {
+  if (!selectedId.value || !window.confirm('Attach this Facebook post to the local publication?')) return
+  try { facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${selectedId.value}/syndications/facebook/resolve`, jsonRequest('POST', candidate)); facebookCandidates.value = []; notice.value = 'Facebook publication resolved.' }
+  catch (resolveError) { error.value = message(resolveError) }
 }
 
 async function newDraft() {
@@ -918,6 +956,23 @@ onBeforeUnmount(() => {
             <p v-if="syndication?.lastError" class="message message--error">{{ syndication.lastError }}</p>
           </section>
 
+          <section v-if="canSyndicate" class="mastodon-panel" aria-labelledby="facebook-syndication-title">
+            <div class="section-heading"><h2 id="facebook-syndication-title">Facebook Page</h2><span>Explicit syndication only</span></div>
+            <p>Creates an immutable link post pointing to this exact published revision.</p>
+            <div class="editor-actions">
+              <button :disabled="busy || facebookSyndication?.state === 'pending' || facebookSyndication?.state === 'uncertain'" type="button" @click="syndicateFacebook">
+                {{ facebookSyndication?.state === 'pending' ? 'Facebook publication pending' : 'Publish link on Facebook' }}
+              </button>
+              <button v-if="facebookSyndication?.state === 'failed' || (facebookSyndication?.state === 'uncertain' && facebookSyndication.lastError?.startsWith('Reconciliation found no matching'))" class="button-secondary" type="button" @click="retryFacebookSyndication">Retry</button>
+              <button v-if="facebookSyndication?.state === 'uncertain'" class="button-secondary" type="button" @click="reconcileFacebookSyndication">Reconcile</button>
+              <a v-if="facebookSyndication?.remoteUrl" :href="facebookSyndication.remoteUrl" target="_blank">Open on Facebook ↗</a>
+            </div>
+            <p v-if="facebookSyndication" class="syndication-state">State: {{ facebookSyndication.state }} · attempts: {{ facebookSyndication.attemptCount }}</p>
+            <p v-if="facebookSyndication?.state === 'uncertain'" class="message message--error">Delivery is uncertain. Reconcile before retrying.</p>
+            <ul v-if="facebookCandidates.length"><li v-for="candidate in facebookCandidates" :key="candidate.id"><a :href="candidate.url" target="_blank">{{ candidate.url }}</a> <button class="button-quiet" type="button" @click="resolveFacebookCandidate(candidate)">Attach</button></li></ul>
+            <p v-if="facebookSyndication?.lastError" class="message message--error">{{ facebookSyndication.lastError }}</p>
+          </section>
+
           <section v-if="selected && revisionHistory.length" class="mastodon-panel" aria-labelledby="history-title">
             <div class="section-heading"><h2 id="history-title">Published revisions</h2><span>{{ revisionHistory.length }}</span></div>
             <ul>
@@ -935,7 +990,7 @@ onBeforeUnmount(() => {
               </li>
             </ul>
             <p v-if="revisionSyndications.length" class="syndication-state">
-              Mastodon: <span v-for="item in revisionSyndications" :key="item.publicationRevision">r{{ item.publicationRevision }} {{ item.state }}<a v-if="item.remoteUrl" :href="item.remoteUrl" target="_blank"> ↗</a>{{ ' ' }}</span>
+              <span v-for="item in revisionSyndications" :key="`${item.publicationRevision}-${item.remoteUrl ?? item.state}`">{{ item.destination === 'facebook' ? 'Facebook' : 'Mastodon' }}: r{{ item.publicationRevision }} {{ item.state }}<a v-if="item.remoteUrl" :href="item.remoteUrl" target="_blank"> ↗</a>{{ ' ' }}</span>
             </p>
           </section>
 

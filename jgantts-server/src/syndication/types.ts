@@ -1,11 +1,14 @@
-export type SyndicationState = 'pending' | 'published' | 'failed';
+export type SyndicationDestination = 'mastodon' | 'facebook';
+export type SyndicationState = 'pending' | 'published' | 'failed' | 'uncertain';
 export type OutboxJobState = 'pending' | 'processing' | 'completed' | 'failed';
 export type MastodonJobKind = 'mastodon.publish_status' | 'mastodon.edit_status';
+export type FacebookJobKind = 'facebook.publish_link';
+export type SyndicationJobKind = MastodonJobKind | FacebookJobKind;
 
 export interface Syndication {
   id: number;
   postId: string;
-  destination: 'mastodon';
+  destination: SyndicationDestination;
   remoteInstance: string;
   remoteStatusId: string | null;
   remoteUrl: string | null;
@@ -25,11 +28,18 @@ export interface MastodonJobPayload {
   teaser: string;
 }
 
+export interface FacebookJobPayload {
+  canonicalUrl: string;
+  idempotencyKey: string;
+  syndicationId: number;
+  teaser: string;
+}
+
 export interface OutboxJob {
   id: number;
-  kind: MastodonJobKind;
+  kind: SyndicationJobKind;
   aggregateId: string;
-  payload: MastodonJobPayload;
+  payload: MastodonJobPayload | FacebookJobPayload;
   state: OutboxJobState;
   attemptCount: number;
   availableAt: string;

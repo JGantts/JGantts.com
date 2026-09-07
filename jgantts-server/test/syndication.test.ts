@@ -9,6 +9,8 @@ import { buildMastodonStatus, buildPostTeaser, MastodonSyndicationService } from
 import { OutboxWorker } from '../src/syndication/outbox-worker';
 import { SyndicationRepository } from '../src/syndication/syndication-repository';
 import type { MastodonStatusResult } from '../src/syndication/types';
+import { FacebookClient, FacebookRequestError } from '../src/syndication/facebook-client';
+import { FacebookSyndicationService } from '../src/syndication/facebook-syndication-service';
 
 class FakeMastodonClient implements MastodonClientLike {
   readonly edits: Array<{ id: string; key: string; text: string }> = [];
@@ -82,6 +84,61 @@ test('builds a conservative Mastodon teaser within the instance limit', () => {
   assert.equal(buildPostTeaser({ title: null, location: null, date: null, time: '12:00' }), '12:00 noon');
   assert.equal(buildPostTeaser({ title: null, location: null, date: null, time: '18:20' }), '18:20 in the evening');
   assert.equal(buildPostTeaser({ title: null, location: null, date: null, time: '21:45' }), '21:45 at night');
+});
+
+test('publishes Facebook link posts without exposing a guessed permalink', async () => {
+  let request: RequestInit | undefined;
+  const client = new FacebookClient('page-1', 'secret-token', 'v25.0', async (_url, init) => {
+    request = init;
+    return new Response(JSON.stringify({ id: 'page-1_42', permalink_url: 'https://www.facebook.com/page-1/posts/42' }), { status: 200 });
+  });
+  const result = await client.publishLink('A teaser', 'https://jgantts.com/photos/post');
+  assert.deepEqual(result, { id: 'page-1_42', url: 'https://www.facebook.com/page-1/posts/42' });
+  assert.match(String(request?.body), /message=A\+teaser/);
+  assert.match(String(request?.body), /link=https%3A%2F%2Fjgantts.com/);
+  assert.match(String(request?.body), /access_token=secret-token/);
+});
+
+test('classifies malformed Facebook publication responses as uncertain', async () => {
+  const client = new FacebookClient('page-1', 'secret-token', 'v25.0', async () => new Response('{}', { status: 200 }));
+  await assert.rejects(() => client.publishLink('A teaser', 'https://jgantts.com/photos/post'), (error: unknown) => error instanceof FacebookRequestError && error.uncertain);
+});
+
+test('reads and normalizes Facebook reconciliation candidates', async () => {
+  const client = new FacebookClient('page-1', 'secret-token', 'v25.0', async () => new Response(JSON.stringify({ data: [{ id: '1', permalink_url: 'https://www.facebook.com/1', message: 'A teaser', link: 'https://jgantts.com/photos/post', created_time: '2026-09-07T12:00:00Z' }, { id: '2' }] }), { status: 200 }));
+  const candidates = await client.findPagePosts('2026-09-07T11:00:00Z', '2026-09-07T13:00:00Z');
+  assert.deepEqual(candidates, [{ id: '1', url: 'https://www.facebook.com/1', message: 'A teaser', link: 'https://jgantts.com/photos/post', createdTime: '2026-09-07T12:00:00Z' }]);
+});
+
+test('classifies Facebook permission errors as permanent and preserves Retry-After', async () => {
+  const denied = new FacebookClient('page-1', 'secret-token', 'v25.0', async () => new Response(JSON.stringify({ error: { code: 200, message: 'Permission denied' } }), { status: 403 }));
+  await assert.rejects(() => denied.publishLink('A teaser', 'https://jgantts.com/photos/post'), (error: unknown) => error instanceof FacebookRequestError && error.permanent && !error.uncertain);
+  const limited = new FacebookClient('page-1', 'secret-token', 'v25.0', async () => new Response(JSON.stringify({ error: { code: 4, message: 'Too many calls' } }), { status: 429, headers: { 'retry-after': '12' } }));
+  await assert.rejects(() => limited.publishLink('A teaser', 'https://jgantts.com/photos/post'), (error: unknown) => error instanceof FacebookRequestError && !error.permanent && error.retryAfterMs === 12_000);
+});
+
+test('queues and publishes one Facebook operation through the shared outbox', async (t) => {
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostService(new PostRepository(database));
+  const repository = new SyndicationRepository(database);
+  const facebook = new FacebookSyndicationService(repository, posts, 'https://jgantts.com', 'page-1', true);
+  const postId = publishedPost(posts);
+  const first = facebook.queue(postId);
+  const second = facebook.queue(postId);
+  assert.equal(first.syndication.destination, 'facebook');
+  assert.equal(second.queued, false);
+  const mastodon = new FakeMastodonClient();
+  const client = { async publishLink() { return { id: 'page-1_1', url: 'https://www.facebook.com/page-1/posts/1' }; }, async findPagePosts() { return []; } };
+  const worker = new OutboxWorker(repository, mastodon, 5_000, undefined, client);
+  await worker.runOnce();
+  assert.equal(repository.getById(first.syndication.id)?.state, 'published');
+  assert.equal(repository.getById(first.syndication.id)?.remoteUrl, 'https://www.facebook.com/page-1/posts/1');
+});
+
+test('rejects oversized Facebook Graph responses before parsing them', async () => {
+  const client = new FacebookClient('page-1', 'secret-token', 'v25.0', async () => new Response('x'.repeat(300_000), { status: 200 }));
+  await assert.rejects(() => client.findPagePosts('2026-09-07T11:00:00Z', '2026-09-07T13:00:00Z'), /maximum allowed size/);
 });
 
 test('uses the Mastodon instance limit and sends authenticated idempotent status requests', async () => {

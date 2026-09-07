@@ -6,6 +6,8 @@ import { ADMIN_SESSION_COOKIE, adminTokenMatches, createAdminAuth } from '../mid
 import type { HealthService } from '../observability/health-service';
 import type { PostService } from '../posts/post-service';
 import type { MastodonSyndicationService } from '../syndication/mastodon-syndication-service';
+import type { FacebookSyndicationService } from '../syndication/facebook-syndication-service';
+import type { FacebookClientLike } from '../syndication/facebook-client';
 import { createAdminMediaRouter } from './admin-media';
 import { createAdminPostsRouter } from './admin-posts';
 
@@ -16,6 +18,8 @@ export interface ApiServices {
   mastodonComments?: MastodonCommentsService;
   media?: MediaService;
   mastodonSyndication?: MastodonSyndicationService;
+  facebookSyndication?: FacebookSyndicationService;
+  facebookClient?: FacebookClientLike;
   posts?: PostService;
 }
 
@@ -84,7 +88,7 @@ export function createApiRouter(
     router.use(
       '/admin/posts',
       createAdminAuth(options.adminToken ?? ''),
-      createAdminPostsRouter(services.posts, services.media, services.mastodonSyndication),
+      createAdminPostsRouter(services.posts, services.media, services.mastodonSyndication, services.facebookSyndication, services.facebookClient),
     );
 
     router.get('/posts', (req, res, next) => {

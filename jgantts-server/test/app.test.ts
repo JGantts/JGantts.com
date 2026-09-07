@@ -13,6 +13,7 @@ import { CommentCacheRepository } from '../src/comments/comment-cache-repository
 import { MastodonCommentsService } from '../src/comments/mastodon-comments-service';
 import {
   getRuntimeConfig,
+  normalizeFacebookGraphApiVersion,
   normalizeMastodonOrigin,
   normalizeSiteOrigin,
   parsePort,
@@ -111,6 +112,15 @@ test('requires a clean HTTPS Mastodon origin', () => {
   assert.equal(normalizeMastodonOrigin(' https://mastodon.social '), 'https://mastodon.social');
   assert.throws(() => normalizeMastodonOrigin('http://mastodon.social'), /https/);
   assert.throws(() => normalizeMastodonOrigin('https://mastodon.social/path'), /only an origin/);
+});
+
+test('validates Facebook Graph configuration as an all-or-none pinned destination', () => {
+  assert.equal(normalizeFacebookGraphApiVersion(' v25.0 '), 'v25.0');
+  assert.throws(() => normalizeFacebookGraphApiVersion('25.0'), /FACEBOOK_GRAPH_API_VERSION/);
+  assert.throws(() => getRuntimeConfig({ FACEBOOK_PAGE_ID: 'page', FACEBOOK_PAGE_ACCESS_TOKEN: 'token' }), /configured together/);
+  const config = getRuntimeConfig({ FACEBOOK_PAGE_ID: 'page', FACEBOOK_PAGE_ACCESS_TOKEN: 'token', FACEBOOK_GRAPH_API_VERSION: 'v25.0' });
+  assert.equal(config.facebookPageId, 'page');
+  assert.equal(config.facebookGraphApiVersion, 'v25.0');
 });
 
 test('validates PORT', () => {

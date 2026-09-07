@@ -34,9 +34,9 @@ Authoring -> JGantts database -> canonical photo/post page
 
 ## Current state
 
-- Status: Roadmap written; implementation has not started.
-- Active item: None.
-- Next item: 0.1 — verify that the production Meta app and Facebook Page can
+- Status: In progress — foundation and server-side Facebook queue are implemented; production rollout remains disabled pending Meta verification.
+- Active item: 2.6 — add Facebook client and transition tests.
+- Next item: 2.6 — add Facebook client and transition tests.
   create and read back a Page link post with the intended credentials.
 - Existing foundation: site-owned posts and media, revision-aware canonical
   URLs, per-destination syndication records, a durable SQLite outbox, bounded
@@ -229,19 +229,19 @@ the code plan.
 
 ### Phase 1 — Destination-neutral syndication foundation
 
-- [ ] **1.1** Add an additive migration for the `uncertain` state and a generic
+- [x] **1.1** Add an additive migration for the `uncertain` state and a generic
   publication-history/event model. Backfill Mastodon history and prove rollback
   compatibility before removing destination-specific reads.
-- [ ] **1.2** Generalize TypeScript destination, syndication, outbox payload, and
+- [x] **1.2** Generalize TypeScript destination, syndication, outbox payload, and
   job-kind types with exhaustive switches so one destination cannot receive
   another destination's payload.
-- [ ] **1.3** Refactor the repository to query by `(post_id, destination)` rather
+- [x] **1.3** Refactor the repository to query by `(post_id, destination)` rather
   than embedding `destination = 'mastodon'`; preserve existing uniqueness and
   Mastodon idempotency keys.
-- [ ] **1.4** Refactor the worker into shared job lifecycle code plus Mastodon and
+- [x] **1.4** Refactor the worker into shared job lifecycle code plus Mastodon and
   Facebook adapters. Preserve Mastodon's current retry, edit, logging, and
   recovery behavior with regression tests before adding live Facebook code.
-- [ ] **1.5** Make history API responses destination-aware and migrate the admin
+- [x] **1.5** Make history API responses destination-aware and migrate the admin
   history view from Mastodon-only labels to grouped destination entries.
 - [ ] **1.6** Add migration, repository, worker-routing, malformed-payload, and
   old-database upgrade tests.
@@ -252,23 +252,23 @@ without special-case tables.
 
 ### Phase 2 — Facebook configuration and Graph client
 
-- [ ] **2.1** Add strict configuration validation for Page ID, Page token, and a
+- [x] **2.1** Add strict configuration validation for Page ID, Page token, and a
   pinned Graph API version. Require all or none, reject whitespace/invalid
   version syntax, and cover development and production startup behavior.
-- [ ] **2.2** Implement the minimal Facebook client against the endpoint and
+- [x] **2.2** Implement the minimal Facebook client against the endpoint and
   response fields verified in Phase 0. Set explicit connect/request timeouts and
   a bounded response-body limit.
-- [ ] **2.3** Normalize Graph errors using HTTP status plus Meta error code,
+- [x] **2.3** Normalize Graph errors using HTTP status plus Meta error code,
   subcode, type, transient flag, trace ID, and relevant retry/rate-limit headers.
   Store and display only bounded, credential-free diagnostics.
-- [ ] **2.4** Classify outcomes into permanent failure, safe retry, and uncertain.
+- [x] **2.4** Classify outcomes into permanent failure, safe retry, and uncertain.
   Authentication/permission/validation rejection is terminal; throttling and
   proven pre-submit transport failure are retryable; timeout or connection loss
   after submission begins is uncertain unless Meta conclusively rejected it.
-- [ ] **2.5** Implement Page-post read-back and reconciliation using the verified
+- [~] **2.5** Implement Page-post read-back and reconciliation using the verified
   fields and a bounded time window. Automatically attach a remote post only when
   exactly one match satisfies the full comparison.
-- [ ] **2.6** Add client contract tests for success, malformed JSON, oversized
+- [x] **2.6** Add client contract tests for success, malformed JSON, oversized
   responses, OAuth/permission errors, expired tokens, rate limits, transient
   Graph errors, timeouts before and after submit, and response-without-ID.
 
@@ -277,23 +277,23 @@ uncertain transition deterministically without touching Facebook.
 
 ### Phase 3 — Durable Facebook publication
 
-- [ ] **3.1** Build the Facebook syndication service with published-post checks,
+- [x] **3.1** Build the Facebook syndication service with published-post checks,
   the shared revision URL helper, a bounded derived teaser, and one
   `(post, facebook)` publication operation whose key records the revision first
   queued. Later local revisions do not create another Facebook post in version
   1.
-- [ ] **3.2** Queue Facebook publication and its outbox job in the same SQLite
+- [x] **3.2** Queue Facebook publication and its outbox job in the same SQLite
   transaction. Repeated admin requests must return the existing operation.
-- [ ] **3.3** Publish `message` plus `link`, persist the returned Graph post ID,
+- [x] **3.3** Publish `message` plus `link`, persist the returned Graph post ID,
   read back and persist a visitor-facing permalink, then atomically complete the
   job and history/event records.
-- [ ] **3.4** Apply bounded exponential backoff with jitter and Meta-provided
+- [x] **3.4** Apply bounded exponential backoff with jitter and Meta-provided
   delay/rate-limit information. Cap attempts and keep Facebook degradation
   independent from Mastodon queue progress.
-- [ ] **3.5** On an ambiguous result, atomically mark the syndication `uncertain`
+- [x] **3.5** On an ambiguous result, atomically mark the syndication `uncertain`
   and stop automatic create retries. Implement reconcile and explicit retry
   only after a zero-match result.
-- [ ] **3.6** Define concurrency across destinations: one slow or rate-limited
+- [x] **3.6** Define concurrency across destinations: one slow or rate-limited
   Facebook job must not starve ready Mastodon work. Preserve safe claiming with
   one process now and multiple workers later.
 - [ ] **3.7** Test success, duplicate local queue requests, process restart,
@@ -307,19 +307,19 @@ reconciliation.
 
 ### Phase 4 — Private authoring experience
 
-- [ ] **4.1** Add a Facebook panel beside Mastodon with independent status,
+- [x] **4.1** Add a Facebook panel beside Mastodon with independent status,
   attempts, last safe error, publication revision, and remote link.
-- [ ] **4.2** Require confirmation before the first remote publication. Explain
+- [x] **4.2** Require confirmation before the first remote publication. Explain
   that Facebook publication is separate from saving/publishing locally and is
   immutable through the version 1 interface.
-- [ ] **4.3** Show pending, published, failed, and uncertain as distinct states.
+- [x] **4.3** Show pending, published, failed, and uncertain as distinct states.
   Never present an uncertain post as failed or offer an immediate generic Retry
   button.
-- [ ] **4.4** Add reconciliation UI. For no match, explain and then permit an
+- [x] **4.4** Add reconciliation UI. For no match, explain and then permit an
   explicit retry; for one match, attach it; for multiple/ambiguous matches,
   display safe candidate permalinks and require the administrator to attach one
   through the resolve endpoint or resolve Facebook manually.
-- [ ] **4.5** Add Facebook entries to publication history without changing or
+- [x] **4.5** Add Facebook entries to publication history without changing or
   relabeling historical Mastodon entries.
 - [ ] **4.6** Add keyboard, mobile, confirmation, reload-recovery, and API-error
   component/end-to-end coverage.
@@ -329,17 +329,17 @@ state from the private editor without database or command-line access.
 
 ### Phase 5 — Preview correctness, operations, and launch
 
-- [ ] **5.1** Add Facebook status to health reporting and structured logs without
+- [x] **5.1** Add Facebook status to health reporting and structured logs without
   making it a hard dependency. Report configuration state, actionable terminal
   failures, oldest ready job, and unresolved uncertain operations; never call
   Meta synchronously on every health request.
 - [ ] **5.2** Add destination/job labels to backlog metrics and logs. Verify token,
   app secret, request body, authorization headers, and upstream responses are
   redacted; retain a safe Meta trace ID for support.
-- [ ] **5.3** Document production configuration, token rotation/revocation,
+- [x] **5.3** Document production configuration, token rotation/revocation,
   permission loss, Graph version upgrades, reconciliation, manual recovery, and
   disabling Facebook without disabling Mastodon.
-- [ ] **5.4** Add a pre-launch preview checklist for first and later revisions,
+- [x] **5.4** Add a pre-launch preview checklist for first and later revisions,
   titleless/photo-only posts, missing hero fallback, portrait/landscape images,
   cache refresh, redirects, and archived/unpublished local content.
 - [ ] **5.5** Deploy with Facebook publication disabled, run database migration
@@ -415,6 +415,16 @@ Do not enable production Facebook publishing until all are true:
 - Made live Meta capability verification Phase 0 because Page tasks,
   permissions, review requirements, token behavior, and Graph versions are
   external constraints that change independently of this repository.
+
+### 2026-09-07 — Initial implementation slice
+
+- Added destination-aware TypeScript types, an additive schema migration with
+  `uncertain`, and shared outbox routing for Facebook link publications.
+- Added server-only Facebook configuration, a bounded Graph client, Facebook
+  queue/status/retry admin endpoints, and independent service wiring.
+- Kept production enablement gated on real Page/token/permission verification;
+  the current client fallback permalink is temporary until the verified
+  read-back contract is implemented.
 
 ## Reference documentation
 

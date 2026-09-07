@@ -248,6 +248,36 @@ export const migrations: readonly Migration[] = [
         ON mastodon_publication_history(post_id, publication_revision DESC, id DESC);
     `,
   },
+  {
+    version: 12,
+    name: 'facebook_syndication_state',
+    sql: `
+      CREATE TABLE publication_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        destination TEXT NOT NULL,
+        publication_revision INTEGER NOT NULL,
+        state TEXT NOT NULL CHECK (state IN ('pending', 'published', 'failed', 'uncertain')),
+        remote_status_id TEXT,
+        remote_url TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      ) STRICT;
+      ALTER TABLE syndications RENAME TO syndications_old;
+      CREATE TABLE syndications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        destination TEXT NOT NULL, remote_instance TEXT NOT NULL, remote_status_id TEXT, remote_url TEXT,
+        state TEXT NOT NULL CHECK (state IN ('pending', 'published', 'failed', 'uncertain')),
+        publication_revision INTEGER NOT NULL DEFAULT 1, idempotency_key TEXT NOT NULL UNIQUE,
+        attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count >= 0), last_error TEXT,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE (post_id, destination, publication_revision)
+      ) STRICT;
+      INSERT INTO syndications SELECT * FROM syndications_old;
+      DROP TABLE syndications_old;
+      INSERT INTO publication_history (post_id, destination, publication_revision, state, remote_status_id, remote_url, created_at, updated_at)
+        SELECT post_id, 'mastodon', publication_revision, state, remote_status_id, remote_url, created_at, updated_at FROM mastodon_publication_history;
+    `,
+  },
 ];
 
 export function migrateDatabase(database: Database.Database): void {

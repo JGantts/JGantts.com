@@ -222,10 +222,11 @@ watch(() => props.slug, loadPost)
           </div>
           <a
             v-if="comments?.remoteUrl"
+            class="mastodon-comment-button"
             :href="comments.remoteUrl"
             rel="nofollow noopener noreferrer"
             target="_blank"
-          >Reply on Mastodon ↗</a>
+          >Comment on Mastodon <span aria-hidden="true">↗</span></a>
         </div>
         <p v-if="commentsLoading" class="comments-state" role="status">Loading replies…</p>
         <p v-else-if="comments?.state === 'not_syndicated'" class="comments-state">
@@ -412,11 +413,28 @@ watch(() => props.slug, loadPost)
   margin-top: 0.35rem;
 }
 
-.comments-heading > a {
-  color: var(--accent);
+.mastodon-comment-button {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--bg);
   flex: 0 0 auto;
   font-family: 'Azeret Mono Variable', monospace;
   font-size: 0.75rem;
+  font-weight: 650;
+  padding: 0.7rem 0.9rem;
+  text-decoration: none;
+  transition: filter 150ms ease, transform 150ms ease;
+}
+
+.mastodon-comment-button:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.mastodon-comment-button:focus-visible {
+  outline: 0.2rem solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 0.2rem;
 }
 
 .comments-state,

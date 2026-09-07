@@ -847,6 +847,10 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                             @click="openQrFullscreen"
                           >
                             <img :src="shareQrCodeUrl" alt="QR code for this photo post">
+                            <span>
+                              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" /></svg>
+                              Tap to enlarge
+                            </span>
                           </button>
                           <p v-else>QR code unavailable.</p>
                           <p>Scan to open this photo post</p>
@@ -923,14 +927,27 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     <dialog
       ref="qrDialogRef"
       class="photo-qr-dialog"
-      aria-label="Full-screen QR code"
+      aria-labelledby="photo-qr-dialog-title"
       @click="closeQrFromBackdrop"
     >
-      <button type="button" class="photo-qr-dialog-close" aria-label="Close full-screen QR code" @click="closeQrFullscreen">
-        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
-      </button>
-      <img v-if="shareQrCodeUrl" :src="shareQrCodeUrl" alt="QR code for this photo post">
-      <p>Scan to open this photo post</p>
+      <div class="photo-qr-dialog-content">
+        <header>
+          <div>
+            <h2 id="photo-qr-dialog-title">Scan this photo post</h2>
+            <p>Point a phone camera at the code to open it.</p>
+          </div>
+          <button type="button" class="photo-qr-dialog-close" aria-label="Close full-screen QR code" @click="closeQrFullscreen">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          </button>
+        </header>
+        <img v-if="shareQrCodeUrl" :src="shareQrCodeUrl" alt="QR code for this photo post">
+        <p v-if="activeToot" class="photo-qr-dialog-url">{{ photoShareUrl(activeToot.post) }}</p>
+        <div v-if="activeToot" class="photo-qr-dialog-actions">
+          <button type="button" @click="copyPhotoShareLink(activeToot.post)">Copy link</button>
+          <a :href="shareQrCodeUrl" :download="`${photoRouteId(activeToot.post)}-qr-code.png`">Download QR code</a>
+        </div>
+        <p class="photo-qr-dialog-status" role="status" aria-live="polite">{{ shareCopyStatus }}</p>
+      </div>
     </dialog>
   </main>
 </template>
@@ -1590,7 +1607,10 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   border-radius: 0.3rem;
   cursor: zoom-in;
   display: block;
+  overflow: hidden;
   padding: 0;
+  position: relative;
+  touch-action: manipulation;
 }
 
 .photo-qr-fullscreen-trigger img {
@@ -1599,6 +1619,32 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   display: block;
   height: min(10rem, 100%);
   width: min(10rem, 100%);
+}
+
+.photo-qr-fullscreen-trigger > span {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.78);
+  bottom: 0;
+  color: white;
+  display: flex;
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.6rem;
+  gap: 0.3rem;
+  justify-content: center;
+  left: 0;
+  padding: 0.42rem 0.25rem;
+  position: absolute;
+  right: 0;
+}
+
+.photo-qr-fullscreen-trigger > span svg {
+  fill: none;
+  height: 0.7rem;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 0.7rem;
 }
 
 .photo-qr-fullscreen-trigger:focus-visible {
@@ -1617,42 +1663,84 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .photo-qr-dialog {
-  align-items: center;
-  background: white;
+  background: rgba(17, 20, 19, 0.96);
   border: 0;
   box-sizing: border-box;
-  color: #211d1a;
   display: none;
   height: 100dvh;
-  justify-content: center;
   margin: 0;
   max-height: none;
   max-width: none;
-  padding: clamp(1rem, 4vmin, 3rem);
+  padding: max(0.75rem, env(safe-area-inset-top, 0px)) max(0.75rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px)) max(0.75rem, env(safe-area-inset-left, 0px));
   width: 100vw;
 }
 
 .photo-qr-dialog[open] {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
 }
 
 .photo-qr-dialog::backdrop {
+  background: rgba(17, 20, 19, 0.96);
+}
+
+.photo-qr-dialog-content {
+  align-items: center;
   background: white;
+  border-radius: clamp(0.75rem, 2vw, 1.25rem);
+  box-sizing: border-box;
+  color: #211d1a;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: clamp(0.5rem, 1.5vh, 1rem);
+  justify-content: center;
+  margin: auto;
+  max-height: 100%;
+  max-width: 58rem;
+  overflow: auto;
+  padding: clamp(1rem, 3vmin, 2rem);
+  width: 100%;
 }
 
-.photo-qr-dialog > img {
-  height: min(82vmin, calc(100dvh - 7rem));
+.photo-qr-dialog-content > header {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  max-width: 36rem;
+  width: 100%;
+}
+
+.photo-qr-dialog-content h2 {
+  font-size: clamp(1.15rem, 3vw, 1.65rem);
+  font-weight: 800;
+}
+
+.photo-qr-dialog-content header p {
+  color: #6d6257;
+  font-size: clamp(0.75rem, 2vw, 0.9rem);
+  margin-top: 0.25rem;
+}
+
+.photo-qr-dialog-content > img {
+  flex: 0 1 auto;
+  height: min(70vmin, calc(100dvh - 13rem));
   image-rendering: pixelated;
+  min-height: 10rem;
+  min-width: 10rem;
   object-fit: contain;
-  width: min(82vmin, calc(100vw - 2rem));
+  width: min(70vmin, calc(100vw - 3rem));
 }
 
-.photo-qr-dialog > p {
+.photo-qr-dialog-url {
+  color: #6d6257;
   font-family: 'Azeret Mono Variable', monospace;
-  font-size: clamp(0.75rem, 2vw, 1rem);
+  font-size: clamp(0.62rem, 1.8vw, 0.78rem);
+  max-width: 100%;
+  overflow: hidden;
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .photo-qr-dialog-close {
@@ -1663,12 +1751,10 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   color: #211d1a;
   cursor: pointer;
   display: inline-flex;
-  height: 2.5rem;
+  flex: 0 0 auto;
+  height: 2.25rem;
   justify-content: center;
-  position: fixed;
-  right: max(1rem, env(safe-area-inset-right, 0px));
-  top: max(1rem, env(safe-area-inset-top, 0px));
-  width: 2.5rem;
+  width: 2.25rem;
 }
 
 .photo-qr-dialog-close svg {
@@ -1685,12 +1771,50 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   outline-offset: 2px;
 }
 
+.photo-qr-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.photo-qr-dialog-actions button,
+.photo-qr-dialog-actions a {
+  background: #2f7568;
+  border: 1px solid #2f7568;
+  border-radius: 999px;
+  color: white;
+  cursor: pointer;
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.6rem 0.8rem;
+  text-decoration: none;
+}
+
+.photo-qr-dialog-actions a {
+  background: white;
+  color: #2f7568;
+}
+
+.photo-qr-dialog-actions button:focus-visible,
+.photo-qr-dialog-actions a:focus-visible {
+  outline: 2px solid #2f7568;
+  outline-offset: 2px;
+}
+
+.photo-qr-dialog-status {
+  color: #6d6257;
+  font-size: 0.72rem;
+  min-height: 1em;
+}
+
 .comments-header h1 {
   font-size: 1.05rem;
   font-weight: 800;
 }
 
-.comments-header span {
+.comments-header > span {
   color: var(--photos-muted);
   font-family: 'Azeret Mono Variable', monospace;
   font-size: 0.78rem;
@@ -2009,7 +2133,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
     top: -0.4rem;
   }
 
-  .comments-header span {
+  .comments-header > span {
     display: none;
   }
 

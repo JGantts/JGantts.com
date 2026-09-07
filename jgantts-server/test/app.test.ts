@@ -596,8 +596,11 @@ test('renders canonical post HTML, redirects old slugs, and preserves publicatio
   repository.create({
     id: 'canonical-post',
     title: 'A canonical <post>',
+    location: 'Joshua Tree',
+    date: 20260904,
+    time: '10:30',
     slug: 'first-canonical-slug',
-    bodyMarkdown: 'Owned here',
+    bodyMarkdown: 'Owned here\n\nSecond paragraph',
     bodyHtml: '<p>Owned here</p>',
     excerpt: 'The canonical description.',
     status: 'published',
@@ -617,6 +620,10 @@ test('renders canonical post HTML, redirects old slugs, and preserves publicatio
   assert.equal(response.status, 200);
   assert.match(response.body, /<title>A canonical &lt;post&gt; \| JGantts<\/title>/);
   assert.match(response.body, /property="og:type" content="article"/);
+  assert.match(
+    response.body,
+    /property="og:description" content="A canonical &lt;post&gt;\nOwned here\nJoshua Tree\n2026, September 4th, 10:30 in the morning"/,
+  );
   assert.match(response.body, /rel="canonical" href="https:\/\/jgantts\.com\/photos\/canonical-post\?rev=2"/);
   assert.match(response.body, /property="article:published_time"/);
   assert.match(response.body, /type="application\/ld\+json"/);

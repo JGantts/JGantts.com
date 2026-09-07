@@ -26,8 +26,48 @@ function insertBeforeBodyClose(html: string, value: string): string {
   return html.replace(/<\/body\s*>/i, `  ${value}\n  </body>`);
 }
 
+function firstLine(value: string | null): string {
+  return value?.split(/\r?\n/, 1)[0]?.trim() ?? '';
+}
+
+function editorialDateTimeFor(post: Post): string {
+  let formatted = '';
+  if (post.date) {
+    const value = String(post.date);
+    const year = Number(value.slice(0, 4));
+    const month = Number(value.slice(4, 6));
+    const day = Number(value.slice(6, 8));
+    const monthName = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' })
+      .format(new Date(Date.UTC(year, month - 1, day)));
+    const remainder = day % 100;
+    const suffix = remainder >= 11 && remainder <= 13
+      ? 'th'
+      : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[day % 10] ?? 'th';
+    formatted = `${year}, ${monthName} ${day}${suffix}`;
+  }
+  if (post.time) {
+    const hour = Number(post.time.slice(0, 2));
+    let period = 'at night';
+    if (hour === 0 || hour === 24) period = 'midnight';
+    else if (hour < 5) period = 'at night';
+    else if (hour < 12) period = 'in the morning';
+    else if (hour === 12) period = 'noon';
+    else if (hour < 17) period = 'in the afternoon';
+    else if (hour < 21) period = 'in the evening';
+    const formattedTime = `${post.time} ${period}`;
+    formatted = formatted ? `${formatted}, ${formattedTime}` : formattedTime;
+  }
+  return formatted;
+}
+
 function descriptionFor(post: Post): string {
-  return post.excerpt?.trim() || 'A post from Jacob Gantt on JGantts.com.';
+  const lines = [
+    firstLine(post.title),
+    firstLine(post.bodyMarkdown),
+    firstLine(post.location),
+    editorialDateTimeFor(post),
+  ].filter(Boolean);
+  return lines.join('\n') || 'A post from Jacob Gantt on JGantts.com.';
 }
 
 function titleFor(post: Post): string {

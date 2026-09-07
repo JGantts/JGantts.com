@@ -52,6 +52,7 @@ export type CanonicalPost = {
   location: string | null
   date: number | null
   time: string | null
+  bodyMarkdown: string
   bodyHtml: string
   heroMediaId: string | null
   id: string

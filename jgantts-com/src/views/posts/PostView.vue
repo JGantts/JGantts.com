@@ -32,7 +32,13 @@ function initialPost(): CanonicalPost | null {
 
 function updateDocumentMeta(value: CanonicalPost) {
   const title = value.title || value.location || 'Post by Jacob Gantt'
-  const description = 'A post from Jacob Gantt on JGantts.com.'
+  const firstLine = (text: string | null) => text?.split(/\r?\n/, 1)[0]?.trim() || ''
+  const description = [
+    firstLine(value.title),
+    firstLine(value.bodyMarkdown),
+    firstLine(value.location),
+    formatEditorialDateTime(value.date, value.time) || '',
+  ].filter(Boolean).join('\n') || 'A post from Jacob Gantt on JGantts.com.'
   const image = (value.media.find((item) => item.id === value.heroMediaId) ?? value.media[0])?.urls.large
   const canonicalUrl = new URL(`/photos/${value.slug}${value.revision ? `?rev=${value.revision}` : ''}`, window.location.origin).toString()
   const setMeta = (attribute: 'name' | 'property', key: string, content: string) => {

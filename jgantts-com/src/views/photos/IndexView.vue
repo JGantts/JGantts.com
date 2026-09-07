@@ -806,34 +806,33 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
                   </time>
                 </div>
 
-                <details class="photo-share-menu">
-                  <summary class="photo-share-button" aria-label="Share this photo post">
-                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
-                    Share
-                  </summary>
-                  <div class="photo-share-popover">
-                    <p>Share this photo post</p>
-                    <a :href="photoSocialShareUrl('facebook', toot.post)" target="_blank" rel="noopener noreferrer">Share on Facebook <span aria-hidden="true">↗</span></a>
-                    <a :href="photoSocialShareUrl('x', toot.post)" target="_blank" rel="noopener noreferrer">Share on X <span aria-hidden="true">↗</span></a>
-                    <a :href="photoSocialShareUrl('linkedin', toot.post)" target="_blank" rel="noopener noreferrer">Share on LinkedIn <span aria-hidden="true">↗</span></a>
-                    <a :href="photoEmailShareUrl(toot.post)">Share by email</a>
-                    <button type="button" @click="copyPhotoShareLink(toot.post)">Copy link</button>
-                    <p class="photo-share-status" role="status" aria-live="polite">{{ shareCopyStatus }}</p>
-                    <details class="photo-qr-share">
-                      <summary>Share as QR code</summary>
-                      <div class="photo-qr-panel">
-                        <img v-if="shareQrCodeUrl" :src="shareQrCodeUrl" alt="QR code for this photo post">
-                        <p v-else>QR code unavailable.</p>
-                        <p>Scan to open this photo post</p>
-                        <a v-if="shareQrCodeUrl" :href="shareQrCodeUrl" :download="`${photoRouteId(toot.post)}-qr-code.png`">Download QR code</a>
-                      </div>
-                    </details>
-                  </div>
-                </details>
-
                 <header class="comments-header">
                   <h1>Replies</h1>
                   <span>{{ formatCount(replyCountsByPostId.get(toot.post.id) ?? 0) }} {{ (replyCountsByPostId.get(toot.post.id) ?? 0) === 1 ? 'reply' : 'replies' }}</span>
+                  <details class="photo-share-menu">
+                    <summary class="photo-share-button" aria-label="Share this photo post">
+                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
+                      Share
+                    </summary>
+                    <div class="photo-share-popover">
+                      <p>Share this photo post</p>
+                      <a :href="photoSocialShareUrl('facebook', toot.post)" target="_blank" rel="noopener noreferrer">Share on Facebook <span aria-hidden="true">↗</span></a>
+                      <a :href="photoSocialShareUrl('x', toot.post)" target="_blank" rel="noopener noreferrer">Share on X <span aria-hidden="true">↗</span></a>
+                      <a :href="photoSocialShareUrl('linkedin', toot.post)" target="_blank" rel="noopener noreferrer">Share on LinkedIn <span aria-hidden="true">↗</span></a>
+                      <a :href="photoEmailShareUrl(toot.post)">Share by email</a>
+                      <button type="button" @click="copyPhotoShareLink(toot.post)">Copy link</button>
+                      <p class="photo-share-status" role="status" aria-live="polite">{{ shareCopyStatus }}</p>
+                      <details class="photo-qr-share">
+                        <summary>Share as QR code</summary>
+                        <div class="photo-qr-panel">
+                          <img v-if="shareQrCodeUrl" :src="shareQrCodeUrl" alt="QR code for this photo post">
+                          <p v-else>QR code unavailable.</p>
+                          <p>Scan to open this photo post</p>
+                          <a v-if="shareQrCodeUrl" :href="shareQrCodeUrl" :download="`${photoRouteId(toot.post)}-qr-code.png`">Download QR code</a>
+                        </div>
+                      </details>
+                    </div>
+                  </details>
                 </header>
 
                 <ol
@@ -1366,7 +1365,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   border-top: 1px solid color-mix(in srgb, var(--photos-border) 58%, transparent);
   display: grid;
   gap: 0.65rem;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   margin: 0.65rem -0.85rem 0.75rem;
   padding: 0.65rem 0.85rem;
   position: sticky;
@@ -1442,7 +1441,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .photo-share-menu {
-  margin: 0.55rem 0.15rem 0.75rem;
+  position: relative;
 }
 
 .photo-share-button {
@@ -1491,8 +1490,12 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   box-shadow: 0 0.55rem 1.5rem color-mix(in srgb, var(--photos-text) 15%, transparent);
   display: grid;
   gap: 0.12rem;
-  margin-top: 0.45rem;
+  min-width: 14rem;
   padding: 0.55rem;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.45rem);
+  z-index: 4;
 }
 
 .photo-share-popover > p:first-child {
@@ -1882,8 +1885,8 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   }
 
   .comments-header {
+    grid-template-columns: minmax(0, 1fr) auto;
     margin-top: 0;
-    padding-right: 3.5rem;
     top: -0.4rem;
   }
 

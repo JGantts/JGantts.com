@@ -79,11 +79,6 @@ type MastodonStatus = {
   visibility: 'direct' | 'private' | 'public' | 'unlisted'
 }
 
-type MastodonContext = {
-  ancestors: MastodonStatus[]
-  descendants: MastodonStatus[]
-}
-
 type ThreadedStatus = MastodonStatus & {
   replies: ThreadedStatus[]
 }
@@ -98,15 +93,6 @@ type TootThread = {
   remoteUrl: string | null
 }
 
-const host = 'mastodon.social'
-const tootIds = [
-  '117175619119315006',
-  '117193518181386825',
-  '117181311875674440',
-  '117181377440082771',
-  '117198059772006365',
-  '117204084325016679'
-]
 const props = defineProps<{
   postId?: string
 }>()
@@ -130,12 +116,10 @@ function initialPreselectedPostId() {
 
 const initiallyRoutedPostId = initialPreselectedPostId()
 
-const toots = ref<(TootThread | null)[]>(tootIds.map(() => null))
 const localPosts = ref<CanonicalPost[]>([])
 const localThreads = ref<TootThread[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-const tootLoads = new Map<number, Promise<void>>()
 
 const activeTootIndex = ref<number | null>(null)
 const selectedPostVisibility = ref(1)
@@ -164,12 +148,12 @@ const activeSharePhotoUrl = computed(() => {
   const attachment = activeToot.value?.post.media_attachments.find((item) => item.type === 'image')
   return attachment?.preview_url || attachment?.url || ''
 })
-const allToots = computed(() => [...toots.value.filter((toot): toot is TootThread => Boolean(toot)), ...localThreads.value])
+const allToots = computed(() => localThreads.value)
 const photoPosts = computed(() => allToots.value.map((toot) => toot.post))
 const initiallyFeaturedPostId = computed(() => {
   if (!initiallyRoutedPostId) return undefined
   const localPost = localPosts.value.find((post) => post.slug === initiallyRoutedPostId)
-  return localPost ? `local:${localPost.id}` : initiallyRoutedPostId
+  return localPost ? `local:${localPost.id}` : undefined
 })
 const commentsByPostId = computed(() => {
   const comments = new Map<string, DisplayStatus[]>()
@@ -325,11 +309,7 @@ function clearSelection() {
 
 function syncSelectionFromRoute(postId = props.postId) {
   const localIndex = localPosts.value.findIndex((post) => post.slug === postId)
-  activeTootIndex.value = postId
-    ? (tootIds.indexOf(postId) >= 0
-      ? tootIds.indexOf(postId)
-      : localIndex >= 0 ? tootIds.length + localIndex : -1)
-    : null
+  activeTootIndex.value = postId && localIndex >= 0 ? localIndex : null
   if (activeTootIndex.value === -1) activeTootIndex.value = null
   selectedPostVisibility.value = 1
   commentsDrawerState.value = 0
@@ -551,22 +531,6 @@ function handlePageClick(event: MouseEvent) {
   clearSelection()
 }
 
-function ensureTootLoaded(index: number): Promise<void> {
-  if (toots.value[index]) return Promise.resolve()
-
-  const existingLoad = tootLoads.get(index)
-  if (existingLoad) return existingLoad
-
-  const load = loadToot(tootIds[index])
-    .then((toot) => {
-      toots.value[index] = toot
-    })
-    .finally(() => tootLoads.delete(index))
-
-  tootLoads.set(index, load)
-  return load
-}
-
 onMounted(async () => {
   mobilePortraitDrawerQuery = window.matchMedia('(max-width: 44rem) and (orientation: portrait)')
   syncMobilePortraitDrawer()
@@ -575,14 +539,12 @@ onMounted(async () => {
 
   try {
     syncSelectionFromRoute()
-    await Promise.all([
-      ...tootIds.map((_, index) => ensureTootLoaded(index)),
-      fetch('/api/posts?limit=50').then(async (response) => {
+    await fetch('/api/posts?limit=50').then(async (response) => {
         if (!response.ok) return
         const page = await response.json() as { items?: CanonicalPost[] }
         const routedSlug = props.postId
         const items = page.items ?? []
-        if (routedSlug && !tootIds.includes(routedSlug) && !items.some((post) => post.slug === routedSlug)) {
+        if (routedSlug && !items.some((post) => post.slug === routedSlug)) {
           const routedResponse = await fetch(`/api/posts/${encodeURIComponent(routedSlug)}`)
           if (routedResponse.ok) items.push(await routedResponse.json() as CanonicalPost)
         }
@@ -648,9 +610,8 @@ onMounted(async () => {
           }
         }))
       }).catch(() => {
-        // Mastodon remains useful when the local-post API is temporarily unavailable.
-      }),
-    ])
+        error.value = 'Could not load photo posts.'
+      })
 
     // The first route sync runs before the asynchronous local-post collection is
     // available. Resolve it again now so a hard refresh retains the selected post.
@@ -661,7 +622,7 @@ onMounted(async () => {
       await scrollToRoutedPost(props.postId, activeToot.value.post.id)
     }
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Could not load Mastodon conversation'
+    error.value = err instanceof Error ? err.message : 'Could not load photo posts.'
   } finally {
     loading.value = false
   }
@@ -672,32 +633,6 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', handlePageClick)
   restoreQrDocumentOverflow()
 })
-
-async function loadToot(tootId: string): Promise<TootThread> {
-  const [statusResponse, contextResponse] = await Promise.all([
-    fetch(`https://${host}/api/v1/statuses/${tootId}`),
-    fetch(`https://${host}/api/v1/statuses/${tootId}/context`),
-  ])
-
-  if (!statusResponse.ok) {
-    throw new Error(`Could not load Mastodon post ${tootId} (${statusResponse.status})`)
-  }
-
-  if (!contextResponse.ok) {
-    throw new Error(`Could not load comments for Mastodon post ${tootId} (${contextResponse.status})`)
-  }
-
-  const [post, context] = await Promise.all([
-    statusResponse.json() as Promise<MastodonStatus>,
-    contextResponse.json() as Promise<MastodonContext>,
-  ])
-
-  return {
-    post,
-    comments: buildCommentTree(context.descendants ?? []),
-    remoteUrl: post.url,
-  }
-}
 
 function buildCommentTree(descendants: MastodonStatus[]): ThreadedStatus[] {
   const statuses = new Map<string, ThreadedStatus>()
@@ -769,18 +704,17 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   <main class="photos-page">
     <section class="conversation-shell" aria-live="polite">
       <div v-if="loading" class="loading-state">
-        Loading Mastodon conversation...
+        Loading photo posts...
       </div>
 
       <div v-else-if="error" class="error-state">
         <p>{{ error }}</p>
-        <a :href="`https://${host}/api/v1/statuses/${tootIds[0]}`">Open the Mastodon API response</a>
       </div>
 
       <section
-        v-show="!loading && !error && toots.length"
+        v-show="!loading && !error && allToots.length"
         class="toot-carousel"
-        aria-label="Mastodon posts"
+        aria-label="Photo posts"
       >
           <ClusteredPhotoMasonry
             :posts="photoPosts"
@@ -793,10 +727,9 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
           <template
             v-for="(toot, tootIndex) in allToots"
-            :key="toot?.post.id ?? tootIds[tootIndex]"
+            :key="toot.post.id"
           >
             <section
-              v-if="toot"
               v-show="activeTootIndex === tootIndex"
               class="comments-section"
               :class="{

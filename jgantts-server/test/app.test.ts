@@ -1008,16 +1008,16 @@ test('batch uploads preserve successes and enforce authenticated bounded multipa
   const response = await send([png, Buffer.from('broken'), png, png], ['red', 'broken', '', 'last']);
   assert.equal(response.status, 200);
   const results = JSON.parse(response.body).results;
-  assert.deepEqual(results.map((r: { status: string }) => r.status), ['uploaded', 'failed', 'failed', 'uploaded']);
+  assert.deepEqual(results.map((r: { status: string }) => r.status), ['uploaded', 'failed', 'uploaded', 'uploaded']);
   assert.deepEqual(results.map((r: { index: number }) => r.index), [0, 1, 2, 3]);
-  assert.deepEqual(media.listForPost('batch').map((m) => m.displayOrder), [0, 1]);
+  assert.deepEqual(media.listForPost('batch').map((m) => m.displayOrder), [0, 1, 2]);
   assert.equal((await send(Array(11).fill(png), Array(11).fill('red'))).status, 413);
   assert.equal((await send([Buffer.alloc(100 * 1024 * 1024 + 1)], ['large'])).status, 413);
   assert.equal((await send([Buffer.alloc(100 * 1024 * 1024), Buffer.alloc(100 * 1024 * 1024), Buffer.alloc(51 * 1024 * 1024)], ['a', 'b', 'c'])).status, 413);
-  assert.equal(media.listForPost('batch').length, 2);
+  assert.equal(media.listForPost('batch').length, 3);
   assert.equal(posts.getById('batch')?.status, 'draft');
   assert.equal((await send(Array(10).fill(png), Array(10).fill('red'))).status, 200);
-  assert.deepEqual(media.listForPost('batch').map((m) => m.displayOrder), Array.from({ length: 12 }, (_, i) => i));
+  assert.deepEqual(media.listForPost('batch').map((m) => m.displayOrder), Array.from({ length: 13 }, (_, i) => i));
 });
 
 test('gallery maintenance enforces auth and validation and serializes competing complete orders', async (t) => {
@@ -1041,7 +1041,6 @@ test('gallery maintenance enforces auth and validation and serializes competing 
   const send = (url: string, method: string, body: unknown, credential = 'Bearer secret') => request(app, url, {
     method, body: JSON.stringify(body), headers: { 'content-type': 'application/json', authorization: credential },
   });
-  const before = media.listForPost('gallery');
   for (const credential of ['', 'Bearer incorrect']) {
     assert.equal((await send(orderUrl, 'PUT', { mediaIds: ids }, credential)).status, 401);
     assert.equal((await send(heroUrl, 'PUT', { mediaId: ids[0] }, credential)).status, 401);
@@ -1052,15 +1051,17 @@ test('gallery maintenance enforces auth and validation and serializes competing 
     assert.equal((await send(orderUrl, 'PUT', { mediaIds })).status, 400);
   }
   assert.equal((await send(heroUrl, 'PUT', { mediaId: foreign.id })).status, 400);
-  for (const body of [{ altText: '' }, { caption: 42 }, { time: '6:30 PM' }, { time: '06:10' }, { focalX: 0.5 }, { focalX: -1, focalY: 1 }, { postId: 'other' }]) {
+  assert.equal((await send(editUrl, 'PATCH', { altText: '' })).status, 200);
+  const afterBlankAlt = media.listForPost('gallery');
+  for (const body of [{ caption: 42 }, { time: '6:30 PM' }, { time: '06:10' }, { focalX: 0.5 }, { focalX: -1, focalY: 1 }, { postId: 'other' }]) {
     assert.equal((await send(editUrl, 'PATCH', body)).status, 400);
   }
-  assert.deepEqual(media.listForPost('gallery'), before);
+  assert.deepEqual(media.listForPost('gallery'), afterBlankAlt);
   assert.equal(posts.getById('gallery')?.heroMediaId, null);
   database.exec(`CREATE TRIGGER reject_reorder BEFORE UPDATE OF display_order ON media
     WHEN NEW.display_order = 1 BEGIN SELECT RAISE(ABORT, 'simulated reorder failure'); END`);
   assert.throws(() => media.reorder('gallery', [...ids].reverse()), /simulated reorder failure/);
-  assert.deepEqual(media.listForPost('gallery'), before);
+  assert.deepEqual(media.listForPost('gallery'), afterBlankAlt);
   database.exec('DROP TRIGGER reject_reorder');
   const orders = [[ids[2], ids[0], ids[1]], [ids[1], ids[2], ids[0]]];
   const responses = await Promise.all(orders.map((mediaIds) => send(orderUrl, 'PUT', { mediaIds })));

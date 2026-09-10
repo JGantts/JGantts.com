@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "concurrently --kill-others-on-fail --names server,app --prefix-colors cyan,magenta \"npm --prefix jgantts-server run dev\" \"npm --prefix jgantts-com run dev\"",
     "dev:app": "npm --prefix jgantts-com run dev",
+    "dev:app:live": "VITE_BACKEND_TARGET=live npm --prefix jgantts-com run dev",
+    "dev:live": "VITE_BACKEND_TARGET=live npm --prefix jgantts-com run dev",
     "dev:server": "npm --prefix jgantts-server run dev"
   },
   "devDependencies": {

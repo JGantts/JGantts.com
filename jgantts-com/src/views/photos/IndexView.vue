@@ -1715,9 +1715,10 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .photo-qr-dialog {
-  background: rgba(17, 20, 19, 0.7);
+  background: color-mix(in srgb, var(--photos-media-bg) 72%, transparent);
   border: 0;
   box-sizing: border-box;
+  color-scheme: light dark;
   display: none;
   height: 100dvh;
   margin: 0;
@@ -1732,7 +1733,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .photo-qr-dialog::backdrop {
-  background: rgba(17, 20, 19, 0.88);
+  background: color-mix(in srgb, var(--photos-media-bg) 88%, transparent);
 }
 
 .photo-qr-dialog-backdrop {
@@ -1748,11 +1749,11 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .photo-qr-dialog-content {
-  background: rgba(255, 255, 255, 0.96);
+  background: color-mix(in srgb, var(--photos-panel) 96%, transparent);
   border-radius: clamp(0.75rem, 2vw, 1.25rem);
   box-shadow: 0 1.5rem 5rem rgba(0, 0, 0, 0.38);
   box-sizing: border-box;
-  color: #211d1a;
+  color: var(--photos-text);
   display: grid;
   flex: 1;
   gap: clamp(0.8rem, 2vw, 1.5rem);
@@ -1769,7 +1770,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
 .photo-qr-dialog-photo {
   align-self: stretch;
-  background: #171918;
+  background: var(--photos-media-bg);
   border-radius: 0.75rem;
   display: grid;
   min-height: 0;
@@ -1821,12 +1822,14 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .photo-qr-dialog-share header p {
-  color: #6d6257;
+  color: var(--photos-muted);
   font-size: clamp(0.75rem, 2vw, 0.9rem);
   margin-top: 0.25rem;
 }
 
 .photo-qr-dialog-code {
+  background: white;
+  border-radius: 0.5rem;
   flex: 0 1 auto;
   height: min(48vmin, calc(100dvh - 13rem));
   image-rendering: pixelated;
@@ -1837,7 +1840,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .photo-qr-dialog-url {
-  color: #6d6257;
+  color: var(--photos-muted);
   font-family: 'Azeret Mono Variable', monospace;
   font-size: clamp(0.62rem, 1.8vw, 0.78rem);
   max-width: 100%;
@@ -1849,10 +1852,10 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 
 .photo-qr-dialog-close {
   align-items: center;
-  background: #eee5db;
-  border: 1px solid #d6c8b8;
+  background: var(--photos-control);
+  border: 1px solid var(--photos-border);
   border-radius: 50%;
-  color: #211d1a;
+  color: var(--photos-text);
   cursor: pointer;
   display: inline-flex;
   flex: 0 0 auto;
@@ -1871,7 +1874,7 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .photo-qr-dialog-close:focus-visible {
-  outline: 2px solid #2f7568;
+  outline: 2px solid var(--photos-accent);
   outline-offset: 2px;
 }
 
@@ -1885,10 +1888,10 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 .photo-qr-dialog-actions button,
 .photo-qr-dialog-actions a {
   align-items: center;
-  background: #2f7568;
-  border: 1px solid #2f7568;
+  background: var(--photos-accent);
+  border: 1px solid var(--photos-accent);
   border-radius: 999px;
-  color: white;
+  color: var(--photos-panel);
   cursor: pointer;
   display: inline-flex;
   font-family: 'Azeret Mono Variable', monospace;
@@ -1900,25 +1903,25 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
 }
 
 .photo-qr-dialog-actions a {
-  background: white;
-  color: #2f7568;
+  background: var(--photos-panel);
+  color: var(--photos-accent);
 }
 
 .photo-qr-dialog-actions button:focus-visible,
 .photo-qr-dialog-actions a:focus-visible {
-  outline: 2px solid #2f7568;
+  outline: 2px solid var(--photos-accent);
   outline-offset: 2px;
 }
 
 .photo-qr-dialog-status {
-  color: #6d6257;
+  color: var(--photos-muted);
   font-size: 0.72rem;
   min-height: 1em;
 }
 
 @media (max-width: 46rem) {
   .photo-qr-dialog-content {
-    background: rgba(255, 255, 255, 0.94);
+    background: color-mix(in srgb, var(--photos-panel) 94%, transparent);
     display: flex;
     flex-direction: column;
     justify-content: center;

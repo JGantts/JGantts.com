@@ -6,6 +6,15 @@ import { visualizer } from "rollup-plugin-visualizer";
 
 export default defineConfig(({ command }) => {
   const isBuild = command === "build";
+  const backendTarget = process.env.VITE_BACKEND_TARGET ?? 'local';
+  const backendOrigin = {
+    local: 'http://localhost:3000',
+    live: 'https://jgantts.com',
+  }[backendTarget];
+
+  if (!isBuild && !backendOrigin) {
+    throw new Error('VITE_BACKEND_TARGET must be either "local" or "live".');
+  }
 
   let server: ServerOptions;
   let publicDir: string | boolean = "PUBLIC";
@@ -17,7 +26,19 @@ export default defineConfig(({ command }) => {
       proxy: {
         '/api': {
           changeOrigin: true,
-          target: 'http://localhost:3000',
+          target: backendOrigin,
+        },
+        '/media': {
+          changeOrigin: true,
+          target: backendOrigin,
+        },
+        '/feed.xml': {
+          changeOrigin: true,
+          target: backendOrigin,
+        },
+        '/sitemap.xml': {
+          changeOrigin: true,
+          target: backendOrigin,
         },
       },
       strictPort: true,

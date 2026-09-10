@@ -28,7 +28,9 @@ values to the centralized `dist/build-info.json`, so production does not need ac
 repository. The endpoint reads that file on every request, allowing the deployment workflow to
 update build information for every `prod` commit without rebuilding or restarting the server.
 During local development, the API returns `dev` and `Local development build`, making the badge
-state predictable while debugging. Vite proxies `/api` requests to the server on port 3000.
+state predictable while debugging. `npm run dev` proxies the frontend's API, media, feed, and
+sitemap requests to the server on port 3000. Use `npm run dev:live` to run only the frontend and
+proxy those requests to `https://jgantts.com`; it never starts or changes the production server.
 
 ## Site-owned content storage
 

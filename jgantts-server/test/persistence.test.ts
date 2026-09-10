@@ -567,7 +567,7 @@ test('rejects invalid image uploads before creating media records', async (t) =>
   }), /readable image/);
   await assert.rejects(() => service.uploadImage({
     altText: '', buffer: Buffer.from('hello'), postId: 'post',
-  }), /altText/);
+  }), /readable image/);
   assert.equal(database.prepare('SELECT COUNT(*) FROM media').pluck().get(), 0);
 });
 

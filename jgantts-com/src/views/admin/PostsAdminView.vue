@@ -381,7 +381,7 @@ function replaceMedia(updated: PostMedia) {
 
 async function saveMedia(item: PostMedia) {
   const draft = mediaDrafts[item.id]
-  if (!draft?.altText.trim()) return
+  if (!draft) return
   mediaSavingId.value = item.id
   error.value = ''
   try {
@@ -676,7 +676,7 @@ function uploadOne(item: UploadQueueItem): Promise<PostMedia> {
 
 async function uploadQueued() {
   const pending = uploadQueue.value.filter((item) =>
-    ['queued', 'failed'].includes(item.status) && item.altText.trim())
+    ['queued', 'failed'].includes(item.status))
   if (!pending.length || uploadRunning.value) return
   uploadRunning.value = true
   error.value = ''
@@ -858,18 +858,18 @@ onBeforeUnmount(() => {
                 <img alt="" :src="item.previewUrl">
                 <div>
                   <strong>{{ item.file.name }}</strong>
-                  <label>Alt text <input v-model="item.altText" maxlength="2000" required></label>
+                  <label>Alt text (optional) <input v-model="item.altText" maxlength="2000"></label>
                   <progress v-if="item.status === 'uploading'" max="100" :value="item.progress">{{ item.progress }}%</progress>
                   <p v-if="item.error" class="message message--error">{{ item.error }}</p>
                   <span class="upload-status">{{ item.status }}<template v-if="item.status === 'uploading'"> · {{ item.progress }}%</template></span>
                 </div>
                 <div class="upload-item-actions">
-                  <button v-if="item.status === 'failed' || item.status === 'cancelled'" class="button-secondary" :disabled="!item.altText.trim()" type="button" @click="retryUpload(item)">Retry</button>
+                  <button v-if="item.status === 'failed' || item.status === 'cancelled'" class="button-secondary" type="button" @click="retryUpload(item)">Retry</button>
                   <button v-if="item.status === 'uploading' || item.status === 'queued'" class="button-quiet" type="button" @click="cancelUpload(item)">Cancel</button>
                   <button v-else class="button-quiet" type="button" @click="removeUpload(item)">Remove</button>
                 </div>
               </article>
-              <button :disabled="uploadRunning || !uploadQueue.some((item) => ['queued', 'failed'].includes(item.status) && item.altText.trim())" type="button" @click="uploadQueued">
+              <button :disabled="uploadRunning || !uploadQueue.some((item) => ['queued', 'failed'].includes(item.status))" type="button" @click="uploadQueued">
                 {{ uploadRunning ? 'Uploading…' : 'Upload ready photos' }}
               </button>
             </div>
@@ -1013,7 +1013,7 @@ onBeforeUnmount(() => {
           <img :alt="editingMedia.altText" :src="editingMedia.urls.thumbnail">
           <p class="photo-technical">{{ editingMedia.width }} × {{ editingMedia.height }} · {{ editingMedia.processingState }}</p>
           <label>Title <input v-model="mediaDrafts[editingMedia.id].title" maxlength="200"></label>
-          <label>Alt text <textarea v-model="mediaDrafts[editingMedia.id].altText" maxlength="2000" rows="3" required></textarea></label>
+          <label>Alt text (optional) <textarea v-model="mediaDrafts[editingMedia.id].altText" maxlength="2000" rows="3"></textarea></label>
           <label>Caption <textarea v-model="mediaDrafts[editingMedia.id].caption" maxlength="5000" rows="3"></textarea></label>
           <label>Location <input v-model="mediaDrafts[editingMedia.id].location" maxlength="500"></label>
           <div class="date-time-selectors">
@@ -1049,7 +1049,7 @@ onBeforeUnmount(() => {
             </label>
           </div>
           <div class="editor-actions">
-            <button :disabled="mediaSavingId === editingMedia.id || !mediaDrafts[editingMedia.id].altText.trim()" type="submit">
+            <button :disabled="mediaSavingId === editingMedia.id" type="submit">
               {{ mediaSavingId === editingMedia.id ? 'Saving…' : 'Save photo details' }}
             </button>
             <button class="button-secondary" type="button" @click="closeMediaDetails">Cancel</button>

@@ -328,10 +328,9 @@ export class MediaService {
     if (input.buffer.length > MAX_IMAGE_BYTES) throw new PostInputError('Image exceeds the 100 MB limit.');
     if (
       typeof input.altText !== 'string'
-      || input.altText.trim().length === 0
       || input.altText.length > 2_000
     ) {
-      throw new PostInputError('altText must be a non-empty string no longer than 2,000 characters.');
+      throw new PostInputError('altText must be a string no longer than 2,000 characters.');
     }
     const displayOrder = input.displayOrder ?? 0;
     if (!Number.isInteger(displayOrder) || displayOrder < 0) {
@@ -394,7 +393,7 @@ export class MediaService {
         location: null,
         date: null,
         time: null,
-        altText: input.altText,
+        altText: input.altText.trim(),
         caption: null,
         focalX: null,
         focalY: null,
@@ -583,8 +582,8 @@ export class MediaService {
     const current = this.media.getById(id);
     if (!current) return null;
     const altText = input.altText === undefined ? current.altText : input.altText;
-    if (typeof altText !== 'string' || !altText.trim() || altText.length > 2_000) {
-      throw new PostInputError('altText must be a non-empty string no longer than 2,000 characters.');
+    if (typeof altText !== 'string' || altText.length > 2_000) {
+      throw new PostInputError('altText must be a string no longer than 2,000 characters.');
     }
     const caption = input.caption === undefined ? current.caption : input.caption;
     if (caption !== null && (typeof caption !== 'string' || caption.length > 5_000)) {

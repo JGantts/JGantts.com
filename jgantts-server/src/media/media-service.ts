@@ -26,8 +26,11 @@ const renditionFormats: Record<RenditionFormat, { extension: string; mimeType: s
   png: { extension: 'png', mimeType: 'image/png' },
   webp: { extension: 'webp', mimeType: 'image/webp' },
 };
-const formats = {
+// HEIC/HEIF are accepted only as source files. Public pages always use the
+// browser-safe responsive renditions generated below (AVIF, WebP, JPEG, PNG).
+export const uploadSourceFormats = {
   avif: { extension: 'avif', mimeType: 'image/avif' },
+  heif: { extension: 'heic', mimeType: 'image/heic' },
   jpeg: { extension: 'jpg', mimeType: 'image/jpeg' },
   png: { extension: 'png', mimeType: 'image/png' },
   webp: { extension: 'webp', mimeType: 'image/webp' },
@@ -343,9 +346,9 @@ export class MediaService {
     } catch {
       throw new PostInputError('The uploaded file is not a readable image.');
     }
-    const format = metadata.format && formats[metadata.format as keyof typeof formats];
+    const format = metadata.format && uploadSourceFormats[metadata.format as keyof typeof uploadSourceFormats];
     if (!format || !metadata.width || !metadata.height) {
-      throw new PostInputError('Only JPEG, PNG, WebP, and AVIF images are supported.');
+      throw new PostInputError('Only JPEG, PNG, WebP, AVIF, and HEIC/HEIF images are supported.');
     }
     if (metadata.width * metadata.height > MAX_IMAGE_PIXELS) {
       throw new PostInputError('Image exceeds the 80 megapixel safety limit.');
@@ -499,7 +502,7 @@ export class MediaService {
     if (checksum !== record.checksumSha256) throw new Error('Stored source checksum does not match the database.');
     const metadata = await sharp(buffer).metadata();
     if (!metadata.width || !metadata.height || !metadata.format
-      || !formats[metadata.format as keyof typeof formats]) {
+      || !uploadSourceFormats[metadata.format as keyof typeof uploadSourceFormats]) {
       throw new Error('Stored source is not a supported readable image.');
     }
     if (metadata.width * metadata.height > MAX_IMAGE_PIXELS) {

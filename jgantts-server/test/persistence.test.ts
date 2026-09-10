@@ -9,7 +9,7 @@ import { backupContent } from '../src/db/backup';
 import { inTransaction, openContentDatabase } from '../src/db/database';
 import { migrations, migrateDatabase } from '../src/db/migrations';
 import { MediaRepository } from '../src/media/media-repository';
-import { MediaService } from '../src/media/media-service';
+import { MediaService, uploadSourceFormats } from '../src/media/media-service';
 import { PostRepository } from '../src/posts/post-repository';
 import { ensureMediaDirectories } from '../src/storage';
 
@@ -569,6 +569,11 @@ test('rejects invalid image uploads before creating media records', async (t) =>
     altText: '', buffer: Buffer.from('hello'), postId: 'post',
   }), /readable image/);
   assert.equal(database.prepare('SELECT COUNT(*) FROM media').pluck().get(), 0);
+});
+
+test('recognizes HEIF as an HEIC upload source while keeping browser renditions separate', () => {
+  assert.deepEqual(uploadSourceFormats.heif, { extension: 'heic', mimeType: 'image/heic' });
+  assert.equal('heif' in uploadSourceFormats, true);
 });
 
 test('media deletion protects published photos, clears heroes, and compacts order', async (t) => {

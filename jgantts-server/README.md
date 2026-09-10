@@ -50,6 +50,10 @@ are 10 files, 100 MiB per file, 250 MiB combined file bytes, two text fields, an
 Multipart/limit errors reject the entire request before storing any photos (400/413);
 missing posts or mismatched metadata arrays return 400.
 
+JPEG, PNG, WebP, AVIF, HEIC, and HEIF source uploads are accepted. HEIC/HEIF
+originals remain downloadable as `image/heic`; public pages use generated AVIF,
+WebP, JPEG, or PNG renditions so readers do not need browser HEIC support.
+
 A valid envelope returns 200 with `{ results: [...] }` in input order. Each result
 has `index`, `status: "uploaded"`, and `media`, or `index`, `status: "failed"`, and
 an `error` with `code` and `message`. Invalid images or alt text fail individually;

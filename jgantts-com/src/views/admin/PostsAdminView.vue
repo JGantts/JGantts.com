@@ -818,7 +818,7 @@ onBeforeUnmount(() => {
 
         <section class="editor-card">
           <section v-if="selectedId" class="media-panel media-panel--primary" aria-labelledby="media-title">
-            <div class="section-heading"><h2 id="media-title">Start with photos</h2><span>JPEG, PNG, WebP, or AVIF · 100 MB per photo</span></div>
+            <div class="section-heading"><h2 id="media-title">Start with photos</h2><span>JPEG, PNG, WebP, AVIF, HEIC, or HEIF · 100 MB per photo</span></div>
             <div v-if="selected?.media.length" class="media-grid">
               <figure
                 v-for="(item, index) in selected.media"
@@ -850,8 +850,8 @@ onBeforeUnmount(() => {
             <p v-else class="empty-state">Choose the first photograph for this draft.</p>
             <label class="photo-dropzone" @dragover.prevent @drop.prevent="dropFiles">
               <strong>Choose or drop photos</strong>
-              <span>Select multiple JPEG, PNG, WebP, or AVIF files.</span>
-              <input accept="image/jpeg,image/png,image/webp,image/avif" multiple type="file" @change="chooseFiles">
+              <span>Select multiple JPEG, PNG, WebP, AVIF, HEIC, or HEIF files.</span>
+              <input accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,.heic,.heif" multiple type="file" @change="chooseFiles">
             </label>
             <div v-if="uploadQueue.length" class="upload-queue">
               <article v-for="item in uploadQueue" :key="item.id" class="upload-item">

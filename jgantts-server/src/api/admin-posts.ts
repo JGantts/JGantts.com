@@ -17,9 +17,6 @@ function parseBody(value: unknown, partial: boolean): AuthorPostInput | AuthorPo
   if (!isRecord(value)) throw Object.assign(new Error('Request body must be an object.'), { status: 400 });
   const unknownField = Object.keys(value).find((field) => !AUTHOR_FIELDS.has(field));
   if (unknownField) throw Object.assign(new Error(`Unknown post field: ${unknownField}`), { status: 400 });
-  if (!partial && !('bodyMarkdown' in value)) {
-    throw Object.assign(new Error('bodyMarkdown is required.'), { status: 400 });
-  }
   return value as unknown as AuthorPostInput | AuthorPostChanges;
 }
 

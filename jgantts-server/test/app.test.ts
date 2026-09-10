@@ -738,6 +738,14 @@ test('returns safe failures for disabled admin API and invalid author input', as
   });
   assert.equal(invalid.status, 400);
 
+  const photoOnly = await request(app, '/api/admin/posts', {
+    body: JSON.stringify({ slug: 'photo-only' }),
+    headers: { authorization: 'Bearer secret', 'content-type': 'application/json' },
+    method: 'POST',
+  });
+  assert.equal(photoOnly.status, 201);
+  assert.equal(JSON.parse(photoOnly.body).bodyMarkdown, '');
+
   const unknown = await request(app, '/api/admin/posts', {
     body: JSON.stringify({ slug: 'valid', bodyMarkdown: 'Hello', status: 'published' }),
     headers: { authorization: 'Bearer secret', 'content-type': 'application/json' },

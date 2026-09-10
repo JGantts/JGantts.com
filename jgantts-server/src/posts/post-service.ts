@@ -13,7 +13,7 @@ export interface PublicPostPage {
 }
 
 export interface AuthorPostInput {
-  bodyMarkdown: string;
+  bodyMarkdown?: string;
   date?: number | null;
   time?: string | null;
   location?: string | null;
@@ -109,7 +109,7 @@ export class PostService {
   }
 
   createDraft(input: AuthorPostInput): Post {
-    const bodyMarkdown = validateText(input.bodyMarkdown, 'bodyMarkdown', 100_000, true) as string;
+    const bodyMarkdown = validateText(input.bodyMarkdown ?? '', 'bodyMarkdown', 100_000, false) as string;
     const title = validateText(input.title ?? null, 'title', 200, false);
     const baseSlug = input.slug ? validateSlug(input.slug) : slugifyPost(title, bodyMarkdown);
     let slug = baseSlug;
@@ -170,7 +170,7 @@ export class PostService {
   }
 
   preview(bodyMarkdown: unknown): { bodyHtml: string } {
-    const markdown = validateText(bodyMarkdown, 'bodyMarkdown', 100_000, true) as string;
+    const markdown = validateText(bodyMarkdown, 'bodyMarkdown', 100_000, false) as string;
     return { bodyHtml: renderPostMarkdown(markdown) };
   }
 
@@ -204,7 +204,7 @@ export class PostService {
       repositoryChanges.slug = slug;
     }
     if ('bodyMarkdown' in changes) {
-      const bodyMarkdown = validateText(changes.bodyMarkdown, 'bodyMarkdown', 100_000, true) as string;
+      const bodyMarkdown = validateText(changes.bodyMarkdown, 'bodyMarkdown', 100_000, false) as string;
       repositoryChanges.bodyMarkdown = bodyMarkdown;
       repositoryChanges.bodyHtml = renderPostMarkdown(bodyMarkdown);
       const current = this.posts.getById(id);

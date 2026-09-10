@@ -928,7 +928,7 @@ onBeforeUnmount(() => {
                 </select>
               </label>
             </div>
-            <label>Body (Markdown) <textarea v-model="form.bodyMarkdown" class="markdown-editor" maxlength="100000" required></textarea></label>
+            <label>Body (Markdown, optional) <textarea v-model="form.bodyMarkdown" class="markdown-editor" maxlength="100000"></textarea></label>
             <div class="editor-actions">
               <button :disabled="busy" type="submit">{{ busy ? 'Working…' : selectedId ? 'Save changes' : 'Create draft' }}</button>
               <button v-if="canPublish" class="button-secondary" :disabled="busy" type="button" @click="publish">Publish locally</button>

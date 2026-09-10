@@ -1,0 +1,7 @@
+# Replace jgantts-deploy only if the dedicated deployment account has another name.
+Cmnd_Alias JGANTTS_SERVICE = /usr/bin/systemctl restart jgantts-com-node-app, \
+  /usr/bin/systemctl stop jgantts-com-node-app, \
+  /usr/bin/systemctl is-active --quiet jgantts-com-node-app, \
+  /usr/bin/journalctl --unit jgantts-com-node-app --since * --no-pager --lines 200, \
+  /usr/local/libexec/jgantts/install-app-unit.sh
+jgantts-deploy ALL=(root) NOPASSWD: JGANTTS_SERVICE

@@ -22,7 +22,7 @@ Defaults:
 - Production: `/var/lib/jgantts`
 
 Production configuration rejects a data root located inside `jgantts-server`,
-because the current deployment replaces files in that application tree. The
+because application releases must never contain persistent content. The
 systemd service account needs read/write access to the configured data root;
 other users should not have write access.
 
@@ -165,6 +165,60 @@ redacts sensitive field names recursively. Inspect recent production events with
 journalctl -u jgantts-com-node-app --since "30 minutes ago" -o cat
 ```
 
+## Release deployment operations
+
+The `prod` workflow builds and tests one release bundle, verifies its checksum
+before and after transfer, and installs it under
+`/home/jgantts-com/node-js/releases/FULL_COMMIT_SHA`. Dependency installation,
+manifest checks, native-module loading, and maps-mount checks happen while the
+release is inactive. A verified content backup is mandatory before activation.
+
+`current` selects the running release and `previous` records its predecessor.
+Both are replaced atomically; application files are never copied over the live
+tree. The process reads its commit identity at startup and `/api/build` must
+match the basename of the resolved `current` directory.
+
+Inspect release state without changing it:
+
+```sh
+readlink -f /home/jgantts-com/node-js/current
+readlink -f /home/jgantts-com/node-js/previous
+cat /home/jgantts-com/node-js/current/release-manifest.json
+curl --fail-with-body https://jgantts.com/api/build
+systemctl status jgantts-com-node-app
+```
+
+Activation restarts systemd and waits at most 30 seconds for `active`, then
+checks health, running commit, homepage HTML, every referenced JavaScript and
+CSS asset, a server-rendered post when content exists, missing-route behavior,
+and fail-closed admin behavior. A failed restart or probe switches `current`
+back to the preceding compatible release, restarts it, verifies it, preserves
+the failed release and journal output, and still fails the workflow.
+
+If automatic rollback fails, do not repeatedly restart. Read the deployment
+result in the run's `incoming/RUN_ID-ATTEMPT/deployment-result.json`, inspect the
+targeted journal output, confirm `/api/build`, and validate the database against
+the intended release with:
+
+```sh
+NODE_ENV=production \
+  /usr/bin/node /home/jgantts-com/node-js/releases/FULL_SHA/jgantts-server/dist/cli/check-schema-compatibility.js \
+  /var/lib/jgantts
+```
+
+For emergency manual activation, choose only an installed release whose
+manifest, `.artifact.sha256`, schema check, and maps link are valid. Atomically
+replace `current`—never remove it first—then restart and run the same smoke test.
+The repository's `activate-release.sh` implements those guards and should be
+used instead of ad-hoc `ln` commands. Application rollback never rewinds
+`/var/lib/jgantts`; refuse rollback when the old release's schema checker fails.
+
+Daily maintenance compares the active manifest, reported process commit,
+systemd unit, and release permissions. It retains `current`, `previous`, and
+three additional newest releases, deleting only resolved SHA directories
+directly beneath `releases/`. Never delete through `current`, `previous`, or a
+shared link.
+
 ## Backup
 
 Run the application-aware backup command while the service is running or
@@ -173,7 +227,7 @@ including when WAL mode is active, and original and derived media are copied to
 the same new backup directory.
 
 ```sh
-cd /home/jgantts-com/node-js/jgantts-server
+cd /home/jgantts-com/node-js/current/jgantts-server
 JGANTTS_DATA_ROOT=/var/lib/jgantts npm run content:backup -- /srv/jgantts-backups/2026-09-04T120000Z
 ```
 
@@ -181,29 +235,33 @@ The destination must not already exist. Copy the resulting directory to a
 different machine or storage provider; a backup on the same Linode is not a
 disaster-recovery backup.
 
-Every production site deployment now creates and verifies this snapshot before
-copying application files. Deployment stops immediately if the backup or SQLite
-integrity check fails. Snapshots are stored at:
+Every production site deployment stops the application for a bounded interval
+so database and media writes cannot cross the snapshot boundary. It uses the
+inactive release's backup tool, verifies SQLite and required media paths, and
+restarts the current release before activation. Any failure stops deployment.
+Snapshots are stored at:
 
 ```text
 /var/lib/jgantts/backups/pre-deploy/<UTC timestamp>-<Git commit SHA>/
 ```
 
 `/var/lib/jgantts/backups/pre-deploy/latest` points to the newest verified
-snapshot. Backups are deliberately not deleted by the deploy workflow; add
-off-host replication and an explicit retention policy before enabling cleanup.
+snapshot. A daily root-owned restic job rejects stale backups and low local
+capacity, rechecks SQLite, copies the verified snapshot off-host, checks the
+repository, and only then applies daily/weekly/monthly retention. Failures call
+the configured operations webhook. A monthly timer restores the latest off-host
+snapshot into an isolated rehearsal root, verifies its database and a
+representative media object, records a JSON report, and removes the temporary
+restore.
 
 ## Application rollback
 
-If content is healthy and only application code is bad, revert the bad commit
-on `prod` and push the revert. The normal deployment workflow will take another
-content backup, deploy that known Git revision, restart the service, and run the
-live smoke test. Do not replace `/var/lib/jgantts` for an application-only
-rollback.
-
-Before rolling back across a database migration, confirm that the older server
-can read the current schema. The migrations currently in this repository are
-additive, but that assumption must be reconsidered for every future migration.
+If content is healthy and only application code is bad, activate the recorded
+`previous` release through `activate-release.sh`; rebuilding or reverting a Git
+commit is unnecessary. The script checks the current database against the old
+release before switching. Future migrations must follow the expand/contract
+policy in `schema-compatibility.json`; destructive changes require a separately
+reviewed rollout and recovery plan before merge.
 
 ## Content rollback
 
@@ -234,7 +292,7 @@ runuser -u jgantts-com -- test -w "$RESTORE/media/originals"
 Verify the restored database before activation:
 
 ```sh
-cd /home/jgantts-com/node-js/jgantts-server
+cd /home/jgantts-com/node-js/current/jgantts-server
 runuser -u jgantts-com -- node -e 'const Database = require("better-sqlite3"); const database = new Database(process.argv[1], { readonly: true }); const result = database.pragma("integrity_check", { simple: true }); database.close(); if (result !== "ok") throw new Error(`SQLite integrity check failed: ${result}`);' "$RESTORE/content.sqlite"
 ```
 

@@ -36,9 +36,12 @@ export function createApp(options: AppOptions = {}): express.Express {
     : options.appHtmlTemplate;
   const distRoot = options.distRoot ?? SITE_DIST_ROOT;
   const publicRoot = options.publicRoot ?? SITE_PUBLIC_ROOT;
-  const fixedBuildInfo = options.buildInfo;
-  const getBuildInfo = options.buildInfoProvider
-    ?? (fixedBuildInfo ? () => fixedBuildInfo : () => loadBuildInfo());
+  // Release identity belongs to the running process. Capture it once at startup
+  // so replacing metadata on disk cannot make old code claim a new commit.
+  const startupBuildInfo = options.buildInfo
+    ?? options.buildInfoProvider?.()
+    ?? loadBuildInfo();
+  const getBuildInfo = () => startupBuildInfo;
   const logger = options.logger ?? NOOP_LOGGER;
 
   app.disable('x-powered-by');

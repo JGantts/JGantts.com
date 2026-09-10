@@ -10,6 +10,7 @@
     "build": "tsc -p tsconfig.json && node scripts/write-build-info.js",
     "check": "node --check serve.js && node --check scripts/smoke-test.js && node --check scripts/write-build-info.js && npm run typecheck && npm test",
     "content:backup": "node dist/cli/backup-content.js",
+    "schema:check": "node dist/cli/check-schema-compatibility.js",
     "dev": "tsx watch src/server.ts",
     "media:regenerate": "node dist/cli/regenerate-media.js",
     "smoke": "npm run build && node scripts/smoke-test.js",

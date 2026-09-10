@@ -1,0 +1,12 @@
+[Unit]
+Description=Replicate verified JGantts backups off-host
+After=network-online.target
+OnFailure=jgantts-operations-alert@%n.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/jgantts-com/backup.env
+ExecStart=/usr/local/libexec/jgantts/replicate-backups.sh --data-root /var/lib/jgantts --release-root /home/jgantts-com/node-js
+User=root
+PrivateTmp=true
+NoNewPrivileges=true

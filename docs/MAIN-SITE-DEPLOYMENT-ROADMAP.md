@@ -1,6 +1,6 @@
 # Main Site Deployment Roadmap
 
-Last updated: 2026-09-09
+Last updated: 2026-09-10
 
 ## Objective
 
@@ -36,20 +36,30 @@ content backup -> atomic current switch -> restart -> live verification
 
 ## Current state
 
-- Status: Not started.
-- Active item: None.
-- Next item: 1.1 — serialize production deployment runs.
-- The current workflow builds and tests the server, creates a content backup,
-  copies application files directly over the live tree, runs `npm ci` in that
-  tree, restarts systemd, and runs a live smoke test.
-- Main site/server files are not removed before copying. Same-path files are
-  replaced, but files removed from the repository can remain on the server.
-- `npm ci` does clean and rebuild the live `node_modules` directory.
-- Build information is deployed in a separate parallel job and is read from
-  disk on every API request. It can therefore identify a new commit before that
-  application is active, or even when its deployment fails.
-- The current live smoke test detects a bad deployment but does not restore the
-  preceding application release.
+- Status: In progress. Workflow safety guardrails and release packaging are
+  implemented and locally verified. GitHub's branch-gated production environment
+  exists; Linode credentials, host provisioning, and production drills remain.
+- Active item: 5.5 — configure verified off-host backup replication, retention,
+  and alerting.
+- Next item: 5.5.
+- The workflow now serializes production runs, pins actions, uses verified
+  key-based SSH inputs, builds/tests once, uploads a checksummed release bundle,
+  downloads that exact bundle, and keeps live verification in the production
+  deployment job.
+- On 2026-09-10 GitHub's `production` environment was created with a verified
+  custom `prod`-only branch policy and no required reviewers. Its SSH
+  secrets still need to be populated at environment scope. The Linode deployment
+  key, account permissions, SSH fingerprint, and restricted sudoers rule also
+  require production setup and evidence before items 1.2 and 1.4 can close.
+- The legacy in-place copy and live-tree dependency installation have been
+  removed from the workflow. Activation and rollback scripts are implemented
+  and pass isolated success/failure tests; production canary evidence remains a
+  Phase 6 requirement.
+- Current local evidence: 77 server tests, server type checking/build, frontend
+  production build, compiled smoke test, actionlint, release packaging and
+  checksum verification, production dependency installation (including HEIC),
+  activation/rollback, failed-install isolation, quiesced-backup recovery,
+  off-host replication/restore fixtures, drift detection, and safe retention.
 - Runtime content correctly remains outside the application tree under
   `/var/lib/jgantts` and must stay outside every release directory.
 
@@ -139,22 +149,22 @@ commit identity captured at startup.
 
 ### Phase 1 — Immediate safety guardrails
 
-- [ ] **1.1** Add workflow-level production concurrency so only one deployment
+- [x] **1.1** Add workflow-level production concurrency so only one deployment
   run can mutate production at a time. Queue newer production runs rather than
   allowing an older run to finish after a newer commit.
 - [ ] **1.2** Put all production-mutating jobs behind one GitHub `production`
   environment. Move SSH secrets into that environment and restrict it to the
   production branch; record whether reviewer approval is enabled.
-- [ ] **1.3** Add `set -euo pipefail` to every remote shell entry point and remove
+- [x] **1.3** Add `set -euo pipefail` to every remote shell entry point and remove
   diagnostic commands such as `whoami`. Ensure a failed `cd`, install, restart,
   or verification command makes the job fail immediately.
 - [ ] **1.4** Replace password authentication with a dedicated, passphrase-
   protected deployment key where supported, verify the server's SSH host
   fingerprint, and restrict the corresponding server account and sudoers rule.
-- [ ] **1.5** Update the old SSH action, then pin every third-party GitHub Action
+- [x] **1.5** Update the old SSH action, then pin every third-party GitHub Action
   to a reviewed full commit SHA. Record the human-readable release version in a
   comment beside each pinned SHA.
-- [ ] **1.6** As an interim safeguard, make the current live smoke failure
+- [x] **1.6** As an interim safeguard, make the current live smoke failure
   conspicuous through the workflow conclusion and deployment environment. Do
   not describe a run as deployed merely because the build-info file changed.
 
@@ -163,22 +173,22 @@ silently masked, and production access verifies both client and server identity.
 
 ### Phase 2 — Build one release artifact
 
-- [ ] **2.1** Create a release-packaging script that collects only the required
+- [x] **2.1** Create a release-packaging script that collects only the required
   server build, server entry point, package manifests, frontend build, and
   frontend public files. Explicitly exclude runtime content, local environment
   files, development dependencies, editor artifacts, and generated maps.
-- [ ] **2.2** Generate and validate `release-manifest.json` during packaging.
+- [x] **2.2** Generate and validate `release-manifest.json` during packaging.
   Refuse to package missing entry points, an empty client build, an unexpected
   symlink, or a commit identity that differs from `github.sha`.
-- [ ] **2.3** Run server checks, both production builds, and the compiled local
+- [x] **2.3** Run server checks, both production builds, and the compiled local
   smoke test before packaging. Avoid rebuilding those sources in a later job.
-- [ ] **2.4** Upload the release bundle as a GitHub Actions artifact with an
+- [x] **2.4** Upload the release bundle as a GitHub Actions artifact with an
   explicit retention period, then have the deployment job download that exact
   artifact. Verify its SHA-256 before transfer and again on the server.
-- [ ] **2.5** Extend the smoke test to parse the deployed HTML and request its
+- [x] **2.5** Extend the smoke test to parse the deployed HTML and request its
   referenced JavaScript and stylesheet assets. Check their content types and
   reject missing or mismatched hashed assets.
-- [ ] **2.6** Change build reporting so the running process exposes the manifest
+- [x] **2.6** Change build reporting so the running process exposes the manifest
   identity loaded at startup. Add a test proving that changing a file on disk
   cannot make an old process claim to be a new release.
 
@@ -187,25 +197,25 @@ commit identity can be traced from CI through production.
 
 ### Phase 3 — Install immutable release directories
 
-- [ ] **3.1** Add a remote deployment script stored in the repository. Give it
+- [x] **3.1** Add a remote deployment script stored in the repository. Give it
   explicit arguments for the release root, artifact, expected SHA, service name,
   persistent data root, and stable maps mount; reject empty, relative, root, or
   otherwise unsafe paths.
-- [ ] **3.2** Upload into a unique temporary directory beneath `releases/`,
+- [x] **3.2** Upload into a unique temporary directory beneath `releases/`,
   validate the archive before extraction, and rename the completed directory to
   `releases/<commit-sha>`. Refuse to overwrite an existing release whose
   manifest or checksum differs.
-- [ ] **3.3** Run `npm ci --omit=dev` inside only the inactive release. Validate
+- [x] **3.3** Run `npm ci --omit=dev` inside only the inactive release. Validate
   the production dependency tree and load native modules such as
   `better-sqlite3` and `sharp` before the release can be activated.
-- [ ] **3.4** Create the release's `PUBLIC/assets/maps` symlink to
+- [x] **3.4** Create the release's `PUBLIC/assets/maps` symlink to
   `shared/maps-current`. Initialize `shared/maps-current` as the compatibility
   bridge to the existing maps directory and verify representative map files are
   readable through the release.
-- [ ] **3.5** Validate ownership and permissions: release files are writable by
+- [x] **3.5** Validate ownership and permissions: release files are writable by
   the deployment account, readable by the service account, not writable by the
   service process, and contain no secrets.
-- [ ] **3.6** Version the systemd unit and a non-secret environment template in
+- [x] **3.6** Version the systemd unit and a non-secret environment template in
   the repository. Change `WorkingDirectory` and `ExecStart` to use `current`,
   retain graceful `SIGTERM`, and verify a bounded stop timeout.
 
@@ -214,22 +224,22 @@ changing any byte visible through `current` or disrupting the running service.
 
 ### Phase 4 — Atomic activation and automatic application rollback
 
-- [ ] **4.1** Record the currently resolved release, update `previous`, and
+- [x] **4.1** Record the currently resolved release, update `previous`, and
   atomically replace `current` with the new release symlink. Never use a
   remove-then-create sequence for the active link.
-- [ ] **4.2** Restart systemd and require it to reach `active` within a bounded
+- [x] **4.2** Restart systemd and require it to reach `active` within a bounded
   timeout. Capture targeted journal output in the failed workflow without
   exposing environment values or secrets.
-- [ ] **4.3** Run live health, running-commit, homepage, server-rendered post,
+- [x] **4.3** Run live health, running-commit, homepage, server-rendered post,
   referenced static asset, missing-route, and admin fail-closed checks.
-- [ ] **4.4** If restart or live verification fails, atomically restore the
+- [x] **4.4** If restart or live verification fails, atomically restore the
   recorded release, restart it, and verify its health. Preserve both the failed
   release and logs for diagnosis, and fail the deployment job even when rollback
   succeeds.
-- [ ] **4.5** Refuse automatic application rollback when the old release declares
+- [x] **4.5** Refuse automatic application rollback when the old release declares
   itself incompatible with the current database schema. Surface a clear manual
   recovery state instead of repeatedly restarting incompatible code.
-- [ ] **4.6** Write the activated release, preceding release, timestamps, and
+- [x] **4.6** Write the activated release, preceding release, timestamps, and
   verification result to the GitHub deployment summary and structured server
   logs.
 
@@ -238,19 +248,19 @@ broken release test proves production returns automatically to the prior app.
 
 ### Phase 5 — Migration and backup safety
 
-- [ ] **5.1** Separate schema compatibility inspection from normal server
+- [x] **5.1** Separate schema compatibility inspection from normal server
   startup. Document the schema range each release can read and enforce it before
   activation and rollback.
-- [ ] **5.2** Adopt and test expand/contract migrations so the previous release
+- [x] **5.2** Adopt and test expand/contract migrations so the previous release
   remains usable throughout the rollback window. Require a dedicated rollout
   plan for destructive or irreversible schema work.
-- [ ] **5.3** Verify the pre-deploy content backup before activation, while using
+- [x] **5.3** Verify the pre-deploy content backup before activation, while using
   the inactive release's tools rather than whichever application happens to be
   live. Preserve the existing SQLite integrity check and required media paths.
-- [ ] **5.4** Close the database/media consistency window during backups by
+- [x] **5.4** Close the database/media consistency window during backups by
   implementing a bounded write quiesce, filesystem snapshot, or another tested
   cross-resource snapshot mechanism. Reads should remain available if practical.
-- [ ] **5.5** Replicate verified backups off the Linode before applying a
+- [~] **5.5** Replicate verified backups off the Linode before applying a
   documented retention policy. Alert on backup failure, replication lag, and
   backup-volume capacity.
 - [ ] **5.6** Automate a periodic restore rehearsal into an isolated data root
@@ -262,15 +272,15 @@ off-host content recovery path exists.
 
 ### Phase 6 — Retention, observability, and operational handoff
 
-- [ ] **6.1** Retain the active release, the rollback release, and a small bounded
+- [x] **6.1** Retain the active release, the rollback release, and a small bounded
   number of prior successful releases. Delete only resolved paths beneath the
   configured release root; never follow `current`, `previous`, or shared links.
-- [ ] **6.2** Add deployment metrics or structured events for build duration,
+- [x] **6.2** Add deployment metrics or structured events for build duration,
   transfer duration, dependency installation, restart, health convergence,
   rollback, and final active commit.
-- [ ] **6.3** Add a scheduled drift check comparing the active manifest,
+- [x] **6.3** Add a scheduled drift check comparing the active manifest,
   systemd configuration, expected file permissions, and reported process commit.
-- [ ] **6.4** Update `CONTENT-OPERATIONS.md` with normal deployment, application
+- [x] **6.4** Update `CONTENT-OPERATIONS.md` with normal deployment, application
   rollback, failed rollback, release inspection, retention, and emergency manual
   activation procedures.
 - [ ] **6.5** Perform a production canary deployment, an intentional pre-switch
@@ -312,6 +322,52 @@ The maps roadmap may begin only after all of the following are true:
 
 ## Decision log
 
+### 2026-09-10 — Atomic activation and recovery operations
+
+- Replaced the interim live-tree copy with repository-owned inactive install,
+  atomic activation, bounded systemd convergence, full live verification, and
+  automatic rollback scripts. An isolated harness proves successful activation,
+  post-switch smoke failure, rollback, and recovery of the prior SHA.
+- Added startup-captured commit logging and machine-readable deployment result
+  files, with the result copied into the GitHub job summary even on failure.
+- Added an explicit schema range and forward expand/contract policy. The backup
+  CLI now opens SQLite read-only and cannot apply migrations before activation;
+  rollback checks the database with the preceding release's own compatibility
+  tool.
+- Chose a bounded full service stop for cross-resource database/media backup
+  consistency. The backup script always attempts to recover the current service
+  on failure and is covered by the deployment harness.
+- Added restic-based off-host replication with lag, capacity, integrity,
+  repository-check, and retention gates; monthly isolated restore rehearsal;
+  failure webhook units; daily drift checks; and safe SHA-directory retention.
+  Repository tests cover these paths, while checklist items 5.5 and 5.6 remain
+  open until the Linode timers produce real off-host evidence.
+- Created the GitHub `production` environment with a custom `prod`-only branch
+  policy. Required reviewers are disabled. Existing SSH secrets remain at
+  repository scope pending key rotation and environment-secret population.
+
+### 2026-09-09 — Safety guardrails and release bundle
+
+- Added workflow-level production concurrency with queued supersession semantics
+  and placed both mutating jobs behind the `production` environment.
+- Replaced password inputs with a passphrase-protected key and verified host
+  fingerprint inputs. Production environment and Linode account configuration
+  remain operational prerequisites rather than repository-only claims.
+- Removed the independently deployed build-info job. The server now reads its
+  built identity once at application construction and tests prove later provider
+  changes cannot alter the running identity.
+- Added a release packager that rejects missing build outputs and symlinks,
+  excludes generated maps, embeds a versioned manifest and payload digest, and
+  emits a separately verifiable archive checksum. CI uploads the bundle with a
+  14-day retention period and downloads the exact named artifact for deployment.
+- Added and locally exercised a fail-fast remote installer. It rejects unsafe
+  paths and archive entries, verifies the transferred checksum and embedded
+  manifest, installs dependencies only in a unique inactive staging directory,
+  loads native modules, creates the stable maps bridge, makes the completed
+  tree read-only, and idempotently refuses a conflicting release SHA.
+- Extended smoke verification to fetch every JavaScript and stylesheet asset
+  referenced by the built HTML and validate status, type, and non-empty content.
+
 ### 2026-09-09 — Initial roadmap
 
 - Split application and maps hardening into sequential roadmaps because their
@@ -323,4 +379,3 @@ The maps roadmap may begin only after all of the following are true:
   a separate constraint from application rollback.
 - Added a compatibility maps symlink so main-site deployment can be completed
   without waiting for the maps pipeline redesign.
-

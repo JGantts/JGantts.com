@@ -18,6 +18,16 @@ export function openContentDatabase(databasePath: string): ContentDatabase {
   return database;
 }
 
+export function openContentDatabaseReadOnly(databasePath: string): ContentDatabase {
+  if (databasePath === ':memory:') {
+    throw new Error('A read-only content database requires a file path.');
+  }
+  const database = new Database(databasePath, { fileMustExist: true, readonly: true });
+  database.pragma('foreign_keys = ON');
+  database.pragma('busy_timeout = 5000');
+  return database;
+}
+
 export function inTransaction<T>(database: ContentDatabase, operation: () => T): T {
   return database.transaction(operation)();
 }

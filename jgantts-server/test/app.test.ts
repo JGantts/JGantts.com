@@ -935,11 +935,15 @@ test('uploads local media and serves immutable originals and derivatives', async
 
 });
 
-test('reads centralized build information for every API request', async () => {
+test('captures build information once when the process starts', async () => {
   let currentBuildInfo = BUILD_INFO;
+  let reads = 0;
   const app = createApp({
     appHtmlTemplate: TEMPLATE,
-    buildInfoProvider: () => currentBuildInfo,
+    buildInfoProvider: () => {
+      reads += 1;
+      return currentBuildInfo;
+    },
     siteOrigin: 'https://jgantts.com',
   });
 
@@ -951,7 +955,8 @@ test('reads centralized build information for every API request', async () => {
   const secondResponse = await request(app, '/api/build');
 
   assert.deepEqual(JSON.parse(firstResponse.body), BUILD_INFO);
-  assert.deepEqual(JSON.parse(secondResponse.body), currentBuildInfo);
+  assert.deepEqual(JSON.parse(secondResponse.body), BUILD_INFO);
+  assert.equal(reads, 1);
 });
 
 test('returns JSON 404 responses for unimplemented API routes', async () => {

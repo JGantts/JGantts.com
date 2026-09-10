@@ -3,6 +3,12 @@ name: Deploy to Linode
 permissions:
   contents: read
 
+# GitHub keeps at most one pending run in this group, so a newer prod push
+# supersedes an older queued push while the active deployment finishes.
+concurrency:
+  group: production
+  cancel-in-progress: false
+
 on:
   push:
     branches:
@@ -18,9 +24,9 @@ jobs:
       website: ${{ steps.filter.outputs.website }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
         id: filter
         with:
           filters: |
@@ -31,20 +37,40 @@ jobs:
             website:
               - 'jgantts-com/**'
               - 'jgantts-server/**'
+              - 'deploy/**'
+              - 'scripts/**'
               - '.github/workflows/deploy.yml'
 
   deploy-maps:
-    needs: changes
+    needs:
+      - changes
+      - deploy-site
     if: |
-      needs.changes.outputs.maps_python == 'true' ||
-      needs.changes.outputs.maps_sources == 'true'
+      always() &&
+      (needs.deploy-site.result == 'success' || needs.deploy-site.result == 'skipped') &&
+      (needs.changes.outputs.maps_python == 'true' ||
+       needs.changes.outputs.maps_sources == 'true')
     runs-on: self-hosted
+    environment: production
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Verify production SSH configuration
+        env:
+          LINODE_IP: ${{ secrets.LINODE_IP }}
+          LINODE_USER: ${{ secrets.LINODE_USER }}
+          LINODE_SSH_KEY: ${{ secrets.LINODE_SSH_KEY }}
+          LINODE_SSH_KEY_PASSPHRASE: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
+          LINODE_SSH_HOST_FINGERPRINT: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          for name in LINODE_IP LINODE_USER LINODE_SSH_KEY LINODE_SSH_KEY_PASSPHRASE LINODE_SSH_HOST_FINGERPRINT; do
+            test -n "${!name}" || { echo "Missing production environment secret: $name" >&2; exit 78; }
+          done
 
-      - uses: actions/setup-python@v5
+      - name: Checkout Code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.11'
 
@@ -78,53 +104,29 @@ jobs:
         working-directory: ./python/
 
       - name: Deploy Map
-        uses: appleboy/scp-action@v1.0.0
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.LINODE_IP }}
           username: ${{ secrets.LINODE_USER }}
-          password: ${{ secrets.LINODE_PASSWORD }}
+          key: ${{ secrets.LINODE_SSH_KEY }}
+          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
+          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
           port: 22
           source: './maps-rendered/'
           target: '/home/jgantts-com/node-js/jgantts-com/PUBLIC/assets/maps/'
           strip_components: 2
           rm: true
 
-  deploy-build-info:
-    runs-on: self-hosted
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Generate centralized build information
-        run: node scripts/write-build-info.js
-        working-directory: ./jgantts-server
-
-      - name: Deploy centralized build information
-        uses: appleboy/scp-action@v1.0.0
-        with:
-          host: ${{ secrets.LINODE_IP }}
-          username: ${{ secrets.LINODE_USER }}
-          password: ${{ secrets.LINODE_PASSWORD }}
-          port: 22
-          source: './jgantts-server/dist/build-info.json'
-          target: '/home/jgantts-com/node-js/'
-
-  deploy-site:
+  build-site-release:
     needs: changes
     if: needs.changes.outputs.website == 'true'
     runs-on: self-hosted
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
           cache: npm
@@ -143,72 +145,214 @@ jobs:
           npm ci
           npm run check
           npm run build
+          node scripts/smoke-test.js --local
         working-directory: ./jgantts-server/
 
-      - name: Back up production content
-        uses: appleboy/ssh-action@v0.1.2
+      - name: Test deployment tooling
+        run: |
+          set -euo pipefail
+          node --check scripts/package-release.js
+          node scripts/test-package-release.js
+          bash -n deploy/*.sh
+          deploy/test-installer.sh
+          deploy/test-activation.sh
+          deploy/test-recovery.sh
+          systemd-analyze verify deploy/systemd/jgantts-com-node-app.service
+
+      - name: Package immutable release
+        run: node scripts/package-release.js release-artifact
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          host: ${{ secrets.LINODE_IP }}
-          username: ${{ secrets.LINODE_USER }}
-          password: ${{ secrets.LINODE_PASSWORD }}
-          port: 22
-          script: |
-            set -eu
-            backup_root=/var/lib/jgantts/backups/pre-deploy
-            backup_name="$(date -u +%Y%m%dT%H%M%SZ)-${{ github.sha }}"
-            backup_path="$backup_root/$backup_name"
-            server_root=/home/jgantts-com/node-js/jgantts-server
+          name: jgantts-site-${{ github.sha }}
+          path: |
+            release-artifact/jgantts-site-release.tar.gz
+            release-artifact/jgantts-site-release.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 14
 
-            install -d -m 0750 "$backup_root"
-            cd "$server_root"
-            env NODE_ENV=production JGANTTS_DATA_ROOT=/var/lib/jgantts \
-              node dist/cli/backup-content.js "$backup_path"
-            node -e 'const Database = require("better-sqlite3"); const database = new Database(process.argv[1], { readonly: true }); const result = database.pragma("integrity_check", { simple: true }); database.close(); if (result !== "ok") throw new Error(`SQLite integrity check failed: ${result}`);' "$backup_path/content.sqlite"
-            test -d "$backup_path/media/originals"
-            test -d "$backup_path/media/derived"
-            ln -sfn "$backup_path" "$backup_root/latest"
-            echo "Verified pre-deploy backup: $backup_path"
-
-      - name: Deploy JGantts Server
-        uses: appleboy/scp-action@v1.0.0
-        with:
-          host: ${{ secrets.LINODE_IP }}
-          username: ${{ secrets.LINODE_USER }}
-          password: ${{ secrets.LINODE_PASSWORD }}
-          port: 22
-          source: './jgantts-server/dist,./jgantts-server/serve.js,./jgantts-server/package.json,./jgantts-server/package-lock.json,./jgantts-com/dist,./jgantts-com/PUBLIC'
-          target: '/home/jgantts-com/node-js/'
-
-      - name: Restart JGantts Server
-        uses: appleboy/ssh-action@v0.1.2
-        with:
-          host: ${{ secrets.LINODE_IP }}
-          username: ${{ secrets.LINODE_USER }}
-          password: ${{ secrets.LINODE_PASSWORD }}
-          port: 22
-          script: |
-            whoami
-            cd /home/jgantts-com/node-js/jgantts-server
-            npm ci --omit=dev
-            sudo systemctl restart jgantts-com-node-app
-
-
-  verify-build-info:
+  deploy-site:
     needs:
-      - deploy-build-info
-      - deploy-site
-    if: |
-      always() &&
-      needs.deploy-build-info.result == 'success' &&
-      (needs.deploy-site.result == 'success' || needs.deploy-site.result == 'skipped')
+      - changes
+      - build-site-release
+    if: needs.changes.outputs.website == 'true'
     runs-on: self-hosted
+    environment: production
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Verify live server and deployed commit
-        run: node scripts/smoke-test.js --live
-        working-directory: ./jgantts-server
+      - name: Verify production SSH configuration
         env:
-          EXPECTED_COMMIT_SHA: ${{ github.sha }}
+          LINODE_IP: ${{ secrets.LINODE_IP }}
+          LINODE_USER: ${{ secrets.LINODE_USER }}
+          LINODE_SSH_KEY: ${{ secrets.LINODE_SSH_KEY }}
+          LINODE_SSH_KEY_PASSPHRASE: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
+          LINODE_SSH_HOST_FINGERPRINT: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          for name in LINODE_IP LINODE_USER LINODE_SSH_KEY LINODE_SSH_KEY_PASSPHRASE LINODE_SSH_HOST_FINGERPRINT; do
+            test -n "${!name}" || { echo "Missing production environment secret: $name" >&2; exit 78; }
+          done
+
+      - name: Checkout deployment tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Download tested release artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: jgantts-site-${{ github.sha }}
+          path: release-artifact
+
+      - name: Verify and extract release artifact
+        run: |
+          set -euo pipefail
+          cd release-artifact
+          sha256sum --check jgantts-site-release.tar.gz.sha256
+          tar -tzf jgantts-site-release.tar.gz | grep -Fxq '${{ github.sha }}/release-manifest.json'
+
+      - name: Record transfer start
+        run: echo "RELEASE_TRANSFER_STARTED=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: Upload immutable release bundle
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ secrets.LINODE_IP }}
+          username: ${{ secrets.LINODE_USER }}
+          key: ${{ secrets.LINODE_SSH_KEY }}
+          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
+          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          port: 22
+          source: './release-artifact/jgantts-site-release.tar.gz,./release-artifact/jgantts-site-release.tar.gz.sha256'
+          target: '/home/jgantts-com/node-js/incoming/${{ github.run_id }}-${{ github.run_attempt }}/'
+          strip_components: 1
+
+      - name: Upload release deployment scripts
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ secrets.LINODE_IP }}
+          username: ${{ secrets.LINODE_USER }}
+          key: ${{ secrets.LINODE_SSH_KEY }}
+          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
+          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          port: 22
+          source: './deploy/install-release.sh,./deploy/activate-release.sh,./deploy/backup-release.sh'
+          target: '/home/jgantts-com/node-js/incoming/${{ github.run_id }}-${{ github.run_attempt }}/'
+          strip_components: 1
+
+      - name: Upload release smoke test
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ secrets.LINODE_IP }}
+          username: ${{ secrets.LINODE_USER }}
+          key: ${{ secrets.LINODE_SSH_KEY }}
+          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
+          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          port: 22
+          source: './jgantts-server/scripts/smoke-test.js'
+          target: '/home/jgantts-com/node-js/incoming/${{ github.run_id }}-${{ github.run_attempt }}/'
+          strip_components: 2
+
+      - name: Verify release bundle on server
+        uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
+        with:
+          host: ${{ secrets.LINODE_IP }}
+          username: ${{ secrets.LINODE_USER }}
+          key: ${{ secrets.LINODE_SSH_KEY }}
+          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
+          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          port: 22
+          script: |
+            set -euo pipefail
+            incoming=/home/jgantts-com/node-js/incoming/${{ github.run_id }}-${{ github.run_attempt }}
+            cd "$incoming"
+            sha256sum --check jgantts-site-release.tar.gz.sha256
+            checksum=$(awk '{print $1}' jgantts-site-release.tar.gz.sha256)
+            chmod 0750 install-release.sh activate-release.sh backup-release.sh
+            ./install-release.sh \
+              --release-root /home/jgantts-com/node-js \
+              --artifact "$incoming/jgantts-site-release.tar.gz" \
+              --expected-checksum "$checksum" \
+              --expected-commit "${{ github.sha }}" \
+              --service jgantts-com-node-app \
+              --service-user jgantts-com \
+              --data-root /var/lib/jgantts \
+              --maps-mount /home/jgantts-com/node-js/shared/maps-current \
+              --legacy-maps /home/jgantts-com/node-js/jgantts-com/PUBLIC/assets/maps
+
+      - name: Record verified transfer duration
+        run: |
+          set -euo pipefail
+          duration=$(( $(date +%s) - RELEASE_TRANSFER_STARTED ))
+          printf '{"event":"release_transfer_completed","release":"%s","durationSeconds":%d}\n' "${{ github.sha }}" "$duration"
+
+      - name: Back up production content
+        uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
+        with:
+          host: ${{ secrets.LINODE_IP }}
+          username: ${{ secrets.LINODE_USER }}
+          key: ${{ secrets.LINODE_SSH_KEY }}
+          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
+          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          port: 22
+          script: |
+            set -euo pipefail
+            incoming=/home/jgantts-com/node-js/incoming/${{ github.run_id }}-${{ github.run_attempt }}
+            "$incoming/backup-release.sh" \
+              --release-root /home/jgantts-com/node-js \
+              --release-sha "${{ github.sha }}" \
+              --service jgantts-com-node-app \
+              --data-root /var/lib/jgantts \
+              --backup-root /var/lib/jgantts/backups/pre-deploy
+
+      - name: Atomically activate and verify release
+        id: activate
+        uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
+        with:
+          host: ${{ secrets.LINODE_IP }}
+          username: ${{ secrets.LINODE_USER }}
+          key: ${{ secrets.LINODE_SSH_KEY }}
+          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
+          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          port: 22
+          script: |
+            set -euo pipefail
+            incoming=/home/jgantts-com/node-js/incoming/${{ github.run_id }}-${{ github.run_attempt }}
+            sudo /usr/local/libexec/jgantts/install-app-unit.sh
+            "$incoming/activate-release.sh" \
+              --release-root /home/jgantts-com/node-js \
+              --release-sha "${{ github.sha }}" \
+              --service jgantts-com-node-app \
+              --data-root /var/lib/jgantts \
+              --origin https://jgantts.com \
+              --smoke-script "$incoming/smoke-test.js" \
+              --summary "$incoming/deployment-result.json"
+
+      - name: Read deployment result
+        id: deployment-result
+        if: always()
+        uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
+        with:
+          host: ${{ secrets.LINODE_IP }}
+          username: ${{ secrets.LINODE_USER }}
+          key: ${{ secrets.LINODE_SSH_KEY }}
+          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
+          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          port: 22
+          capture_stdout: true
+          script: |
+            set -euo pipefail
+            result=/home/jgantts-com/node-js/incoming/${{ github.run_id }}-${{ github.run_attempt }}/deployment-result.json
+            if test -f "$result"; then cat "$result"; else printf '{"result":"activation-not-reached"}\n'; fi
+
+      - name: Write GitHub deployment summary
+        if: always()
+        env:
+          DEPLOYMENT_RESULT: ${{ steps.deployment-result.outputs.stdout }}
+        run: |
+          {
+            printf '## Main-site deployment\n\n'
+            printf 'Requested release: `%s`\n\n' '${{ github.sha }}'
+            printf '```json\n%s\n```\n' "$DEPLOYMENT_RESULT"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,24 @@
+[Unit]
+Description=JGantts.com Node application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jgantts-com
+Group=jgantts-com
+WorkingDirectory=/home/jgantts-com/node-js/current/jgantts-server
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/jgantts-com/jgantts-com.env
+ExecStart=/usr/bin/node serve.js
+Restart=on-failure
+RestartSec=5s
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/jgantts
+
+[Install]
+WantedBy=multi-user.target

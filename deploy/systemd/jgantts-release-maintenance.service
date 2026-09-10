@@ -1,0 +1,12 @@
+[Unit]
+Description=Check JGantts release drift and enforce retention
+After=network-online.target jgantts-com-node-app.service
+OnFailure=jgantts-operations-alert@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/jgantts/check-release-drift.sh /home/jgantts-com/node-js https://jgantts.com /etc/systemd/system/jgantts-com-node-app.service /usr/local/libexec/jgantts/jgantts-com-node-app.service
+ExecStart=/usr/local/libexec/jgantts/prune-releases.sh /home/jgantts-com/node-js 3
+User=root
+PrivateTmp=true
+NoNewPrivileges=true

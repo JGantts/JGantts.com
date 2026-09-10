@@ -6,8 +6,9 @@ import test from 'node:test';
 import Database from 'better-sqlite3';
 import sharp from 'sharp';
 import { backupContent } from '../src/db/backup';
-import { inTransaction, openContentDatabase } from '../src/db/database';
+import { inTransaction, openContentDatabase, openContentDatabaseReadOnly } from '../src/db/database';
 import { migrations, migrateDatabase } from '../src/db/migrations';
+import { assertSchemaCompatible, inspectDatabaseVersion } from '../src/cli/check-schema-compatibility';
 import { MediaRepository } from '../src/media/media-repository';
 import { MediaService, uploadSourceFormats } from '../src/media/media-service';
 import { PostRepository } from '../src/posts/post-repository';
@@ -47,6 +48,64 @@ test('configures and migrates a file database idempotently', (t) => {
     database.prepare('SELECT COUNT(*) FROM schema_migrations').pluck().get(),
     migrations.length,
   );
+});
+
+test('inspects schema compatibility without migrating the database', (t) => {
+  const root = temporaryDirectory(t);
+  const databasePath = path.join(root, 'content.sqlite');
+  assert.equal(inspectDatabaseVersion(databasePath), 0);
+
+  const database = openContentDatabase(databasePath);
+  database.close();
+  const result = assertSchemaCompatible(databasePath);
+  assert.equal(result.databaseVersion, migrations.at(-1)?.version);
+  assert.equal(result.maximumDatabaseVersion, migrations.at(-1)?.version);
+
+  const future = new Database(databasePath);
+  future.prepare(
+    'INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)',
+  ).run(999, 'future_incompatible_schema', new Date().toISOString());
+  future.close();
+  assert.throws(() => assertSchemaCompatible(databasePath), /outside supported range/);
+});
+
+test('opens backups read-only without applying pending migrations', (t) => {
+  const root = temporaryDirectory(t);
+  const databasePath = path.join(root, 'content.sqlite');
+  const database = new Database(databasePath);
+  database.exec('CREATE TABLE existing_content (id INTEGER PRIMARY KEY) STRICT;');
+  database.close();
+
+  const readOnly = openContentDatabaseReadOnly(databasePath);
+  assert.equal(
+    readOnly.prepare("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations'").pluck().get(),
+    0,
+  );
+  assert.throws(() => readOnly.exec('CREATE TABLE forbidden (id INTEGER)'), /readonly/i);
+  readOnly.close();
+  assert.throws(() => openContentDatabaseReadOnly(path.join(root, 'missing.sqlite')), /(?:not exist|unable to open)/i);
+});
+
+test('schema policy tracks migrations and requires expand-contract for future changes', () => {
+  const policy = JSON.parse(fs.readFileSync(
+    path.resolve(__dirname, '../schema-compatibility.json'),
+    'utf8',
+  )) as {
+    expandContractRequiredAfterVersion: number;
+    maximumDatabaseVersion: number;
+    releaseDatabaseVersion: number;
+  };
+  const latestVersion = migrations.at(-1)?.version;
+  assert.equal(policy.releaseDatabaseVersion, latestVersion);
+  assert.equal(policy.maximumDatabaseVersion, latestVersion);
+  assert.equal(policy.expandContractRequiredAfterVersion, latestVersion);
+
+  const destructiveSql = /\b(?:DROP\s+(?:TABLE|COLUMN|INDEX)|ALTER\s+TABLE\s+\S+\s+RENAME|DELETE\s+FROM)\b/i;
+  for (const migration of migrations) {
+    if (migration.version > policy.expandContractRequiredAfterVersion) {
+      assert.doesNotMatch(migration.sql, destructiveSql, `${migration.name} needs a dedicated rollout plan`);
+    }
+  }
 });
 
 test('upgrades an existing version-one production schema with optional titles', (t) => {

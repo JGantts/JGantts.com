@@ -19,9 +19,11 @@ import { OutboxWorker } from './syndication/outbox-worker';
 import { SyndicationRepository } from './syndication/syndication-repository';
 import { FacebookClient } from './syndication/facebook-client';
 import { FacebookSyndicationService } from './syndication/facebook-syndication-service';
+import { loadBuildInfo } from './build-info';
 
 export function startServer(): Server {
   const logger = createStructuredLogger();
+  const buildInfo = loadBuildInfo();
   const config = getRuntimeConfig();
   const appHtmlTemplate = readAppHtml(SITE_INDEX_PATH);
   ensureMediaDirectories(config.mediaRoot);
@@ -85,6 +87,7 @@ export function startServer(): Server {
   const server = createApp({
     adminToken: config.adminApiToken,
     appHtmlTemplate,
+    buildInfo,
     logger,
     services: {
       health,
@@ -97,7 +100,7 @@ export function startServer(): Server {
     },
     siteOrigin: config.siteOrigin,
   }).listen(config.port, () => {
-    logger.info('server_started', { port: config.port });
+    logger.info('server_started', { commitId: buildInfo.commitId, port: config.port });
     outboxWorker?.start();
   });
   server.once('close', () => {

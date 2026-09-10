@@ -73,6 +73,20 @@ async function testOrigin(origin) {
   assert.match(homeHtml, /<div id="app"><\/div>/);
   assert.doesNotMatch(homeHtml, /__[A-Z_]+__/);
 
+  const assetPaths = [...homeHtml.matchAll(/<(?:script|link)\b[^>]*(?:src|href)=["']([^"']+)["']/gi)]
+    .map((match) => match[1])
+    .filter((pathname) => pathname.startsWith('/assets/'));
+  assert.ok(assetPaths.some((pathname) => /\.js(?:\?|$)/.test(pathname)), 'homepage references a JavaScript asset');
+  assert.ok(assetPaths.some((pathname) => /\.css(?:\?|$)/.test(pathname)), 'homepage references a stylesheet asset');
+  for (const pathname of new Set(assetPaths)) {
+    const asset = await fetchFrom(origin, pathname);
+    assert.equal(asset.status, 200, `${pathname} returned ${asset.status}`);
+    const contentType = asset.headers.get('content-type') ?? '';
+    if (/\.js(?:\?|$)/.test(pathname)) assert.match(contentType, /(?:javascript|ecmascript)/i);
+    if (/\.css(?:\?|$)/.test(pathname)) assert.match(contentType, /text\/css/i);
+    assert.ok((await asset.arrayBuffer()).byteLength > 0, `${pathname} is empty`);
+  }
+
   const holmes = await fetchFrom(origin, '/holmes?smoke_test=1');
   const holmesHtml = await holmes.text();
   assert.equal(holmes.status, 200);
@@ -86,6 +100,23 @@ async function testOrigin(origin) {
 
   const missingAsset = await fetchFrom(origin, '/smoke-test-missing.js');
   assert.equal(missingAsset.status, 404);
+
+  const admin = await fetchFrom(origin, '/api/admin/posts');
+  assert.ok([401, 404, 503].includes(admin.status), `admin route did not fail closed: ${admin.status}`);
+
+  const posts = await fetchFrom(origin, '/api/posts?limit=1');
+  if (posts.status === 404 && !process.env.REQUIRE_CONTENT_API) {
+    // The lightweight local harness intentionally omits content services.
+  } else {
+    assert.equal(posts.status, 200);
+    const postsPage = await posts.json();
+    if (postsPage.items?.length) {
+      const post = await fetchFrom(origin, `/photos/${encodeURIComponent(postsPage.items[0].slug)}`);
+      assert.equal(post.status, 200);
+      assert.match(post.headers.get('content-type') ?? '', /text\/html/i);
+      assert.match(await post.text(), /<link rel="canonical"/i);
+    }
+  }
 
   console.log(`Passed ${origin}`);
 }

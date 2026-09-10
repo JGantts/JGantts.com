@@ -1,0 +1,10 @@
+[Unit]
+Description=Run daily JGantts release drift and retention checks
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Alert for failed JGantts operation %i
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/jgantts-com/backup.env
+ExecStart=/usr/local/libexec/jgantts/operations-alert.sh %i
+User=root
+PrivateTmp=true
+NoNewPrivileges=true

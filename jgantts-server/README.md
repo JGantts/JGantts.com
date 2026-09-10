@@ -24,9 +24,9 @@ Add future endpoints to `src/api/router.ts`. Everything mounted below `/api` ret
 kept ahead of the static-site and SPA fallback middleware.
 
 `GET /api/build` returns the full deployed commit ID and commit message. The build writes these
-values to the centralized `dist/build-info.json`, so production does not need access to the Git
-repository. The endpoint reads that file on every request, allowing the deployment workflow to
-update build information for every `prod` commit without rebuilding or restarting the server.
+values to `dist/build-info.json`, and the release manifest validates the same identity, so
+production does not need access to the Git repository. The process loads this identity once at
+startup. Replacing a file on disk cannot make running old code claim a newer release.
 During local development, the API returns `dev` and `Local development build`, making the badge
 state predictable while debugging. `npm run dev` proxies the frontend's API, media, feed, and
 sitemap requests to the server on port 3000. Use `npm run dev:live` to run only the frontend and

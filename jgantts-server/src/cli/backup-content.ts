@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { backupContent } from '../db/backup';
-import { openContentDatabase } from '../db/database';
+import { openContentDatabaseReadOnly } from '../db/database';
 import { getRuntimeConfig } from '../config';
 
 async function main(): Promise<void> {
@@ -11,7 +11,7 @@ async function main(): Promise<void> {
 
   const destinationRoot = path.resolve(destinationArgument);
   const config = getRuntimeConfig();
-  const database = openContentDatabase(config.databasePath);
+  const database = openContentDatabaseReadOnly(config.databasePath);
   try {
     const result = await backupContent(database, config.mediaRoot, destinationRoot);
     console.log(`Database backup: ${result.databasePath}`);

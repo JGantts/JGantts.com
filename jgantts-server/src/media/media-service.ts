@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
+import heicConvert = require('heic-convert');
 import type { PostRepository } from '../posts/post-repository';
 import { PostInputError } from '../posts/errors';
 import { ensureMediaDirectories } from '../storage';
@@ -35,6 +36,36 @@ export const uploadSourceFormats = {
   png: { extension: 'png', mimeType: 'image/png' },
   webp: { extension: 'webp', mimeType: 'image/webp' },
 } as const;
+
+function sourceFormatFor(metadata: sharp.Metadata) {
+  // libvips reports both AVIF and HEIC-family files as `heif`; compression
+  // distinguishes AV1-backed AVIF from the HEVC-backed iPhone HEIC files.
+  if (metadata.format === 'heif') {
+    return metadata.compression === 'av1'
+      ? uploadSourceFormats.avif
+      : uploadSourceFormats.heif;
+  }
+  return metadata.format && uploadSourceFormats[metadata.format as keyof typeof uploadSourceFormats];
+}
+
+async function renditionInputFor(source: Buffer, metadata: sharp.Metadata): Promise<{
+  buffer: Buffer;
+  metadata: sharp.Metadata;
+}> {
+  if (sourceFormatFor(metadata) !== uploadSourceFormats.heif) return { buffer: source, metadata };
+
+  try {
+    // Sharp can inspect HEIC metadata without necessarily including the HEVC
+    // decoder. Decode only a temporary working copy; original HEIC bytes remain
+    // the authoritative stored source.
+    const buffer = await heicConvert({ buffer: source, format: 'PNG' });
+    const decodedMetadata = await sharp(buffer).metadata();
+    if (!decodedMetadata.width || !decodedMetadata.height) throw new Error('Converted HEIC has no dimensions.');
+    return { buffer, metadata: decodedMetadata };
+  } catch {
+    throw new PostInputError('The HEIC/HEIF image could not be decoded for browser-safe renditions.');
+  }
+}
 
 export interface UploadImageInput {
   altText: string;
@@ -346,13 +377,14 @@ export class MediaService {
     } catch {
       throw new PostInputError('The uploaded file is not a readable image.');
     }
-    const format = metadata.format && uploadSourceFormats[metadata.format as keyof typeof uploadSourceFormats];
+    const format = sourceFormatFor(metadata);
     if (!format || !metadata.width || !metadata.height) {
       throw new PostInputError('Only JPEG, PNG, WebP, AVIF, and HEIC/HEIF images are supported.');
     }
     if (metadata.width * metadata.height > MAX_IMAGE_PIXELS) {
       throw new PostInputError('Image exceeds the 80 megapixel safety limit.');
     }
+    const renditionInput = await renditionInputFor(input.buffer, metadata);
 
     const id = randomUUID();
     const originalName = `${id}.${format.extension}`;
@@ -366,7 +398,7 @@ export class MediaService {
       fs.writeFileSync(stagedOriginalPath, input.buffer, { flag: 'wx', mode: 0o640 });
       stagedFiles.push({ finalPath: originalPath, stagedPath: stagedOriginalPath });
       const stagedSet = await stageRenditionSet(
-        input.buffer, metadata, id, stagingDirectory, this.directories.derived,
+        renditionInput.buffer, renditionInput.metadata, id, stagingDirectory, this.directories.derived,
       );
       const { derivatives, renditions } = stagedSet;
       stagedFiles.push(...stagedSet.stagedFiles);
@@ -386,8 +418,8 @@ export class MediaService {
         mimeType: format.mimeType,
         // Source bytes stay immutable; layout dimensions describe the oriented
         // full-resolution composition, before derivative resizing.
-        width: metadata.autoOrient.width,
-        height: metadata.autoOrient.height,
+        width: renditionInput.metadata.autoOrient.width,
+        height: renditionInput.metadata.autoOrient.height,
         byteSize: input.buffer.length,
         checksumSha256: expectedChecksum,
         // Editorial metadata is author-owned. Never infer these values from
@@ -501,14 +533,14 @@ export class MediaService {
     const checksum = createHash('sha256').update(buffer).digest('hex');
     if (checksum !== record.checksumSha256) throw new Error('Stored source checksum does not match the database.');
     const metadata = await sharp(buffer).metadata();
-    if (!metadata.width || !metadata.height || !metadata.format
-      || !uploadSourceFormats[metadata.format as keyof typeof uploadSourceFormats]) {
+    if (!metadata.width || !metadata.height || !sourceFormatFor(metadata)) {
       throw new Error('Stored source is not a supported readable image.');
     }
     if (metadata.width * metadata.height > MAX_IMAGE_PIXELS) {
       throw new Error('Stored source exceeds the 80 megapixel safety limit.');
     }
-    const widths = responsiveWidths(metadata.autoOrient.width);
+    const renditionInput = await renditionInputFor(buffer, metadata);
+    const widths = responsiveWidths(renditionInput.metadata.autoOrient.width);
     const renditionCount = 1 + widths.reduce(
       (count, width) => count + 2 + (width >= MINIMUM_AVIF_WIDTH ? 1 : 0),
       0,
@@ -522,16 +554,16 @@ export class MediaService {
     let updated = false;
     try {
       const stagedSet = await stageRenditionSet(
-        buffer, metadata, `${record.id}-${generation}`, stagingDirectory, this.directories.derived, suffix,
+        renditionInput.buffer, renditionInput.metadata, `${record.id}-${generation}`, stagingDirectory, this.directories.derived, suffix,
       );
       this.processingHooks.afterStage?.(stagedSet.stagedFiles);
       await verifyStagedFiles(stagedSet.stagedFiles);
       promoteStagedFiles(stagedSet.stagedFiles, promotedPaths, this.processingHooks);
       const replacement = this.media.replaceRenditions(record.id, {
         derivatives: stagedSet.derivatives,
-        height: metadata.autoOrient.height,
+        height: renditionInput.metadata.autoOrient.height,
         renditionManifest: { version: 1, renditions: stagedSet.renditions },
-        width: metadata.autoOrient.width,
+        width: renditionInput.metadata.autoOrient.width,
       }, new Date().toISOString());
       if (!replacement) throw new Error('Media record disappeared during regeneration.');
       updated = true;

@@ -18,7 +18,7 @@ set -euo pipefail
 if [[ "${1-}" == */dist/cli/check-schema-compatibility.js ]]; then exit 0; fi
 if [[ "${1-}" == */dist/cli/backup-content.js || "${1-}" == dist/cli/backup-content.js ]]; then
   [[ "${FAIL_BACKUP-}" != 1 ]] || exit 1
-  destination=${2:?}
+  if [[ "${2-}" == --quiesced ]]; then destination=${3:?}; else destination=${2:?}; fi
   mkdir -p "$destination/media/originals" "$destination/media/derived"
   touch "$destination/content.sqlite" "$destination/media/originals/example.jpg"
   exit 0

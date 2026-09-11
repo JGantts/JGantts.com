@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import Database from 'better-sqlite3';
 import sharp from 'sharp';
-import { backupContent } from '../src/db/backup';
+import { backupContent, backupQuiescedContent } from '../src/db/backup';
 import { inTransaction, openContentDatabase, openContentDatabaseReadOnly } from '../src/db/database';
 import { migrations, migrateDatabase } from '../src/db/migrations';
 import { assertSchemaCompatible, inspectDatabaseVersion } from '../src/cli/check-schema-compatibility';
@@ -235,6 +235,37 @@ test('backs up and restores both the database and media', async (t) => {
     fs.readFileSync(path.join(backupRoot, 'media', 'originals', 'sample.jpg'), 'utf8'),
     'original bytes',
   );
+});
+
+test('backs up a quiesced WAL database without writing to the source', (t) => {
+  const root = temporaryDirectory(t);
+  const liveRoot = path.join(root, 'live');
+  const backupRoot = path.join(root, 'backup');
+  const media = ensureMediaDirectories(path.join(liveRoot, 'media'));
+  fs.writeFileSync(path.join(media.originals, 'sample.jpg'), 'quiesced original');
+
+  const databasePath = path.join(liveRoot, 'content.sqlite');
+  const liveDatabase = openContentDatabase(databasePath);
+  const posts = new PostRepository(liveDatabase);
+  posts.create({
+    id: '01QUIESCEDBACKUP000000000',
+    slug: 'quiesced-backup',
+    bodyMarkdown: 'Quiesced',
+    bodyHtml: '<p>Quiesced</p>',
+  });
+
+  backupQuiescedContent(databasePath, path.join(liveRoot, 'media'), backupRoot);
+  liveDatabase.close();
+
+  const restoredDatabase = openContentDatabaseReadOnly(path.join(backupRoot, 'content.sqlite'));
+  t.after(() => restoredDatabase.close());
+  assert.equal(new PostRepository(restoredDatabase).getBySlug('quiesced-backup')?.bodyMarkdown, 'Quiesced');
+  assert.equal(
+    fs.readFileSync(path.join(backupRoot, 'media', 'originals', 'sample.jpg'), 'utf8'),
+    'quiesced original',
+  );
+  assert.equal(fs.existsSync(path.join(backupRoot, 'content.sqlite-wal')), false);
+  assert.equal(fs.existsSync(path.join(backupRoot, 'content.sqlite-shm')), false);
 });
 
 test('stores original images, generates derivatives, and resolves safe public files', async (t) => {

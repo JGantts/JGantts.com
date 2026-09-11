@@ -78,7 +78,7 @@ backup_path="$backup_root/$backup_name"
 (
   cd "$release/jgantts-server"
   env NODE_ENV=production JGANTTS_DATA_ROOT="$data_root" \
-    node dist/cli/backup-content.js "$backup_path"
+    node dist/cli/backup-content.js --quiesced "$backup_path"
   # shellcheck disable=SC2016
   node -e 'const Database = require("better-sqlite3"); const database = new Database(process.argv[1], { readonly: true, fileMustExist: true }); const result = database.pragma("integrity_check", { simple: true }); database.close(); if (result !== "ok") throw new Error(`SQLite integrity check failed: ${result}`);' "$backup_path/content.sqlite"
 )

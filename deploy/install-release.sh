@@ -120,7 +120,7 @@ NODE
 
 [[ -f "$staged/jgantts-server/package-lock.json" && -f "$staged/jgantts-com/dist/index.html" ]] \
   || { echo "release entry points are missing" >&2; exit 65; }
-if find "$staged" -type l -o -name '.env' -o -name '.env.*' | grep -q .; then
+if [[ -n "$(find "$staged" \( -type l -o -name '.env' -o -name '.env.*' \) -print -quit)" ]]; then
   echo "release contains a link or environment file before maps setup" >&2
   exit 65
 fi
@@ -148,13 +148,13 @@ ln -s "$maps_mount" "$staged/jgantts-com/PUBLIC/assets/maps"
 
 [[ -d "$data_root" && -r "$data_root" ]] || { echo "persistent data root is unavailable" >&2; exit 66; }
 printf '%s\n' "$actual_checksum" > "$staged/.artifact.sha256"
-if find "$staged" -type f \( -name '.env' -o -name '.env.*' \) | grep -q .; then
+if [[ -n "$(find "$staged" -type f \( -name '.env' -o -name '.env.*' \) -print -quit)" ]]; then
   echo "release contains an environment file" >&2
   exit 65
 fi
-if find "$staged" -type f \( -iname '*credential*' -o -iname '*private-key*' \) | grep -q . \
-  || grep -IRIlE --binary-files=without-match \
-    '(BEGIN [A-Z ]*PRIVATE KEY|(^|[^A-Z_])(PASSWORD|SECRET|ACCESS_TOKEN)=[^[:space:]]+)' "$staged" | grep -q .; then
+if [[ -n "$(find "$staged" -type f \( -iname '*credential*' -o -iname '*private-key*' \) -print -quit)" ]] \
+  || grep -IRqE --binary-files=without-match \
+    '(BEGIN [A-Z ]*PRIVATE KEY|(^|[^A-Z_])(PASSWORD|SECRET|ACCESS_TOKEN)=[^[:space:]]+)' "$staged"; then
   echo "release contains a probable credential" >&2
   exit 65
 fi

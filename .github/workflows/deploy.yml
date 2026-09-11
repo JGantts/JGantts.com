@@ -204,7 +204,8 @@ jobs:
           set -euo pipefail
           cd release-artifact
           sha256sum --check jgantts-site-release.tar.gz.sha256
-          tar -tzf jgantts-site-release.tar.gz | grep -Fxq '${{ github.sha }}/release-manifest.json'
+          tar -tzf jgantts-site-release.tar.gz > jgantts-site-release.contents
+          grep -Fxq '${{ github.sha }}/release-manifest.json' jgantts-site-release.contents
 
       - name: Record transfer start
         run: echo "RELEASE_TRANSFER_STARTED=$(date +%s)" >> "$GITHUB_ENV"

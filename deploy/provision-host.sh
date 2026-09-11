@@ -10,13 +10,21 @@ service_user=${2-}
 [[ "$deployment_user" != "$service_user" ]] || { echo "deployment and service users must be distinct" >&2; exit 65; }
 id "$deployment_user" >/dev/null
 id "$service_user" >/dev/null
+command -v setfacl >/dev/null || { echo "setfacl is required; install the acl package" >&2; exit 69; }
 
 source_root=$(cd "$(dirname "$0")" && pwd)
 install -d -o "$deployment_user" -g "$service_user" -m 0755 /home/jgantts-com/node-js
 install -d -o "$deployment_user" -g "$service_user" -m 0755 \
   /home/jgantts-com/node-js/releases /home/jgantts-com/node-js/incoming /home/jgantts-com/node-js/shared
 install -d -o "$service_user" -g "$service_user" -m 0750 \
-  /var/lib/jgantts /var/lib/jgantts/media /var/lib/jgantts/backups
+  /var/lib/jgantts /var/lib/jgantts/media
+install -d -o "$deployment_user" -g "$service_user" -m 0750 /var/lib/jgantts/backups
+setfacl -m "u:${deployment_user}:--x" /home/jgantts-com
+find /var/lib/jgantts -path /var/lib/jgantts/backups -prune -o -type d \
+  -exec setfacl -m "u:${deployment_user}:r-x,d:u:${deployment_user}:r-x" {} +
+find /var/lib/jgantts -path /var/lib/jgantts/backups -prune -o -type f \
+  -exec setfacl -m "u:${deployment_user}:r--" {} +
+chown -R "$deployment_user:$service_user" /var/lib/jgantts/backups
 install -d -o root -g root -m 0755 /usr/local/libexec/jgantts /etc/jgantts-com
 
 for script in replicate-backups.sh restore-rehearsal.sh operations-alert.sh prune-releases.sh check-release-drift.sh install-app-unit.sh; do

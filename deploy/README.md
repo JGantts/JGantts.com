@@ -22,15 +22,17 @@ passphrase-protected deployment key with pinned host-fingerprint verification.
 Reviewer approval is an explicit repository-owner choice and must be recorded in
 the roadmap after it is configured.
 
-After reviewing every file, run `provision-host.sh DEPLOYMENT_USER jgantts-com`
-as root. It installs the versioned unit files and maintenance scripts, validates
-the narrow sudoers policy, creates only `.example` credential files, and does
-not replace or restart the application unit. Populate both environment files
-before enabling the timers. During the first release deployment, the workflow
-backs up and restarts the legacy service first, then invokes the narrowly
-authorized `install-app-unit.sh`; activation creates `current` before restarting
-through that new unit. The release-maintenance timer is enabled only after a
-`current` link exists.
+Install the distribution's `acl` package. After reviewing every file, run
+`provision-host.sh DEPLOYMENT_USER jgantts-com` as root. It grants the deployment
+account traverse-only access to the service home, read-only access to persistent
+content, and ownership of the backup area. It also installs the versioned unit
+files and maintenance scripts, validates the narrow sudoers policy, creates only
+`.example` credential files, and does not replace or restart the application
+unit. Populate both environment files before enabling the timers. During the
+first release deployment, the workflow backs up and restarts the legacy service
+first, then invokes the narrowly authorized `install-app-unit.sh`; activation
+creates `current` before restarting through that new unit. The
+release-maintenance timer is enabled only after a `current` link exists.
 
 Install `restic` from the distribution's signed package repository, initialize
 the off-host repository, and populate `backup.env`. The daily replication timer

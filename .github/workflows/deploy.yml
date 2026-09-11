@@ -296,6 +296,7 @@ jobs:
               --release-sha "${{ github.sha }}" \
               --service jgantts-com-node-app \
               --data-root /var/lib/jgantts \
+              --schema-root /var/lib/jgantts/backups/pre-deploy/latest \
               --origin https://jgantts.com \
               --smoke-script "$incoming/smoke-test.js" \
               --summary "$incoming/deployment-result.json"

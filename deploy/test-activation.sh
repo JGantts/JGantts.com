@@ -10,7 +10,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p "$test_root/bin" "$test_root/app/releases" "$test_root/data"
+mkdir -p "$test_root/bin" "$test_root/app/releases" "$test_root/data/backups/schema"
+touch "$test_root/data/backups/schema/content.sqlite"
 real_node=$(command -v node)
 cat > "$test_root/bin/node" <<'SH'
 #!/usr/bin/env bash
@@ -18,6 +19,11 @@ set -euo pipefail
 if [[ "${1-}" == */dist/cli/check-schema-compatibility.js ]]; then exit 0; fi
 if [[ "${1-}" == */dist/cli/backup-content.js || "${1-}" == dist/cli/backup-content.js ]]; then
   [[ "${FAIL_BACKUP-}" != 1 ]] || exit 1
+  if [[ "${2-}" == --quiesced-database ]]; then
+    mkdir -p "$(dirname "${3:?}")"
+    touch "$3"
+    exit 0
+  fi
   if [[ "${2-}" == --quiesced ]]; then destination=${3:?}; else destination=${2:?}; fi
   mkdir -p "$destination/media/originals" "$destination/media/derived"
   touch "$destination/content.sqlite" "$destination/media/originals/example.jpg"
@@ -58,7 +64,7 @@ ln -s "$test_root/app/releases/$old_sha" "$test_root/app/current"
 PATH="$test_root/bin:$PATH" REAL_NODE="$real_node" SERVICE_STATE="$test_root/service-state" \
   "$repository_root/deploy/activate-release.sh" \
   --release-root "$test_root/app" --release-sha "$new_sha" --service test-service \
-  --data-root "$test_root/data" --origin https://example.com \
+  --data-root "$test_root/data" --schema-root "$test_root/data/backups/schema" --origin https://example.com \
   --smoke-script "$test_root/smoke-test.js" --summary "$test_root/success.json"
 [[ "$(realpath "$test_root/app/current")" == "$test_root/app/releases/$new_sha" ]]
 [[ "$(realpath "$test_root/app/previous")" == "$test_root/app/releases/$old_sha" ]]
@@ -68,7 +74,7 @@ set +e
 PATH="$test_root/bin:$PATH" REAL_NODE="$real_node" SERVICE_STATE="$test_root/service-state" FAIL_SHA="$bad_sha" \
   "$repository_root/deploy/activate-release.sh" \
   --release-root "$test_root/app" --release-sha "$bad_sha" --service test-service \
-  --data-root "$test_root/data" --origin https://example.com \
+  --data-root "$test_root/data" --schema-root "$test_root/data/backups/schema" --origin https://example.com \
   --smoke-script "$test_root/smoke-test.js" --summary "$test_root/rollback.json"
 status=$?
 set -e

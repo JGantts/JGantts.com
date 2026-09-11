@@ -35,6 +35,7 @@ jobs:
             maps_sources:
               - 'maps-sources/**'
             website:
+              - 'build_toggle'
               - 'jgantts-com/**'
               - 'jgantts-server/**'
               - 'deploy/**'

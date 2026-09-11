@@ -207,41 +207,28 @@ jobs:
           tar -tzf jgantts-site-release.tar.gz > jgantts-site-release.contents
           grep -Fxq '${{ github.sha }}/release-manifest.json' jgantts-site-release.contents
 
+      - name: Stage release transfer
+        run: |
+          set -euo pipefail
+          transfer_dir='${{ github.run_id }}-${{ github.run_attempt }}'
+          mkdir "$transfer_dir"
+          cp release-artifact/jgantts-site-release.tar.gz "$transfer_dir/"
+          cp release-artifact/jgantts-site-release.tar.gz.sha256 "$transfer_dir/"
+          cp deploy/install-release.sh deploy/activate-release.sh deploy/backup-release.sh "$transfer_dir/"
+          cp jgantts-server/scripts/smoke-test.js "$transfer_dir/"
+
       - name: Record transfer start
         run: echo "RELEASE_TRANSFER_STARTED=$(date +%s)" >> "$GITHUB_ENV"
 
-      - name: Upload immutable release bundle
+      - name: Upload release transfer directory
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.LINODE_IP }}
           username: ${{ secrets.LINODE_USER }}
           password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
-          source: './release-artifact/jgantts-site-release.tar.gz,./release-artifact/jgantts-site-release.tar.gz.sha256'
-          target: '/home/jgantts-com/node-js/incoming/${{ github.run_id }}-${{ github.run_attempt }}/'
-          strip_components: 1
-
-      - name: Upload release deployment scripts
-        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
-        with:
-          host: ${{ secrets.LINODE_IP }}
-          username: ${{ secrets.LINODE_USER }}
-          password: ${{ secrets.LINODE_PASSWORD }}
-          port: 22
-          source: './deploy/install-release.sh,./deploy/activate-release.sh,./deploy/backup-release.sh'
-          target: '/home/jgantts-com/node-js/incoming/${{ github.run_id }}-${{ github.run_attempt }}/'
-          strip_components: 1
-
-      - name: Upload release smoke test
-        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
-        with:
-          host: ${{ secrets.LINODE_IP }}
-          username: ${{ secrets.LINODE_USER }}
-          password: ${{ secrets.LINODE_PASSWORD }}
-          port: 22
-          source: './jgantts-server/scripts/smoke-test.js'
-          target: '/home/jgantts-com/node-js/incoming/${{ github.run_id }}-${{ github.run_attempt }}/'
-          strip_components: 2
+          source: '${{ github.run_id }}-${{ github.run_attempt }}'
+          target: '/home/jgantts-com/node-js/incoming/'
 
       - name: Verify release bundle on server
         uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4

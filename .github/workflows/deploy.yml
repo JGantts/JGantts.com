@@ -58,12 +58,10 @@ jobs:
         env:
           LINODE_IP: ${{ secrets.LINODE_IP }}
           LINODE_USER: ${{ secrets.LINODE_USER }}
-          LINODE_SSH_KEY: ${{ secrets.LINODE_SSH_KEY }}
-          LINODE_SSH_KEY_PASSPHRASE: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
-          LINODE_SSH_HOST_FINGERPRINT: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          LINODE_PASSWORD: ${{ secrets.LINODE_PASSWORD }}
         run: |
           set -euo pipefail
-          for name in LINODE_IP LINODE_USER LINODE_SSH_KEY LINODE_SSH_KEY_PASSPHRASE LINODE_SSH_HOST_FINGERPRINT; do
+          for name in LINODE_IP LINODE_USER LINODE_PASSWORD; do
             test -n "${!name}" || { echo "Missing production environment secret: $name" >&2; exit 78; }
           done
 
@@ -108,9 +106,7 @@ jobs:
         with:
           host: ${{ secrets.LINODE_IP }}
           username: ${{ secrets.LINODE_USER }}
-          key: ${{ secrets.LINODE_SSH_KEY }}
-          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
-          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
           source: './maps-rendered/'
           target: '/home/jgantts-com/node-js/jgantts-com/PUBLIC/assets/maps/'
@@ -187,12 +183,10 @@ jobs:
         env:
           LINODE_IP: ${{ secrets.LINODE_IP }}
           LINODE_USER: ${{ secrets.LINODE_USER }}
-          LINODE_SSH_KEY: ${{ secrets.LINODE_SSH_KEY }}
-          LINODE_SSH_KEY_PASSPHRASE: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
-          LINODE_SSH_HOST_FINGERPRINT: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          LINODE_PASSWORD: ${{ secrets.LINODE_PASSWORD }}
         run: |
           set -euo pipefail
-          for name in LINODE_IP LINODE_USER LINODE_SSH_KEY LINODE_SSH_KEY_PASSPHRASE LINODE_SSH_HOST_FINGERPRINT; do
+          for name in LINODE_IP LINODE_USER LINODE_PASSWORD; do
             test -n "${!name}" || { echo "Missing production environment secret: $name" >&2; exit 78; }
           done
 
@@ -220,9 +214,7 @@ jobs:
         with:
           host: ${{ secrets.LINODE_IP }}
           username: ${{ secrets.LINODE_USER }}
-          key: ${{ secrets.LINODE_SSH_KEY }}
-          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
-          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
           source: './release-artifact/jgantts-site-release.tar.gz,./release-artifact/jgantts-site-release.tar.gz.sha256'
           target: '/home/jgantts-com/node-js/incoming/${{ github.run_id }}-${{ github.run_attempt }}/'
@@ -233,9 +225,7 @@ jobs:
         with:
           host: ${{ secrets.LINODE_IP }}
           username: ${{ secrets.LINODE_USER }}
-          key: ${{ secrets.LINODE_SSH_KEY }}
-          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
-          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
           source: './deploy/install-release.sh,./deploy/activate-release.sh,./deploy/backup-release.sh'
           target: '/home/jgantts-com/node-js/incoming/${{ github.run_id }}-${{ github.run_attempt }}/'
@@ -246,9 +236,7 @@ jobs:
         with:
           host: ${{ secrets.LINODE_IP }}
           username: ${{ secrets.LINODE_USER }}
-          key: ${{ secrets.LINODE_SSH_KEY }}
-          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
-          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
           source: './jgantts-server/scripts/smoke-test.js'
           target: '/home/jgantts-com/node-js/incoming/${{ github.run_id }}-${{ github.run_attempt }}/'
@@ -259,9 +247,7 @@ jobs:
         with:
           host: ${{ secrets.LINODE_IP }}
           username: ${{ secrets.LINODE_USER }}
-          key: ${{ secrets.LINODE_SSH_KEY }}
-          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
-          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
           script: |
             set -euo pipefail
@@ -292,9 +278,7 @@ jobs:
         with:
           host: ${{ secrets.LINODE_IP }}
           username: ${{ secrets.LINODE_USER }}
-          key: ${{ secrets.LINODE_SSH_KEY }}
-          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
-          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
           script: |
             set -euo pipefail
@@ -312,9 +296,7 @@ jobs:
         with:
           host: ${{ secrets.LINODE_IP }}
           username: ${{ secrets.LINODE_USER }}
-          key: ${{ secrets.LINODE_SSH_KEY }}
-          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
-          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
           script: |
             set -euo pipefail
@@ -336,9 +318,7 @@ jobs:
         with:
           host: ${{ secrets.LINODE_IP }}
           username: ${{ secrets.LINODE_USER }}
-          key: ${{ secrets.LINODE_SSH_KEY }}
-          passphrase: ${{ secrets.LINODE_SSH_KEY_PASSPHRASE }}
-          fingerprint: ${{ secrets.LINODE_SSH_HOST_FINGERPRINT }}
+          password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
           capture_stdout: true
           script: |

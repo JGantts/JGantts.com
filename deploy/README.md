@@ -16,10 +16,9 @@ example with mode `0640`, owner `root`, and group `jgantts-com`; replace every
 placeholder and never copy that file into a release.
 
 The `production` GitHub environment must be restricted to the `prod` branch. It
-owns `LINODE_IP`, `LINODE_USER`, `LINODE_SSH_KEY`,
-`LINODE_SSH_KEY_PASSPHRASE`, and `LINODE_SSH_HOST_FINGERPRINT`. The SSH key is
-dedicated to deployment, encrypted with a passphrase, and its server-side
-authorized-key entry should restrict forwarding, PTY allocation, and agent use.
+owns `LINODE_IP`, `LINODE_USER`, and `LINODE_PASSWORD`. Password authentication
+is a temporary compatibility path; migrate the workflow back to a dedicated,
+passphrase-protected deployment key with pinned host-fingerprint verification.
 Reviewer approval is an explicit repository-owner choice and must be recorded in
 the roadmap after it is configured.
 

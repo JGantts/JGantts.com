@@ -20,17 +20,30 @@ const dialogRef = ref<HTMLDialogElement | null>(null)
 const activeImageIndex = ref(0)
 const imageAttachments = computed(() => props.attachments.filter(({ type }) => type === 'image'))
 const activeImage = computed(() => imageAttachments.value[activeImageIndex.value] ?? null)
+let previousDocumentOverflow: string | null = null
 
 async function openImage(attachment: MediaAttachment) {
   activeImageIndex.value = imageAttachments.value.indexOf(attachment)
   await nextTick()
-  dialogRef.value?.showModal()
+  if (!dialogRef.value || dialogRef.value.open) return
+  previousDocumentOverflow = document.documentElement.style.overflow
   document.documentElement.style.overflow = 'hidden'
+  try {
+    dialogRef.value.showModal()
+  } catch {
+    restoreDocumentOverflow()
+  }
 }
 
 function closeImage() {
-  dialogRef.value?.close()
-  document.documentElement.style.overflow = ''
+  if (dialogRef.value?.open) dialogRef.value.close()
+  else restoreDocumentOverflow()
+}
+
+function restoreDocumentOverflow() {
+  if (previousDocumentOverflow === null) return
+  document.documentElement.style.overflow = previousDocumentOverflow
+  previousDocumentOverflow = null
 }
 
 function showPreviousImage() {
@@ -47,7 +60,7 @@ function handleDialogKeydown(event: KeyboardEvent) {
 }
 
 onBeforeUnmount(() => {
-  document.documentElement.style.overflow = ''
+  restoreDocumentOverflow()
 })
 </script>
 
@@ -138,7 +151,7 @@ onBeforeUnmount(() => {
       class="photo-lightbox"
       aria-label="Photo viewer"
       @click.self="closeImage"
-      @close="closeImage"
+      @close="restoreDocumentOverflow"
       @keydown="handleDialogKeydown"
     >
       <button type="button" class="lightbox-close" aria-label="Close photo viewer" @click="closeImage">×</button>

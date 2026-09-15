@@ -41,6 +41,7 @@ const props = defineProps<{
   posts: Array<PhotoPost | null>
   activePostId?: string
   initiallyFeaturedPostId?: string
+  interactionPaused?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -139,6 +140,9 @@ function postPriority(postIndex: number, postId: string) {
 
 function syncViewportHeight() {
   viewportHeight.value = window.innerHeight
+  if (containerRef.value) {
+    containerWidth.value = containerRef.value.getBoundingClientRect().width
+  }
   scheduleSelectedPostVisibilityUpdate()
 }
 
@@ -312,17 +316,10 @@ async function observeSelectedPost() {
 
 function updateSelectedPostVisibility() {
   visibilityFrame = null
-  if (!selectedPostElement) return
+  if (!selectedPostElement || props.interactionPaused) return
 
   const bounds = selectedPostElement.getBoundingClientRect()
-  const isMobilePortrait = window.matchMedia('(max-width: 44rem) and (orientation: portrait)').matches
-  const commentsPanel = document.querySelector<HTMLElement>('.comments-section.is-active')
-  // On mobile the fixed sheet occludes everything below its visible top edge.
-  // On wider layouts the comments panel sits beside the masonry, so only the
-  // browser viewport bounds the visible collection.
-  const visibleViewportBottom = isMobilePortrait && commentsPanel
-    ? Math.min(window.innerHeight, commentsPanel.getBoundingClientRect().top)
-    : window.innerHeight
+  const visibleViewportBottom = window.innerHeight
   const fadeDistance = 100
   const distancePastBoundary = bounds.bottom < 0
     ? -bounds.bottom
@@ -356,7 +353,9 @@ function exposureSession(postId: string) {
 
 function samplePostExposures() {
   const now = performance.now()
-  const isPageActive = document.visibilityState === 'visible' && document.hasFocus()
+  const isPageActive = !props.interactionPaused
+    && document.visibilityState === 'visible'
+    && document.hasFocus()
 
   exposureSessions.forEach((session, postId) => {
     const isVisible = isPageActive && session.visibilityRatio >= minimumVisibleRatio
@@ -464,6 +463,13 @@ watch(
   { immediate: true },
 )
 watch([() => props.activePostId, imageRecords], scheduleActivePostPhotoPreloads, { immediate: true })
+watch(() => props.interactionPaused, () => {
+  const now = performance.now()
+  exposureSessions.forEach((session) => {
+    session.visibleSince = null
+    session.lastSampleAt = now
+  })
+})
 watch(
   () => masonry.value.clusters.map((cluster) => cluster.key).join(':'),
   observePostExposures,

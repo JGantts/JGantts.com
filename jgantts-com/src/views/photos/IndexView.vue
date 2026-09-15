@@ -3,95 +3,16 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import QRCode from 'qrcode'
 import ClusteredPhotoMasonry from './ClusteredPhotoMasonry.vue'
-import MediaCarousel from '@/components/MediaCarousel.vue'
+import PhotoCommentsPanel from './PhotoCommentsPanel.vue'
+import type {
+  DisplayPhotoComment,
+  PhotoCommentsStatus,
+  PhotoCommentsThread,
+  ThreadedPhotoComment,
+} from './photo-comments-types'
 import { formatEditorialDateTime, machineEditorialDateTime } from '@/posts/editorial-date-time'
-import type { CanonicalPost } from '@/posts/types'
+import type { CanonicalPost, MastodonCommentsResponse } from '@/posts/types'
 import { postPath } from '@/posts/post-url'
-
-type MastodonAccount = {
-  acct: string
-  avatar: string
-  display_name: string
-  url: string
-  username: string
-}
-
-type MastodonAttachment = {
-  blurhash?: string | null
-  description?: string | null
-  preview_url: string
-  meta?: {
-    original?: { aspect?: number; height?: number; width?: number }
-  } | null
-  remote_url?: string | null
-  type: 'audio' | 'gifv' | 'image' | 'unknown' | 'video'
-  url: string
-}
-
-type MastodonCard = {
-  author_name?: string
-  description?: string
-  image?: string
-  provider_name?: string
-  title: string
-  url: string
-}
-
-type MastodonMention = {
-  acct: string
-  id: string
-  url: string
-  username: string
-}
-
-type MastodonPollOption = {
-  title: string
-  votes_count: number | null
-}
-
-type MastodonPoll = {
-  expired: boolean
-  multiple: boolean
-  options: MastodonPollOption[]
-  voters_count: number | null
-  votes_count: number | null
-}
-
-type MastodonStatus = {
-  account: MastodonAccount
-  application?: { name: string; website: string | null } | null
-  card?: MastodonCard | null
-  content: string
-  created_at: string
-  favourites_count: number
-  id: string
-  in_reply_to_id: string | null
-  media_attachments: MastodonAttachment[]
-  mentions: MastodonMention[]
-  poll?: MastodonPoll | null
-  reblogs_count: number
-  replies_count: number
-  sensitive: boolean
-  spoiler_text: string
-  tags: { name: string; url: string }[]
-  uri: string
-  url: string | null
-  visibility: 'direct' | 'private' | 'public' | 'unlisted'
-}
-
-type ThreadedStatus = MastodonStatus & {
-  replies: ThreadedStatus[]
-}
-
-type DisplayStatus = ThreadedStatus & {
-  depth: number
-}
-
-type TootThread = {
-  comments: ThreadedStatus[]
-  post: MastodonStatus
-  remoteUrl: string | null
-}
 
 const props = defineProps<{
   postId?: string
@@ -117,29 +38,17 @@ function initialPreselectedPostId() {
 const initiallyRoutedPostId = initialPreselectedPostId()
 
 const localPosts = ref<CanonicalPost[]>([])
-const localThreads = ref<TootThread[]>([])
+const localThreads = ref<PhotoCommentsThread[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
 const activeTootIndex = ref<number | null>(null)
 const selectedPostVisibility = ref(1)
-const commentsDrawerState = ref<0 | 1 | 2>(0)
-const commentsDrawerOpen = computed(() => commentsDrawerState.value > 0)
-const commentsDrawerFull = computed(() => commentsDrawerState.value === 2)
-const mobilePortraitDrawer = ref(false)
-const commentsDrawerDragging = ref(false)
-const commentsDrawerDragOffset = ref(0)
+const commentsOpen = ref(false)
+const commentsModalOpen = ref(false)
 const shareQrCodeUrl = ref('')
 const shareCopyStatus = ref('')
 const qrDialogRef = ref<HTMLDialogElement | null>(null)
-let commentsDrawerPointerStartY = 0
-let commentsDrawerPointerStartOffset = 0
-let commentsDrawerPointerStartedAt = 0
-let commentsDrawerPointerStartState: 0 | 1 | 2 = 0
-let commentsDrawerPointerLastY = 0
-let commentsDrawerPointerLastAt = 0
-let commentsDrawerVelocity = 0
-let mobilePortraitDrawerQuery: MediaQueryList | null = null
 let qrPreviousDocumentOverflow: string | null = null
 const activeToot = computed(() =>
   activeTootIndex.value === null ? null : allToots.value[activeTootIndex.value] ?? null,
@@ -156,7 +65,7 @@ const initiallyFeaturedPostId = computed(() => {
   return localPost ? `local:${localPost.id}` : undefined
 })
 const commentsByPostId = computed(() => {
-  const comments = new Map<string, DisplayStatus[]>()
+  const comments = new Map<string, DisplayPhotoComment[]>()
   allToots.value.forEach((toot) => {
     comments.set(toot.post.id, flattenComments(toot.comments))
   })
@@ -170,21 +79,21 @@ const replyCountsByPostId = computed(() => {
   return counts
 })
 
-function photoRouteId(post: MastodonStatus) {
+function photoRouteId(post: PhotoCommentsStatus) {
   const localPost = localPosts.value.find((candidate) => `local:${candidate.id}` === post.id)
   return localPost?.slug ?? post.id
 }
 
-function photoShareUrl(post: MastodonStatus) {
+function photoShareUrl(post: PhotoCommentsStatus) {
   return new URL(`/photos/${encodeURIComponent(photoRouteId(post))}`, window.location.origin).toString()
 }
 
-function photoShareTitle(post: MastodonStatus) {
+function photoShareTitle(post: PhotoCommentsStatus) {
   const localPost = localPosts.value.find((candidate) => `local:${candidate.id}` === post.id)
   return localPost?.title || 'A photo by Jacob Gantt'
 }
 
-function photoSocialShareUrl(network: 'facebook' | 'x' | 'linkedin', post: MastodonStatus) {
+function photoSocialShareUrl(network: 'facebook' | 'x' | 'linkedin', post: PhotoCommentsStatus) {
   const url = encodeURIComponent(photoShareUrl(post))
   const title = encodeURIComponent(photoShareTitle(post))
   if (network === 'facebook') return `https://www.facebook.com/sharer/sharer.php?u=${url}`
@@ -192,13 +101,13 @@ function photoSocialShareUrl(network: 'facebook' | 'x' | 'linkedin', post: Masto
   return `https://twitter.com/intent/tweet?url=${url}&text=${title}`
 }
 
-function photoEmailShareUrl(post: MastodonStatus) {
+function photoEmailShareUrl(post: PhotoCommentsStatus) {
   const subject = encodeURIComponent(photoShareTitle(post))
   const body = encodeURIComponent(`I thought you might enjoy this:\n\n${photoShareUrl(post)}`)
   return `mailto:?subject=${subject}&body=${body}`
 }
 
-async function preparePhotoQrCode(post: MastodonStatus | undefined) {
+async function preparePhotoQrCode(post: PhotoCommentsStatus | undefined) {
   shareQrCodeUrl.value = ''
   if (!post) return
   try {
@@ -210,7 +119,7 @@ async function preparePhotoQrCode(post: MastodonStatus | undefined) {
   }
 }
 
-async function copyPhotoShareLink(post: MastodonStatus) {
+async function copyPhotoShareLink(post: PhotoCommentsStatus) {
   try {
     await navigator.clipboard.writeText(photoShareUrl(post))
     shareCopyStatus.value = 'Link copied!'
@@ -253,11 +162,6 @@ function closePhotoShareMenus() {
   })
 }
 
-const formatter = new Intl.DateTimeFormat(undefined, {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-})
-const numberFormatter = new Intl.NumberFormat()
 function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -289,8 +193,7 @@ function selectToot(nextIndex: number) {
   if (!post) return
   activeTootIndex.value = nextIndex
   selectedPostVisibility.value = 1
-  commentsDrawerState.value = 0
-  commentsDrawerDragOffset.value = 0
+  commentsOpen.value = false
   const postId = post.id
 
   const localPost = localPosts.value.find((candidate) => `local:${candidate.id}` === postId)
@@ -298,13 +201,19 @@ function selectToot(nextIndex: number) {
   if (props.postId !== routeId) void router.push(`/photos/${routeId}`)
 }
 
-function clearSelection() {
+async function clearSelection(options: { restoreFocus?: boolean } = {}) {
+  const selectedPostId = activeToot.value?.post.id
   closePhotoShareMenus()
   activeTootIndex.value = null
   selectedPostVisibility.value = 1
-  commentsDrawerState.value = 0
-  commentsDrawerDragOffset.value = 0
-  if (props.postId) void router.push('/photos')
+  commentsOpen.value = false
+  commentsModalOpen.value = false
+  if (props.postId) await router.push('/photos')
+  if (!options.restoreFocus || !selectedPostId) return
+  await nextTick()
+  document.querySelector<HTMLElement>(
+    `[data-cluster-key="${CSS.escape(selectedPostId)}"] .photo-card`,
+  )?.focus()
 }
 
 function syncSelectionFromRoute(postId = props.postId) {
@@ -312,175 +221,6 @@ function syncSelectionFromRoute(postId = props.postId) {
   activeTootIndex.value = postId && localIndex >= 0 ? localIndex : null
   if (activeTootIndex.value === -1) activeTootIndex.value = null
   selectedPostVisibility.value = 1
-  commentsDrawerState.value = 0
-  commentsDrawerDragOffset.value = 0
-}
-
-function isMobilePortraitDrawer() {
-  return mobilePortraitDrawerQuery?.matches
-    ?? window.matchMedia('(max-width: 44rem) and (orientation: portrait)').matches
-}
-
-function syncMobilePortraitDrawer() {
-  const wasMobilePortrait = mobilePortraitDrawer.value
-  mobilePortraitDrawer.value = isMobilePortraitDrawer()
-  if (wasMobilePortrait !== mobilePortraitDrawer.value && props.postId && activeToot.value) {
-    void scrollToRoutedPost(props.postId, activeToot.value.post.id)
-  }
-}
-
-function stepCommentsDrawer(direction: -1 | 1) {
-  commentsDrawerState.value = Math.min(
-    2,
-    Math.max(0, commentsDrawerState.value + direction),
-  ) as 0 | 1 | 2
-  commentsDrawerDragOffset.value = 0
-}
-
-function lowerCommentsDrawer() {
-  closePhotoShareMenus()
-  commentsDrawerState.value = 0
-  commentsDrawerDragOffset.value = 0
-}
-
-function toggleCommentsDrawer() {
-  commentsDrawerState.value = commentsDrawerState.value === 2
-    ? 1
-    : Math.min(2, commentsDrawerState.value + 1) as 0 | 1 | 2
-  commentsDrawerDragOffset.value = 0
-}
-
-function commentsDrawerOffsets(panel: HTMLElement) {
-  const handle = panel.querySelector<HTMLElement>('.comments-drawer-handle')
-  const collapsedHeight = handle?.offsetHeight ?? 72
-  const closed = Math.max(0, panel.offsetHeight - collapsedHeight)
-  return [closed, Math.min(closed, window.innerHeight * 0.42), 0] as const
-}
-
-function nearestCommentsDrawerState(
-  offsets: readonly number[],
-  targetOffset: number,
-): 0 | 1 | 2 {
-  let nearestState: 0 | 1 | 2 = 0
-  offsets.forEach((offset, index) => {
-    if (Math.abs(offset - targetOffset) < Math.abs(offsets[nearestState] - targetOffset)) {
-      nearestState = index as 0 | 1 | 2
-    }
-  })
-  return nearestState
-}
-
-function updateCommentsDrawerDrag(event: PointerEvent, panel: HTMLElement) {
-  const now = performance.now()
-  const elapsed = now - commentsDrawerPointerLastAt
-  const movement = event.clientY - commentsDrawerPointerLastY
-
-  if (elapsed > 80 && Math.abs(movement) < 1) {
-    // Releasing after a short hold should settle from position, not preserve an
-    // earlier flick that the user intentionally stopped.
-    commentsDrawerVelocity = 0
-  } else if (elapsed > 0 && movement !== 0) {
-    const instantaneousVelocity = movement / elapsed
-    // Favor the most recent movement while retaining enough history to smooth
-    // sparse touch events. Velocity is measured in pixels per millisecond.
-    commentsDrawerVelocity = commentsDrawerVelocity * 0.35 + instantaneousVelocity * 0.65
-  }
-
-  commentsDrawerPointerLastY = event.clientY
-  commentsDrawerPointerLastAt = now
-
-  const [closedOffset] = commentsDrawerOffsets(panel)
-  commentsDrawerDragOffset.value = Math.min(
-    closedOffset,
-    Math.max(0, commentsDrawerPointerStartOffset + event.clientY - commentsDrawerPointerStartY),
-  )
-}
-
-function startCommentsDrawerDrag(event: PointerEvent) {
-  if (!isMobilePortraitDrawer() || (event.pointerType === 'mouse' && event.button !== 0)) return
-  if (
-    event.target instanceof Element
-    && event.target.closest('button, a, input, select, textarea')
-  ) return
-
-  const panel = (event.currentTarget as HTMLElement).closest<HTMLElement>('.comments-section')
-  if (!panel) return
-  const handle = panel.querySelector<HTMLElement>('.comments-drawer-handle')
-  if (!handle) return
-
-  commentsDrawerDragging.value = true
-  commentsDrawerPointerStartState = commentsDrawerState.value
-  commentsDrawerPointerStartY = event.clientY
-  commentsDrawerPointerStartOffset = commentsDrawerOffsets(panel)[commentsDrawerState.value]
-  commentsDrawerPointerStartedAt = performance.now()
-  commentsDrawerPointerLastAt = commentsDrawerPointerStartedAt
-  commentsDrawerPointerLastY = event.clientY
-  commentsDrawerVelocity = 0
-  commentsDrawerDragOffset.value = commentsDrawerPointerStartOffset
-  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
-}
-
-function moveCommentsDrawer(event: PointerEvent) {
-  if (!commentsDrawerDragging.value) return
-
-  const panel = (event.currentTarget as HTMLElement).closest<HTMLElement>('.comments-section')
-  if (!panel) return
-  updateCommentsDrawerDrag(event, panel)
-}
-
-function finishCommentsDrawerDrag(event: PointerEvent) {
-  if (!commentsDrawerDragging.value) return
-
-  const panel = (event.currentTarget as HTMLElement).closest<HTMLElement>('.comments-section')
-  if (!panel) {
-    cancelCommentsDrawerDrag()
-    return
-  }
-
-  updateCommentsDrawerDrag(event, panel)
-  const elapsed = Math.max(1, performance.now() - commentsDrawerPointerStartedAt)
-  const distance = event.clientY - commentsDrawerPointerStartY
-  const offsets = commentsDrawerOffsets(panel)
-
-  if (Math.abs(distance) < 8 && elapsed < 350) {
-    toggleCommentsDrawer()
-  } else {
-    const [closedOffset] = offsets
-    const projectedOffset = Math.min(
-      closedOffset,
-      Math.max(0, commentsDrawerDragOffset.value + commentsDrawerVelocity * 180),
-    )
-    let targetState = nearestCommentsDrawerState(offsets, projectedOffset)
-
-    // A clear flick always advances by at least one stop. Longer drags can still
-    // cross both stops because the final live position drives the snap target.
-    if (commentsDrawerVelocity < -0.3) {
-      targetState = Math.max(
-        targetState,
-        Math.min(2, commentsDrawerPointerStartState + 1),
-      ) as 0 | 1 | 2
-    } else if (commentsDrawerVelocity > 0.3) {
-      targetState = Math.min(
-        targetState,
-        Math.max(0, commentsDrawerPointerStartState - 1),
-      ) as 0 | 1 | 2
-    }
-
-    commentsDrawerState.value = targetState
-  }
-  if (commentsDrawerState.value === 0) closePhotoShareMenus()
-  commentsDrawerDragging.value = false
-  commentsDrawerDragOffset.value = 0
-
-  const handle = event.currentTarget as HTMLElement
-  if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId)
-}
-
-function cancelCommentsDrawerDrag() {
-  if (!commentsDrawerDragging.value) return
-  commentsDrawerState.value = commentsDrawerPointerStartState
-  commentsDrawerDragging.value = false
-  commentsDrawerDragOffset.value = 0
 }
 
 async function scrollToRoutedPost(routeId: string, clusterId = routeId) {
@@ -522,7 +262,7 @@ function handlePageClick(event: MouseEvent) {
   const target = event.target
   if (!(target instanceof Element)) return
   if (!target.closest('.photo-share-menu')) closePhotoShareMenus()
-  if (target.closest('.comments-section') || target.closest('.photo-lightbox')) return
+  if (target.closest('.photo-comments') || target.closest('.photo-lightbox')) return
 
   const photoCard = target.closest('.photo-card')
   const photoCluster = photoCard?.closest<HTMLElement>('[data-cluster-key]')
@@ -532,9 +272,6 @@ function handlePageClick(event: MouseEvent) {
 }
 
 onMounted(async () => {
-  mobilePortraitDrawerQuery = window.matchMedia('(max-width: 44rem) and (orientation: portrait)')
-  syncMobilePortraitDrawer()
-  mobilePortraitDrawerQuery.addEventListener('change', syncMobilePortraitDrawer)
   document.addEventListener('click', handlePageClick)
 
   try {
@@ -575,24 +312,35 @@ onMounted(async () => {
             in_reply_to_id: null,
           },
           comments: [],
+          discussionState: 'loading',
           remoteUrl: null,
+          stale: false,
+          truncated: false,
         }))
-        await Promise.all(localThreads.value.map(async (thread, index) => {
+        void Promise.all(localThreads.value.map(async (thread, index) => {
           try {
             const commentsResponse = await fetch(`/api/posts/${encodeURIComponent(localPosts.value[index]!.slug)}/comments/mastodon`)
-            if (!commentsResponse.ok) return
-            const result = await commentsResponse.json() as {
-              comments?: Array<Record<string, any>>
-              remoteUrl?: string | null
+            if (!commentsResponse.ok) {
+              thread.discussionState = 'unavailable'
+              return
             }
+            const result = await commentsResponse.json() as MastodonCommentsResponse
             thread.remoteUrl = result.remoteUrl ?? null
+            thread.discussionState = result.state
+            thread.stale = result.stale
+            thread.truncated = result.truncated
             const statuses = (result.comments ?? []).map((comment) => ({
               account: { acct: comment.account.handle, avatar: comment.account.avatarUrl ?? '/favicon.png', display_name: comment.account.displayName, url: comment.account.url, username: comment.account.handle },
               content: comment.contentHtml,
               created_at: comment.createdAt,
               favourites_count: 0,
               id: comment.id,
-              media_attachments: [],
+              media_attachments: comment.attachments.map((attachment) => ({
+                description: attachment.description,
+                preview_url: attachment.previewUrl,
+                type: 'image' as const,
+                url: attachment.url,
+              })),
               mentions: [],
               reblogs_count: 0,
               replies_count: 0,
@@ -603,10 +351,11 @@ onMounted(async () => {
               url: comment.url,
               visibility: 'public' as const,
               in_reply_to_id: comment.parentId,
-            })) as MastodonStatus[]
+            })) as PhotoCommentsStatus[]
             thread.comments = buildCommentTree(statuses)
           } catch {
             // The local post remains browsable when its remote discussion is unavailable.
+            thread.discussionState = 'unavailable'
           }
         }))
       }).catch(() => {
@@ -618,8 +367,8 @@ onMounted(async () => {
     syncSelectionFromRoute()
     loading.value = false
     if (props.postId && activeToot.value) {
-      if (isMobilePortraitDrawer()) commentsDrawerState.value = 1
       await scrollToRoutedPost(props.postId, activeToot.value.post.id)
+      commentsOpen.value = true
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Could not load photo posts.'
@@ -629,13 +378,12 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  mobilePortraitDrawerQuery?.removeEventListener('change', syncMobilePortraitDrawer)
   document.removeEventListener('click', handlePageClick)
   restoreQrDocumentOverflow()
 })
 
-function buildCommentTree(descendants: MastodonStatus[]): ThreadedStatus[] {
-  const statuses = new Map<string, ThreadedStatus>()
+function buildCommentTree(descendants: PhotoCommentsStatus[]): ThreadedPhotoComment[] {
+  const statuses = new Map<string, ThreadedPhotoComment>()
 
   descendants.forEach((status) => {
     statuses.set(status.id, {
@@ -644,7 +392,7 @@ function buildCommentTree(descendants: MastodonStatus[]): ThreadedStatus[] {
     })
   })
 
-  const roots: ThreadedStatus[] = []
+  const roots: ThreadedPhotoComment[] = []
 
   statuses.forEach((status) => {
     const parent = status.in_reply_to_id ? statuses.get(status.in_reply_to_id) : null
@@ -660,11 +408,11 @@ function buildCommentTree(descendants: MastodonStatus[]): ThreadedStatus[] {
   return roots
 }
 
-function countReplies(statuses: ThreadedStatus[]): number {
+function countReplies(statuses: ThreadedPhotoComment[]): number {
   return statuses.reduce((count, status) => count + 1 + countReplies(status.replies), 0)
 }
 
-function flattenComments(statuses: ThreadedStatus[], depth = 0): DisplayStatus[] {
+function flattenComments(statuses: ThreadedPhotoComment[], depth = 0): DisplayPhotoComment[] {
   return statuses.flatMap((status) => [
     {
       ...status,
@@ -674,30 +422,6 @@ function flattenComments(statuses: ThreadedStatus[], depth = 0): DisplayStatus[]
   ])
 }
 
-function displayName(account: MastodonAccount): string {
-  return account.display_name.trim() || account.username
-}
-
-function formatDate(date: string): string {
-  return formatter.format(new Date(date))
-}
-
-function formatCount(value: number): string {
-  return numberFormatter.format(value)
-}
-
-function commentCountLabel(postId: string): string {
-  const count = replyCountsByPostId.value.get(postId) ?? 0
-  return `${formatCount(count)} ${count === 1 ? 'comment' : 'comments'}`
-}
-
-function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): number {
-  if (!poll.votes_count) {
-    return 0
-  }
-
-  return Math.round(((option.votes_count ?? 0) / poll.votes_count) * 100)
-}
 </script>
 
 <template>
@@ -712,237 +436,50 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
       </div>
 
       <section
-        v-show="!loading && !error && allToots.length"
+        v-if="!loading && !error && allToots.length"
         class="toot-carousel"
         aria-label="Photo posts"
       >
-          <ClusteredPhotoMasonry
-            :posts="photoPosts"
-            :active-post-id="activeToot?.post.id"
-            :initially-featured-post-id="initiallyFeaturedPostId"
-            @select="selectToot"
-            @clear="clearSelection"
-            @visibility="selectedPostVisibility = $event"
-          />
-
-          <template
-            v-for="(toot, tootIndex) in allToots"
-            :key="toot.post.id"
+          <div
+            class="gallery-surface"
+            :aria-hidden="commentsModalOpen ? 'true' : undefined"
+            :inert="commentsModalOpen || undefined"
           >
-            <section
-              v-show="activeTootIndex === tootIndex"
-              class="comments-section"
-              :class="{
-                'is-active': activeTootIndex === tootIndex,
-                'is-out-of-view': activeTootIndex === tootIndex && selectedPostVisibility <= 0.01,
-                'is-drawer-open': commentsDrawerOpen,
-                'is-drawer-full': commentsDrawerFull,
-                'is-drawer-dragging': commentsDrawerDragging,
-              }"
-              :style="{
-                '--selected-post-visibility': selectedPostVisibility,
-                '--drawer-drag-offset': `${commentsDrawerDragOffset}px`,
-              }"
-              :aria-hidden="activeTootIndex !== tootIndex || selectedPostVisibility <= 0.01"
-              aria-label="Post comments"
-            >
-              <div
-                class="comments-drawer-handle"
-                @pointerdown="startCommentsDrawerDrag"
-                @pointermove="moveCommentsDrawer"
-                @pointerup="finishCommentsDrawerDrag"
-                @pointercancel="cancelCommentsDrawerDrag"
-                @lostpointercapture="cancelCommentsDrawerDrag"
-              >
-                <span class="comments-drawer-grabber" aria-hidden="true"></span>
-                <div class="comments-drawer-controls" aria-label="Comments panel controls">
-                  <button
-                    type="button"
-                    aria-label="Close comments"
-                    @click.stop="clearSelection"
-                    @pointerdown.stop
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24">
-                      <path d="M6 6l12 12M18 6 6 18" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Move comments panel up"
-                    :disabled="commentsDrawerState === 2"
-                    @click.stop="stepCommentsDrawer(1)"
-                    @pointerdown.stop
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24">
-                      <path d="m6 15 6-6 6 6" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Move comments panel fully down"
-                    :disabled="commentsDrawerState === 0"
-                    @click.stop="lowerCommentsDrawer"
-                    @pointerdown.stop
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24">
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  </button>
-                </div>
-                <div class="comments-drawer-post">
-                  <div class="comments-drawer-post-summary" v-html="toot.post.content"></div>
-                  <time
-                    v-if="!toot.post.id.startsWith('local:')"
-                    class="comments-drawer-post-date"
-                    :datetime="toot.post.created_at"
-                  >
-                    {{ formatDate(toot.post.created_at) }}
-                  </time>
-                  <span class="comments-drawer-comments-meta">
-                    {{ commentCountLabel(toot.post.id) }}
-                  </span>
-                </div>
-              </div>
+            <ClusteredPhotoMasonry
+              :posts="photoPosts"
+              :active-post-id="activeToot?.post.id"
+              :initially-featured-post-id="initiallyFeaturedPostId"
+              :interaction-paused="commentsModalOpen"
+              @select="selectToot"
+              @clear="clearSelection"
+              @visibility="selectedPostVisibility = $event"
+            />
+          </div>
 
-              <button
-                type="button"
-                class="comments-close"
-                aria-label="Close comments"
-                @click="clearSelection"
-              >
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="M6 6l12 12M18 6 6 18" />
-                </svg>
-              </button>
-
-              <div
-                class="comments-drawer-scroll"
-                :aria-hidden="mobilePortraitDrawer && !commentsDrawerOpen"
-                :inert="mobilePortraitDrawer && !commentsDrawerOpen"
-              >
-                <div class="comments-panel-heading" v-memo="[toot.post.id]">
-                  <header class="post-meta-header">
-                    <a :href="toot.post.account.url" class="author-link">
-                      <img
-                        :src="toot.post.account.avatar"
-                        alt=""
-                        class="avatar avatar-large"
-                        decoding="async"
-                      />
-                      <span class="author-text">
-                        <strong>{{ displayName(toot.post.account) }}</strong>
-                        <span>@{{ toot.post.account.acct }}</span>
-                      </span>
-                    </a>
-                  </header>
-
-                  <div class="comments-post-text" v-html="toot.post.content"></div>
-                  <time v-if="!toot.post.id.startsWith('local:')" class="comments-post-date" :datetime="toot.post.created_at">
-                    {{ formatDate(toot.post.created_at) }}
-                  </time>
-                </div>
-
-                <header class="comments-header">
-                  <h1>Replies</h1>
-                  <span>{{ formatCount(replyCountsByPostId.get(toot.post.id) ?? 0) }} {{ (replyCountsByPostId.get(toot.post.id) ?? 0) === 1 ? 'reply' : 'replies' }}</span>
-                  <details class="photo-share-menu">
-                    <summary class="photo-share-button" aria-label="Share this photo post">
-                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
-                      Share
-                    </summary>
-                    <div class="photo-share-popover">
-                      <p>Share this photo post</p>
-                      <a :href="photoSocialShareUrl('facebook', toot.post)" target="_blank" rel="noopener noreferrer">Share on Facebook <span aria-hidden="true">↗</span></a>
-                      <a :href="photoSocialShareUrl('x', toot.post)" target="_blank" rel="noopener noreferrer">Share on X <span aria-hidden="true">↗</span></a>
-                      <a :href="photoSocialShareUrl('linkedin', toot.post)" target="_blank" rel="noopener noreferrer">Share on LinkedIn <span aria-hidden="true">↗</span></a>
-                      <a :href="photoEmailShareUrl(toot.post)">Share by email</a>
-                      <button type="button" @click="copyPhotoShareLink(toot.post)">Copy link</button>
-                      <p class="photo-share-status" role="status" aria-live="polite">{{ shareCopyStatus }}</p>
-                      <details class="photo-qr-share">
-                        <summary>Share as QR code</summary>
-                        <div class="photo-qr-panel">
-                          <button
-                            v-if="shareQrCodeUrl"
-                            type="button"
-                            class="photo-qr-fullscreen-trigger"
-                            aria-label="Enlarge QR code to fill the window"
-                            @click="openQrFullscreen"
-                          >
-                            <img :src="shareQrCodeUrl" alt="QR code for this photo post">
-                            <span>
-                              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" /></svg>
-                              Tap to enlarge
-                            </span>
-                          </button>
-                          <p v-else>QR code unavailable.</p>
-                          <p>Scan to open this photo post</p>
-                          <a v-if="shareQrCodeUrl" :href="shareQrCodeUrl" :download="`${photoRouteId(toot.post)}-qr-code.png`">Download QR code</a>
-                        </div>
-                      </details>
-                    </div>
-                  </details>
-                </header>
-
-                <ol
-                  v-if="toot.comments.length"
-                  v-memo="[toot.post.id]"
-                  class="comment-list"
-                >
-                  <li
-                    v-for="comment in commentsByPostId.get(toot.post.id) ?? []"
-                    :key="comment.id"
-                    :style="{ '--reply-depth': Math.min(comment.depth, 6) }"
-                    class="comment-item"
-                  >
-                    <article class="comment" :class="{ 'is-reply': comment.depth > 0 }">
-                      <header class="status-header">
-                        <a :href="comment.account.url" class="author-link">
-                          <img
-                            :src="comment.account.avatar"
-                            alt=""
-                            class="avatar"
-                            decoding="async"
-                            loading="lazy"
-                          />
-                          <span class="author-text">
-                            <strong>{{ displayName(comment.account) }}</strong>
-                            <span>@{{ comment.account.acct }}</span>
-                          </span>
-                        </a>
-                        <a :href="comment.url ?? comment.uri" class="timestamp">
-                          {{ formatDate(comment.created_at) }}
-                        </a>
-                      </header>
-
-                      <p v-if="comment.spoiler_text" class="content-warning">{{ comment.spoiler_text }}</p>
-                      <div class="status-content" v-html="comment.content"></div>
-
-                      <MediaCarousel
-                        v-if="comment.media_attachments.length"
-                        :attachments="comment.media_attachments"
-                        label="Reply media"
-                      />
-
-                      <footer class="comment-stats">
-                        <span>{{ formatCount(comment.reblogs_count) }} boosts</span>
-                        <span>{{ formatCount(comment.favourites_count) }} favorites</span>
-                      </footer>
-                    </article>
-                  </li>
-                </ol>
-
-                <p v-else class="empty-state" v-memo="[toot.post.id]">No comments yet.</p>
-
-                <a
-                  v-if="toot.remoteUrl"
-                  class="mastodon-reply-link"
-                  :href="toot.remoteUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >Reply on Mastodon <span aria-hidden="true">↗</span></a>
-              </div>
-            </section>
-          </template>
+          <PhotoCommentsPanel
+            v-if="activeToot"
+            :key="activeToot.post.id"
+            v-model:open="commentsOpen"
+            :comments="commentsByPostId.get(activeToot.post.id) ?? []"
+            :discussion-state="activeToot.discussionState"
+            :email-share-url="photoEmailShareUrl(activeToot.post)"
+            :facebook-share-url="photoSocialShareUrl('facebook', activeToot.post)"
+            :linkedin-share-url="photoSocialShareUrl('linkedin', activeToot.post)"
+            :post="activeToot.post"
+            :qr-code-url="shareQrCodeUrl"
+            :qr-download-name="`${photoRouteId(activeToot.post)}-qr-code.png`"
+            :remote-url="activeToot.remoteUrl"
+            :reply-count="replyCountsByPostId.get(activeToot.post.id) ?? 0"
+            :share-status="shareCopyStatus"
+            :stale="activeToot.stale"
+            :truncated="activeToot.truncated"
+            :x-share-url="photoSocialShareUrl('x', activeToot.post)"
+            @clear-selection="clearSelection({ restoreFocus: true })"
+            @close-share-menus="closePhotoShareMenus"
+            @copy-link="copyPhotoShareLink(activeToot.post)"
+            @modal-change="commentsModalOpen = $event"
+            @open-qr="openQrFullscreen"
+          />
       </section>
     </section>
 
@@ -1041,6 +578,10 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   display: grid;
   gap: 1rem var(--comments-panel-gap);
   grid-template-columns: minmax(0, 1fr) 22rem;
+}
+
+.gallery-surface {
+  min-width: 0;
 }
 
 .toot-viewport {
@@ -1412,307 +953,6 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   padding-top: 0.9rem;
 }
 
-.comments-section {
-  align-self: start;
-  background: var(--photos-panel);
-  border: 1px solid var(--photos-border);
-  border-radius: 12px;
-  box-sizing: border-box;
-  box-shadow: var(--photos-card-shadow);
-  max-height: calc(100dvh - 9rem - var(--photos-gutter));
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 0.85rem;
-  grid-column: 2;
-  position: sticky;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  top: 8rem;
-  opacity: var(--selected-post-visibility, 1);
-  transform: translateX(calc((1 - var(--selected-post-visibility, 1)) * 0.75rem));
-  width: 100%;
-  z-index: 10;
-}
-
-.comments-section.is-out-of-view {
-  pointer-events: none;
-}
-
-.comments-drawer-handle {
-  display: none;
-}
-
-.comments-drawer-scroll {
-  display: contents;
-}
-
-.comments-header {
-  align-items: baseline;
-  background: color-mix(in srgb, var(--photos-panel) 92%, transparent);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid color-mix(in srgb, var(--photos-border) 58%, transparent);
-  border-top: 1px solid color-mix(in srgb, var(--photos-border) 58%, transparent);
-  display: grid;
-  gap: 0.65rem;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  margin: 0.65rem -0.85rem 0.75rem;
-  padding: 0.65rem 0.85rem;
-  position: sticky;
-  top: -0.85rem;
-  z-index: 2;
-}
-
-.comments-panel-heading {
-  display: grid;
-  gap: 0.45rem;
-  min-height: 0;
-  padding: 0 2.75rem 0.2rem 0.15rem;
-}
-
-.comments-post-text {
-  font-size: 0.85rem;
-  line-height: 1.45;
-  max-height: min(10rem, 22dvh);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.comments-post-text :deep(p + p) {
-  margin-top: 0.65rem;
-}
-
-.comments-post-text :deep(.local-post-title) {
-  font-size: 1.05rem;
-  font-style: italic;
-}
-
-.comments-post-text :deep(.local-post-title em) {
-  font-style: italic;
-}
-
-.comments-post-text :deep(.local-post-overlay) {
-  display: grid;
-  gap: 0.65rem;
-}
-
-.comments-post-text :deep(.local-post-overlay p) {
-  display: block;
-  margin: 0;
-}
-
-.comments-post-text :deep(.local-post-overlay p + p)::before {
-  content: none;
-}
-
-.comments-post-text :deep(.local-post-location),
-.comments-post-text :deep(.local-post-datetime) {
-  color: var(--photos-muted);
-  font-family: 'Azeret Mono Variable', monospace;
-  font-size: 0.75rem;
-}
-
-.comments-post-text :deep(a) {
-  color: var(--photos-accent);
-  text-decoration: none;
-}
-
-.comments-post-text :deep(img) {
-  height: 1em;
-  vertical-align: -0.1em;
-  width: 1em;
-}
-
-.comments-post-date {
-  color: color-mix(in srgb, var(--photos-muted) 62%, transparent);
-  font-family: 'Azeret Mono Variable', monospace;
-  font-size: 0.62rem;
-  line-height: 1.3;
-}
-
-.photo-share-menu {
-  position: relative;
-}
-
-.photo-share-button {
-  align-items: center;
-  background: var(--photos-accent);
-  border: 1px solid var(--photos-accent);
-  border-radius: 999px;
-  box-sizing: border-box;
-  color: var(--photos-panel);
-  cursor: pointer;
-  display: inline-flex;
-  font-family: 'Azeret Mono Variable', monospace;
-  font-size: 0.72rem;
-  font-weight: 700;
-  gap: 0.4rem;
-  list-style: none;
-  min-height: 44px;
-  padding: 0.55rem 0.75rem;
-}
-
-.photo-share-button::-webkit-details-marker,
-.photo-qr-share > summary::-webkit-details-marker {
-  display: none;
-}
-
-.photo-share-button svg {
-  fill: currentColor;
-  height: 0.9rem;
-  width: 0.9rem;
-}
-
-.photo-share-button:hover {
-  filter: brightness(1.08);
-}
-
-.photo-share-button:focus-visible,
-.photo-share-popover a:focus-visible,
-.photo-share-popover button:focus-visible,
-.photo-qr-share > summary:focus-visible {
-  outline: 2px solid var(--photos-accent);
-  outline-offset: 2px;
-}
-
-.photo-share-popover {
-  background: var(--photos-panel);
-  border: 1px solid var(--photos-border);
-  border-radius: 0.65rem;
-  box-shadow: 0 0.55rem 1.5rem color-mix(in srgb, var(--photos-text) 15%, transparent);
-  display: grid;
-  gap: 0.12rem;
-  box-sizing: border-box;
-  grid-column: 1 / -1;
-  margin-top: 0.45rem;
-  padding: 0.55rem;
-  width: 100%;
-}
-
-.photo-share-menu[open] {
-  display: block;
-  grid-column: 1 / -1;
-  width: 100%;
-}
-
-.photo-share-menu[open] > .photo-share-button {
-  margin-left: auto;
-}
-
-.photo-share-popover > p:first-child {
-  color: var(--photos-muted);
-  font-family: 'Azeret Mono Variable', monospace;
-  font-size: 0.64rem;
-  padding: 0.3rem 0.45rem;
-  text-transform: uppercase;
-}
-
-.photo-share-popover > a,
-.photo-share-popover > button,
-.photo-qr-share > summary {
-  align-items: center;
-  border-radius: 0.35rem;
-  box-sizing: border-box;
-  color: var(--photos-text);
-  cursor: pointer;
-  display: flex;
-  min-height: 44px;
-  padding: 0.5rem 0.45rem;
-  text-align: left;
-  text-decoration: none;
-}
-
-.photo-share-popover > a:hover,
-.photo-share-popover > button:hover,
-.photo-qr-share > summary:hover {
-  background: var(--photos-accent-soft);
-}
-
-.photo-share-status {
-  color: var(--photos-muted);
-  font-size: 0.68rem;
-  min-height: 1em;
-  padding: 0 0.45rem;
-}
-
-.photo-qr-share {
-  border-top: 1px solid var(--photos-border);
-  margin-top: 0.2rem;
-  padding-top: 0.2rem;
-}
-
-.photo-qr-share > summary {
-  list-style: none;
-}
-
-.photo-qr-panel {
-  display: grid;
-  gap: 0.45rem;
-  justify-items: center;
-  padding: 0.5rem 0.45rem 0.3rem;
-  text-align: center;
-}
-
-.photo-qr-fullscreen-trigger {
-  background: white;
-  border: 0;
-  border-radius: 0.3rem;
-  cursor: zoom-in;
-  display: block;
-  overflow: hidden;
-  padding: 0;
-  position: relative;
-  touch-action: manipulation;
-}
-
-.photo-qr-fullscreen-trigger img {
-  background: white;
-  border-radius: 0.3rem;
-  display: block;
-  height: min(10rem, 100%);
-  width: min(10rem, 100%);
-}
-
-.photo-qr-fullscreen-trigger > span {
-  align-items: center;
-  background: rgba(0, 0, 0, 0.78);
-  bottom: 0;
-  color: white;
-  display: flex;
-  font-family: 'Azeret Mono Variable', monospace;
-  font-size: 0.6rem;
-  gap: 0.3rem;
-  justify-content: center;
-  left: 0;
-  padding: 0.42rem 0.25rem;
-  position: absolute;
-  right: 0;
-}
-
-.photo-qr-fullscreen-trigger > span svg {
-  fill: none;
-  height: 0.7rem;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
-  width: 0.7rem;
-}
-
-.photo-qr-fullscreen-trigger:focus-visible {
-  outline: 2px solid var(--photos-accent);
-  outline-offset: 2px;
-}
-
-.photo-qr-panel p {
-  color: var(--photos-muted);
-  font-size: 0.68rem;
-}
-
-.photo-qr-panel a {
-  color: var(--photos-accent);
-  font-size: 0.7rem;
-}
 
 .photo-qr-dialog {
   background: color-mix(in srgb, var(--photos-media-bg) 72%, transparent);
@@ -1972,345 +1212,13 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   }
 }
 
-.comments-header h1 {
-  font-size: 1.05rem;
-  font-weight: 800;
-}
 
-.comments-header > span {
-  color: var(--photos-muted);
-  font-family: 'Azeret Mono Variable', monospace;
-  font-size: 0.78rem;
-}
-
-.mastodon-reply-link {
-  align-items: center;
-  border: 1px solid var(--photos-border);
-  border-radius: 0.45rem;
-  color: var(--photos-accent);
-  display: flex;
-  font-family: 'Azeret Mono Variable', monospace;
-  font-size: 0.74rem;
-  font-weight: 700;
-  justify-content: space-between;
-  margin-top: 0.75rem;
-  padding: 0.7rem 0.8rem;
-  text-decoration: none;
-}
-
-.mastodon-reply-link:hover {
-  background: var(--photos-accent-soft);
-  border-color: var(--photos-accent);
-}
-
-.mastodon-reply-link span {
-  color: inherit;
-  font: inherit;
-}
-
-.comments-close {
-  align-items: center;
-  align-self: center;
-  background: var(--photos-control);
-  border: 1px solid var(--photos-border);
-  border-radius: 50%;
-  color: var(--photos-text);
-  cursor: pointer;
-  display: inline-flex;
-  height: 1.75rem;
-  justify-content: center;
-  padding: 0;
-  position: absolute;
-  right: 0.85rem;
-  top: 0.85rem;
-  width: 1.75rem;
-  z-index: 3;
-}
-
-.comments-close:hover {
-  background: var(--photos-control-hover);
-  border-color: var(--photos-accent);
-}
-
-.comments-close:focus-visible {
-  outline: 2px solid var(--photos-accent);
-  outline-offset: 2px;
-}
-
-.comments-close svg {
-  fill: none;
-  height: 0.9rem;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-width: 2;
-  width: 0.9rem;
-}
-
-.comment-list {
-  display: grid;
-  gap: 0.75rem;
-  padding: 0.15rem;
-}
-
-.comment-item {
-  margin-left: calc(var(--reply-depth) * 1rem);
-}
-
-.comment {
-  border: 0.5px solid var(--photos-card-border);
-  box-shadow: var(--photos-card-shadow);
-  display: grid;
-  gap: 0.65rem;
-  padding: 0.75rem;
-}
-
-@media (max-width: 44rem) {
+@media (max-width: 64rem), (max-height: 36rem) {
   .toot-carousel {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-@media (max-width: 44rem) and (orientation: portrait) {
-  .comments-section {
-    --drawer-handle-height: 7.5rem;
-    --drawer-closed-offset: calc(100% - var(--drawer-handle-height));
-
-    border-radius: 1.1rem 1.1rem 0 0;
-    bottom: 0;
-    display: grid;
-    grid-column: 1;
-    grid-template-rows: var(--drawer-handle-height) minmax(0, 1fr);
-    height: calc(100dvh - max(0.5rem, env(safe-area-inset-top, 0px)));
-    left: max(0.35rem, env(safe-area-inset-left, 0px));
-    max-height: none;
-    padding: 0;
-    position: fixed;
-    right: max(0.35rem, env(safe-area-inset-right, 0px));
-    top: auto;
-    overflow-y: hidden;
-    touch-action: pan-y;
-    width: auto;
-    transform: translateY(var(--drawer-closed-offset));
-    transition: transform 240ms cubic-bezier(0.22, 0.72, 0.22, 1), opacity 160ms ease;
-  }
-
-  .comments-section.is-drawer-open {
-    transform: translateY(min(42dvh, var(--drawer-closed-offset)));
-  }
-
-  .comments-section.is-drawer-open:not(.is-drawer-full) {
-    grid-template-rows:
-      var(--drawer-handle-height)
-      calc(100% - var(--drawer-handle-height) - min(42dvh, var(--drawer-closed-offset)));
-  }
-
-  .comments-section.is-drawer-full {
-    touch-action: pan-y;
-    transform: translateY(0);
-  }
-
-  .comments-drawer-scroll {
-    box-sizing: border-box;
-    display: block;
-    height: 100%;
-    overflow: hidden;
-    padding: 0.4rem 0.85rem max(1rem, env(safe-area-inset-bottom, 0px));
-    scrollbar-gutter: stable;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .comments-section.is-drawer-open .comments-drawer-scroll,
-  .comments-section.is-drawer-full .comments-drawer-scroll {
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
-  .comments-section.is-drawer-dragging {
-    transform: translateY(var(--drawer-drag-offset));
-    transition: none;
-  }
-
-  .comments-section.is-out-of-view {
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .comments-drawer-handle {
-    background: color-mix(in srgb, var(--photos-panel) 94%, transparent);
-    border: 0;
-    border-bottom: 1px solid var(--photos-border);
-    box-sizing: border-box;
-    color: var(--photos-text);
-    cursor: grab;
-    display: grid;
-    gap: 0.1rem;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 1rem 44px minmax(0, 1fr);
-    margin: 0;
-    height: var(--drawer-handle-height);
-    min-height: 0;
-    padding: 0 0.75rem max(0.65rem, env(safe-area-inset-bottom, 0px));
-    position: relative;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-    z-index: 5;
-  }
-
-  .comments-drawer-grabber {
-    align-self: center;
-    background: var(--photos-border);
-    border-radius: 999px;
-    display: block;
-    grid-column: 1 / -1;
-    height: 0.28rem;
-    justify-self: center;
-    width: 2.75rem;
-  }
-
-  .comments-drawer-handle:active {
-    cursor: grabbing;
-  }
-
-  .comments-drawer-controls {
-    align-items: center;
-    display: flex;
-    gap: 0.4rem;
-    grid-row: 2;
-    justify-content: flex-start;
-    z-index: 2;
-  }
-
-  .comments-drawer-controls button {
-    align-items: center;
-    background: var(--photos-control);
-    border: 1px solid var(--photos-border);
-    border-radius: 50%;
-    color: var(--photos-text);
-    cursor: pointer;
-    display: inline-flex;
-    height: 44px;
-    justify-content: center;
-    padding: 0;
-    touch-action: manipulation;
-    width: 44px;
-  }
-
-  .comments-drawer-controls button:disabled {
-    cursor: default;
-    opacity: 0.32;
-  }
-
-  .comments-drawer-controls button:not(:disabled):active {
-    background: var(--photos-control-hover);
-    border-color: var(--photos-accent);
-  }
-
-  .comments-drawer-controls button:focus-visible {
-    outline: 2px solid var(--photos-accent);
-    outline-offset: 1px;
-  }
-
-  .comments-drawer-controls svg {
-    fill: none;
-    height: 1rem;
-    stroke: currentColor;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-width: 2;
-    width: 1rem;
-  }
-
-  .comments-drawer-post {
-    align-self: stretch;
-    display: grid;
-    gap: 0.18rem;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-row: 3;
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .comments-drawer-post-summary {
-    font-size: 0.85rem;
-    grid-column: 1 / -1;
-    line-height: 1.3;
-    max-height: 2.3rem;
-    overflow: hidden;
-  }
-
-  .comments-drawer-post-summary :deep(p) {
-    margin: 0;
-  }
-
-  .comments-drawer-post-summary :deep(.local-post-overlay) {
-    display: grid;
-    gap: 0.08rem;
-  }
-
-  .comments-drawer-post-summary :deep(.local-post-title) {
-    font-size: 1rem;
-    font-weight: 850;
-  }
-
-  .comments-drawer-post-summary :deep(.local-post-location),
-  .comments-drawer-post-summary :deep(.local-post-datetime),
-  .comments-drawer-post-date,
-  .comments-drawer-comments-meta {
-    color: var(--photos-muted);
-    font-family: 'Azeret Mono Variable', monospace;
-    font-size: 0.62rem;
-    line-height: 1.25;
-  }
-
-  .comments-drawer-post-date {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .comments-drawer-comments-meta {
-    color: var(--photos-accent);
-    font-weight: 700;
-    justify-self: end;
-  }
-
-  .comments-drawer-post-summary :deep(a) {
-    color: inherit;
-    pointer-events: none;
-    text-decoration: none;
-  }
-
-  .comments-drawer-post-summary :deep(img) {
-    height: 1em;
-    vertical-align: -0.1em;
-    width: 1em;
-  }
-
-  .comments-panel-heading {
-    display: none;
-  }
-
-  .comments-header {
-    grid-template-columns: minmax(0, 1fr) auto;
-    margin-top: 0;
-    top: -0.4rem;
-  }
-
-  .comments-header > span {
-    display: none;
-  }
-
-  .comments-close {
-    display: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .comments-section {
-    transition: none;
-  }
-}
 
 @media (max-width: 36rem) {
   .toot-carousel {
@@ -2344,30 +1252,8 @@ function pollOptionPercent(option: MastodonPollOption, poll: MastodonPoll): numb
   .toot-carousel {
     --toot-card-width: min(56%, 30rem);
   }
-
-  .comments-section {
-    bottom: auto;
-    grid-column: 1;
-    left: auto;
-    max-height: calc(
-      100dvh
-      - max(0.75rem, env(safe-area-inset-top, 0px))
-      - max(0.75rem, env(safe-area-inset-bottom, 0px))
-    );
-    position: fixed;
-    right: max(0.75rem, env(safe-area-inset-right, 0px));
-    top: 50%;
-    transform: translate(
-      calc((1 - var(--selected-post-visibility, 1)) * 0.75rem),
-      -50%
-    );
-    width: min(26rem, calc(52vw - 0.75rem));
-  }
-
-  .comments-section.is-out-of-view {
-    transform: translate(0.75rem, -50%);
-  }
 }
+
 </style>
 
 <style>

@@ -59,9 +59,9 @@ export function createAdminPostsRouter(
   router.post('/preview', (req, res, next) => {
     try {
       if (!isRecord(req.body) || Object.keys(req.body).some((field) => field !== 'bodyMarkdown')) {
-        throw Object.assign(new Error('Preview requires only bodyMarkdown.'), { status: 400 });
+        throw Object.assign(new Error('Preview accepts only bodyMarkdown.'), { status: 400 });
       }
-      res.set('Cache-Control', 'no-store').json(posts.preview(req.body.bodyMarkdown));
+      res.set('Cache-Control', 'no-store').json(posts.preview(req.body.bodyMarkdown ?? ''));
     } catch (error) {
       next(error);
     }

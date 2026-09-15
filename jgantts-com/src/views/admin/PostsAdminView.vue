@@ -342,14 +342,19 @@ async function loadPosts() {
 }
 
 function authorBody() {
-  return {
+  const fields = {
     location: form.location.trim() || null,
     title: form.title.trim() || null,
     slug: form.slug.trim(),
     date: storedDate(form.date),
     time: form.time || null,
-    bodyMarkdown: form.bodyMarkdown,
   }
+
+  // New photo-only posts do not need to send a body at all. Existing posts still
+  // send the field so clearing a previously saved body remains possible.
+  return selectedId.value || form.bodyMarkdown
+    ? { ...fields, bodyMarkdown: form.bodyMarkdown }
+    : fields
 }
 
 function slugifyTitle() {
@@ -928,7 +933,7 @@ onBeforeUnmount(() => {
                 </select>
               </label>
             </div>
-            <label>Body (Markdown, optional) <textarea v-model="form.bodyMarkdown" class="markdown-editor" maxlength="100000"></textarea></label>
+            <label>Body (Markdown) <span class="optional-field">Optional</span> <textarea v-model="form.bodyMarkdown" class="markdown-editor" maxlength="100000"></textarea></label>
             <div class="editor-actions">
               <button :disabled="busy" type="submit">{{ busy ? 'Working…' : selectedId ? 'Save changes' : 'Create draft' }}</button>
               <button v-if="canPublish" class="button-secondary" :disabled="busy" type="button" @click="publish">Publish locally</button>
@@ -940,7 +945,7 @@ onBeforeUnmount(() => {
           <section class="preview" aria-labelledby="preview-title">
             <div class="section-heading"><h2 id="preview-title">Preview</h2><span v-if="previewBusy">Updating…</span></div>
             <div v-if="previewHtml" class="preview-body" v-html="previewHtml"></div>
-            <p v-else class="empty-state">Write some Markdown to preview it.</p>
+            <p v-else class="empty-state">No body. This post can be published with photos only.</p>
           </section>
 
           <section v-if="canSyndicate" class="mastodon-panel" aria-labelledby="syndication-title">

@@ -42,7 +42,7 @@ const authenticated = ref(false)
 const checkingSession = ref(true)
 const posts = ref<AdminPost[]>([])
 const postQuery = ref('')
-const postStatus = ref<'all' | AdminPost['status']>('all')
+const postStatus = ref<'all' | 'unarchived' | AdminPost['status']>('unarchived')
 const selectedId = ref<string | null>(null)
 const notice = ref('')
 const error = ref('')
@@ -99,7 +99,9 @@ const editingMedia = computed(() => selected.value?.media.find((item) => item.id
 const filteredPosts = computed(() => {
   const query = postQuery.value.trim().toLocaleLowerCase()
   return posts.value.filter((post) => {
-    if (postStatus.value !== 'all' && post.status !== postStatus.value) return false
+    if (postStatus.value === 'unarchived') {
+      if (post.status === 'archived') return false
+    } else if (postStatus.value !== 'all' && post.status !== postStatus.value) return false
     if (!query) return true
     return [post.title, post.slug, post.location, post.date?.toString(), post.time, post.bodyMarkdown]
       .some((value) => value?.toLocaleLowerCase().includes(query))
@@ -785,6 +787,7 @@ onBeforeUnmount(() => {
             <label>
               <span>Status</span>
               <select v-model="postStatus">
+                <option value="unarchived">Unarchived</option>
                 <option value="all">All statuses</option>
                 <option value="draft">Drafts</option>
                 <option value="published">Published</option>

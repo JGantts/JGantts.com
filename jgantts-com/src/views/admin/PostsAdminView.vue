@@ -370,6 +370,10 @@ function slugifyTitle() {
     .replace(/-+$/g, '')
 }
 
+function useRandomUuidSlug() {
+  form.slug = crypto.randomUUID()
+}
+
 function replacePost(post: AdminPost) {
   const index = posts.value.findIndex((item) => item.id === post.id)
   if (index === -1) posts.value.unshift(post)
@@ -900,6 +904,7 @@ onBeforeUnmount(() => {
                   title="Use lowercase letters, numbers, and single hyphens."
                 >
                 <button class="button-secondary" type="button" @click="slugifyTitle">Use title</button>
+                <button class="button-secondary" type="button" @click="useRandomUuidSlug">Random UUID slug</button>
               </span>
               <small>URL-safe text: lowercase letters, numbers, and single hyphens. Changing it keeps the old URL working.</small>
             </label>
@@ -1097,7 +1102,7 @@ onBeforeUnmount(() => {
 label { display: grid; font-size: 0.85rem; font-weight: 600; gap: 0.4rem; }
 label small { color: var(--muted); font-size: 0.72rem; font-weight: 400; }
 input, textarea, select { background: color-mix(in srgb, var(--bg) 90%, white 10%); border: 1px solid var(--border); border-radius: 0.5rem; box-sizing: border-box; color: inherit; font: inherit; padding: 0.7rem 0.8rem; width: 100%; }
-.slug-input-row { display: grid; gap: 0.5rem; grid-template-columns: minmax(0, 1fr) auto; }
+.slug-input-row { display: grid; gap: 0.5rem; grid-template-columns: minmax(0, 1fr) auto auto; }
 .slug-input-row button { white-space: nowrap; }
 textarea { resize: vertical; }
 .markdown-editor { font-family: 'Azeret Mono Variable', monospace; min-height: 22rem; }

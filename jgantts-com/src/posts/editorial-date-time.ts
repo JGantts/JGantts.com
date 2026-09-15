@@ -8,6 +8,18 @@ function ordinalSuffix(day: number): string {
   return 'th'
 }
 
+function _12HourFormat(time: string): string {
+  const hour = Number(time.slice(0, 2))
+  const minute = time.slice(3, 5)
+
+  let _12Hour = hour
+  if (hour >= 13) {
+    _12Hour -= 12
+  }
+
+  return `${_12Hour}:${minute}`
+}
+
 function dayPeriod(time: string): string {
   const hour = Number(time.slice(0, 2))
   if (hour === 0 || hour === 24) return 'midnight'
@@ -31,7 +43,7 @@ export function formatEditorialDateTime(date: number | null, time: string | null
     formatted = `${year}, ${monthName} ${day}${ordinalSuffix(day)}`
   }
   if (time) {
-    const formattedTime = `${time} ${dayPeriod(time)}`
+    const formattedTime = `${_12HourFormat(time)} ${dayPeriod(time)}`
     formatted = formatted ? `${formatted}, ${formattedTime}` : formattedTime
   }
   return formatted || null

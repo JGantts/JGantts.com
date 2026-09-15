@@ -31,11 +31,14 @@ const emit = defineEmits<{
 }>()
 
 const sheetQueryText = '(max-width: 64rem), (max-height: 36rem)'
+const portraitSheetQueryText = '(max-width: 64rem) and (orientation: portrait)'
 const isSheet = ref(false)
+const isPortraitSheet = ref(false)
 const panelRef = ref<HTMLElement | null>(null)
 const dockTriggerRef = ref<HTMLButtonElement | null>(null)
 const closeButtonRef = ref<HTMLButtonElement | null>(null)
 let sheetQuery: MediaQueryList | null = null
+let portraitSheetQuery: MediaQueryList | null = null
 let lockedScrollY = 0
 let previousDocumentOverflow = ''
 let previousBodyPosition = ''
@@ -43,15 +46,39 @@ let previousBodyTop = ''
 let previousBodyWidth = ''
 let scrollLocked = false
 let ownsHistoryEntry = false
+const sheetDragOffset = ref(0)
+const sheetDragging = ref(false)
+const dockDragOffset = ref(0)
+let sheetDragPointerId: number | null = null
+let sheetDragStartY = 0
+let sheetDragLastY = 0
+let sheetDragLastTime = 0
+let sheetDragVelocity = 0
+let dockDragPointerId: number | null = null
+let dockDragStartY = 0
+let dockDragLastY = 0
+let dockDragLastTime = 0
+let dockDragVelocity = 0
+let dockDragMoved = false
+let sheetCloseTimer: number | null = null
 
 const modalOpen = computed(() => isSheet.value && props.open)
 const replyLabel = computed(() => `${props.replyCount} ${props.replyCount === 1 ? 'reply' : 'replies'}`)
+const gestureStyles = computed(() => {
+  const panelHeight = panelRef.value?.getBoundingClientRect().height || window.innerHeight || 1
+  return {
+    '--comments-backdrop-opacity': String(Math.max(0, 1 - sheetDragOffset.value / panelHeight)),
+    '--dock-drag-y': `${dockDragOffset.value}px`,
+    '--sheet-drag-y': `${sheetDragOffset.value}px`,
+  }
+})
 const postContextCollapsible = computed(() => (
-  props.post.content
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .length > 320
+  isSheet.value
+  || props.post.content
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .length > 320
 ))
 
 const formatter = new Intl.DateTimeFormat(undefined, {
@@ -74,6 +101,107 @@ function formatCount(value: number): string {
 
 function syncSheetQuery() {
   isSheet.value = sheetQuery?.matches ?? window.matchMedia(sheetQueryText).matches
+  isPortraitSheet.value = portraitSheetQuery?.matches ?? window.matchMedia(portraitSheetQueryText).matches
+  if (!isPortraitSheet.value) resetGestures()
+}
+
+function resetSheetDrag() {
+  if (sheetCloseTimer !== null) window.clearTimeout(sheetCloseTimer)
+  sheetCloseTimer = null
+  sheetDragOffset.value = 0
+  sheetDragging.value = false
+  sheetDragPointerId = null
+  sheetDragVelocity = 0
+}
+
+function resetDockDrag() {
+  dockDragOffset.value = 0
+  dockDragPointerId = null
+  dockDragVelocity = 0
+  dockDragMoved = false
+}
+
+function resetGestures() {
+  resetSheetDrag()
+  resetDockDrag()
+}
+
+function beginSheetDrag(event: PointerEvent) {
+  if (!isPortraitSheet.value || event.button !== 0) return
+  const target = event.target
+  if (target instanceof Element && target.closest('button, a, summary')) return
+  sheetDragPointerId = event.pointerId
+  sheetDragStartY = event.clientY
+  sheetDragLastY = event.clientY
+  sheetDragLastTime = event.timeStamp
+  sheetDragVelocity = 0
+  sheetDragging.value = true
+  ;(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId)
+}
+
+function moveSheetDrag(event: PointerEvent) {
+  if (event.pointerId !== sheetDragPointerId) return
+  const elapsed = Math.max(1, event.timeStamp - sheetDragLastTime)
+  sheetDragVelocity = (event.clientY - sheetDragLastY) / elapsed
+  sheetDragLastY = event.clientY
+  sheetDragLastTime = event.timeStamp
+  sheetDragOffset.value = Math.max(0, event.clientY - sheetDragStartY)
+}
+
+function endSheetDrag(event: PointerEvent, cancelled = false) {
+  if (event.pointerId !== sheetDragPointerId) return
+  ;(event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId)
+  const panelHeight = panelRef.value?.getBoundingClientRect().height || window.innerHeight
+  const shouldClose = !cancelled && (
+    sheetDragOffset.value > Math.min(140, panelHeight * 0.2)
+    || (sheetDragOffset.value > 24 && sheetDragVelocity > 0.55)
+  )
+  sheetDragging.value = false
+  sheetDragPointerId = null
+
+  if (!shouldClose) {
+    sheetDragOffset.value = 0
+    return
+  }
+
+  sheetDragOffset.value = panelHeight
+  sheetCloseTimer = window.setTimeout(() => requestClose(), 180)
+}
+
+function beginDockDrag(event: PointerEvent) {
+  if (!isPortraitSheet.value || event.button !== 0) return
+  const target = event.target
+  if (target instanceof Element && target.closest('.comments-dock-clear')) return
+  dockDragPointerId = event.pointerId
+  dockDragStartY = event.clientY
+  dockDragLastY = event.clientY
+  dockDragLastTime = event.timeStamp
+  dockDragVelocity = 0
+  dockDragMoved = false
+  ;(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId)
+}
+
+function moveDockDrag(event: PointerEvent) {
+  if (event.pointerId !== dockDragPointerId) return
+  const elapsed = Math.max(1, event.timeStamp - dockDragLastTime)
+  dockDragVelocity = (event.clientY - dockDragLastY) / elapsed
+  dockDragLastY = event.clientY
+  dockDragLastTime = event.timeStamp
+  const delta = Math.min(0, event.clientY - dockDragStartY)
+  if (Math.abs(delta) > 8) dockDragMoved = true
+  dockDragOffset.value = Math.max(-96, delta)
+}
+
+function endDockDrag(event: PointerEvent, cancelled = false) {
+  if (event.pointerId !== dockDragPointerId) return
+  ;(event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId)
+  const shouldOpen = !cancelled && (
+    dockDragOffset.value < -48
+    || (dockDragOffset.value < -16 && dockDragVelocity < -0.5)
+  )
+  if (dockDragMoved) event.preventDefault()
+  resetDockDrag()
+  if (shouldOpen) openPanel()
 }
 
 function lockDocumentScroll() {
@@ -164,6 +292,28 @@ function openPanel() {
   emit('update:open', true)
 }
 
+function handleDockClick(event: MouseEvent) {
+  const target = event.target
+  if (target instanceof Element && target.closest('.comments-dock-clear')) return
+  openPanel()
+}
+
+async function shareFromSheet() {
+  if (typeof navigator.share !== 'function') {
+    emit('copyLink')
+    return
+  }
+
+  try {
+    await navigator.share({
+      title: document.title,
+      url: window.location.href,
+    })
+  } catch (error) {
+    if (!(error instanceof DOMException) || error.name !== 'AbortError') emit('copyLink')
+  }
+}
+
 function requestClose() {
   emit('closeShareMenus')
   if (modalOpen.value && removeHistoryEntry()) return
@@ -184,6 +334,7 @@ watch(modalOpen, async (open) => {
     await nextTick()
     closeButtonRef.value?.focus()
   } else {
+    resetGestures()
     unlockDocumentScroll()
     discardHistoryEntry()
     await nextTick()
@@ -193,30 +344,41 @@ watch(modalOpen, async (open) => {
 
 onMounted(() => {
   sheetQuery = window.matchMedia(sheetQueryText)
+  portraitSheetQuery = window.matchMedia(portraitSheetQueryText)
   syncSheetQuery()
   sheetQuery.addEventListener('change', syncSheetQuery)
+  portraitSheetQuery.addEventListener('change', syncSheetQuery)
   window.addEventListener('popstate', handlePopState)
 })
 
 onBeforeUnmount(() => {
   sheetQuery?.removeEventListener('change', syncSheetQuery)
+  portraitSheetQuery?.removeEventListener('change', syncSheetQuery)
   window.removeEventListener('popstate', handlePopState)
   unlockDocumentScroll()
   discardHistoryEntry()
+  resetGestures()
   emit('modalChange', false)
 })
 </script>
 
 <template>
-  <div class="photo-comments">
-    <div v-show="!open" class="comments-dock">
+  <div class="photo-comments" :style="gestureStyles">
+    <div
+      v-show="!open"
+      class="comments-dock"
+      @click="handleDockClick"
+      @pointerdown="beginDockDrag"
+      @pointermove="moveDockDrag"
+      @pointerup="endDockDrag"
+      @pointercancel="endDockDrag($event, true)"
+    >
       <button
         ref="dockTriggerRef"
         type="button"
         class="comments-dock-trigger"
         :aria-expanded="open"
         aria-controls="photo-comments-panel"
-        @click="openPanel"
       >
         <span>View comments</span>
         <strong>{{ replyLabel }}</strong>
@@ -231,24 +393,54 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
+    <button
+      v-if="isPortraitSheet && open"
+      type="button"
+      class="comments-backdrop"
+      tabindex="-1"
+      aria-hidden="true"
+      @click="requestClose"
+    ></button>
+
     <section
       v-show="!isSheet || open"
       id="photo-comments-panel"
       ref="panelRef"
       class="comments-section"
-      :class="{ 'is-modal-sheet': isSheet, 'is-open': open }"
+      :class="{
+        'is-dragging': sheetDragging,
+        'is-modal-sheet': isSheet,
+        'is-open': open,
+        'is-portrait-sheet': isPortraitSheet,
+      }"
       :role="isSheet ? 'dialog' : 'region'"
       :aria-modal="isSheet && open ? 'true' : undefined"
       aria-labelledby="photo-comments-title"
       tabindex="-1"
       @keydown="handlePanelKeydown"
     >
-      <header class="comments-panel-header">
+      <header
+        class="comments-panel-header"
+        @pointerdown="beginSheetDrag"
+        @pointermove="moveSheetDrag"
+        @pointerup="endSheetDrag"
+        @pointercancel="endSheetDrag($event, true)"
+      >
         <div>
           <h1 id="photo-comments-title">Replies</h1>
           <span>{{ replyLabel }}</span>
         </div>
-        <details class="photo-share-menu">
+        <button
+          v-if="isSheet"
+          type="button"
+          class="photo-share-button photo-share-native"
+          aria-label="Share this photo post"
+          @click="shareFromSheet"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
+          Share
+        </button>
+        <details v-else class="photo-share-menu">
           <summary class="photo-share-button" aria-label="Share this photo post">
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
             Share
@@ -394,6 +586,10 @@ onBeforeUnmount(() => {
   display: none;
 }
 
+.comments-backdrop {
+  display: none;
+}
+
 .comments-section {
   background: var(--photos-panel);
   border: 1px solid var(--photos-border);
@@ -466,6 +662,22 @@ onBeforeUnmount(() => {
 
 .comments-context > summary {
   cursor: pointer;
+  justify-content: space-between;
+  list-style: none;
+}
+
+.comments-context > summary::-webkit-details-marker {
+  display: none;
+}
+
+.comments-context > summary::after {
+  content: '+';
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.comments-context[open] > summary::after {
+  content: '−';
 }
 
 .comments-context > h2 {
@@ -743,6 +955,10 @@ onBeforeUnmount(() => {
   padding: 0.55rem 0.75rem;
 }
 
+button.photo-share-button {
+  font-family: inherit;
+}
+
 .photo-share-button::-webkit-details-marker,
 .photo-qr-share > summary::-webkit-details-marker {
   display: none;
@@ -925,7 +1141,22 @@ onBeforeUnmount(() => {
     margin-inline: max(0.35rem, env(safe-area-inset-left, 0px)) max(0.35rem, env(safe-area-inset-right, 0px));
     padding: 0.55rem 0.65rem max(0.55rem, env(safe-area-inset-bottom, 0px));
     pointer-events: auto;
+    touch-action: none;
+    transform: translateY(var(--dock-drag-y, 0));
     transition: opacity 140ms ease, transform 180ms ease;
+    user-select: none;
+  }
+
+  .comments-backdrop {
+    background: color-mix(in srgb, var(--photos-text) 42%, transparent);
+    border: 0;
+    display: block;
+    inset: 0;
+    opacity: var(--comments-backdrop-opacity, 1);
+    padding: 0;
+    pointer-events: auto;
+    position: fixed;
+    transition: opacity 180ms ease;
   }
 
   .comments-dock-trigger {
@@ -954,26 +1185,110 @@ onBeforeUnmount(() => {
   }
 
   .comments-section.is-modal-sheet {
-    border-bottom: 0;
-    border-radius: 1rem 1rem 0 0;
+    border: 0;
+    border-radius: 0;
     bottom: 0;
-    height: calc(100dvh - max(0.5rem, env(safe-area-inset-top, 0px)));
-    left: max(0.35rem, env(safe-area-inset-left, 0px));
+    box-shadow: none;
+    height: 100dvh;
+    left: 0;
     max-height: none;
     opacity: 1;
     pointer-events: auto;
     position: fixed;
-    right: max(0.35rem, env(safe-area-inset-right, 0px));
-    top: max(0.5rem, env(safe-area-inset-top, 0px));
+    right: 0;
+    top: 0;
     width: auto;
   }
 
+  .comments-section.is-modal-sheet.is-portrait-sheet {
+    border: 1px solid var(--photos-border);
+    border-bottom: 0;
+    border-radius: 1rem 1rem 0 0;
+    box-shadow: 0 -0.75rem 2.5rem color-mix(in srgb, var(--photos-text) 18%, transparent);
+    height: min(88dvh, calc(100dvh - max(3.5rem, env(safe-area-inset-top, 0px))));
+    top: auto;
+    transform: translateY(var(--sheet-drag-y, 0));
+    transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .comments-section.is-modal-sheet.is-portrait-sheet.is-dragging {
+    transition: none;
+  }
+
   .comments-panel-header {
+    background: var(--photos-panel);
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
     padding-top: max(0.65rem, env(safe-area-inset-top, 0px));
   }
 
+  .comments-section.is-portrait-sheet .comments-panel-header {
+    cursor: grab;
+    padding-top: 1.05rem;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .comments-section.is-portrait-sheet .comments-panel-header::before {
+    background: color-mix(in srgb, var(--photos-muted) 52%, transparent);
+    border-radius: 999px;
+    content: '';
+    height: 4px;
+    left: 50%;
+    position: absolute;
+    top: 0.38rem;
+    transform: translateX(-50%);
+    width: 2.5rem;
+  }
+
+  .comments-panel-header > div:first-child {
+    align-items: baseline;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .photo-share-button {
+    border-radius: 50%;
+    font-size: 0;
+    height: 44px;
+    justify-content: center;
+    padding: 0;
+    width: 44px;
+  }
+
+  .photo-share-button svg {
+    display: block;
+    height: 1.05rem;
+    width: 1.05rem;
+  }
+
   .comments-panel-scroll {
-    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    padding: 0.35rem max(0.75rem, env(safe-area-inset-right, 0px)) max(1rem, env(safe-area-inset-bottom, 0px)) max(0.75rem, env(safe-area-inset-left, 0px));
+    scrollbar-gutter: auto;
+    touch-action: pan-y;
+  }
+
+  .comments-context {
+    margin-bottom: 0.65rem;
+    padding-bottom: 0;
+  }
+
+  .comments-context > summary {
+    color: var(--photos-muted);
+    font-size: 0.68rem;
+  }
+
+  .comment-list {
+    gap: 0.65rem;
+    padding: 0;
+  }
+
+  .comment {
+    box-shadow: none;
+  }
+
+  .mastodon-reply-link {
+    margin-top: 0.65rem;
   }
 }
 
@@ -982,14 +1297,6 @@ onBeforeUnmount(() => {
     grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 0.45rem;
     padding-inline: 0.65rem;
-  }
-
-  .photo-share-button {
-    padding-inline: 0.65rem;
-  }
-
-  .photo-share-button svg {
-    display: none;
   }
 
   .comment-item {
@@ -1009,7 +1316,9 @@ onBeforeUnmount(() => {
 
 @media (prefers-reduced-motion: reduce) {
   .comments-dock,
-  .comments-section {
+  .comments-backdrop,
+  .comments-section,
+  .comments-section.is-modal-sheet.is-portrait-sheet {
     transition: none;
   }
 }

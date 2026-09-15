@@ -11,7 +11,7 @@ const posts = Array.from({ length: 8 }, (_, index) => ({
   canonicalUrl: `/photos/photo-${index + 1}`,
   contentWarning: null,
   createdAt: `2026-09-${String(index + 1).padStart(2, '0')}T12:00:00.000Z`,
-  date: `2026-09-${String(index + 1).padStart(2, '0')}`,
+  date: 20260901 + index,
   description: null,
   excerpt: null,
   heroMediaId: null,
@@ -70,16 +70,22 @@ const comments = Array.from({ length: 18 }, (_, index) => ({
 }))
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/posts?limit=50', (route) => route.fulfill({ json: { items: posts } }))
-  await page.route('**/api/posts/*/comments/mastodon', (route) => route.fulfill({
-    json: {
-      comments,
-      remoteUrl: 'https://example.social/@jgantts/photo',
-      stale: false,
-      state: 'available',
-      truncated: false,
-    },
-  }))
+  await page.route('**/api/**', (route) => {
+    const { pathname } = new URL(route.request().url())
+    if (!pathname.startsWith('/api/posts')) return route.continue()
+    if (pathname.endsWith('/comments/mastodon')) {
+      return route.fulfill({
+        json: {
+          comments,
+          remoteUrl: 'https://example.social/@jgantts/photo',
+          stale: false,
+          state: 'available',
+          truncated: false,
+        },
+      })
+    }
+    return route.fulfill({ json: { items: posts } })
+  })
   await page.route('**/media/**', (route) => route.fulfill({ body: transparentPng, contentType: 'image/png' }))
 })
 
@@ -106,4 +112,24 @@ test('mobile sheet locks the gallery and has exactly one vertical scroll owner',
     })
     .map((element) => element.className))
   expect(scrollOwners).toEqual(['comments-panel-scroll'])
+})
+
+test('keyboard, reduced-motion, and 200% zoom smoke test', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/photos')
+  await page.getByRole('button', { name: /Select post from/ }).first().click()
+
+  const dock = page.getByRole('button', { name: /View comments/ })
+  await dock.focus()
+  await page.keyboard.press('Enter')
+  const sheet = page.getByRole('dialog', { name: 'Replies' })
+  await expect(sheet).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Close comments' })).toBeFocused()
+  expect(await sheet.evaluate((element) => getComputedStyle(element).transitionDuration)).toBe('0s')
+
+  await page.evaluate(() => { document.documentElement.style.zoom = '2' })
+  await expect(page.getByRole('button', { name: 'Close comments' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(sheet).toBeHidden()
+  await expect(dock).toBeFocused()
 })

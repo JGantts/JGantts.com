@@ -1008,7 +1008,8 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .comments-dock {
+  .comments-dock,
+  .comments-section {
     transition: none;
   }
 }

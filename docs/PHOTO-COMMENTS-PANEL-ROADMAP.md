@@ -1,6 +1,6 @@
 # Photo Comments Panel Revamp Roadmap
 
-Last updated: 2026-09-14
+Last updated: 2026-09-15
 
 ## Objective
 
@@ -14,16 +14,37 @@ full-height modal-sheet model.
 
 ## Current state
 
-- Status: Verified; implementation has not started.
-- Active item: None.
-- Next item: 1.1 — extract and document the comments-panel state contract.
+- Status: Implementation complete; automated and simulated-device QA passed.
+- Active item: 5.6 — physical-device release QA.
+- Next item: Run the final iOS Safari and Android Chrome device matrix before
+  production release.
 - Primary implementation:
   [`jgantts-com/src/views/photos/IndexView.vue`](../jgantts-com/src/views/photos/IndexView.vue)
   and
   [`jgantts-com/src/views/photos/ClusteredPhotoMasonry.vue`](../jgantts-com/src/views/photos/ClusteredPhotoMasonry.vue).
-- Current interaction: a selected photo exposes a three-stop drawer—collapsed,
-  intermediate, and full—with custom pointer capture, velocity projection, and
-  snap-state selection.
+- Current interaction: mobile and short landscape use a compact comments dock
+  and a full-height modal sheet; larger viewports use a single-scroll side panel.
+  The old multi-stop drag state and custom swipe physics have been removed.
+
+## Implementation and verification summary
+
+- `PhotoCommentsPanel.vue` now owns the responsive shell, compact dock, modal
+  semantics, body scroll lock, focus trap/restoration, browser-back handling,
+  share controls, and all discussion states.
+- `IndexView.vue` renders only the active panel, makes the gallery inert while a
+  modal is open, preserves direct routes and scroll position, and restores focus
+  to the selected photo when selection closes.
+- `ClusteredPhotoMasonry.vue` pauses exposure tracking while the modal is open;
+  panel visibility no longer depends on selected-photo intersection.
+- `MediaCarousel.vue` preserves an existing document scroll lock when its own
+  nested media dialog opens and closes.
+- Eleven component tests cover panel state, history, focus, cleanup, discussion
+  states, deep replies, warnings, media, and nested modal scroll-lock ownership.
+- Two Playwright tests cover background scroll prevention, single scroll
+  ownership, keyboard operation, reduced motion, and 200% zoom.
+- Manual responsive browser checks passed at 390 × 844, 430 × 932, 844 × 390,
+  1025 × 800, and a wide desktop viewport, including orientation changes,
+  direct links, share controls, and accessibility-tree isolation.
 
 ## Verified baseline
 
@@ -117,16 +138,16 @@ comfortably contain its own header, post context, controls, and replies.
 
 ### Phase 1 — Simplify state and component boundaries
 
-- [ ] **1.1** Define the panel state as `closed | open`. Remove the intermediate
+- [x] **1.1** Define the panel state as `closed | open`. Remove the intermediate
   state from the product contract and document route/back-button behavior.
-- [ ] **1.2** Extract a dedicated `PhotoCommentsPanel.vue` from `IndexView.vue`.
+- [x] **1.2** Extract a dedicated `PhotoCommentsPanel.vue` from `IndexView.vue`.
   Give it explicit inputs for selected post, replies, reply count, remote reply
   URL, and open state, plus open/close/share events.
-- [ ] **1.3** Remove custom offset calculation, velocity smoothing, projected
+- [x] **1.3** Remove custom offset calculation, velocity smoothing, projected
   snap selection, pointer capture, and up/down step controls.
-- [ ] **1.4** Render only the active panel instead of maintaining one hidden
+- [x] **1.4** Render only the active panel instead of maintaining one hidden
   comments section per photo post.
-- [ ] **1.5** Keep discussion normalization and threaded-reply presentation
+- [x] **1.5** Keep discussion normalization and threaded-reply presentation
   independent from the sheet/side-panel shell.
 
 Exit condition: the feature has one explicit open state and no custom multi-stop
@@ -134,37 +155,40 @@ gesture state machine.
 
 ### Phase 2 — Build the mobile modal sheet
 
-- [ ] **2.1** Add the compact closed dock with a clear `View comments` label and
+- [x] **2.1** Add the compact closed dock with a clear `View comments` label and
   reply count. Keep its touch target at least 44 × 44 CSS pixels.
-- [ ] **2.2** Build a fixed, safe-area-aware modal sheet for portrait and phone
+- [x] **2.2** Build a fixed, safe-area-aware modal sheet for portrait and phone
   landscape with a sticky header and one `overflow-y: auto` body.
-- [ ] **2.3** Lock document scrolling while open without losing the gallery's
+- [x] **2.3** Lock document scrolling while open without losing the gallery's
   current scroll position. Restore the original document styles and position on
   every close and unmount path.
-- [ ] **2.4** Make the gallery inert while open, trap focus within the sheet, and
+- [x] **2.4** Make the gallery inert while open, trap focus within the sheet, and
   restore focus on close. Provide correct dialog naming and close semantics.
-- [ ] **2.5** Move post context into a compact, non-scrolling summary. Add a
+- [x] **2.5** Move post context into a compact, non-scrolling summary. Add a
   disclosure only when the text exceeds the useful collapsed length.
-- [ ] **2.6** Preserve safe-area padding, reduced-motion behavior, and visible
+- [x] **2.6** Preserve safe-area padding, reduced-motion behavior, and visible
   focus styles. Do not animate large content areas when reduced motion is set.
-- [ ] **2.7** Evaluate swipe-down-to-close after the button-driven interaction is
+- [x] **2.7** Evaluate swipe-down-to-close after the button-driven interaction is
   complete. Ship without it if scroll-boundary arbitration is not consistently
   reliable on iOS Safari and Android Chrome.
+
+Decision: ship without swipe-to-close. The explicit close button, Escape, and
+browser Back paths cover dismissal without reintroducing gesture competition.
 
 Exit condition: while comments are open on a phone, only the reply body can
 scroll vertically and the gallery cannot move or hide the panel.
 
 ### Phase 3 — Repair wider responsive layouts
 
-- [ ] **3.1** Replace the width-only breakpoint with a layout decision that also
+- [x] **3.1** Replace the width-only breakpoint with a layout decision that also
   accounts for viewport height and available panel width.
-- [ ] **3.2** Use the modal sheet for short landscape viewports. Do not activate
+- [x] **3.2** Use the modal sheet for short landscape viewports. Do not activate
   the sticky side panel merely because a phone is wider than `44rem`.
-- [ ] **3.3** Remove `overflow-y: auto` and the viewport-relative max height from
+- [x] **3.3** Remove `overflow-y: auto` and the viewport-relative max height from
   `.comments-post-text`; let it flow inside the panel's single scroller.
-- [ ] **3.4** Keep one sticky panel heading on desktop and verify that keyboard
+- [x] **3.4** Keep one sticky panel heading on desktop and verify that keyboard
   focus is never hidden under it.
-- [ ] **3.5** Validate very long post text, deep reply indentation, comment media,
+- [x] **3.5** Validate very long post text, deep reply indentation, comment media,
   content warnings, share controls, and the Mastodon reply link.
 
 Exit condition: tablet and desktop layouts contain no nested vertical scrollbox
@@ -172,16 +196,16 @@ and phone landscape uses the mobile interaction model.
 
 ### Phase 4 — Decouple selection visibility and harden navigation
 
-- [ ] **4.1** Stop applying selected-photo visibility opacity and `aria-hidden`
+- [x] **4.1** Stop applying selected-photo visibility opacity and `aria-hidden`
   state to an open comments panel.
-- [ ] **4.2** Pause or isolate selected-photo exposure calculations while the
+- [x] **4.2** Pause or isolate selected-photo exposure calculations while the
   modal sheet is open so comments do not affect gallery analytics or selection
   state.
-- [ ] **4.3** Preserve the canonical `/photos/:slug` route, direct-link behavior,
+- [x] **4.3** Preserve the canonical `/photos/:slug` route, direct-link behavior,
   selected photo, gallery scroll position, and focus across open/close actions.
-- [ ] **4.4** Define behavior for orientation changes while open. The panel must
+- [x] **4.4** Define behavior for orientation changes while open. The panel must
   remain usable and must not resurrect a removed intermediate state.
-- [ ] **4.5** Verify loading, unavailable, empty, cached, and truncated discussion
+- [x] **4.5** Verify loading, unavailable, empty, cached, and truncated discussion
   states within the new shell.
 
 Exit condition: comments remain stable through background layout changes,
@@ -189,20 +213,20 @@ navigation, orientation changes, and discussion-state transitions.
 
 ### Phase 5 — Automated and device QA
 
-- [ ] **5.1** Add component tests for open/close, focus entry and restoration,
+- [x] **5.1** Add component tests for open/close, focus entry and restoration,
   inert background, scroll locking, Escape/back behavior, and cleanup on unmount.
-- [ ] **5.2** Add browser tests that assert the page scroll position cannot change
+- [x] **5.2** Add browser tests that assert the page scroll position cannot change
   while the mobile panel is open and that the panel remains visible.
-- [ ] **5.3** Add browser tests that assert there is exactly one scrollable
+- [x] **5.3** Add browser tests that assert there is exactly one scrollable
   vertical region inside the open mobile panel.
-- [ ] **5.4** Exercise empty, one-reply, long-thread, deeply nested, long-post,
+- [x] **5.4** Exercise empty, one-reply, long-thread, deeply nested, long-post,
   media-heavy, and unavailable discussions.
-- [ ] **5.5** Test at minimum 390 × 844, 430 × 932, 844 × 390, the narrow desktop
+- [x] **5.5** Test at minimum 390 × 844, 430 × 932, 844 × 390, the narrow desktop
   breakpoint boundary, and a wide desktop viewport.
 - [ ] **5.6** Perform physical-device QA in current iOS Safari and Android Chrome,
   including slow drags, quick flicks, scroll reversal, horizontal media swipes,
   orientation changes, dynamic browser chrome, and safe areas.
-- [ ] **5.7** Run keyboard and screen-reader smoke tests and verify 200% zoom and
+- [x] **5.7** Run keyboard and screen-reader smoke tests and verify 200% zoom and
   reduced motion.
 
 Exit condition: automated tests cover scroll ownership and visibility regressions,

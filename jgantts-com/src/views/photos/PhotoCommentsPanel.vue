@@ -35,6 +35,8 @@ const portraitSheetQueryText = '(max-width: 64rem) and (orientation: portrait)'
 const isSheet = ref(false)
 const isPortraitSheet = ref(false)
 const panelRef = ref<HTMLElement | null>(null)
+const backdropRef = ref<HTMLButtonElement | null>(null)
+const dockRef = ref<HTMLElement | null>(null)
 const dockTriggerRef = ref<HTMLButtonElement | null>(null)
 const closeButtonRef = ref<HTMLButtonElement | null>(null)
 let sheetQuery: MediaQueryList | null = null
@@ -46,32 +48,33 @@ let previousBodyTop = ''
 let previousBodyWidth = ''
 let scrollLocked = false
 let ownsHistoryEntry = false
-const sheetDragOffset = ref(0)
-const sheetDragging = ref(false)
-const dockDragOffset = ref(0)
 let sheetDragPointerId: number | null = null
+let sheetDragStartX = 0
 let sheetDragStartY = 0
 let sheetDragLastY = 0
 let sheetDragLastTime = 0
 let sheetDragVelocity = 0
+let sheetDragAxis: 'horizontal' | 'pending' | 'vertical' = 'pending'
+let sheetPosition = 0
+let pendingSheetPosition: number | null = null
+let sheetPaintFrame: number | null = null
+let sheetAnimationFrame: number | null = null
 let dockDragPointerId: number | null = null
+let dockDragStartX = 0
 let dockDragStartY = 0
 let dockDragLastY = 0
 let dockDragLastTime = 0
 let dockDragVelocity = 0
-let dockDragMoved = false
-let sheetCloseTimer: number | null = null
+let dockDragAxis: 'horizontal' | 'pending' | 'vertical' = 'pending'
+let dockPosition = 0
+let pendingDockPosition: number | null = null
+let dockPaintFrame: number | null = null
+let dockAnimationFrame: number | null = null
+let dockClickSuppressedUntil = 0
+let openAnimationFrame: number | null = null
 
 const modalOpen = computed(() => isSheet.value && props.open)
 const replyLabel = computed(() => `${props.replyCount} ${props.replyCount === 1 ? 'reply' : 'replies'}`)
-const gestureStyles = computed(() => {
-  const panelHeight = panelRef.value?.getBoundingClientRect().height || window.innerHeight || 1
-  return {
-    '--comments-backdrop-opacity': String(Math.max(0, 1 - sheetDragOffset.value / panelHeight)),
-    '--dock-drag-y': `${dockDragOffset.value}px`,
-    '--sheet-drag-y': `${sheetDragOffset.value}px`,
-  }
-})
 const postContextCollapsible = computed(() => (
   isSheet.value
   || props.post.content
@@ -105,103 +108,281 @@ function syncSheetQuery() {
   if (!isPortraitSheet.value) resetGestures()
 }
 
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function sheetHeight() {
+  return panelRef.value?.getBoundingClientRect().height || window.innerHeight * 0.88 || 1
+}
+
+function applySheetPosition(position: number) {
+  sheetPosition = position
+  if (panelRef.value) panelRef.value.style.transform = `translate3d(0, ${position}px, 0)`
+  if (backdropRef.value) {
+    const progress = Math.max(0, Math.min(1, position / sheetHeight()))
+    backdropRef.value.style.opacity = String(Math.pow(1 - progress, 1.45))
+  }
+}
+
+function queueSheetPosition(position: number) {
+  pendingSheetPosition = position
+  if (sheetPaintFrame !== null) return
+  sheetPaintFrame = window.requestAnimationFrame(() => {
+    sheetPaintFrame = null
+    if (pendingSheetPosition === null) return
+    applySheetPosition(pendingSheetPosition)
+    pendingSheetPosition = null
+  })
+}
+
+function applyDockPosition(position: number) {
+  dockPosition = position
+  if (dockRef.value) dockRef.value.style.transform = `translate3d(0, ${position}px, 0)`
+}
+
+function queueDockPosition(position: number) {
+  pendingDockPosition = position
+  if (dockPaintFrame !== null) return
+  dockPaintFrame = window.requestAnimationFrame(() => {
+    dockPaintFrame = null
+    if (pendingDockPosition === null) return
+    applyDockPosition(pendingDockPosition)
+    pendingDockPosition = null
+  })
+}
+
+function animateSheetTo(target: number, initialVelocity = 0, onComplete?: () => void) {
+  if (sheetAnimationFrame !== null) window.cancelAnimationFrame(sheetAnimationFrame)
+  if (prefersReducedMotion()) {
+    applySheetPosition(target)
+    onComplete?.()
+    return
+  }
+
+  let position = sheetPosition
+  let velocity = initialVelocity
+  let previousTime = performance.now()
+  const stiffness = target === 0 ? 360 : 430
+  const damping = target === 0 ? 34 : 38
+
+  const step = (time: number) => {
+    const elapsed = Math.min(0.032, Math.max(0.001, (time - previousTime) / 1000))
+    previousTime = time
+    const acceleration = -stiffness * (position - target) - damping * velocity
+    velocity += acceleration * elapsed
+    position += velocity * elapsed
+    applySheetPosition(position)
+
+    const exitedViewport = target > 0 && position >= sheetHeight()
+    const settled = Math.abs(position - target) < 0.6 && Math.abs(velocity) < 8
+    if (exitedViewport || settled) {
+      sheetAnimationFrame = null
+      applySheetPosition(target)
+      onComplete?.()
+      return
+    }
+    sheetAnimationFrame = window.requestAnimationFrame(step)
+  }
+
+  sheetAnimationFrame = window.requestAnimationFrame(step)
+}
+
+function animateDockTo(target: number, initialVelocity = 0, onComplete?: () => void) {
+  if (dockAnimationFrame !== null) window.cancelAnimationFrame(dockAnimationFrame)
+  if (prefersReducedMotion()) {
+    applyDockPosition(target)
+    onComplete?.()
+    return
+  }
+
+  let position = dockPosition
+  let velocity = initialVelocity
+  let previousTime = performance.now()
+  const stiffness = 420
+  const damping = 38
+
+  const step = (time: number) => {
+    const elapsed = Math.min(0.032, Math.max(0.001, (time - previousTime) / 1000))
+    previousTime = time
+    const acceleration = -stiffness * (position - target) - damping * velocity
+    velocity += acceleration * elapsed
+    position += velocity * elapsed
+    applyDockPosition(position)
+
+    if (Math.abs(position - target) < 0.6 && Math.abs(velocity) < 8) {
+      dockAnimationFrame = null
+      applyDockPosition(target)
+      onComplete?.()
+      return
+    }
+    dockAnimationFrame = window.requestAnimationFrame(step)
+  }
+
+  dockAnimationFrame = window.requestAnimationFrame(step)
+}
+
+function cancelGestureFrames() {
+  if (sheetPaintFrame !== null) window.cancelAnimationFrame(sheetPaintFrame)
+  if (sheetAnimationFrame !== null) window.cancelAnimationFrame(sheetAnimationFrame)
+  if (dockPaintFrame !== null) window.cancelAnimationFrame(dockPaintFrame)
+  if (dockAnimationFrame !== null) window.cancelAnimationFrame(dockAnimationFrame)
+  if (openAnimationFrame !== null) window.cancelAnimationFrame(openAnimationFrame)
+  sheetPaintFrame = null
+  sheetAnimationFrame = null
+  dockPaintFrame = null
+  dockAnimationFrame = null
+  openAnimationFrame = null
+  pendingSheetPosition = null
+  pendingDockPosition = null
+}
+
 function resetSheetDrag() {
-  if (sheetCloseTimer !== null) window.clearTimeout(sheetCloseTimer)
-  sheetCloseTimer = null
-  sheetDragOffset.value = 0
-  sheetDragging.value = false
+  if (sheetPaintFrame !== null) window.cancelAnimationFrame(sheetPaintFrame)
+  if (sheetAnimationFrame !== null) window.cancelAnimationFrame(sheetAnimationFrame)
+  sheetPaintFrame = null
+  sheetAnimationFrame = null
+  pendingSheetPosition = null
+  sheetPosition = 0
+  panelRef.value?.style.removeProperty('transform')
+  backdropRef.value?.style.removeProperty('opacity')
   sheetDragPointerId = null
   sheetDragVelocity = 0
+  sheetDragAxis = 'pending'
 }
 
 function resetDockDrag() {
-  dockDragOffset.value = 0
+  if (dockPaintFrame !== null) window.cancelAnimationFrame(dockPaintFrame)
+  if (dockAnimationFrame !== null) window.cancelAnimationFrame(dockAnimationFrame)
+  dockPaintFrame = null
+  dockAnimationFrame = null
+  pendingDockPosition = null
+  dockPosition = 0
+  dockRef.value?.style.removeProperty('transform')
   dockDragPointerId = null
   dockDragVelocity = 0
-  dockDragMoved = false
+  dockDragAxis = 'pending'
 }
 
 function resetGestures() {
+  cancelGestureFrames()
   resetSheetDrag()
   resetDockDrag()
+  dockClickSuppressedUntil = 0
 }
 
 function beginSheetDrag(event: PointerEvent) {
   if (!isPortraitSheet.value || event.button !== 0) return
   const target = event.target
   if (target instanceof Element && target.closest('button, a, summary')) return
+  if (sheetAnimationFrame !== null) window.cancelAnimationFrame(sheetAnimationFrame)
+  sheetAnimationFrame = null
   sheetDragPointerId = event.pointerId
+  sheetDragStartX = event.clientX
   sheetDragStartY = event.clientY
   sheetDragLastY = event.clientY
   sheetDragLastTime = event.timeStamp
   sheetDragVelocity = 0
-  sheetDragging.value = true
+  sheetDragAxis = 'pending'
   ;(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId)
 }
 
 function moveSheetDrag(event: PointerEvent) {
   if (event.pointerId !== sheetDragPointerId) return
+  const deltaX = event.clientX - sheetDragStartX
+  const deltaY = event.clientY - sheetDragStartY
+  if (sheetDragAxis === 'pending' && Math.max(Math.abs(deltaX), Math.abs(deltaY)) > 5) {
+    sheetDragAxis = Math.abs(deltaY) >= Math.abs(deltaX) ? 'vertical' : 'horizontal'
+  }
+  if (sheetDragAxis !== 'vertical') return
+  event.preventDefault()
   const elapsed = Math.max(1, event.timeStamp - sheetDragLastTime)
-  sheetDragVelocity = (event.clientY - sheetDragLastY) / elapsed
+  const instantaneousVelocity = (event.clientY - sheetDragLastY) / elapsed
+  sheetDragVelocity = sheetDragVelocity * 0.72 + instantaneousVelocity * 0.28
   sheetDragLastY = event.clientY
   sheetDragLastTime = event.timeStamp
-  sheetDragOffset.value = Math.max(0, event.clientY - sheetDragStartY)
+  const position = deltaY >= 0 ? deltaY : -Math.min(24, Math.abs(deltaY) * 0.16)
+  queueSheetPosition(position)
 }
 
 function endSheetDrag(event: PointerEvent, cancelled = false) {
   if (event.pointerId !== sheetDragPointerId) return
   ;(event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId)
-  const panelHeight = panelRef.value?.getBoundingClientRect().height || window.innerHeight
-  const shouldClose = !cancelled && (
-    sheetDragOffset.value > Math.min(140, panelHeight * 0.2)
-    || (sheetDragOffset.value > 24 && sheetDragVelocity > 0.55)
+  if (pendingSheetPosition !== null) applySheetPosition(pendingSheetPosition)
+  pendingSheetPosition = null
+  const panelHeight = sheetHeight()
+  const projectedPosition = sheetPosition + Math.max(0, sheetDragVelocity) * 190
+  const shouldClose = !cancelled && sheetDragAxis === 'vertical' && (
+    projectedPosition > Math.min(190, panelHeight * 0.28)
+    || (sheetPosition > 18 && sheetDragVelocity > 0.78)
   )
-  sheetDragging.value = false
   sheetDragPointerId = null
 
   if (!shouldClose) {
-    sheetDragOffset.value = 0
+    animateSheetTo(0, sheetDragVelocity * 1000)
     return
   }
 
-  sheetDragOffset.value = panelHeight
-  sheetCloseTimer = window.setTimeout(() => requestClose(), 180)
+  animateSheetTo(panelHeight + 24, Math.max(0, sheetDragVelocity * 1000), requestClose)
 }
 
 function beginDockDrag(event: PointerEvent) {
   if (!isPortraitSheet.value || event.button !== 0) return
   const target = event.target
   if (target instanceof Element && target.closest('.comments-dock-clear')) return
+  if (dockAnimationFrame !== null) window.cancelAnimationFrame(dockAnimationFrame)
+  dockAnimationFrame = null
   dockDragPointerId = event.pointerId
+  dockDragStartX = event.clientX
   dockDragStartY = event.clientY
   dockDragLastY = event.clientY
   dockDragLastTime = event.timeStamp
   dockDragVelocity = 0
-  dockDragMoved = false
+  dockDragAxis = 'pending'
   ;(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId)
 }
 
 function moveDockDrag(event: PointerEvent) {
   if (event.pointerId !== dockDragPointerId) return
+  const deltaX = event.clientX - dockDragStartX
+  const deltaY = event.clientY - dockDragStartY
+  if (dockDragAxis === 'pending' && Math.max(Math.abs(deltaX), Math.abs(deltaY)) > 5) {
+    dockDragAxis = Math.abs(deltaY) >= Math.abs(deltaX) ? 'vertical' : 'horizontal'
+  }
+  if (dockDragAxis !== 'vertical') return
+  event.preventDefault()
   const elapsed = Math.max(1, event.timeStamp - dockDragLastTime)
-  dockDragVelocity = (event.clientY - dockDragLastY) / elapsed
+  const instantaneousVelocity = (event.clientY - dockDragLastY) / elapsed
+  dockDragVelocity = dockDragVelocity * 0.72 + instantaneousVelocity * 0.28
   dockDragLastY = event.clientY
   dockDragLastTime = event.timeStamp
-  const delta = Math.min(0, event.clientY - dockDragStartY)
-  if (Math.abs(delta) > 8) dockDragMoved = true
-  dockDragOffset.value = Math.max(-96, delta)
+  const position = deltaY < 0
+    ? -Math.min(112, Math.abs(deltaY) * 0.72)
+    : Math.min(12, deltaY * 0.12)
+  queueDockPosition(position)
 }
 
 function endDockDrag(event: PointerEvent, cancelled = false) {
   if (event.pointerId !== dockDragPointerId) return
   ;(event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId)
+  if (pendingDockPosition !== null) applyDockPosition(pendingDockPosition)
+  pendingDockPosition = null
+  const projectedPosition = dockPosition + Math.min(0, dockDragVelocity) * 170
   const shouldOpen = !cancelled && (
-    dockDragOffset.value < -48
-    || (dockDragOffset.value < -16 && dockDragVelocity < -0.5)
+    projectedPosition < -54
+    || (dockPosition < -14 && dockDragVelocity < -0.72)
   )
-  if (dockDragMoved) event.preventDefault()
-  resetDockDrag()
-  if (shouldOpen) openPanel()
+  if (dockDragAxis === 'vertical') {
+    event.preventDefault()
+    dockClickSuppressedUntil = performance.now() + 350
+  }
+  dockDragPointerId = null
+
+  if (shouldOpen) {
+    openPanel()
+  } else {
+    animateDockTo(0, dockDragVelocity * 1000)
+  }
 }
 
 function lockDocumentScroll() {
@@ -239,7 +420,7 @@ function handlePanelKeydown(event: KeyboardEvent) {
   if (!modalOpen.value) return
   if (event.key === 'Escape') {
     event.preventDefault()
-    requestClose()
+    dismissSheet()
     return
   }
   if (event.key !== 'Tab') return
@@ -288,13 +469,24 @@ function discardHistoryEntry() {
   history.replaceState(nextState, '', window.location.href)
 }
 
-function openPanel() {
+async function openPanel() {
+  if (props.open) return
+  const animate = isPortraitSheet.value && !prefersReducedMotion()
+  if (animate) applySheetPosition(window.innerHeight)
   emit('update:open', true)
+  if (!animate) return
+  await nextTick()
+  applySheetPosition(sheetHeight() + 24)
+  openAnimationFrame = window.requestAnimationFrame(() => {
+    openAnimationFrame = null
+    animateSheetTo(0)
+  })
 }
 
 function handleDockClick(event: MouseEvent) {
   const target = event.target
   if (target instanceof Element && target.closest('.comments-dock-clear')) return
+  if (performance.now() < dockClickSuppressedUntil) return
   openPanel()
 }
 
@@ -318,6 +510,14 @@ function requestClose() {
   emit('closeShareMenus')
   if (modalOpen.value && removeHistoryEntry()) return
   emit('update:open', false)
+}
+
+function dismissSheet() {
+  if (!isPortraitSheet.value || prefersReducedMotion()) {
+    requestClose()
+    return
+  }
+  animateSheetTo(sheetHeight() + 24, 0, requestClose)
 }
 
 function handlePopState() {
@@ -363,9 +563,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="photo-comments" :style="gestureStyles">
+  <div class="photo-comments">
     <div
       v-show="!open"
+      ref="dockRef"
       class="comments-dock"
       @click="handleDockClick"
       @pointerdown="beginDockDrag"
@@ -395,11 +596,12 @@ onBeforeUnmount(() => {
 
     <button
       v-if="isPortraitSheet && open"
+      ref="backdropRef"
       type="button"
       class="comments-backdrop"
       tabindex="-1"
       aria-hidden="true"
-      @click="requestClose"
+      @click="dismissSheet"
     ></button>
 
     <section
@@ -408,7 +610,6 @@ onBeforeUnmount(() => {
       ref="panelRef"
       class="comments-section"
       :class="{
-        'is-dragging': sheetDragging,
         'is-modal-sheet': isSheet,
         'is-open': open,
         'is-portrait-sheet': isPortraitSheet,
@@ -481,7 +682,7 @@ onBeforeUnmount(() => {
           type="button"
           class="comments-close"
           :aria-label="isSheet ? 'Close comments' : 'Close selected photo'"
-          @click="isSheet ? requestClose() : emit('clearSelection')"
+          @click="isSheet ? dismissSheet() : emit('clearSelection')"
         >
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
         </button>
@@ -1141,10 +1342,9 @@ button.photo-share-button {
     margin-inline: max(0.35rem, env(safe-area-inset-left, 0px)) max(0.35rem, env(safe-area-inset-right, 0px));
     padding: 0.55rem 0.65rem max(0.55rem, env(safe-area-inset-bottom, 0px));
     pointer-events: auto;
-    touch-action: none;
-    transform: translateY(var(--dock-drag-y, 0));
-    transition: opacity 140ms ease, transform 180ms ease;
+    touch-action: pan-x;
     user-select: none;
+    will-change: transform;
   }
 
   .comments-backdrop {
@@ -1152,11 +1352,11 @@ button.photo-share-button {
     border: 0;
     display: block;
     inset: 0;
-    opacity: var(--comments-backdrop-opacity, 1);
+    opacity: 1;
     padding: 0;
     pointer-events: auto;
     position: fixed;
-    transition: opacity 180ms ease;
+    will-change: opacity;
   }
 
   .comments-dock-trigger {
@@ -1207,12 +1407,7 @@ button.photo-share-button {
     box-shadow: 0 -0.75rem 2.5rem color-mix(in srgb, var(--photos-text) 18%, transparent);
     height: min(88dvh, calc(100dvh - max(3.5rem, env(safe-area-inset-top, 0px))));
     top: auto;
-    transform: translateY(var(--sheet-drag-y, 0));
-    transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-
-  .comments-section.is-modal-sheet.is-portrait-sheet.is-dragging {
-    transition: none;
+    will-change: transform;
   }
 
   .comments-panel-header {
@@ -1225,7 +1420,7 @@ button.photo-share-button {
   .comments-section.is-portrait-sheet .comments-panel-header {
     cursor: grab;
     padding-top: 1.05rem;
-    touch-action: none;
+    touch-action: pan-x;
     user-select: none;
   }
 

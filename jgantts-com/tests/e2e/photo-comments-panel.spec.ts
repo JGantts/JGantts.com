@@ -98,6 +98,19 @@ test('direct photo loads keep comments docked until the user opens them', async 
   await expect(page).toHaveURL(/\/photos\/photo-5$/)
 })
 
+test('desktop share button opens the share menu', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/photos/photo-1')
+
+  const shareMenu = page.locator('.photo-share-menu')
+  await expect(shareMenu).toBeVisible()
+  const shareButton = shareMenu.getByRole('button', { name: 'Share this photo post' })
+  await shareButton.click()
+
+  await expect(shareButton).toHaveAttribute('aria-expanded', 'true')
+  await expect(shareMenu.locator('.photo-share-popover')).toBeVisible()
+})
+
 test('closing the mobile sheet restores the visible gallery', async ({ page }) => {
   await page.goto('/photos')
   const firstPhoto = page.getByRole('button', { name: /Select post from/ }).first()

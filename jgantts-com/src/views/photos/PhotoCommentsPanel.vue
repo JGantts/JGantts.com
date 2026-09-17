@@ -42,6 +42,7 @@ const sheetQueryText = '(max-width: 64rem), (max-height: 36rem)'
 const portraitSheetQueryText = '(max-width: 64rem) and (orientation: portrait)'
 const isSheet = ref(false)
 const isPortraitSheet = ref(false)
+const desktopShareOpen = ref(false)
 const closeButtonRef = ref<HTMLButtonElement | null>(null)
 let sheetQuery: MediaQueryList | null = null
 let portraitSheetQuery: MediaQueryList | null = null
@@ -126,6 +127,17 @@ async function shareFromSheet() {
     })
   } catch (error) {
     if (!(error instanceof DOMException) || error.name !== 'AbortError') emit('copyLink')
+  }
+}
+
+function toggleDesktopShareMenu() {
+  desktopShareOpen.value = !desktopShareOpen.value
+}
+
+function closeDesktopShareMenu(event: MouseEvent) {
+  const target = event.target
+  if (target instanceof Element && !target.closest('.photo-share-menu')) {
+    desktopShareOpen.value = false
   }
 }
 
@@ -227,12 +239,14 @@ onMounted(() => {
   sheetQuery.addEventListener('change', syncSheetQuery)
   portraitSheetQuery.addEventListener('change', syncSheetQuery)
   window.addEventListener('popstate', handlePopState)
+  document.addEventListener('click', closeDesktopShareMenu)
 })
 
 onBeforeUnmount(() => {
   sheetQuery?.removeEventListener('change', syncSheetQuery)
   portraitSheetQuery?.removeEventListener('change', syncSheetQuery)
   window.removeEventListener('popstate', handlePopState)
+  document.removeEventListener('click', closeDesktopShareMenu)
   discardHistoryEntry()
   emit('modalChange', false)
 })
@@ -312,12 +326,18 @@ onBeforeUnmount(() => {
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
           Share
         </button>
-        <details v-else class="photo-share-menu">
-          <summary class="photo-share-button" aria-label="Share this photo post">
+        <div v-else class="photo-share-menu">
+          <button
+            type="button"
+            class="photo-share-button"
+            aria-label="Share this photo post"
+            :aria-expanded="desktopShareOpen"
+            @click.stop="toggleDesktopShareMenu"
+          >
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
             Share
-          </summary>
-          <div class="photo-share-popover">
+          </button>
+          <div v-if="desktopShareOpen" class="photo-share-popover">
             <p>Share this photo post</p>
             <a :href="facebookShareUrl" target="_blank" rel="noopener noreferrer">Share on Facebook <span aria-hidden="true">↗</span></a>
             <a :href="xShareUrl" target="_blank" rel="noopener noreferrer">Share on X <span aria-hidden="true">↗</span></a>
@@ -347,7 +367,7 @@ onBeforeUnmount(() => {
               </div>
             </details>
           </div>
-        </details>
+        </div>
         <button
           ref="closeButtonRef"
           type="button"

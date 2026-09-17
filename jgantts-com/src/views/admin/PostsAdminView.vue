@@ -74,15 +74,6 @@ const revisionHistory = ref<PublishedRevision[]>([])
 const revisionSyndications = ref<RevisionSyndication[]>([])
 let previewTimer: ReturnType<typeof setTimeout> | null = null
 const allowedMinutes = ['00', '15', '20', '30', '40', '45']
-const yearOptions = Array.from(
-  { length: new Date().getFullYear() + 10 - 1900 + 1 },
-  (_, index) => new Date().getFullYear() + 10 - index,
-)
-const monthOptions = [
-  ['01', 'January'], ['02', 'February'], ['03', 'March'], ['04', 'April'],
-  ['05', 'May'], ['06', 'June'], ['07', 'July'], ['08', 'August'],
-  ['09', 'September'], ['10', 'October'], ['11', 'November'], ['12', 'December'],
-]
 const hourOptions = Array.from({ length: 24 }, (_, hour) => hour.toString().padStart(2, '0'))
 
 const form = reactive({
@@ -109,6 +100,12 @@ const filteredPosts = computed(() => {
 })
 const canPublish = computed(() => selected.value?.status === 'draft')
 const canSyndicate = computed(() => selected.value?.status === 'published')
+const previewMedia = computed(() => {
+  const media = selected.value?.media ?? []
+  const hero = media.find((item) => item.id === selected.value?.heroMediaId)
+  return hero ? [hero, ...media.filter((item) => item.id !== hero.id)] : media
+})
+const previewDateAndTime = computed(() => formatEditorialDateTime(storedDate(form.date), form.time || null))
 const mastodonTeaser = computed(() => {
   const dateAndTime = formatEditorialDateTime(storedDate(form.date), form.time || null)
   return [form.title.trim(), form.location.trim(), dateAndTime].filter(Boolean).join('\n')
@@ -146,39 +143,25 @@ function storedDate(date: string): number | null {
 }
 
 type DateTimeDraft = { date: string; time: string }
-type DatePart = 'year' | 'month' | 'day'
 
-function datePart(date: string, part: DatePart): string {
-  const [year = '', month = '', day = ''] = date.split('-')
-  return { year, month, day }[part]
+function todayInputValue(now = new Date()): string {
+  const year = now.getFullYear()
+  const month = (now.getMonth() + 1).toString().padStart(2, '0')
+  const day = now.getDate().toString().padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function currentTimeInputValue(now = new Date()): string {
+  const hour = now.getHours().toString().padStart(2, '0')
+  const minute = allowedMinutes.reduce((closest, candidate) => (
+    Math.abs(Number(candidate) - now.getMinutes()) < Math.abs(Number(closest) - now.getMinutes()) ? candidate : closest
+  ))
+  return `${hour}:${minute}`
 }
 
 function timePart(time: string, part: 'hour' | 'minute'): string {
   const [hour = '', minute = ''] = time.split(':')
   return part === 'hour' ? hour : minute
-}
-
-function daysFor(date: string): string[] {
-  const year = Number(datePart(date, 'year')) || new Date().getFullYear()
-  const month = Number(datePart(date, 'month')) || 1
-  const count = new Date(year, month, 0).getDate()
-  return Array.from({ length: count }, (_, index) => (index + 1).toString().padStart(2, '0'))
-}
-
-function updateDatePart(draft: DateTimeDraft, part: DatePart, value: string) {
-  if (!value) {
-    draft.date = ''
-    return
-  }
-  let year = datePart(draft.date, 'year') || new Date().getFullYear().toString()
-  let month = datePart(draft.date, 'month') || '01'
-  let day = datePart(draft.date, 'day') || '01'
-  if (part === 'year') year = value
-  if (part === 'month') month = value
-  if (part === 'day') day = value
-  const maximumDay = new Date(Number(year), Number(month), 0).getDate()
-  day = Math.min(Number(day), maximumDay).toString().padStart(2, '0')
-  draft.date = `${year}-${month}-${day}`
 }
 
 function updateTimePart(draft: DateTimeDraft, part: 'hour' | 'minute', value: string) {
@@ -191,6 +174,24 @@ function updateTimePart(draft: DateTimeDraft, part: 'hour' | 'minute', value: st
   if (part === 'hour') hour = value
   if (part === 'minute') minute = value
   draft.time = `${hour}:${minute}`
+}
+
+function useToday(draft: DateTimeDraft) {
+  draft.date = todayInputValue()
+}
+
+function useNow(draft: DateTimeDraft) {
+  draft.time = currentTimeInputValue()
+}
+
+function clearDateTime(draft: DateTimeDraft) {
+  draft.date = ''
+  draft.time = ''
+}
+
+function usePostDateTime(draft: DateTimeDraft) {
+  draft.date = form.date
+  draft.time = form.time
 }
 
 function openMediaDetails(item: PostMedia) {
@@ -279,6 +280,7 @@ async function newDraft() {
   try {
     const post = await adminRequest<AdminPost>('/api/admin/posts/empty', jsonRequest('POST'))
     replacePost(post)
+    if (!post.date) form.date = todayInputValue()
     notice.value = 'Empty draft created. Add photos first, then optional writing.'
   } catch (draftError) {
     error.value = message(draftError)
@@ -829,6 +831,35 @@ onBeforeUnmount(() => {
         </aside>
 
         <section class="editor-card">
+          <section class="post-preview" aria-labelledby="post-preview-title">
+            <div class="section-heading">
+              <h2 id="post-preview-title">Post preview</h2>
+              <span v-if="previewBusy">Updating…</span>
+              <span v-else>Live preview</span>
+            </div>
+            <article class="post-preview-card">
+              <div v-if="previewMedia.length" class="post-preview-media">
+                <img
+                  v-for="item in previewMedia"
+                  :key="item.id"
+                  :alt="item.altText"
+                  :class="{ 'post-preview-hero': item.id === selected?.heroMediaId }"
+                  :src="item.urls.thumbnail"
+                >
+              </div>
+              <div class="post-preview-copy">
+                <h3 v-if="form.title.trim()">{{ form.title }}</h3>
+                <p v-if="form.location.trim() || previewDateAndTime" class="post-preview-meta">
+                  <span v-if="form.location.trim()">{{ form.location }}</span>
+                  <span v-if="previewDateAndTime">{{ previewDateAndTime }}</span>
+                </p>
+                <div v-if="previewHtml" class="preview-body" v-html="previewHtml"></div>
+                <p v-else-if="!previewMedia.length" class="empty-state">Add photos or text to preview the post.</p>
+                <p v-else class="empty-state">Photo-only post</p>
+              </div>
+            </article>
+          </section>
+
           <section v-if="selectedId" class="media-panel media-panel--primary" aria-labelledby="media-title">
             <div class="section-heading"><h2 id="media-title">Start with photos</h2><span>JPEG, PNG, WebP, AVIF, HEIC, or HEIF · 100 MB per photo</span></div>
             <div v-if="selected?.media.length" class="media-grid">
@@ -909,38 +940,36 @@ onBeforeUnmount(() => {
               <small>URL-safe text: lowercase letters, numbers, and single hyphens. Changing it keeps the old URL working.</small>
             </label>
             <label>Location <input v-model="form.location" maxlength="500"></label>
-            <div class="date-time-selectors">
-              <label>Year
-                <select :value="datePart(form.date, 'year')" @change="updateDatePart(form, 'year', ($event.target as HTMLSelectElement).value)">
-                  <option value="">—</option>
-                  <option v-for="year in yearOptions" :key="year" :value="year">{{ year }}</option>
-                </select>
-              </label>
-              <label>Month
-                <select :value="datePart(form.date, 'month')" @change="updateDatePart(form, 'month', ($event.target as HTMLSelectElement).value)">
-                  <option value="">—</option>
-                  <option v-for="([value, label]) in monthOptions" :key="value" :value="value">{{ value }} — {{ label }}</option>
-                </select>
-              </label>
-              <label>Day
-                <select :value="datePart(form.date, 'day')" @change="updateDatePart(form, 'day', ($event.target as HTMLSelectElement).value)">
-                  <option value="">—</option>
-                  <option v-for="day in daysFor(form.date)" :key="day" :value="day">{{ day }}</option>
-                </select>
-              </label>
-              <label>Hour
-                <select :value="timePart(form.time, 'hour')" @change="updateTimePart(form, 'hour', ($event.target as HTMLSelectElement).value)">
-                  <option value="">—</option>
-                  <option v-for="hour in hourOptions" :key="hour" :value="hour">{{ hour }}</option>
-                </select>
-              </label>
-              <label>Minute
-                <select :value="timePart(form.time, 'minute')" @change="updateTimePart(form, 'minute', ($event.target as HTMLSelectElement).value)">
-                  <option value="">—</option>
-                  <option v-for="minute in allowedMinutes" :key="minute" :value="minute">{{ minute }}</option>
-                </select>
-              </label>
-            </div>
+            <fieldset class="date-time-editor">
+              <legend>Date and time <span class="optional-field">Optional</span></legend>
+              <div class="date-time-inputs">
+                <label>Date <input v-model="form.date" type="date"></label>
+                <div class="time-editor">
+                  <span>Time</span>
+                  <div class="restricted-time-inputs">
+                    <label><span class="visually-hidden">Hour</span>
+                      <select aria-label="Hour" :value="timePart(form.time, 'hour')" @change="updateTimePart(form, 'hour', ($event.target as HTMLSelectElement).value)">
+                        <option value="">Hour</option>
+                        <option v-for="hour in hourOptions" :key="hour" :value="hour">{{ hour }}</option>
+                      </select>
+                    </label>
+                    <span aria-hidden="true">:</span>
+                    <label><span class="visually-hidden">Minute</span>
+                      <select aria-label="Minute" :value="timePart(form.time, 'minute')" @change="updateTimePart(form, 'minute', ($event.target as HTMLSelectElement).value)">
+                        <option value="">Minute</option>
+                        <option v-for="minute in allowedMinutes" :key="minute" :value="minute">{{ minute }}</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="date-time-actions" aria-label="Date and time shortcuts">
+                <button class="button-secondary" type="button" @click="useToday(form)">Today</button>
+                <button class="button-secondary" type="button" @click="useNow(form)">Now</button>
+                <button class="button-quiet" :disabled="!form.date && !form.time" type="button" @click="clearDateTime(form)">Clear</button>
+              </div>
+              <small>Type a value, use the picker, or use a shortcut.</small>
+            </fieldset>
             <label>Body (Markdown) <span class="optional-field">Optional</span> <textarea v-model="form.bodyMarkdown" class="markdown-editor" maxlength="100000"></textarea></label>
             <div class="editor-actions">
               <button :disabled="busy" type="submit">{{ busy ? 'Working…' : selectedId ? 'Save changes' : 'Create draft' }}</button>
@@ -949,12 +978,6 @@ onBeforeUnmount(() => {
               <button v-if="selected && selected.status !== 'archived'" class="button-quiet" :disabled="busy" type="button" @click="archive">Archive</button>
             </div>
           </form>
-
-          <section class="preview" aria-labelledby="preview-title">
-            <div class="section-heading"><h2 id="preview-title">Preview</h2><span v-if="previewBusy">Updating…</span></div>
-            <div v-if="previewHtml" class="preview-body" v-html="previewHtml"></div>
-            <p v-else class="empty-state">No body. This post can be published with photos only.</p>
-          </section>
 
           <section v-if="canSyndicate" class="mastodon-panel" aria-labelledby="syndication-title">
             <div class="section-heading"><h2 id="syndication-title">Mastodon</h2><span>Explicit syndication only</span></div>
@@ -1029,38 +1052,36 @@ onBeforeUnmount(() => {
           <label>Alt text (optional) <textarea v-model="mediaDrafts[editingMedia.id].altText" maxlength="2000" rows="3"></textarea></label>
           <label>Caption <textarea v-model="mediaDrafts[editingMedia.id].caption" maxlength="5000" rows="3"></textarea></label>
           <label>Location <input v-model="mediaDrafts[editingMedia.id].location" maxlength="500"></label>
-          <div class="date-time-selectors">
-            <label>Year
-              <select :value="datePart(mediaDrafts[editingMedia.id].date, 'year')" @change="updateDatePart(mediaDrafts[editingMedia.id], 'year', ($event.target as HTMLSelectElement).value)">
-                <option value="">—</option>
-                <option v-for="year in yearOptions" :key="year" :value="year">{{ year }}</option>
-              </select>
-            </label>
-            <label>Month
-              <select :value="datePart(mediaDrafts[editingMedia.id].date, 'month')" @change="updateDatePart(mediaDrafts[editingMedia.id], 'month', ($event.target as HTMLSelectElement).value)">
-                <option value="">—</option>
-                <option v-for="([value, label]) in monthOptions" :key="value" :value="value">{{ value }} — {{ label }}</option>
-              </select>
-            </label>
-            <label>Day
-              <select :value="datePart(mediaDrafts[editingMedia.id].date, 'day')" @change="updateDatePart(mediaDrafts[editingMedia.id], 'day', ($event.target as HTMLSelectElement).value)">
-                <option value="">—</option>
-                <option v-for="day in daysFor(mediaDrafts[editingMedia.id].date)" :key="day" :value="day">{{ day }}</option>
-              </select>
-            </label>
-            <label>Hour
-              <select :value="timePart(mediaDrafts[editingMedia.id].time, 'hour')" @change="updateTimePart(mediaDrafts[editingMedia.id], 'hour', ($event.target as HTMLSelectElement).value)">
-                <option value="">—</option>
-                <option v-for="hour in hourOptions" :key="hour" :value="hour">{{ hour }}</option>
-              </select>
-            </label>
-            <label>Minute
-              <select :value="timePart(mediaDrafts[editingMedia.id].time, 'minute')" @change="updateTimePart(mediaDrafts[editingMedia.id], 'minute', ($event.target as HTMLSelectElement).value)">
-                <option value="">—</option>
-                <option v-for="minute in allowedMinutes" :key="minute" :value="minute">{{ minute }}</option>
-              </select>
-            </label>
-          </div>
+          <fieldset class="date-time-editor">
+            <legend>Date and time <span class="optional-field">Optional</span></legend>
+            <div class="date-time-inputs">
+              <label>Date <input v-model="mediaDrafts[editingMedia.id].date" type="date"></label>
+              <div class="time-editor">
+                <span>Time</span>
+                <div class="restricted-time-inputs">
+                  <label><span class="visually-hidden">Hour</span>
+                    <select aria-label="Hour" :value="timePart(mediaDrafts[editingMedia.id].time, 'hour')" @change="updateTimePart(mediaDrafts[editingMedia.id], 'hour', ($event.target as HTMLSelectElement).value)">
+                      <option value="">Hour</option>
+                      <option v-for="hour in hourOptions" :key="hour" :value="hour">{{ hour }}</option>
+                    </select>
+                  </label>
+                  <span aria-hidden="true">:</span>
+                  <label><span class="visually-hidden">Minute</span>
+                    <select aria-label="Minute" :value="timePart(mediaDrafts[editingMedia.id].time, 'minute')" @change="updateTimePart(mediaDrafts[editingMedia.id], 'minute', ($event.target as HTMLSelectElement).value)">
+                      <option value="">Minute</option>
+                      <option v-for="minute in allowedMinutes" :key="minute" :value="minute">{{ minute }}</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="date-time-actions" aria-label="Photo date and time shortcuts">
+              <button class="button-secondary" type="button" @click="useToday(mediaDrafts[editingMedia.id])">Today</button>
+              <button class="button-secondary" type="button" @click="useNow(mediaDrafts[editingMedia.id])">Now</button>
+              <button class="button-secondary" :disabled="!form.date && !form.time" type="button" @click="usePostDateTime(mediaDrafts[editingMedia.id])">Use post date/time</button>
+              <button class="button-quiet" :disabled="!mediaDrafts[editingMedia.id].date && !mediaDrafts[editingMedia.id].time" type="button" @click="clearDateTime(mediaDrafts[editingMedia.id])">Clear</button>
+            </div>
+          </fieldset>
           <div class="editor-actions">
             <button :disabled="mediaSavingId === editingMedia.id" type="submit">
               {{ mediaSavingId === editingMedia.id ? 'Saving…' : 'Save photo details' }}
@@ -1112,11 +1133,17 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .button-quiet { background: transparent; color: var(--muted); }
 .status-chip { border: 1px solid var(--border); border-radius: 999px; font-family: 'Azeret Mono Variable', monospace; font-size: 0.7rem; padding: 0.25rem 0.55rem; }
 .status-row a, .editor-actions a { color: var(--accent); font-size: 0.8rem; }
-.preview, .media-panel, .mastodon-panel { border-top: 1px solid var(--border); padding-top: 1.5rem; }
+.media-panel, .mastodon-panel { border-top: 1px solid var(--border); padding-top: 1.5rem; }
 .revision-photo-thumb { width: 3rem; height: 3rem; object-fit: cover; vertical-align: middle; margin-right: .5rem; border-radius: .25rem; background: var(--surface); }
-.media-panel--primary { border-top: 0; padding-top: 0; }
 .section-heading { align-items: baseline; margin-bottom: 1rem; }
 .section-heading h2 { font-size: 1.25rem; font-weight: 650; }
+.post-preview-card { background: color-mix(in srgb, var(--bg) 92%, white 8%); border: 1px solid var(--border); border-radius: 0.75rem; display: grid; gap: 1rem; grid-template-columns: minmax(10rem, 0.75fr) minmax(0, 1.25fr); max-height: 24rem; overflow: auto; padding: 0.75rem; }
+.post-preview-media { align-content: start; display: grid; gap: 0.35rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.post-preview-media img { aspect-ratio: 1; border-radius: 0.35rem; object-fit: cover; width: 100%; }
+.post-preview-media .post-preview-hero { aspect-ratio: 16 / 9; grid-column: 1 / -1; }
+.post-preview-copy { min-width: 0; }
+.post-preview-copy h3 { font-size: clamp(1.25rem, 3vw, 2rem); font-weight: 700; line-height: 1.1; margin-bottom: 0.55rem; overflow-wrap: anywhere; }
+.post-preview-meta { color: var(--muted); display: flex; flex-wrap: wrap; font-family: 'Azeret Mono Variable', monospace; font-size: 0.7rem; gap: 0.35rem 0.8rem; margin-bottom: 0.8rem; }
 .preview-body { line-height: 1.65; }
 .preview-body :deep(p), .preview-body :deep(ul), .preview-body :deep(ol), .preview-body :deep(blockquote) { margin: 1em 0; }
 .preview-body :deep(h1), .preview-body :deep(h2), .preview-body :deep(h3) { font-weight: 650; margin: 1.4em 0 0.6em; }
@@ -1155,9 +1182,17 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .media-details-form > img { aspect-ratio: 16 / 9; border-radius: 0.65rem; object-fit: cover; width: 100%; }
 .photo-technical { color: var(--muted); font-family: 'Azeret Mono Variable', monospace; font-size: 0.72rem; margin-top: -0.5rem; }
 .dialog-close { font-size: 1.6rem; line-height: 1; padding: 0.2rem 0.45rem; }
-.date-time-selectors { display: grid; gap: 0.5rem; grid-template-columns: 1.05fr 1.6fr 0.8fr 0.8fr 0.8fr; }
-.date-time-selectors label { min-width: 0; }
-.date-time-selectors select { padding-left: 0.55rem; padding-right: 0.4rem; }
+.date-time-editor { border: 1px solid var(--border); border-radius: 0.65rem; display: grid; gap: 0.75rem; margin: 0; min-width: 0; padding: 0.9rem; }
+.date-time-editor legend { font-size: 0.85rem; font-weight: 650; padding: 0 0.3rem; }
+.date-time-editor > small { color: var(--muted); font-size: 0.72rem; }
+.date-time-inputs { display: grid; gap: 0.75rem; grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1fr); }
+.time-editor { display: grid; font-size: 0.85rem; font-weight: 600; gap: 0.4rem; min-width: 0; }
+.restricted-time-inputs { align-items: center; display: grid; gap: 0.35rem; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+.restricted-time-inputs label { min-width: 0; }
+.restricted-time-inputs select, .date-time-inputs input { min-height: 2.75rem; }
+.date-time-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.date-time-actions button { min-height: 2.75rem; }
+.visually-hidden { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 @media (max-width: 48rem) {
   .admin-workspace { grid-template-columns: 1fr; }
   .post-list { max-height: 14rem; position: static; }
@@ -1167,7 +1202,9 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   .upload-item img { width: 4rem; }
   .upload-item-actions { grid-column: 1 / -1; grid-template-columns: repeat(2, 1fr); }
   .editor-actions { align-items: stretch; flex-direction: column; }
+  .post-preview-card { grid-template-columns: 1fr; max-height: 32rem; }
   .slug-input-row { grid-template-columns: 1fr; }
-  .date-time-selectors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .date-time-inputs { grid-template-columns: 1fr; }
+  .date-time-actions button { flex: 1 1 auto; }
 }
 </style>

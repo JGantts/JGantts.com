@@ -44,12 +44,12 @@ onBeforeUnmount(() => {
 <template>
   <div class="main" :class="layoutClass">
     <header class="my-header">
-      <span class="header-lockup">
+      <RouterLink class="header-lockup" to="/" aria-label="JGantts.com home">
         <span class="site-wordmark"><span class="my-header-highlight">JGantts</span>.com</span>
         <span v-if="isPhotosPage" class="page-label">/photos</span>
         <span v-else-if="isPostsPage" class="page-label">/posts</span>
         <span v-else-if="isAdminPage" class="page-label">/admin</span>
-      </span>
+      </RouterLink>
     </header>
     <router-view />
     <footer class="my-footer">
@@ -145,9 +145,17 @@ body {
 
 .header-lockup {
   align-items: flex-start;
+  color: inherit;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  text-decoration: none;
+}
+
+.header-lockup:focus-visible {
+  border-radius: 0.15em;
+  outline: 0.08em solid var(--accent);
+  outline-offset: 0.12em;
 }
 
 .site-wordmark {

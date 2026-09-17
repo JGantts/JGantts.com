@@ -368,7 +368,6 @@ onMounted(async () => {
     loading.value = false
     if (props.postId && activeToot.value) {
       await scrollToRoutedPost(props.postId, activeToot.value.post.id)
-      commentsOpen.value = true
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Could not load photo posts.'

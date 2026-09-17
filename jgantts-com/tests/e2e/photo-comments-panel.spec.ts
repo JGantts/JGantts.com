@@ -89,6 +89,15 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/media/**', (route) => route.fulfill({ body: transparentPng, contentType: 'image/png' }))
 })
 
+test('direct photo loads keep comments docked until the user opens them', async ({ page }) => {
+  await page.goto('/photos/photo-5')
+
+  const dock = page.getByRole('button', { name: /View comments/ })
+  await expect(dock).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Replies' })).toBeHidden()
+  await expect(page).toHaveURL(/\/photos\/photo-5$/)
+})
+
 test('mobile sheet locks the gallery and has exactly one vertical scroll owner', async ({ page }) => {
   await page.goto('/photos')
   await page.getByRole('button', { name: /Select post from/ }).nth(4).scrollIntoViewIfNeeded()

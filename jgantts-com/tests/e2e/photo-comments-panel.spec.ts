@@ -98,6 +98,23 @@ test('direct photo loads keep comments docked until the user opens them', async 
   await expect(page).toHaveURL(/\/photos\/photo-5$/)
 })
 
+test('closing the mobile sheet restores the visible gallery', async ({ page }) => {
+  await page.goto('/photos')
+  const firstPhoto = page.getByRole('button', { name: /Select post from/ }).first()
+  await expect(firstPhoto).toBeVisible()
+  await firstPhoto.click()
+  await page.getByRole('button', { name: /View comments/ }).click()
+
+  const sheet = page.getByRole('dialog', { name: 'Replies' })
+  await expect(sheet).toBeVisible()
+  await sheet.getByRole('button', { name: 'Close comments' }).click()
+
+  await expect(sheet).toBeHidden()
+  await expect(page.locator('.comments-backdrop')).toBeHidden()
+  await expect(page.locator('.gallery-surface')).not.toHaveAttribute('inert', '')
+  await expect(page.locator('.gallery-surface img').first()).toBeVisible()
+})
+
 test('mobile sheet locks the gallery and has exactly one vertical scroll owner', async ({ page }) => {
   await page.goto('/photos')
   await page.getByRole('button', { name: /Select post from/ }).nth(4).scrollIntoViewIfNeeded()
@@ -149,9 +166,9 @@ test('portrait gestures open from the dock, scroll in content, and close from th
   await page.goto('/photos')
   await page.getByRole('button', { name: /Select post from/ }).first().click()
 
-  const dock = page.locator('.comments-dock')
-  const dockBox = await dock.boundingBox()
-  if (!dockBox) throw new Error('Comments dock was not laid out')
+  const dockHandle = page.locator('.comments-dock-handle')
+  const dockBox = await dockHandle.boundingBox()
+  if (!dockBox) throw new Error('Comments dock handle was not laid out')
   await page.mouse.move(dockBox.x + dockBox.width / 2, dockBox.y + dockBox.height / 2)
   await page.mouse.down()
   await page.mouse.move(dockBox.x + dockBox.width / 2, dockBox.y - 72, { steps: 5 })

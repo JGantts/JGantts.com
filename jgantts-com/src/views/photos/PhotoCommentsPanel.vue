@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  DrawerContent,
+  DrawerOverlay,
+  DrawerPortal,
+  DrawerRoot,
+  DrawerSwipeArea,
+  DrawerTitle,
+  DrawerTrigger,
+} from 'reka-ui'
 import MediaCarousel from '@/components/MediaCarousel.vue'
 import type { DisplayPhotoComment, PhotoCommentsStatus } from './photo-comments-types'
 
@@ -34,46 +43,13 @@ const sheetQueryText = '(max-width: 64rem), (max-height: 36rem)'
 const portraitSheetQueryText = '(max-width: 64rem) and (orientation: portrait)'
 const isSheet = ref(false)
 const isPortraitSheet = ref(false)
-const panelRef = ref<HTMLElement | null>(null)
-const backdropRef = ref<HTMLButtonElement | null>(null)
-const dockRef = ref<HTMLElement | null>(null)
-const dockTriggerRef = ref<HTMLButtonElement | null>(null)
 const closeButtonRef = ref<HTMLButtonElement | null>(null)
 let sheetQuery: MediaQueryList | null = null
 let portraitSheetQuery: MediaQueryList | null = null
-let lockedScrollY = 0
-let previousDocumentOverflow = ''
-let previousBodyPosition = ''
-let previousBodyTop = ''
-let previousBodyWidth = ''
-let scrollLocked = false
 let ownsHistoryEntry = false
-let sheetDragPointerId: number | null = null
-let sheetDragStartX = 0
-let sheetDragStartY = 0
-let sheetDragLastY = 0
-let sheetDragLastTime = 0
-let sheetDragVelocity = 0
-let sheetDragAxis: 'horizontal' | 'pending' | 'vertical' = 'pending'
-let sheetPosition = 0
-let pendingSheetPosition: number | null = null
-let sheetPaintFrame: number | null = null
-let sheetAnimationFrame: number | null = null
-let dockDragPointerId: number | null = null
-let dockDragStartX = 0
-let dockDragStartY = 0
-let dockDragLastY = 0
-let dockDragLastTime = 0
-let dockDragVelocity = 0
-let dockDragAxis: 'horizontal' | 'pending' | 'vertical' = 'pending'
-let dockPosition = 0
-let pendingDockPosition: number | null = null
-let dockPaintFrame: number | null = null
-let dockAnimationFrame: number | null = null
-let dockClickSuppressedUntil = 0
-let openAnimationFrame: number | null = null
 
 const modalOpen = computed(() => isSheet.value && props.open)
+const drawerOpen = computed(() => !isSheet.value || props.open)
 const replyLabel = computed(() => `${props.replyCount} ${props.replyCount === 1 ? 'reply' : 'replies'}`)
 const postContextCollapsible = computed(() => (
   isSheet.value
@@ -105,342 +81,6 @@ function formatCount(value: number): string {
 function syncSheetQuery() {
   isSheet.value = sheetQuery?.matches ?? window.matchMedia(sheetQueryText).matches
   isPortraitSheet.value = portraitSheetQuery?.matches ?? window.matchMedia(portraitSheetQueryText).matches
-  if (!isPortraitSheet.value) resetGestures()
-}
-
-function prefersReducedMotion() {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-function sheetHeight() {
-  return panelRef.value?.getBoundingClientRect().height || window.innerHeight * 0.88 || 1
-}
-
-function applySheetPosition(position: number) {
-  sheetPosition = position
-  if (panelRef.value) panelRef.value.style.transform = `translate3d(0, ${position}px, 0)`
-  if (backdropRef.value) {
-    const progress = Math.max(0, Math.min(1, position / sheetHeight()))
-    backdropRef.value.style.opacity = String(Math.pow(1 - progress, 1.45))
-  }
-}
-
-function queueSheetPosition(position: number) {
-  pendingSheetPosition = position
-  if (sheetPaintFrame !== null) return
-  sheetPaintFrame = window.requestAnimationFrame(() => {
-    sheetPaintFrame = null
-    if (pendingSheetPosition === null) return
-    applySheetPosition(pendingSheetPosition)
-    pendingSheetPosition = null
-  })
-}
-
-function applyDockPosition(position: number) {
-  dockPosition = position
-  if (dockRef.value) dockRef.value.style.transform = `translate3d(0, ${position}px, 0)`
-}
-
-function queueDockPosition(position: number) {
-  pendingDockPosition = position
-  if (dockPaintFrame !== null) return
-  dockPaintFrame = window.requestAnimationFrame(() => {
-    dockPaintFrame = null
-    if (pendingDockPosition === null) return
-    applyDockPosition(pendingDockPosition)
-    pendingDockPosition = null
-  })
-}
-
-function animateSheetTo(target: number, initialVelocity = 0, onComplete?: () => void) {
-  if (sheetAnimationFrame !== null) window.cancelAnimationFrame(sheetAnimationFrame)
-  if (prefersReducedMotion()) {
-    applySheetPosition(target)
-    onComplete?.()
-    return
-  }
-
-  let position = sheetPosition
-  let velocity = initialVelocity
-  let previousTime = performance.now()
-  const stiffness = target === 0 ? 360 : 430
-  const damping = target === 0 ? 34 : 38
-
-  const step = (time: number) => {
-    const elapsed = Math.min(0.032, Math.max(0.001, (time - previousTime) / 1000))
-    previousTime = time
-    const acceleration = -stiffness * (position - target) - damping * velocity
-    velocity += acceleration * elapsed
-    position += velocity * elapsed
-    applySheetPosition(position)
-
-    const exitedViewport = target > 0 && position >= sheetHeight()
-    const settled = Math.abs(position - target) < 0.6 && Math.abs(velocity) < 8
-    if (exitedViewport || settled) {
-      sheetAnimationFrame = null
-      applySheetPosition(target)
-      onComplete?.()
-      return
-    }
-    sheetAnimationFrame = window.requestAnimationFrame(step)
-  }
-
-  sheetAnimationFrame = window.requestAnimationFrame(step)
-}
-
-function animateDockTo(target: number, initialVelocity = 0, onComplete?: () => void) {
-  if (dockAnimationFrame !== null) window.cancelAnimationFrame(dockAnimationFrame)
-  if (prefersReducedMotion()) {
-    applyDockPosition(target)
-    onComplete?.()
-    return
-  }
-
-  let position = dockPosition
-  let velocity = initialVelocity
-  let previousTime = performance.now()
-  const stiffness = 420
-  const damping = 38
-
-  const step = (time: number) => {
-    const elapsed = Math.min(0.032, Math.max(0.001, (time - previousTime) / 1000))
-    previousTime = time
-    const acceleration = -stiffness * (position - target) - damping * velocity
-    velocity += acceleration * elapsed
-    position += velocity * elapsed
-    applyDockPosition(position)
-
-    if (Math.abs(position - target) < 0.6 && Math.abs(velocity) < 8) {
-      dockAnimationFrame = null
-      applyDockPosition(target)
-      onComplete?.()
-      return
-    }
-    dockAnimationFrame = window.requestAnimationFrame(step)
-  }
-
-  dockAnimationFrame = window.requestAnimationFrame(step)
-}
-
-function cancelGestureFrames() {
-  if (sheetPaintFrame !== null) window.cancelAnimationFrame(sheetPaintFrame)
-  if (sheetAnimationFrame !== null) window.cancelAnimationFrame(sheetAnimationFrame)
-  if (dockPaintFrame !== null) window.cancelAnimationFrame(dockPaintFrame)
-  if (dockAnimationFrame !== null) window.cancelAnimationFrame(dockAnimationFrame)
-  if (openAnimationFrame !== null) window.cancelAnimationFrame(openAnimationFrame)
-  sheetPaintFrame = null
-  sheetAnimationFrame = null
-  dockPaintFrame = null
-  dockAnimationFrame = null
-  openAnimationFrame = null
-  pendingSheetPosition = null
-  pendingDockPosition = null
-}
-
-function resetSheetDrag() {
-  if (sheetPaintFrame !== null) window.cancelAnimationFrame(sheetPaintFrame)
-  if (sheetAnimationFrame !== null) window.cancelAnimationFrame(sheetAnimationFrame)
-  sheetPaintFrame = null
-  sheetAnimationFrame = null
-  pendingSheetPosition = null
-  sheetPosition = 0
-  panelRef.value?.style.removeProperty('transform')
-  backdropRef.value?.style.removeProperty('opacity')
-  sheetDragPointerId = null
-  sheetDragVelocity = 0
-  sheetDragAxis = 'pending'
-}
-
-function resetDockDrag() {
-  if (dockPaintFrame !== null) window.cancelAnimationFrame(dockPaintFrame)
-  if (dockAnimationFrame !== null) window.cancelAnimationFrame(dockAnimationFrame)
-  dockPaintFrame = null
-  dockAnimationFrame = null
-  pendingDockPosition = null
-  dockPosition = 0
-  dockRef.value?.style.removeProperty('transform')
-  dockDragPointerId = null
-  dockDragVelocity = 0
-  dockDragAxis = 'pending'
-}
-
-function resetGestures() {
-  cancelGestureFrames()
-  resetSheetDrag()
-  resetDockDrag()
-  dockClickSuppressedUntil = 0
-}
-
-function beginSheetDrag(event: PointerEvent) {
-  if (!isPortraitSheet.value || event.button !== 0) return
-  const target = event.target
-  if (target instanceof Element && target.closest('button, a, summary')) return
-  if (sheetAnimationFrame !== null) window.cancelAnimationFrame(sheetAnimationFrame)
-  sheetAnimationFrame = null
-  sheetDragPointerId = event.pointerId
-  sheetDragStartX = event.clientX
-  sheetDragStartY = event.clientY
-  sheetDragLastY = event.clientY
-  sheetDragLastTime = event.timeStamp
-  sheetDragVelocity = 0
-  sheetDragAxis = 'pending'
-  ;(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId)
-}
-
-function moveSheetDrag(event: PointerEvent) {
-  if (event.pointerId !== sheetDragPointerId) return
-  const deltaX = event.clientX - sheetDragStartX
-  const deltaY = event.clientY - sheetDragStartY
-  if (sheetDragAxis === 'pending' && Math.max(Math.abs(deltaX), Math.abs(deltaY)) > 5) {
-    sheetDragAxis = Math.abs(deltaY) >= Math.abs(deltaX) ? 'vertical' : 'horizontal'
-  }
-  if (sheetDragAxis !== 'vertical') return
-  event.preventDefault()
-  const elapsed = Math.max(1, event.timeStamp - sheetDragLastTime)
-  const instantaneousVelocity = (event.clientY - sheetDragLastY) / elapsed
-  sheetDragVelocity = sheetDragVelocity * 0.72 + instantaneousVelocity * 0.28
-  sheetDragLastY = event.clientY
-  sheetDragLastTime = event.timeStamp
-  const position = deltaY >= 0 ? deltaY : -Math.min(24, Math.abs(deltaY) * 0.16)
-  queueSheetPosition(position)
-}
-
-function endSheetDrag(event: PointerEvent, cancelled = false) {
-  if (event.pointerId !== sheetDragPointerId) return
-  ;(event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId)
-  if (pendingSheetPosition !== null) applySheetPosition(pendingSheetPosition)
-  pendingSheetPosition = null
-  const panelHeight = sheetHeight()
-  const projectedPosition = sheetPosition + Math.max(0, sheetDragVelocity) * 190
-  const shouldClose = !cancelled && sheetDragAxis === 'vertical' && (
-    projectedPosition > Math.min(190, panelHeight * 0.28)
-    || (sheetPosition > 18 && sheetDragVelocity > 0.78)
-  )
-  sheetDragPointerId = null
-
-  if (!shouldClose) {
-    animateSheetTo(0, sheetDragVelocity * 1000)
-    return
-  }
-
-  animateSheetTo(panelHeight + 24, Math.max(0, sheetDragVelocity * 1000), requestClose)
-}
-
-function beginDockDrag(event: PointerEvent) {
-  if (!isPortraitSheet.value || event.button !== 0) return
-  const target = event.target
-  if (target instanceof Element && target.closest('.comments-dock-clear')) return
-  if (dockAnimationFrame !== null) window.cancelAnimationFrame(dockAnimationFrame)
-  dockAnimationFrame = null
-  dockDragPointerId = event.pointerId
-  dockDragStartX = event.clientX
-  dockDragStartY = event.clientY
-  dockDragLastY = event.clientY
-  dockDragLastTime = event.timeStamp
-  dockDragVelocity = 0
-  dockDragAxis = 'pending'
-  ;(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId)
-}
-
-function moveDockDrag(event: PointerEvent) {
-  if (event.pointerId !== dockDragPointerId) return
-  const deltaX = event.clientX - dockDragStartX
-  const deltaY = event.clientY - dockDragStartY
-  if (dockDragAxis === 'pending' && Math.max(Math.abs(deltaX), Math.abs(deltaY)) > 5) {
-    dockDragAxis = Math.abs(deltaY) >= Math.abs(deltaX) ? 'vertical' : 'horizontal'
-  }
-  if (dockDragAxis !== 'vertical') return
-  event.preventDefault()
-  const elapsed = Math.max(1, event.timeStamp - dockDragLastTime)
-  const instantaneousVelocity = (event.clientY - dockDragLastY) / elapsed
-  dockDragVelocity = dockDragVelocity * 0.72 + instantaneousVelocity * 0.28
-  dockDragLastY = event.clientY
-  dockDragLastTime = event.timeStamp
-  const position = deltaY < 0
-    ? -Math.min(112, Math.abs(deltaY) * 0.72)
-    : Math.min(12, deltaY * 0.12)
-  queueDockPosition(position)
-}
-
-function endDockDrag(event: PointerEvent, cancelled = false) {
-  if (event.pointerId !== dockDragPointerId) return
-  ;(event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId)
-  if (pendingDockPosition !== null) applyDockPosition(pendingDockPosition)
-  pendingDockPosition = null
-  const projectedPosition = dockPosition + Math.min(0, dockDragVelocity) * 170
-  const shouldOpen = !cancelled && (
-    projectedPosition < -54
-    || (dockPosition < -14 && dockDragVelocity < -0.72)
-  )
-  if (dockDragAxis === 'vertical') {
-    event.preventDefault()
-    dockClickSuppressedUntil = performance.now() + 350
-  }
-  dockDragPointerId = null
-
-  if (shouldOpen) {
-    openPanel()
-  } else {
-    animateDockTo(0, dockDragVelocity * 1000)
-  }
-}
-
-function lockDocumentScroll() {
-  if (scrollLocked) return
-  lockedScrollY = window.scrollY
-  previousDocumentOverflow = document.documentElement.style.overflow
-  previousBodyPosition = document.body.style.position
-  previousBodyTop = document.body.style.top
-  previousBodyWidth = document.body.style.width
-  document.documentElement.style.overflow = 'hidden'
-  document.body.style.position = 'fixed'
-  document.body.style.top = `-${lockedScrollY}px`
-  document.body.style.width = '100%'
-  scrollLocked = true
-}
-
-function unlockDocumentScroll() {
-  if (!scrollLocked) return
-  document.documentElement.style.overflow = previousDocumentOverflow
-  document.body.style.position = previousBodyPosition
-  document.body.style.top = previousBodyTop
-  document.body.style.width = previousBodyWidth
-  window.scrollTo({ top: lockedScrollY })
-  scrollLocked = false
-}
-
-function focusableElements() {
-  if (!panelRef.value) return []
-  return Array.from(panelRef.value.querySelectorAll<HTMLElement>(
-    'a[href], button:not([disabled]), details > summary, [tabindex]:not([tabindex="-1"])',
-  )).filter((element) => !element.hasAttribute('hidden') && element.offsetParent !== null)
-}
-
-function handlePanelKeydown(event: KeyboardEvent) {
-  if (!modalOpen.value) return
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    dismissSheet()
-    return
-  }
-  if (event.key !== 'Tab') return
-
-  const focusable = focusableElements()
-  if (!focusable.length) {
-    event.preventDefault()
-    panelRef.value?.focus()
-    return
-  }
-
-  const first = focusable[0]
-  const last = focusable[focusable.length - 1]
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
 }
 
 function addHistoryEntry() {
@@ -469,27 +109,6 @@ function discardHistoryEntry() {
   history.replaceState(nextState, '', window.location.href)
 }
 
-async function openPanel() {
-  if (props.open) return
-  const animate = isPortraitSheet.value && !prefersReducedMotion()
-  if (animate) applySheetPosition(window.innerHeight)
-  emit('update:open', true)
-  if (!animate) return
-  await nextTick()
-  applySheetPosition(sheetHeight() + 24)
-  openAnimationFrame = window.requestAnimationFrame(() => {
-    openAnimationFrame = null
-    animateSheetTo(0)
-  })
-}
-
-function handleDockClick(event: MouseEvent) {
-  const target = event.target
-  if (target instanceof Element && target.closest('.comments-dock-clear')) return
-  if (performance.now() < dockClickSuppressedUntil) return
-  openPanel()
-}
-
 async function shareFromSheet() {
   if (typeof navigator.share !== 'function') {
     emit('copyLink')
@@ -512,12 +131,18 @@ function requestClose() {
   emit('update:open', false)
 }
 
-function dismissSheet() {
-  if (!isPortraitSheet.value || prefersReducedMotion()) {
-    requestClose()
+function handleDrawerOpenChange(open: boolean) {
+  if (!isSheet.value) return
+  if (open) {
+    emit('update:open', true)
     return
   }
-  animateSheetTo(sheetHeight() + 24, 0, requestClose)
+  requestClose()
+}
+
+function handleOpenAutoFocus(event: Event) {
+  event.preventDefault()
+  closeButtonRef.value?.focus()
 }
 
 function handlePopState() {
@@ -526,19 +151,12 @@ function handlePopState() {
   emit('update:open', false)
 }
 
-watch(modalOpen, async (open) => {
+watch(modalOpen, (open) => {
   emit('modalChange', open)
   if (open) {
-    lockDocumentScroll()
     addHistoryEntry()
-    await nextTick()
-    closeButtonRef.value?.focus()
   } else {
-    resetGestures()
-    unlockDocumentScroll()
     discardHistoryEntry()
-    await nextTick()
-    dockTriggerRef.value?.focus()
   }
 }, { immediate: true })
 
@@ -555,82 +173,69 @@ onBeforeUnmount(() => {
   sheetQuery?.removeEventListener('change', syncSheetQuery)
   portraitSheetQuery?.removeEventListener('change', syncSheetQuery)
   window.removeEventListener('popstate', handlePopState)
-  unlockDocumentScroll()
   discardHistoryEntry()
-  resetGestures()
   emit('modalChange', false)
 })
 </script>
 
 <template>
-  <div class="photo-comments">
-    <div
-      v-show="!open"
-      ref="dockRef"
-      class="comments-dock"
-      @click="handleDockClick"
-      @pointerdown="beginDockDrag"
-      @pointermove="moveDockDrag"
-      @pointerup="endDockDrag"
-      @pointercancel="endDockDrag($event, true)"
-    >
-      <button
-        ref="dockTriggerRef"
-        type="button"
-        class="comments-dock-trigger"
-        :aria-expanded="open"
-        aria-controls="photo-comments-panel"
-      >
-        <span>View comments</span>
-        <strong>{{ replyLabel }}</strong>
-      </button>
-      <button
-        type="button"
-        class="comments-dock-clear"
-        aria-label="Close selected photo"
-        @click="emit('clearSelection')"
-      >
-        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
-      </button>
-    </div>
-
-    <button
-      v-if="isPortraitSheet && open"
-      ref="backdropRef"
-      type="button"
-      class="comments-backdrop"
-      tabindex="-1"
-      aria-hidden="true"
-      @click="dismissSheet"
-    ></button>
-
-    <section
-      v-show="!isSheet || open"
-      id="photo-comments-panel"
-      ref="panelRef"
-      class="comments-section"
-      :class="{
-        'is-modal-sheet': isSheet,
-        'is-open': open,
-        'is-portrait-sheet': isPortraitSheet,
-      }"
-      :role="isSheet ? 'dialog' : 'region'"
-      :aria-modal="isSheet && open ? 'true' : undefined"
-      aria-labelledby="photo-comments-title"
-      tabindex="-1"
-      @keydown="handlePanelKeydown"
-    >
-      <header
-        class="comments-panel-header"
-        @pointerdown="beginSheetDrag"
-        @pointermove="moveSheetDrag"
-        @pointerup="endSheetDrag"
-        @pointercancel="endSheetDrag($event, true)"
-      >
-        <div>
-          <h1 id="photo-comments-title">Replies</h1>
-          <span>{{ replyLabel }}</span>
+  <DrawerRoot
+    :open="drawerOpen"
+    :modal="isSheet"
+    swipe-direction="down"
+    @update:open="handleDrawerOpenChange"
+  >
+    <div class="photo-comments">
+      <DrawerSwipeArea v-show="isSheet && !open" as-child>
+        <div class="comments-dock">
+          <span class="comments-dock-handle" aria-hidden="true"></span>
+          <DrawerTrigger as-child>
+            <button
+              type="button"
+              class="comments-dock-trigger"
+            >
+              <span>View comments</span>
+              <strong>{{ replyLabel }}</strong>
+            </button>
+          </DrawerTrigger>
+          <button
+            type="button"
+            class="comments-dock-clear"
+            aria-label="Close selected photo"
+            @click="emit('clearSelection')"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          </button>
         </div>
+      </DrawerSwipeArea>
+
+      <DrawerPortal :disabled="!isSheet">
+        <DrawerOverlay v-if="isSheet" class="comments-backdrop" />
+
+      <DrawerContent
+        as-child
+        :force-mount="!isSheet"
+        :initial-focus="false"
+        @open-auto-focus="handleOpenAutoFocus"
+      >
+        <section
+          id="photo-comments-panel"
+          class="comments-section"
+          :class="{
+            'is-modal-sheet': isSheet,
+            'is-open': open,
+            'is-portrait-sheet': isPortraitSheet,
+          }"
+          :role="isSheet ? 'dialog' : 'region'"
+          :aria-modal="isSheet && open ? 'true' : undefined"
+        >
+          <header class="comments-panel-header">
+            <div>
+              <DrawerTitle as-child>
+                <h1>Replies</h1>
+              </DrawerTitle>
+              <span>{{ replyLabel }}</span>
+            </div>
         <button
           v-if="isSheet"
           type="button"
@@ -682,7 +287,7 @@ onBeforeUnmount(() => {
           type="button"
           class="comments-close"
           :aria-label="isSheet ? 'Close comments' : 'Close selected photo'"
-          @click="isSheet ? dismissSheet() : emit('clearSelection')"
+          @click="isSheet ? requestClose() : emit('clearSelection')"
         >
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
         </button>
@@ -768,9 +373,12 @@ onBeforeUnmount(() => {
         <a v-if="remoteUrl" class="mastodon-reply-link" :href="remoteUrl" target="_blank" rel="noopener noreferrer">
           Reply on Mastodon <span aria-hidden="true">↗</span>
         </a>
-      </div>
-    </section>
-  </div>
+          </div>
+        </section>
+      </DrawerContent>
+      </DrawerPortal>
+    </div>
+  </DrawerRoot>
 </template>
 
 <style scoped>
@@ -1342,9 +950,31 @@ button.photo-share-button {
     margin-inline: max(0.35rem, env(safe-area-inset-left, 0px)) max(0.35rem, env(safe-area-inset-right, 0px));
     padding: 0.55rem 0.65rem max(0.55rem, env(safe-area-inset-bottom, 0px));
     pointer-events: auto;
+    position: relative;
     touch-action: pan-x;
     user-select: none;
     will-change: transform;
+  }
+
+  .comments-dock-handle {
+    cursor: grab;
+    height: 14px;
+    left: 3rem;
+    position: absolute;
+    right: 3rem;
+    top: 0;
+  }
+
+  .comments-dock-handle::after {
+    background: color-mix(in srgb, var(--photos-muted) 52%, transparent);
+    border-radius: 999px;
+    content: '';
+    height: 4px;
+    left: 50%;
+    position: absolute;
+    top: 4px;
+    transform: translateX(-50%);
+    width: 2.5rem;
   }
 
   .comments-backdrop {
@@ -1356,7 +986,16 @@ button.photo-share-button {
     padding: 0;
     pointer-events: auto;
     position: fixed;
+    z-index: 40;
     will-change: opacity;
+  }
+
+  .comments-backdrop[data-state='open'] {
+    animation: comments-backdrop-in 300ms ease-out;
+  }
+
+  .comments-backdrop[data-state='closed'] {
+    animation: comments-backdrop-out 220ms ease-in;
   }
 
   .comments-dock-trigger {
@@ -1397,7 +1036,22 @@ button.photo-share-button {
     position: fixed;
     right: 0;
     top: 0;
+    transform: translateY(var(--drawer-swipe-movement-y, 0px));
+    transition: transform 450ms cubic-bezier(0.32, 0.72, 0, 1);
     width: auto;
+    z-index: 41;
+  }
+
+  .comments-section.is-modal-sheet[data-state='open'] {
+    animation: comments-sheet-in 450ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .comments-section.is-modal-sheet[data-state='closed'] {
+    animation: comments-sheet-out 300ms ease-in;
+  }
+
+  .comments-section.is-modal-sheet[data-swiping] {
+    transition-duration: 0ms;
   }
 
   .comments-section.is-modal-sheet.is-portrait-sheet {
@@ -1487,6 +1141,22 @@ button.photo-share-button {
   }
 }
 
+@keyframes comments-sheet-in {
+  from { translate: 0 100%; }
+}
+
+@keyframes comments-sheet-out {
+  to { translate: 0 100%; }
+}
+
+@keyframes comments-backdrop-in {
+  from { opacity: 0; }
+}
+
+@keyframes comments-backdrop-out {
+  to { opacity: 0; }
+}
+
 @media (max-width: 36rem) {
   .comments-panel-header {
     grid-template-columns: minmax(0, 1fr) auto auto;
@@ -1514,6 +1184,7 @@ button.photo-share-button {
   .comments-backdrop,
   .comments-section,
   .comments-section.is-modal-sheet.is-portrait-sheet {
+    animation: none;
     transition: none;
   }
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { PhotoCommentsAttachment } from './photo-comments-types'
+import { useDevicePixelRatio } from './device-pixel-ratio'
 import { responsiveImagePlan, type ImageDisplayContext } from './responsive-image'
 
 const props = withDefaults(defineProps<{
@@ -19,11 +20,12 @@ const props = withDefaults(defineProps<{
 })
 
 const loaded = ref(false)
+const devicePixelRatio = useDevicePixelRatio()
 const connection = navigator as Navigator & { connection?: { saveData?: boolean } }
 const plan = computed(() => props.attachment.localMedia
   ? responsiveImagePlan({
       context: props.context,
-      devicePixelRatio: window.devicePixelRatio,
+      devicePixelRatio: devicePixelRatio.value,
       displayWidth: props.displayWidth,
       media: props.attachment.localMedia,
       saveData: connection.connection?.saveData === true,

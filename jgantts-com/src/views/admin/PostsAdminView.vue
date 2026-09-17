@@ -855,7 +855,7 @@ onBeforeUnmount(() => {
                 </p>
                 <div v-if="previewHtml" class="preview-body" v-html="previewHtml"></div>
                 <p v-else-if="!previewMedia.length" class="empty-state">Add photos or text to preview the post.</p>
-                <p v-else class="empty-state"></p>
+                <p v-else class="empty-state">Photo-only post</p>
               </div>
             </article>
           </section>

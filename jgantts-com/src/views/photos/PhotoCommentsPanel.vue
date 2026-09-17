@@ -5,7 +5,6 @@ import {
   DrawerOverlay,
   DrawerPortal,
   DrawerRoot,
-  DrawerSwipeArea,
   DrawerTitle,
   DrawerTrigger,
 } from 'reka-ui'
@@ -47,6 +46,11 @@ const closeButtonRef = ref<HTMLButtonElement | null>(null)
 let sheetQuery: MediaQueryList | null = null
 let portraitSheetQuery: MediaQueryList | null = null
 let ownsHistoryEntry = false
+let dockPointerId: number | null = null
+let dockStartX = 0
+let dockStartY = 0
+let dockAxis: 'horizontal' | 'pending' | 'vertical' = 'pending'
+let suppressDockClickUntil = 0
 
 const modalOpen = computed(() => isSheet.value && props.open)
 const drawerOpen = computed(() => !isSheet.value || props.open)
@@ -145,6 +149,62 @@ function handleOpenAutoFocus(event: Event) {
   closeButtonRef.value?.focus()
 }
 
+function beginDockSwipe(event: PointerEvent) {
+  if (!isPortraitSheet.value || !event.isPrimary || event.button !== 0) return
+  const target = event.target
+  if (target instanceof Element && target.closest('.comments-dock-clear')) return
+  dockPointerId = event.pointerId
+  dockStartX = event.clientX
+  dockStartY = event.clientY
+  dockAxis = 'pending'
+}
+
+function moveDockSwipe(event: PointerEvent) {
+  if (event.pointerId !== dockPointerId) return
+  const deltaX = event.clientX - dockStartX
+  const deltaY = event.clientY - dockStartY
+  if (dockAxis === 'pending' && Math.max(Math.abs(deltaX), Math.abs(deltaY)) > 6) {
+    dockAxis = Math.abs(deltaY) > Math.abs(deltaX) ? 'vertical' : 'horizontal'
+    if (dockAxis === 'vertical') {
+      try {
+        ;(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId)
+      } catch {
+        // Synthetic pointers and older browsers may not expose active capture.
+      }
+    }
+  }
+  if (dockAxis === 'vertical' && deltaY < 0) event.preventDefault()
+}
+
+function endDockSwipe(event: PointerEvent, cancelled = false) {
+  if (event.pointerId !== dockPointerId) return
+  try {
+    ;(event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId)
+  } catch {
+    // The pointer may already have released its implicit touch capture.
+  }
+  const shouldOpen = !cancelled
+    && dockAxis === 'vertical'
+    && event.clientY - dockStartY <= -40
+  dockPointerId = null
+  dockAxis = 'pending'
+  if (!shouldOpen) return
+  suppressDockClickUntil = performance.now() + 350
+  emit('update:open', true)
+}
+
+function handleDockClick(event: MouseEvent) {
+  const target = event.target
+  if (target instanceof Element && target.closest('.comments-dock-clear')) return
+  if (performance.now() < suppressDockClickUntil) {
+    event.preventDefault()
+    event.stopPropagation()
+    return
+  }
+  if (target instanceof Element && target.closest('.comments-dock-trigger')) return
+  if (!props.open) emit('update:open', true)
+}
+
 function handlePopState() {
   if (!props.open || !isSheet.value) return
   ownsHistoryEntry = false
@@ -186,8 +246,15 @@ onBeforeUnmount(() => {
     @update:open="handleDrawerOpenChange"
   >
     <div class="photo-comments">
-      <DrawerSwipeArea v-show="isSheet && !open" as-child>
-        <div class="comments-dock">
+      <div
+        v-show="isSheet && !open"
+        class="comments-dock"
+        @click="handleDockClick"
+        @pointerdown="beginDockSwipe"
+        @pointermove="moveDockSwipe"
+        @pointerup="endDockSwipe"
+        @pointercancel="endDockSwipe($event, true)"
+      >
           <span class="comments-dock-handle" aria-hidden="true"></span>
           <DrawerTrigger as-child>
             <button
@@ -206,10 +273,9 @@ onBeforeUnmount(() => {
           >
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
           </button>
-        </div>
-      </DrawerSwipeArea>
+      </div>
 
-      <DrawerPortal :disabled="!isSheet">
+      <DrawerPortal disabled>
         <DrawerOverlay v-if="isSheet" class="comments-backdrop" />
 
       <DrawerContent
@@ -400,7 +466,7 @@ onBeforeUnmount(() => {
 }
 
 .comments-section {
-  background: var(--photos-panel);
+  background: var(--photos-panel, #f4efe8);
   border: 1px solid var(--photos-border);
   border-radius: 12px;
   box-shadow: var(--photos-card-shadow);
@@ -978,7 +1044,7 @@ button.photo-share-button {
   }
 
   .comments-backdrop {
-    background: color-mix(in srgb, var(--photos-text) 42%, transparent);
+    background: color-mix(in srgb, var(--photos-text, #20242a) 42%, transparent);
     border: 0;
     display: block;
     inset: 0;
@@ -1024,6 +1090,7 @@ button.photo-share-button {
   }
 
   .comments-section.is-modal-sheet {
+    background: var(--photos-panel, #f4efe8);
     border: 0;
     border-radius: 0;
     bottom: 0;
@@ -1065,7 +1132,7 @@ button.photo-share-button {
   }
 
   .comments-panel-header {
-    background: var(--photos-panel);
+    background: var(--photos-panel, #f4efe8);
     padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
     padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
     padding-top: max(0.65rem, env(safe-area-inset-top, 0px));

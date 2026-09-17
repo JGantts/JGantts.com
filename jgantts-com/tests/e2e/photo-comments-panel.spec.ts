@@ -123,6 +123,7 @@ test('mobile sheet locks the gallery and has exactly one vertical scroll owner',
 
   const sheet = page.getByRole('dialog', { name: 'Replies' })
   await expect(sheet).toBeVisible()
+  expect(await sheet.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
   await expect(page.locator('.gallery-surface')).toHaveAttribute('inert', '')
   await expect(sheet.locator('.comments-context')).not.toHaveAttribute('open', '')
   await expect(sheet.locator('.comment').first()).toBeInViewport()
@@ -162,17 +163,20 @@ test('keyboard, reduced-motion, and 200% zoom smoke test', async ({ page }) => {
   await expect(dock).toBeFocused()
 })
 
-test('portrait gestures open from the dock, scroll in content, and close from the header or backdrop', async ({ page }) => {
+test('portrait gestures open from the dock, scroll in content, and close from the header or backdrop', async ({ context, page }) => {
   await page.goto('/photos')
   await page.getByRole('button', { name: /Select post from/ }).first().click()
 
-  const dockHandle = page.locator('.comments-dock-handle')
-  const dockBox = await dockHandle.boundingBox()
-  if (!dockBox) throw new Error('Comments dock handle was not laid out')
-  await page.mouse.move(dockBox.x + dockBox.width / 2, dockBox.y + dockBox.height / 2)
-  await page.mouse.down()
-  await page.mouse.move(dockBox.x + dockBox.width / 2, dockBox.y - 72, { steps: 5 })
-  await page.mouse.up()
+  const dock = page.getByRole('button', { name: /View comments/ })
+  const dockBox = await dock.boundingBox()
+  if (!dockBox) throw new Error('Comments dock was not laid out')
+  const x = dockBox.x + dockBox.width / 2
+  const y = dockBox.y + dockBox.height / 2
+  const cdp = await context.newCDPSession(page)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 30 }] })
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 80 }] })
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
 
   const sheet = page.getByRole('dialog', { name: 'Replies' })
   const scroller = sheet.locator('.comments-panel-scroll')

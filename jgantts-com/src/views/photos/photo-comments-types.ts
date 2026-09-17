@@ -1,3 +1,5 @@
+import type { PostMedia } from '@/posts/types'
+
 export type PhotoCommentsAccount = {
   acct: string
   avatar: string
@@ -16,6 +18,7 @@ export type PhotoCommentsAttachment = {
   remote_url?: string | null
   type: 'audio' | 'gifv' | 'image' | 'unknown' | 'video'
   url: string
+  localMedia?: PostMedia
 }
 
 export type PhotoCommentsMention = {

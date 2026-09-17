@@ -1,19 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { calculatePhotoMasonry, type PhotoCard, type PlacedPhotoCard } from './masonry'
-
-type Attachment = {
-  description?: string | null
-  meta?: { original?: { aspect?: number; height?: number; width?: number } } | null
-  preview_url: string
-  type: 'audio' | 'gifv' | 'image' | 'unknown' | 'video'
-  url: string
-}
+import ResponsivePhoto from './ResponsivePhoto.vue'
+import type { PhotoCommentsAttachment } from './photo-comments-types'
 
 type PhotoPost = {
   id: string
   created_at: string
-  media_attachments: Attachment[]
+  media_attachments: PhotoCommentsAttachment[]
 }
 
 type PostExposure = {
@@ -53,9 +47,10 @@ const emit = defineEmits<{
 const containerRef = ref<HTMLElement | null>(null)
 const dialogRef = ref<HTMLDialogElement | null>(null)
 const containerWidth = ref(0)
+const viewportWidth = ref(0)
 const viewportHeight = ref(0)
 const activePhotoId = ref<string | null>(null)
-const expandedPhotoUrl = ref('')
+const expandedPreviewUrl = ref('')
 const selectedPostVisibility = ref(1)
 const exposureHistory = readExposureHistory()
 const exposurePrioritySnapshot = new Map(
@@ -70,9 +65,6 @@ let lastExposurePersistedAt = 0
 let selectedPostElement: HTMLElement | null = null
 let visibilityFrame: number | null = null
 let selectedPostSetupFrame: number | null = null
-let preloadFrame: number | null = null
-let fullSizeLoadToken = 0
-const originalPhotoPreloads = new Map<string, HTMLLinkElement>()
 const exposureSessions = new Map<string, PostExposureSession>()
 const clusterDateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 
@@ -139,6 +131,7 @@ function postPriority(postIndex: number, postId: string) {
 }
 
 function syncViewportHeight() {
+  viewportWidth.value = window.innerWidth
   viewportHeight.value = window.innerHeight
   if (containerRef.value) {
     containerWidth.value = containerRef.value.getBoundingClientRect().width
@@ -214,74 +207,18 @@ const activePhotoIndex = computed(() =>
   imageRecords.value.findIndex((record) => record.id === activePhotoId.value),
 )
 const activePhoto = computed(() => imageRecords.value[activePhotoIndex.value] ?? null)
+const activeLightboxSize = computed(() => {
+  const original = activePhoto.value?.attachment.meta?.original
+  const aspect = original?.aspect
+    ?? (original?.width && original.height ? original.width / original.height : 4 / 3)
+  const maximumWidth = Math.max(1, viewportWidth.value - 128)
+  const maximumHeight = Math.max(1, viewportHeight.value - 128)
+  const width = Math.min(maximumWidth, maximumHeight * aspect, original?.width ?? Number.POSITIVE_INFINITY)
+  return { height: width / aspect, width }
+})
 const effectiveActivePostId = computed(() =>
   selectedPostVisibility.value > 0.01 ? props.activePostId : undefined,
 )
-
-function preloadActivePostPhotos() {
-  if (!props.activePostId) return
-
-  imageRecords.value
-    .filter((record) => record.post.id === props.activePostId)
-    .forEach((record) => {
-      if (originalPhotoPreloads.has(record.id) || !record.attachment.url) return
-
-      const preload = document.createElement('link')
-      preload.rel = 'preload'
-      preload.as = 'image'
-      preload.href = record.attachment.url
-      preload.setAttribute('fetchpriority', 'low')
-      document.head.appendChild(preload)
-      originalPhotoPreloads.set(record.id, preload)
-    })
-}
-
-function scheduleActivePostPhotoPreloads() {
-  if (preloadFrame !== null) return
-
-  // Give Safari one frame to paint the selection and comments panel before starting
-  // downloads for the lightbox originals.
-  preloadFrame = requestAnimationFrame(() => {
-    preloadFrame = requestAnimationFrame(() => {
-      preloadFrame = null
-      preloadActivePostPhotos()
-    })
-  })
-}
-
-function displayPhotoUrl(id: string) {
-  const record = recordsById.value.get(id)
-  if (!record) return ''
-  return record.attachment.preview_url
-    || record.attachment.url
-}
-
-function prepareExpandedPhoto(id: string) {
-  const record = recordsById.value.get(id)
-  if (!record) return
-
-  const previewUrl = record.attachment.preview_url || record.attachment.url
-  const originalUrl = record.attachment.url || previewUrl
-  const loadToken = ++fullSizeLoadToken
-  expandedPhotoUrl.value = previewUrl
-  if (!originalUrl || originalUrl === previewUrl) return
-
-  // Let the dialog paint its cached preview before asking Safari to decode the original.
-  requestAnimationFrame(() => {
-    if (loadToken !== fullSizeLoadToken) return
-    const image = new Image()
-    image.decoding = 'async'
-    image.onload = async () => {
-      try {
-        await image.decode()
-      } catch {
-        // The load event already guarantees a usable image on browsers that reject decode().
-      }
-      if (loadToken === fullSizeLoadToken) expandedPhotoUrl.value = originalUrl
-    }
-    image.src = originalUrl
-  })
-}
 
 async function observeSelectedPost() {
   if (selectedPostSetupFrame !== null) {
@@ -462,7 +399,6 @@ watch(
   () => { void observeSelectedPost() },
   { immediate: true },
 )
-watch([() => props.activePostId, imageRecords], scheduleActivePostPhotoPreloads, { immediate: true })
 watch(() => props.interactionPaused, () => {
   const now = performance.now()
   exposureSessions.forEach((session) => {
@@ -485,8 +421,10 @@ async function openPhoto(id: string) {
   const activePostId = effectiveActivePostId.value
 
   if (record.post.id === activePostId) {
+    expandedPreviewUrl.value = containerRef.value
+      ?.querySelector<HTMLImageElement>(`[data-photo-id="${CSS.escape(id)}"] img`)
+      ?.currentSrc ?? ''
     activePhotoId.value = id
-    prepareExpandedPhoto(id)
     await nextTick()
     dialogRef.value?.showModal()
     document.documentElement.style.overflow = 'hidden'
@@ -730,8 +668,8 @@ const clusterHighlightPaths = computed(() => {
 })
 
 function closePhoto() {
-  fullSizeLoadToken += 1
   dialogRef.value?.close()
+  expandedPreviewUrl.value = ''
   document.documentElement.style.overflow = ''
 }
 
@@ -742,8 +680,10 @@ function showPhoto(offset: number) {
   )
   const nextPhoto = imageRecords.value[nextIndex]
   if (!nextPhoto) return
+  expandedPreviewUrl.value = containerRef.value
+    ?.querySelector<HTMLImageElement>(`[data-photo-id="${CSS.escape(nextPhoto.id)}"] img`)
+    ?.currentSrc ?? ''
   activePhotoId.value = nextPhoto.id
-  prepareExpandedPhoto(nextPhoto.id)
   emit('select', nextPhoto.postIndex)
 }
 
@@ -777,14 +717,11 @@ onMounted(() => {
 onBeforeUnmount(() => {
   samplePostExposures()
   persistExposureHistory()
-  fullSizeLoadToken += 1
-  originalPhotoPreloads.forEach((preload) => preload.remove())
   resizeObserver?.disconnect()
   exposureObserver?.disconnect()
   if (exposureSampleInterval !== null) clearInterval(exposureSampleInterval)
   if (visibilityFrame !== null) cancelAnimationFrame(visibilityFrame)
   if (selectedPostSetupFrame !== null) cancelAnimationFrame(selectedPostSetupFrame)
-  if (preloadFrame !== null) cancelAnimationFrame(preloadFrame)
   window.removeEventListener('resize', syncViewportHeight)
   window.removeEventListener('scroll', scheduleSelectedPostVisibilityUpdate)
   window.removeEventListener('focus', handleExposureActivityChange)
@@ -825,6 +762,7 @@ onBeforeUnmount(() => {
         <button
           v-for="card in cluster.cards"
           :key="card.id"
+          :data-photo-id="card.id"
           type="button"
           class="photo-card"
           :style="{
@@ -837,9 +775,11 @@ onBeforeUnmount(() => {
           :aria-label="photoActionLabel(card.id)"
           @click="openPhoto(card.id)"
         >
-          <img
-            :src="displayPhotoUrl(card.id)"
+          <ResponsivePhoto
+            :attachment="recordsById.get(card.id)!.attachment"
             :alt="recordsById.get(card.id)!.attachment.description || 'Mastodon post photo'"
+            context="tile"
+            :display-width="card.width"
             loading="lazy"
           />
         </button>
@@ -884,9 +824,20 @@ onBeforeUnmount(() => {
           @click="showPhoto(-1)"
         >←</button>
         <figure v-if="activePhoto" class="lightbox-figure">
-          <img
-            :src="expandedPhotoUrl"
+          <ResponsivePhoto
+            class="lightbox-photo"
+            :style="{
+              width: `${activeLightboxSize.width}px`,
+              height: `${activeLightboxSize.height}px`,
+            }"
+            :attachment="activePhoto.attachment"
             :alt="activePhoto.attachment.description || 'Expanded Mastodon post photo'"
+            context="lightbox"
+            :display-width="activeLightboxSize.width"
+            fetch-priority="high"
+            fit="contain"
+            loading="eager"
+            :preview-url="expandedPreviewUrl"
           />
           <figcaption>
             <span>{{ formatClusterDate(activePhoto.post.created_at) }}</span>
@@ -984,7 +935,7 @@ onBeforeUnmount(() => {
   position: absolute;
 }
 
-.photo-card img {
+.photo-card :deep(.responsive-photo img) {
   height: 100%;
   object-fit: cover;
   object-position: center;
@@ -992,7 +943,7 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
-.photo-card:hover img {
+.photo-card:hover :deep(.responsive-photo img) {
   transform: scale(1.025);
 }
 
@@ -1037,11 +988,11 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
-.lightbox-figure img {
+.lightbox-photo {
   border-radius: 6px;
   max-height: calc(100dvh - 8rem);
   max-width: calc(100vw - 8rem);
-  object-fit: contain;
+  overflow: hidden;
   pointer-events: auto;
 }
 

@@ -192,6 +192,10 @@ desktop or mobile without leaving the private editor.
 
 ### Phase 4 — Integrate local posts into the existing photos experience
 
+Image sizing, format selection, preload limits, byte-efficiency targets, and
+browser verification for this phase are specified in
+[`FRONTEND-IMAGE-DELIVERY-ROADMAP.md`](./FRONTEND-IMAGE-DELIVERY-ROADMAP.md).
+
 - [ ] **4.1** Capture desktop/mobile baselines of the existing `/photos` page and
   adapt its shared layout, clustered masonry, spacing, and selected-post behavior
   for site-owned posts. Introduce a normalized gallery view model so presentation

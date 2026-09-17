@@ -49,6 +49,7 @@ const commentsModalOpen = ref(false)
 const shareQrCodeUrl = ref('')
 const shareCopyStatus = ref('')
 const qrDialogRef = ref<HTMLDialogElement | null>(null)
+const qrDialogOpen = ref(false)
 let qrPreviousDocumentOverflow: string | null = null
 const activeToot = computed(() =>
   activeTootIndex.value === null ? null : allToots.value[activeTootIndex.value] ?? null,
@@ -136,6 +137,7 @@ function openQrFullscreen() {
   document.documentElement.style.overflow = 'hidden'
   try {
     qrDialogRef.value.showModal()
+    qrDialogOpen.value = true
   } catch {
     restoreQrDocumentOverflow()
   }
@@ -147,6 +149,7 @@ function closeQrFullscreen() {
 }
 
 function restoreQrDocumentOverflow() {
+  qrDialogOpen.value = false
   if (qrPreviousDocumentOverflow === null) return
   document.documentElement.style.overflow = qrPreviousDocumentOverflow
   qrPreviousDocumentOverflow = null
@@ -295,6 +298,7 @@ onMounted(async () => {
             id: `local:${post.id}`,
             media_attachments: post.media.map((media) => ({
               description: media.altText,
+              localMedia: media,
               meta: { original: { height: media.height ?? undefined, width: media.width ?? undefined } },
               preview_url: media.urls.thumbnail,
               type: 'image' as const,
@@ -490,7 +494,7 @@ function flattenComments(statuses: ThreadedPhotoComment[], depth = 0): DisplayPh
       @close="restoreQrDocumentOverflow"
     >
       <img
-        v-if="activeSharePhotoUrl"
+        v-if="qrDialogOpen && activeSharePhotoUrl"
         :src="activeSharePhotoUrl"
         alt=""
         class="photo-qr-dialog-backdrop"
@@ -498,7 +502,7 @@ function flattenComments(statuses: ThreadedPhotoComment[], depth = 0): DisplayPh
         @click="closeQrFullscreen"
       >
       <div class="photo-qr-dialog-content">
-        <figure v-if="activeSharePhotoUrl" class="photo-qr-dialog-photo">
+        <figure v-if="qrDialogOpen && activeSharePhotoUrl" class="photo-qr-dialog-photo">
           <img :src="activeSharePhotoUrl" alt="The photo being shared">
           <figcaption>{{ activeToot ? photoShareTitle(activeToot.post) : 'Photo by Jacob Gantt' }}</figcaption>
         </figure>

@@ -41,12 +41,16 @@ const position = computed(() => {
   return `${media.focalX * 100}% ${media.focalY * 100}%`
 })
 const previewStyle = computed(() => {
-  if (props.context !== 'lightbox') return undefined
   const previewUrl = props.previewUrl
-    || (!props.attachment.localMedia ? props.attachment.preview_url : '')
+    || props.attachment.localMedia?.placeholder?.url
+    || (props.context === 'lightbox' ? props.attachment.preview_url : '')
   if (!previewUrl) return undefined
   const safeUrl = previewUrl.replaceAll('"', '%22')
-  return { backgroundImage: `url("${safeUrl}")` }
+  return {
+    backgroundImage: `url("${safeUrl}")`,
+    backgroundPosition: position.value,
+    backgroundSize: props.fit,
+  }
 })
 
 watch(source, () => { loaded.value = false })
@@ -98,6 +102,7 @@ watch(source, () => { loaded.value = false })
 }
 
 .responsive-photo {
+  background-color: var(--photos-media-bg, #29231f);
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
@@ -105,7 +110,7 @@ watch(source, () => { loaded.value = false })
 
 .responsive-photo img {
   opacity: 0;
-  transition: opacity 120ms ease-out;
+  transition: opacity 220ms ease-out;
 }
 
 .responsive-photo.is-loaded img {

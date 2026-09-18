@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { calculatePhotoMasonry, type PhotoCard, type PlacedPhotoCard } from './masonry'
+import {
+  calculatePhotoMasonry,
+  comparePhotoScreenPosition,
+  type PhotoCard,
+  type PlacedPhotoCard,
+} from './masonry'
 import ResponsivePhoto from './ResponsivePhoto.vue'
 import type { PhotoCommentsAttachment } from './photo-comments-types'
 
@@ -204,10 +209,20 @@ const masonry = computed(() =>
 )
 
 const recordsById = computed(() => new Map(imageRecords.value.map((record) => [record.id, record])))
+const lightboxImageRecords = computed(() => {
+  const placedCards = masonry.value.clusters
+    .flatMap((cluster) => cluster.cards)
+    .sort(comparePhotoScreenPosition)
+  const placedIds = new Set(placedCards.map((card) => card.id))
+  return [
+    ...placedCards.map((card) => recordsById.value.get(card.id)!),
+    ...imageRecords.value.filter((record) => !placedIds.has(record.id)),
+  ]
+})
 const activePhotoIndex = computed(() =>
-  imageRecords.value.findIndex((record) => record.id === activePhotoId.value),
+  lightboxImageRecords.value.findIndex((record) => record.id === activePhotoId.value),
 )
-const activePhoto = computed(() => imageRecords.value[activePhotoIndex.value] ?? null)
+const activePhoto = computed(() => lightboxImageRecords.value[activePhotoIndex.value] ?? null)
 const activePostFirstLine = computed(() => firstPostLine(activePhoto.value?.post.content ?? ''))
 const activeLightboxSize = computed(() => {
   const original = activePhoto.value?.attachment.meta?.original
@@ -696,10 +711,10 @@ function closePhoto() {
 
 function showPhoto(offset: number) {
   const nextIndex = Math.min(
-    imageRecords.value.length - 1,
+    lightboxImageRecords.value.length - 1,
     Math.max(0, activePhotoIndex.value + offset),
   )
-  const nextPhoto = imageRecords.value[nextIndex]
+  const nextPhoto = lightboxImageRecords.value[nextIndex]
   if (!nextPhoto) return
   expandedPreviewUrl.value = containerRef.value
     ?.querySelector<HTMLImageElement>(`[data-photo-id="${CSS.escape(nextPhoto.id)}"] img`)
@@ -868,7 +883,7 @@ onBeforeUnmount(() => {
           type="button"
           class="lightbox-nav lightbox-next"
           aria-label="Next photo"
-          :disabled="activePhotoIndex >= imageRecords.length - 1"
+          :disabled="activePhotoIndex >= lightboxImageRecords.length - 1"
           @click="showPhoto(1)"
         >→</button>
       </dialog>

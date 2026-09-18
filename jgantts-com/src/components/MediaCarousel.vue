@@ -353,12 +353,12 @@ button.media-tile {
 
 @media (max-width: 36rem) {
   .photo-lightbox {
-    padding: 3.5rem 0.75rem;
+    padding: 3.5rem 0;
   }
 
   .lightbox-figure img {
     max-height: calc(100dvh - 7rem);
-    max-width: calc(100vw - 1.5rem);
+    max-width: 100vw;
   }
 
   .lightbox-nav {

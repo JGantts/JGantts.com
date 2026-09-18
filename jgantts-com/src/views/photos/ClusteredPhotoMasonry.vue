@@ -211,8 +211,9 @@ const activeLightboxSize = computed(() => {
   const original = activePhoto.value?.attachment.meta?.original
   const aspect = original?.aspect
     ?? (original?.width && original.height ? original.width / original.height : 4 / 3)
-  const maximumWidth = Math.max(1, viewportWidth.value - 128)
-  const maximumHeight = Math.max(1, viewportHeight.value - 128)
+  const isMobile = viewportWidth.value <= 36 * 16
+  const maximumWidth = Math.max(1, viewportWidth.value - (isMobile ? 0 : 128))
+  const maximumHeight = Math.max(1, viewportHeight.value - (isMobile ? 112 : 128))
   const width = Math.min(maximumWidth, maximumHeight * aspect, original?.width ?? Number.POSITIVE_INFINITY)
   return { height: width / aspect, width }
 })
@@ -1051,10 +1052,10 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 36rem) {
-  .photo-lightbox { padding: 3.5rem 0.75rem; }
-  .lightbox-figure img {
+  .photo-lightbox { padding: 3.5rem 0; }
+  .lightbox-photo {
     max-height: calc(100dvh - 7rem);
-    max-width: calc(100vw - 1.5rem);
+    max-width: 100vw;
   }
   .lightbox-nav {
     bottom: max(1rem, env(safe-area-inset-bottom));

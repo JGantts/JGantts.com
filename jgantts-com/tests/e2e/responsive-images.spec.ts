@@ -78,4 +78,10 @@ test('gallery and lightbox request bounded responsive renditions instead of alia
   await expect.poll(() => expanded.evaluate((image: HTMLImageElement) => image.currentSrc)).toMatch(/\/media\/media-1\/(?:avif-|w-|jpeg-)/)
   expect(mediaRequests.some((path) => /\/(?:thumbnail|large|original)$/.test(path))).toBe(false)
   expect(mediaRequests.some((path) => /w-2400$/.test(path))).toBe(false)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  const mobilePhoto = dialog.locator('.lightbox-photo')
+  await expect(mobilePhoto).toHaveCSS('width', '390px')
+  await expect(dialog).toHaveCSS('padding-left', '0px')
+  await expect(dialog).toHaveCSS('padding-right', '0px')
 })

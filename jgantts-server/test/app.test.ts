@@ -817,6 +817,7 @@ test('uploads local media and serves immutable originals and derivatives', async
     id: string;
     originalPath?: string;
     pipelineVersion: number | null;
+    thumbhash: string | null;
     placeholder: { url: string; width: number };
     derivatives?: unknown;
     renditions: Array<{ url: string; width: number }>;
@@ -825,6 +826,7 @@ test('uploads local media and serves immutable originals and derivatives', async
   assert.equal(uploaded.originalPath, undefined);
   assert.equal(uploaded.derivatives, undefined);
   assert.equal(uploaded.pipelineVersion, PHOTO_PIPELINE_VERSION);
+  assert.ok(uploaded.thumbhash && Buffer.from(uploaded.thumbhash, 'base64').length > 5);
   assert.deepEqual(uploaded.renditions.map((rendition) => rendition.width), [24, 24]);
   assert.equal(uploaded.placeholder.width, 24);
   assert.equal(uploadedResponse.headers.location, uploaded.urls.original);
@@ -935,8 +937,10 @@ test('uploads local media and serves immutable originals and derivatives', async
   const regeneratedMedia = JSON.parse(regeneratedResponse.body) as {
     pipelineVersion: number | null;
     renditions: Array<{ url: string }>;
+    thumbhash: string | null;
   };
   assert.equal(regeneratedMedia.pipelineVersion, PHOTO_PIPELINE_VERSION);
+  assert.ok(regeneratedMedia.thumbhash && Buffer.from(regeneratedMedia.thumbhash, 'base64').length > 5);
   assert.ok(regeneratedMedia.renditions.every(({ url }) => /-v-[a-f0-9]{8}/.test(url)));
   assert.equal(media.listForPost('media-api-post')[0].pipelineVersion, PHOTO_PIPELINE_VERSION);
 

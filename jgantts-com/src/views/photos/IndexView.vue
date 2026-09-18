@@ -301,6 +301,7 @@ onMounted(async () => {
               localMedia: media,
               meta: { original: { height: media.height ?? undefined, width: media.width ?? undefined } },
               preview_url: media.urls.thumbnail,
+              thumbhash: media.thumbhash,
               type: 'image' as const,
               url: media.urls.large,
             })),

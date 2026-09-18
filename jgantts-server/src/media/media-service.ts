@@ -23,7 +23,7 @@ const MINIMUM_AVIF_WIDTH = 768;
 const PLACEHOLDER_WIDTH = 32;
 // Increment this whenever the generated formats, dimensions, quality settings,
 // placeholder recipe, or other output-affecting behavior changes.
-export const PHOTO_PIPELINE_VERSION = 1;
+export const PHOTO_PIPELINE_VERSION = 2;
 const renditionFormats: Record<RenditionFormat, { extension: string; mimeType: string }> = {
   avif: { extension: 'avif', mimeType: 'image/avif' },
   jpeg: { extension: 'jpg', mimeType: 'image/jpeg' },
@@ -82,6 +82,7 @@ export interface PublicMedia extends Omit<
   'originalPath' | 'derivatives' | 'processingError' | 'renditionManifest'
 > {
   pipelineVersion: number | null;
+  thumbhash: string | null;
   placeholder: (Omit<MediaRendition, 'format' | 'path' | 'purpose' | 'variant'> & {
     format: 'webp'; purpose: 'placeholder'; url: string; variant: string;
   }) | null;
@@ -142,6 +143,9 @@ function publicMedia(media: MediaRecord, revision: number, versioned: boolean): 
   const pipelineVersion = Number.isInteger(manifestPipelineVersion) && manifestPipelineVersion! > 0
     ? manifestPipelineVersion!
     : null;
+  const thumbhash = typeof manifest.thumbhash === 'string' && manifest.thumbhash.length <= 128
+    ? manifest.thumbhash
+    : null;
   const placeholder = storedPlaceholder
     ? { ...toPublicRendition(storedPlaceholder), format: 'webp' as const,
       purpose: 'placeholder' as const }
@@ -167,6 +171,7 @@ function publicMedia(media: MediaRecord, revision: number, versioned: boolean): 
     displayOrder: media.displayOrder,
     processingState: media.processingState,
     pipelineVersion,
+    thumbhash,
     placeholder,
     createdAt: media.createdAt,
     updatedAt: media.updatedAt,
@@ -212,6 +217,17 @@ async function writePlaceholder(buffer: Buffer, outputPath: string): Promise<sha
     .toColourspace('srgb').blur(1).webp({ quality: 25, effort: 4 }).toFile(outputPath);
 }
 
+async function generateThumbhash(buffer: Buffer): Promise<string> {
+  const { data, info } = await sharp(buffer).autoOrient().resize({
+    width: 100,
+    height: 100,
+    fit: 'inside',
+    withoutEnlargement: true,
+  }).toColourspace('srgb').ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { rgbaToThumbHash } = await import('thumbhash');
+  return Buffer.from(rgbaToThumbHash(info.width, info.height, data)).toString('base64');
+}
+
 function responsiveWidths(sourceWidth: number): number[] {
   return Array.from(new Set([
     ...RESPONSIVE_IMAGE_WIDTHS.filter((width) => width <= sourceWidth),
@@ -230,10 +246,12 @@ async function stageRenditionSet(
   derivatives: Record<string, string>;
   renditions: MediaRendition[];
   stagedFiles: StagedMediaFile[];
+  thumbhash: string;
 }> {
   const renditions: MediaRendition[] = [];
   const derivatives: Record<string, string> = {};
   const stagedFiles: StagedMediaFile[] = [];
+  const thumbhash = await generateThumbhash(buffer);
   const addRendition = (rendition: MediaRendition, name: string, stagedPath: string) => {
     renditions.push(rendition);
     derivatives[rendition.variant] = rendition.path;
@@ -290,7 +308,7 @@ async function stageRenditionSet(
     Math.abs(rendition.width - target) < Math.abs(closest.width - target) ? rendition : closest).path;
   derivatives.thumbnail = closestPath(480);
   derivatives.large = closestPath(1_600);
-  return { derivatives, renditions, stagedFiles };
+  return { derivatives, renditions, stagedFiles, thumbhash };
 }
 
 async function verifyStagedFiles(
@@ -449,7 +467,12 @@ export class MediaService {
           .reduce((next, item) => Math.max(next, item.displayOrder + 1), 0),
         processingState: 'ready',
         processingError: null,
-        renditionManifest: { version: 1, pipelineVersion: PHOTO_PIPELINE_VERSION, renditions },
+        renditionManifest: {
+          version: 1,
+          pipelineVersion: PHOTO_PIPELINE_VERSION,
+          renditions,
+          thumbhash: stagedSet.thumbhash,
+        },
         createdAt,
         updatedAt: createdAt,
       });
@@ -607,6 +630,7 @@ export class MediaService {
           version: 1,
           pipelineVersion: PHOTO_PIPELINE_VERSION,
           renditions: stagedSet.renditions,
+          thumbhash: stagedSet.thumbhash,
         },
         width: renditionInput.metadata.autoOrient.width,
       }, new Date().toISOString());

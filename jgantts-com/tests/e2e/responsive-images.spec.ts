@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { rgbaToThumbHash } from 'thumbhash'
 
 const transparentPng = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+Avb1AAAAAElFTkSuQmCC',
   'base64',
 )
+const thumbhash = Buffer.from(rgbaToThumbHash(1, 1, [62, 117, 104, 255])).toString('base64')
 
 const widths = [320, 480, 768, 1024, 1600, 2400]
 const renditions = widths.flatMap((width) => [
@@ -32,8 +34,9 @@ const post = {
     altText: 'Responsive test photo', byteSize: 1, caption: null, checksumSha256: 'test',
     createdAt: '2026-09-17T12:00:00.000Z', date: null, displayOrder: 0,
     focalX: null, focalY: null, height: 1800, id: 'media-1', location: null,
-    mimeType: 'image/jpeg', pipelineVersion: 1, placeholder: null, postId: 'responsive-photo',
+    mimeType: 'image/jpeg', pipelineVersion: 2, placeholder: null, postId: 'responsive-photo',
     processingState: 'ready', renditions, time: null, title: null,
+    thumbhash,
     updatedAt: '2026-09-17T12:00:00.000Z', width: 2400,
     urls: {
       large: '/media/media-1/large', original: '/media/media-1/original',
@@ -67,6 +70,7 @@ test('gallery and lightbox request bounded responsive renditions instead of alia
 
   await page.goto('/photos/responsive-photo')
   const tile = page.locator('.photo-card img')
+  await expect(page.locator('.responsive-photo').first()).toHaveAttribute('style', /data:image\/png;base64/)
   await expect(tile).toHaveAttribute('srcset', /jpeg-w-/)
   await expect.poll(() => tile.evaluate((image: HTMLImageElement) => image.currentSrc)).toMatch(/\/media\/media-1\/(?:avif-|w-|jpeg-)/)
   expect(mediaRequests.some((path) => /\/(?:thumbnail|large|original)$/.test(path))).toBe(false)

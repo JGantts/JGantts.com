@@ -1,7 +1,10 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
+import { rgbaToThumbHash } from 'thumbhash'
 import type { PostMedia } from '@/posts/types'
 import ResponsivePhoto from './ResponsivePhoto.vue'
+
+const testThumbhash = btoa(String.fromCharCode(...rgbaToThumbHash(1, 1, [136, 68, 34, 255])))
 
 function localMedia(): PostMedia {
   return {
@@ -18,7 +21,7 @@ function localMedia(): PostMedia {
     id: 'photo',
     location: null,
     mimeType: 'image/jpeg',
-    pipelineVersion: 1,
+    pipelineVersion: 2,
     placeholder: {
       byteSize: 100,
       colorSpace: 'srgb',
@@ -44,6 +47,7 @@ function localMedia(): PostMedia {
       width: 1200,
     }],
     time: null,
+    thumbhash: testThumbhash,
     title: null,
     updatedAt: '',
     urls: { large: '/large', original: '/original', thumbnail: '/thumbnail' },
@@ -63,7 +67,7 @@ function attachment() {
 }
 
 describe('ResponsivePhoto placeholders', () => {
-  it('uses the tiny local placeholder with the same crop and focal point as a tile', () => {
+  it('decodes the inline ThumbHash with the same crop and focal point as a tile', () => {
     const wrapper = mount(ResponsivePhoto, {
       props: {
         alt: 'A sunset',
@@ -74,9 +78,27 @@ describe('ResponsivePhoto placeholders', () => {
     })
 
     const style = wrapper.get('.responsive-photo').attributes('style')
-    expect(style).toContain('background-image: url("/placeholder.webp")')
+    expect(style).toContain('background-image: url("data:image/png;base64,')
+    expect(style).not.toContain('/placeholder.webp')
     expect(style).toContain('background-position: 25% 75%')
     expect(style).toContain('background-size: cover')
+    wrapper.unmount()
+  })
+
+  it('falls back to the tiny WebP when a legacy photo has no ThumbHash', () => {
+    const legacyAttachment = attachment()
+    legacyAttachment.localMedia.thumbhash = null
+    const wrapper = mount(ResponsivePhoto, {
+      props: {
+        alt: 'A sunset',
+        attachment: legacyAttachment,
+        context: 'tile',
+        displayWidth: 300,
+      },
+    })
+
+    expect(wrapper.get('.responsive-photo').attributes('style'))
+      .toContain('background-image: url("/placeholder.webp")')
     wrapper.unmount()
   })
 

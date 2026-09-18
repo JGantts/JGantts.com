@@ -583,6 +583,7 @@ test('dry-runs and regenerates versioned derivatives while reconciling oriented 
   }).withMetadata({ orientation: 6 }).jpeg().toBuffer();
   const uploaded = await service.uploadImage({ postId: 'regenerate', altText: 'Rotated', buffer: source });
   assert.equal(uploaded.pipelineVersion, PHOTO_PIPELINE_VERSION);
+  assert.ok(uploaded.thumbhash && Buffer.from(uploaded.thumbhash, 'base64').length > 5);
   const before = repository.getById(uploaded.id)!;
   const oldFiles = Array.from(new Set(Object.values(before.derivatives)))
     .map((relativePath) => path.join(mediaRoot, relativePath!));
@@ -602,6 +603,7 @@ test('dry-runs and regenerates versioned derivatives while reconciling oriented 
   assert.ok('renditions' in regenerated.renditionManifest);
   if ('renditions' in regenerated.renditionManifest) {
     assert.equal(regenerated.renditionManifest.pipelineVersion, PHOTO_PIPELINE_VERSION);
+    assert.ok(Buffer.from(regenerated.renditionManifest.thumbhash, 'base64').length > 5);
     assert.ok(regenerated.renditionManifest.renditions.every(({ variant }) => /-v-[a-f0-9]{8}$/.test(variant)));
   }
   assert.ok(oldFiles.every((file) => !fs.existsSync(file)));

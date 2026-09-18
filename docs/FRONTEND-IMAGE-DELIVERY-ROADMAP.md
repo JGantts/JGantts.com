@@ -93,8 +93,9 @@ responsive markup.
   `fetchpriority="high"` only to the measured LCP photo.
 - [x] Apply existing focal points through `object-position`; do not change the
   server rendition pipeline.
-- [x] Use the existing tiny blurred placeholder behind local photos, matching
-  their crop and focal point before fading in the responsive image.
+- [x] Decode the inline ThumbHash behind local photos, matching their crop and
+  focal point before fading in the responsive image. Retain the tiny blurred
+  WebP as the fallback for legacy media without a hash.
 - [ ] Test initial load, scrolling, resizing, orientation changes, and direct
   links to selected posts.
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { thumbHashToDataURL } from 'thumbhash'
 import type { PhotoCommentsAttachment } from './photo-comments-types'
 import { useDevicePixelRatio } from './device-pixel-ratio'
 import { responsiveImagePlan, type ImageDisplayContext } from './responsive-image'
@@ -40,8 +41,20 @@ const position = computed(() => {
   if (media?.focalX === null || media?.focalY === null || !media) return 'center'
   return `${media.focalX * 100}% ${media.focalY * 100}%`
 })
+const thumbhashPreview = computed(() => {
+  const value = props.attachment.localMedia?.thumbhash ?? props.attachment.thumbhash
+  if (!value || value.length > 128) return ''
+  try {
+    const binary = atob(value)
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0))
+    return thumbHashToDataURL(bytes)
+  } catch {
+    return ''
+  }
+})
 const previewStyle = computed(() => {
   const previewUrl = props.previewUrl
+    || thumbhashPreview.value
     || props.attachment.localMedia?.placeholder?.url
     || (props.context === 'lightbox' ? props.attachment.preview_url : '')
   if (!previewUrl) return undefined

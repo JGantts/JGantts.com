@@ -520,6 +520,10 @@ verified against the live domain.
 - Rendition manifests now record the explicit photo-pipeline version separately
   from their manifest schema version. New uploads and regenerated sets use the
   current version; legacy manifests remain honestly marked as unversioned.
+- Pipeline version 2 adds a compact ThumbHash to every generated set. The hash
+  travels in the initial media metadata so clients can paint a representative
+  placeholder without waiting for another image request; the blurred WebP stays
+  available as a fallback for legacy media without a hash.
 - The authenticated photo-details dialog shows the stored pipeline version and
   can rerun the complete pipeline for one photo. Reruns verify and atomically
   promote a new set before deleting superseded derivatives, and concurrent

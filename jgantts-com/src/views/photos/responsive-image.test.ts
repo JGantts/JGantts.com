@@ -8,7 +8,7 @@ function media(): PostMedia {
     altText: 'Test photo', byteSize: 1, caption: null, checksumSha256: 'x',
     createdAt: '', date: null, displayOrder: 0, focalX: null, focalY: null,
     height: 1500, id: 'photo', location: null, mimeType: 'image/jpeg',
-    pipelineVersion: 1, placeholder: null, postId: 'post', processingState: 'ready', time: null,
+    pipelineVersion: 2, placeholder: null, postId: 'post', processingState: 'ready', thumbhash: null, time: null,
     title: null, updatedAt: '', width: 3000,
     renditions: widths.flatMap((width) => [
       { byteSize: 1, colorSpace: 'srgb' as const, format: 'webp' as const,

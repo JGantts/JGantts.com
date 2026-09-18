@@ -74,6 +74,8 @@ test('gallery and lightbox request bounded responsive renditions instead of alia
   await page.locator('.photo-card').click()
   const dialog = page.getByRole('dialog', { name: 'Photo viewer' })
   await expect(dialog).toBeVisible()
+  await expect(dialog.locator('figcaption')).toHaveText('Responsive photo')
+  await expect(dialog.locator('figcaption')).not.toContainText('Responsive test photo')
   const expanded = dialog.locator('img')
   await expect.poll(() => expanded.evaluate((image: HTMLImageElement) => image.currentSrc)).toMatch(/\/media\/media-1\/(?:avif-|w-|jpeg-)/)
   expect(mediaRequests.some((path) => /\/(?:thumbnail|large|original)$/.test(path))).toBe(false)

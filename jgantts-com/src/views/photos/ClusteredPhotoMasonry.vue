@@ -5,6 +5,7 @@ import ResponsivePhoto from './ResponsivePhoto.vue'
 import type { PhotoCommentsAttachment } from './photo-comments-types'
 
 type PhotoPost = {
+  content: string
   id: string
   created_at: string
   media_attachments: PhotoCommentsAttachment[]
@@ -207,6 +208,7 @@ const activePhotoIndex = computed(() =>
   imageRecords.value.findIndex((record) => record.id === activePhotoId.value),
 )
 const activePhoto = computed(() => imageRecords.value[activePhotoIndex.value] ?? null)
+const activePostFirstLine = computed(() => firstPostLine(activePhoto.value?.post.content ?? ''))
 const activeLightboxSize = computed(() => {
   const original = activePhoto.value?.attachment.meta?.original
   const aspect = original?.aspect
@@ -414,6 +416,24 @@ watch(
 
 function formatClusterDate(value: string): string {
   return clusterDateFormatter.format(new Date(value))
+}
+
+function firstPostLine(content: string): string {
+  const container = document.createElement('div')
+  container.innerHTML = content
+  const blocks = container.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote')
+
+  for (const block of blocks) {
+    const copy = block.cloneNode(true) as HTMLElement
+    copy.querySelectorAll('br').forEach((breakElement) => breakElement.replaceWith('\n'))
+    const line = copy.textContent
+      ?.split(/\r?\n/)
+      .map((value) => value.trim())
+      .find(Boolean)
+    if (line) return line
+  }
+
+  return container.textContent?.trim() ?? ''
 }
 
 async function openPhoto(id: string) {
@@ -840,9 +860,8 @@ onBeforeUnmount(() => {
             loading="eager"
             :preview-url="expandedPreviewUrl"
           />
-          <figcaption>
-            <span>{{ formatClusterDate(activePhoto.post.created_at) }}</span>
-            <span v-if="activePhoto.attachment.description">{{ activePhoto.attachment.description }}</span>
+          <figcaption v-if="activePostFirstLine">
+            <span>{{ activePostFirstLine }}</span>
           </figcaption>
         </figure>
         <button

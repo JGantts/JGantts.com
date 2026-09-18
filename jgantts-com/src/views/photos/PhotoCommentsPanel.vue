@@ -56,14 +56,6 @@ let suppressDockClickUntil = 0
 const modalOpen = computed(() => isSheet.value && props.open)
 const drawerOpen = computed(() => !isSheet.value || props.open)
 const replyLabel = computed(() => `${props.replyCount} ${props.replyCount === 1 ? 'reply' : 'replies'}`)
-const postContextCollapsible = computed(() => (
-  isSheet.value
-  || props.post.content
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .length > 320
-))
 
 const formatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
@@ -380,13 +372,11 @@ onBeforeUnmount(() => {
       </header>
 
       <div class="comments-panel-scroll">
-        <component
-          :is="postContextCollapsible ? 'details' : 'section'"
+        <article
           class="comments-context"
-          :aria-labelledby="postContextCollapsible ? undefined : 'photo-comments-context-title'"
+          aria-labelledby="photo-comments-context-title"
         >
-          <summary v-if="postContextCollapsible">About this photo</summary>
-          <h2 v-else id="photo-comments-context-title">About this photo</h2>
+          <h2 id="photo-comments-context-title">About this photo</h2>
           <div class="comments-context-content">
             <header class="post-meta-header">
               <a :href="post.account.url" class="author-link">
@@ -402,7 +392,7 @@ onBeforeUnmount(() => {
               {{ formatDate(post.created_at) }}
             </time>
           </div>
-        </component>
+        </article>
 
         <p v-if="discussionState === 'loading'" class="comments-notice" role="status">
           Loading replies…
@@ -544,7 +534,6 @@ onBeforeUnmount(() => {
   padding-bottom: 0.75rem;
 }
 
-.comments-context > summary,
 .comments-context > h2 {
   color: var(--photos-accent);
   font-family: 'Azeret Mono Variable', monospace;
@@ -553,26 +542,6 @@ onBeforeUnmount(() => {
   min-height: 44px;
   align-items: center;
   display: flex;
-}
-
-.comments-context > summary {
-  cursor: pointer;
-  justify-content: space-between;
-  list-style: none;
-}
-
-.comments-context > summary::-webkit-details-marker {
-  display: none;
-}
-
-.comments-context > summary::after {
-  content: '+';
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-.comments-context[open] > summary::after {
-  content: '−';
 }
 
 .comments-context > h2 {
@@ -872,7 +841,6 @@ button.photo-share-button {
 .comments-close:focus-visible,
 .comments-dock-trigger:focus-visible,
 .comments-dock-clear:focus-visible,
-.comments-context > summary:focus-visible,
 .photo-share-button:focus-visible,
 .photo-share-popover a:focus-visible,
 .photo-share-popover button:focus-visible,
@@ -1207,11 +1175,6 @@ button.photo-share-button {
   .comments-context {
     margin-bottom: 0.65rem;
     padding-bottom: 0;
-  }
-
-  .comments-context > summary {
-    color: var(--photos-muted);
-    font-size: 0.68rem;
   }
 
   .comment-list {

@@ -108,8 +108,8 @@ describe('PhotoCommentsPanel', () => {
     expect(panel.getAttribute('role')).toBe('dialog')
     expect(panel.getAttribute('aria-modal')).toBe('true')
     expect(panel.textContent).toContain('3 replies')
-    expect(panel.querySelector('.comments-context')?.tagName).toBe('DETAILS')
-    expect((panel.querySelector('.comments-context') as HTMLDetailsElement).open).toBe(false)
+    expect(panel.querySelector('.comments-context')?.tagName).toBe('ARTICLE')
+    expect(panel.querySelector('.comments-post-text')?.textContent).toContain('A long-form photo description.')
     expect(panel.querySelector('.photo-share-native')).not.toBeNull()
     expect(panel.querySelector('.photo-share-menu')).toBeNull()
     ;(panel.querySelector('.photo-share-native') as HTMLButtonElement).click()
@@ -246,7 +246,7 @@ describe('PhotoCommentsPanel', () => {
     })
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.find('.comments-context').element.tagName).toBe('SECTION')
+    expect(wrapper.find('.comments-context').element.tagName).toBe('ARTICLE')
     expect(wrapper.get('.comment-item').attributes('style')).toContain('--reply-depth: 6')
     expect(wrapper.text()).toContain('Content warning')
     expect(wrapper.findComponent({ name: 'MediaCarousel' }).exists()).toBe(true)
@@ -254,7 +254,7 @@ describe('PhotoCommentsPanel', () => {
     wrapper.unmount()
   })
 
-  it('uses a disclosure for long post context without adding another scroll container', async () => {
+  it('keeps long post context expanded as first-class panel content', async () => {
     mockMatchMedia(false)
     const wrapper = mount(PhotoCommentsPanel, {
       attachTo: document.body,
@@ -266,8 +266,9 @@ describe('PhotoCommentsPanel', () => {
     })
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.find('.comments-context').element.tagName).toBe('DETAILS')
-    expect(wrapper.get('.comments-context > summary').text()).toBe('About this photo')
+    expect(wrapper.find('.comments-context').element.tagName).toBe('ARTICLE')
+    expect(wrapper.get('.comments-context > h2').text()).toBe('About this photo')
+    expect(wrapper.get('.comments-post-text').text()).toContain('Long context')
     expect(wrapper.get('.comments-post-text').attributes('style')).toBeUndefined()
     wrapper.unmount()
   })

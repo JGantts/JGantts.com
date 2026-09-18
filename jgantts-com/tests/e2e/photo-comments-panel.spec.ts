@@ -138,7 +138,9 @@ test('mobile sheet locks the gallery and has exactly one vertical scroll owner',
   await expect(sheet).toBeVisible()
   expect(await sheet.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
   await expect(page.locator('.gallery-surface')).toHaveAttribute('inert', '')
-  await expect(sheet.locator('.comments-context')).not.toHaveAttribute('open', '')
+  await expect(sheet.locator('.comments-context')).toHaveJSProperty('tagName', 'ARTICLE')
+  await expect(sheet.locator('.comments-post-text')).toContainText('Photo 5')
+  await expect(sheet.locator('.comments-post-text')).toContainText('Photo context 5')
   await expect(sheet.locator('.comment').first()).toBeInViewport()
 
   const scrollBefore = await page.evaluate(() => window.scrollY)

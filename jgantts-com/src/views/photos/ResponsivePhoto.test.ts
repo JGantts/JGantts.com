@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { rgbaToThumbHash } from 'thumbhash'
 import type { PostMedia } from '@/posts/types'
 import ResponsivePhoto from './ResponsivePhoto.vue'
@@ -122,5 +122,52 @@ describe('ResponsivePhoto placeholders', () => {
     await wrapper.get('img').trigger('load')
     expect(photo.classes()).toContain('is-loaded')
     wrapper.unmount()
+  })
+
+  it('keeps off-screen photos low priority until they enter the viewport', async () => {
+    let notify: IntersectionObserverCallback = () => undefined
+    const disconnect = vi.fn()
+    const observe = vi.fn()
+    const OriginalIntersectionObserver = globalThis.IntersectionObserver
+    globalThis.IntersectionObserver = class {
+      readonly root = null
+      readonly rootMargin = '0px'
+      readonly scrollMargin = '0px'
+      readonly thresholds = [0.01]
+
+      constructor(callback: IntersectionObserverCallback) {
+        notify = callback
+      }
+
+      disconnect = disconnect
+      observe = observe
+      takeRecords = () => []
+      unobserve = () => undefined
+    } as unknown as typeof IntersectionObserver
+
+    try {
+      const wrapper = mount(ResponsivePhoto, {
+        props: {
+          alt: 'A sunset',
+          attachment: attachment(),
+          context: 'tile',
+          displayWidth: 300,
+        },
+      })
+
+      expect(observe).toHaveBeenCalledOnce()
+      expect(wrapper.get('img').attributes('loading')).toBe('lazy')
+      expect(wrapper.get('img').attributes('fetchpriority')).toBe('low')
+
+      notify([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.get('img').attributes('loading')).toBe('eager')
+      expect(wrapper.get('img').attributes('fetchpriority')).toBe('high')
+      expect(disconnect).toHaveBeenCalledOnce()
+      wrapper.unmount()
+    } finally {
+      globalThis.IntersectionObserver = OriginalIntersectionObserver
+    }
   })
 })

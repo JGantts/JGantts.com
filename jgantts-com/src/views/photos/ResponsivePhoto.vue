@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { thumbHashToDataURL } from 'thumbhash'
 import type { PhotoCommentsAttachment } from './photo-comments-types'
 import { useDevicePixelRatio } from './device-pixel-ratio'
@@ -21,6 +21,12 @@ const props = withDefaults(defineProps<{
 })
 
 const loaded = ref(false)
+const root = ref<HTMLElement | null>(null)
+const hasEnteredViewport = ref(false)
+const managesViewportPriority = props.loading === 'lazy'
+  && props.fetchPriority === 'auto'
+  && typeof IntersectionObserver !== 'undefined'
+let viewportObserver: IntersectionObserver | null = null
 const devicePixelRatio = useDevicePixelRatio()
 const connection = navigator as Navigator & { connection?: { saveData?: boolean } }
 const plan = computed(() => props.attachment.localMedia
@@ -65,12 +71,32 @@ const previewStyle = computed(() => {
     backgroundSize: props.fit,
   }
 })
+const effectiveFetchPriority = computed(() => managesViewportPriority
+  ? (hasEnteredViewport.value ? 'high' : 'low')
+  : props.fetchPriority)
+const effectiveLoading = computed(() => managesViewportPriority && hasEnteredViewport.value
+  ? 'eager'
+  : props.loading)
 
 watch(source, () => { loaded.value = false })
+
+onMounted(() => {
+  if (!managesViewportPriority || !root.value) return
+  viewportObserver = new IntersectionObserver(([entry]) => {
+    if (!entry?.isIntersecting) return
+    hasEnteredViewport.value = true
+    viewportObserver?.disconnect()
+    viewportObserver = null
+  }, { threshold: 0.01 })
+  viewportObserver.observe(root.value)
+})
+
+onBeforeUnmount(() => viewportObserver?.disconnect())
 </script>
 
 <template>
   <span
+    ref="root"
     class="responsive-photo"
     :class="{ 'is-loaded': loaded }"
     :style="previewStyle"
@@ -95,8 +121,8 @@ watch(source, () => { loaded.value = false })
         :alt="alt"
         :width="attachment.localMedia?.width ?? undefined"
         :height="attachment.localMedia?.height ?? undefined"
-        :loading="loading"
-        :fetchpriority="fetchPriority"
+        :loading="effectiveLoading"
+        :fetchpriority="effectiveFetchPriority"
         decoding="async"
         :style="{ objectFit: fit, objectPosition: position }"
         @load="loaded = true"

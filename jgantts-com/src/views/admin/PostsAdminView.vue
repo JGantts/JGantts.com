@@ -73,7 +73,7 @@ const facebookCandidates = ref<Array<{ id: string; url: string }>>([])
 const revisionHistory = ref<PublishedRevision[]>([])
 const revisionSyndications = ref<RevisionSyndication[]>([])
 let previewTimer: ReturnType<typeof setTimeout> | null = null
-const allowedMinutes = ['00', '15', '20', '30', '40', '45']
+const allowedMinutes = ['00', '10', '15', '20', '30', '40', '45', '50']
 const hourOptions = Array.from({ length: 24 }, (_, hour) => hour.toString().padStart(2, '0'))
 
 const form = reactive({
@@ -280,7 +280,6 @@ async function newDraft() {
   try {
     const post = await adminRequest<AdminPost>('/api/admin/posts/empty', jsonRequest('POST'))
     replacePost(post)
-    if (!post.date) form.date = todayInputValue()
     notice.value = 'Empty draft created. Add photos first, then optional writing.'
   } catch (draftError) {
     error.value = message(draftError)

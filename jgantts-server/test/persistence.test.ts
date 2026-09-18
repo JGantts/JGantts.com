@@ -369,7 +369,19 @@ test('generates responsive modern and fallback formats without upscaling', async
     create: { width: 3_000, height: 1_500, channels: 3, background: '#123456' },
   }).jpeg().toBuffer();
 
-  const uploaded = await service.uploadImage({ postId: 'responsive', altText: 'Wide image', buffer: source });
+  const progress: Array<{ percent: number; stage: string }> = [];
+  const uploaded = await service.uploadImage({
+    postId: 'responsive',
+    altText: 'Wide image',
+    buffer: source,
+    onProgress: (update) => progress.push(update),
+  });
+  assert.equal(progress[0]?.stage, 'inspecting');
+  assert.equal(progress.at(-1)?.stage, 'saving');
+  assert.equal(progress.at(-1)?.percent, 99);
+  assert.ok(progress.some(({ stage }) => stage === 'generating'));
+  assert.ok(progress.some(({ stage }) => stage === 'verifying'));
+  assert.ok(progress.every((update, index) => index === 0 || update.percent >= progress[index - 1]!.percent));
   assert.deepEqual(
     uploaded.renditions.filter(({ format }) => format === 'webp').map(({ width, height }) => [width, height]),
     [[320, 160], [480, 240], [768, 384], [1_024, 512], [1_600, 800], [2_400, 1_200]],

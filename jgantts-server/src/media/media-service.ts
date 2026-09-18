@@ -71,7 +71,15 @@ export interface UploadImageInput {
   altText: string;
   buffer: Buffer;
   displayOrder?: number;
+  onProgress?: (progress: MediaProcessingProgress) => void;
   postId: string;
+}
+
+export type MediaProcessingStage = 'inspecting' | 'converting' | 'generating' | 'verifying' | 'saving';
+
+export interface MediaProcessingProgress {
+  percent: number;
+  stage: MediaProcessingStage;
 }
 
 export interface PublicMedia extends Omit<
@@ -216,6 +224,7 @@ async function stageRenditionSet(
   stagingDirectory: string,
   derivedDirectory: string,
   variantSuffix = '',
+  onProgress?: (completed: number, total: number) => void,
 ): Promise<{
   derivatives: Record<string, string>;
   renditions: MediaRendition[];
@@ -224,6 +233,11 @@ async function stageRenditionSet(
   const renditions: MediaRendition[] = [];
   const derivatives: Record<string, string> = {};
   const stagedFiles: StagedMediaFile[] = [];
+  const widths = responsiveWidths(metadata.autoOrient.width);
+  const total = 1 + widths.reduce((count, width) =>
+    count + 2 + (width >= MINIMUM_AVIF_WIDTH ? 1 : 0), 0);
+  let completed = 0;
+  const reportCompleted = () => onProgress?.(++completed, total);
   const addRendition = (rendition: MediaRendition, name: string, stagedPath: string) => {
     renditions.push(rendition);
     derivatives[rendition.variant] = rendition.path;
@@ -247,9 +261,10 @@ async function stageRenditionSet(
     variant: placeholderVariant,
     width: placeholderInfo.width,
   }, placeholderName, placeholderPath);
+  reportCompleted();
   if (variantSuffix) derivatives.placeholder = path.posix.join('derived', placeholderName);
 
-  for (const width of responsiveWidths(metadata.autoOrient.width)) {
+  for (const width of widths) {
     const outputFormats: RenditionFormat[] = [
       'webp',
       ...(width >= MINIMUM_AVIF_WIDTH ? ['avif' as const] : []),
@@ -271,6 +286,7 @@ async function stageRenditionSet(
         variant,
         width: info.width,
       }, name, outputPath);
+      reportCompleted();
       if (variantSuffix) derivatives[variantFor(outputFormat, width)] = path.posix.join('derived', name);
     }
   }
@@ -286,8 +302,9 @@ async function stageRenditionSet(
 async function verifyStagedFiles(
   files: StagedMediaFile[],
   source?: { buffer: Buffer; checksum: string },
+  onProgress?: (completed: number, total: number) => void,
 ): Promise<void> {
-  for (const file of files) {
+  for (const [index, file] of files.entries()) {
     const stat = fs.statSync(file.stagedPath);
     if (!stat.isFile() || stat.size <= 0) throw new Error('Staged media verification failed.');
     if (!file.rendition) {
@@ -296,6 +313,7 @@ async function verifyStagedFiles(
       if (stat.size !== source.buffer.length || actualChecksum !== source.checksum) {
         throw new Error('Staged source verification failed.');
       }
+      onProgress?.(index + 1, files.length);
       continue;
     }
     const stagedMetadata = await sharp(file.stagedPath).metadata();
@@ -306,6 +324,7 @@ async function verifyStagedFiles(
       || stagedMetadata.height !== file.rendition.height
       || stat.size !== file.rendition.byteSize
     ) throw new Error('Staged rendition verification failed.');
+    onProgress?.(index + 1, files.length);
   }
 }
 
@@ -355,6 +374,10 @@ export class MediaService {
   }
 
   async uploadImage(input: UploadImageInput): Promise<PublicMedia> {
+    const report = (percent: number, stage: MediaProcessingStage) => {
+      input.onProgress?.({ percent: Math.max(0, Math.min(99, Math.round(percent))), stage });
+    };
+    report(1, 'inspecting');
     if (!this.posts.getById(input.postId)) throw new PostInputError('postId does not identify a post.');
     if (!Buffer.isBuffer(input.buffer) || input.buffer.length === 0) {
       throw new PostInputError('An image file is required.');
@@ -384,7 +407,9 @@ export class MediaService {
     if (metadata.width * metadata.height > MAX_IMAGE_PIXELS) {
       throw new PostInputError('Image exceeds the 80 megapixel safety limit.');
     }
+    report(5, format === uploadSourceFormats.heif ? 'converting' : 'generating');
     const renditionInput = await renditionInputFor(input.buffer, metadata);
+    report(10, 'generating');
 
     const id = randomUUID();
     const originalName = `${id}.${format.extension}`;
@@ -399,13 +424,21 @@ export class MediaService {
       stagedFiles.push({ finalPath: originalPath, stagedPath: stagedOriginalPath });
       const stagedSet = await stageRenditionSet(
         renditionInput.buffer, renditionInput.metadata, id, stagingDirectory, this.directories.derived,
+        '',
+        (completed, total) => report(10 + (completed / total) * 65, 'generating'),
       );
       const { derivatives, renditions } = stagedSet;
       stagedFiles.push(...stagedSet.stagedFiles);
 
       this.processingHooks.afterStage?.(stagedFiles);
       const expectedChecksum = createHash('sha256').update(input.buffer).digest('hex');
-      await verifyStagedFiles(stagedFiles, { buffer: input.buffer, checksum: expectedChecksum });
+      report(78, 'verifying');
+      await verifyStagedFiles(
+        stagedFiles,
+        { buffer: input.buffer, checksum: expectedChecksum },
+        (completed, total) => report(78 + (completed / total) * 16, 'verifying'),
+      );
+      report(96, 'saving');
       promoteStagedFiles(stagedFiles, promotedPaths, this.processingHooks);
 
       const createdAt = new Date().toISOString();
@@ -442,6 +475,7 @@ export class MediaService {
         createdAt,
         updatedAt: createdAt,
       });
+      report(99, 'saving');
       if (this.posts.getById(input.postId)?.status === 'published') this.posts.update(input.postId, {});
       return publicMedia(created, this.posts.getCurrentRevision(input.postId), this.posts.getPublishedRevisionCount(input.postId) > 1);
     } catch (error) {

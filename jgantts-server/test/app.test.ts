@@ -801,6 +801,7 @@ test('uploads local media and serves immutable originals and derivatives', async
     postId: 'media-api-post',
     altText: 'A brown test rectangle',
     displayOrder: '1',
+    uploadId: '12345678-1234-4123-8123-123456789abc',
   }, { content: image, contentType: 'image/png', filename: 'test.png' });
 
   const uploadedResponse = await request(app, '/api/admin/media', {
@@ -826,6 +827,19 @@ test('uploads local media and serves immutable originals and derivatives', async
   assert.deepEqual(uploaded.renditions.map((rendition) => rendition.width), [24, 24]);
   assert.equal(uploaded.placeholder.width, 24);
   assert.equal(uploadedResponse.headers.location, uploaded.urls.original);
+
+  const progressResponse = await request(
+    app,
+    '/api/admin/media/uploads/12345678-1234-4123-8123-123456789abc/progress',
+    { headers: { authorization: 'Bearer media-secret' } },
+  );
+  assert.equal(progressResponse.status, 200);
+  assert.deepEqual(JSON.parse(progressResponse.body), {
+    percent: 100,
+    stage: 'saving',
+    state: 'complete',
+  });
+  assert.equal(progressResponse.headers['cache-control'], 'no-store');
 
   const editedResponse = await request(app, `/api/admin/media/${uploaded.id}`, {
     body: JSON.stringify({

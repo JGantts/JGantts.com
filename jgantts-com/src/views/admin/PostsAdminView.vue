@@ -66,8 +66,16 @@ type UploadQueueItem = {
   id: string
   previewUrl: string
   progress: number
-  status: 'cancelled' | 'failed' | 'queued' | 'uploading' | 'uploaded'
+  processingStage: MediaProcessingStage | ''
+  progressPoll: number | null
+  status: 'cancelled' | 'failed' | 'processing' | 'queued' | 'uploading' | 'uploaded'
   xhr: XMLHttpRequest | null
+}
+type MediaProcessingStage = 'inspecting' | 'converting' | 'generating' | 'verifying' | 'saving'
+type UploadProgressResponse = {
+  percent: number
+  stage: MediaProcessingStage
+  state: 'processing' | 'complete' | 'failed'
 }
 const uploadQueue = ref<UploadQueueItem[]>([])
 const uploadRunning = ref(false)
@@ -679,7 +687,8 @@ function addFiles(files: File[]) {
     uploadQueue.value.push({
       altText: '', error: '', file,
       id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
-      previewUrl: URL.createObjectURL(file), progress: 0, status: 'queued', xhr: null,
+      previewUrl: URL.createObjectURL(file), processingStage: '', progress: 0,
+      progressPoll: null, status: 'queued', xhr: null,
     })
   }
 }
@@ -694,7 +703,46 @@ function dropFiles(event: DragEvent) {
   addFiles(Array.from(event.dataTransfer?.files ?? []).filter((file) => file.type.startsWith('image/')))
 }
 
+function processingStageLabel(stage: MediaProcessingStage | ''): string {
+  if (stage === 'inspecting') return 'Inspecting image'
+  if (stage === 'converting') return 'Converting HEIC/HEIF'
+  if (stage === 'generating') return 'Generating responsive images'
+  if (stage === 'verifying') return 'Verifying generated files'
+  if (stage === 'saving') return 'Saving photo'
+  return 'Preparing image'
+}
+
+function stopProgressPolling(item: UploadQueueItem) {
+  if (item.progressPoll !== null) window.clearInterval(item.progressPoll)
+  item.progressPoll = null
+}
+
+function startProgressPolling(item: UploadQueueItem, uploadId: string, xhr: XMLHttpRequest) {
+  stopProgressPolling(item)
+  let requestInFlight = false
+  const poll = async () => {
+    if (requestInFlight || item.xhr !== xhr || item.status !== 'processing') return
+    requestInFlight = true
+    try {
+      const response = await fetch(`/api/admin/media/uploads/${encodeURIComponent(uploadId)}/progress`, {
+        cache: 'no-store',
+      })
+      if (!response.ok || item.xhr !== xhr || item.status !== 'processing') return
+      const progress = await response.json() as UploadProgressResponse
+      item.progress = Math.max(0, Math.min(100, progress.percent))
+      item.processingStage = progress.stage
+    } catch {
+      // The upload request reports the actionable error; a missed progress poll is harmless.
+    } finally {
+      requestInFlight = false
+    }
+  }
+  void poll()
+  item.progressPoll = window.setInterval(() => { void poll() }, 350)
+}
+
 function removeUpload(item: UploadQueueItem) {
+  stopProgressPolling(item)
   item.xhr?.abort()
   URL.revokeObjectURL(item.previewUrl)
   uploadQueue.value = uploadQueue.value.filter(({ id }) => id !== item.id)
@@ -707,12 +755,15 @@ function cancelUpload(item: UploadQueueItem) {
 
 function uploadOne(item: UploadQueueItem): Promise<PostMedia> {
   if (!selectedId.value) return Promise.reject(new Error('Create a draft before uploading.'))
+  const uploadId = crypto.randomUUID()
   const body = new FormData()
   body.set('postId', selectedId.value)
   body.set('altText', item.altText.trim())
+  body.set('uploadId', uploadId)
   body.set('file', item.file)
   item.status = 'uploading'
   item.error = ''
+  item.processingStage = ''
   item.progress = 0
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
@@ -721,13 +772,26 @@ function uploadOne(item: UploadQueueItem): Promise<PostMedia> {
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) item.progress = Math.round((event.loaded / event.total) * 100)
     }
+    xhr.upload.onload = () => {
+      if (item.xhr !== xhr || item.status !== 'uploading') return
+      item.status = 'processing'
+      item.progress = 0
+      item.processingStage = 'inspecting'
+      startProgressPolling(item, uploadId, xhr)
+    }
     xhr.onabort = () => {
+      stopProgressPolling(item)
       item.status = 'cancelled'
       item.xhr = null
       reject(new Error('Upload cancelled.'))
     }
-    xhr.onerror = () => reject(new Error('Network error while uploading.'))
+    xhr.onerror = () => {
+      stopProgressPolling(item)
+      item.xhr = null
+      reject(new Error('Network error while uploading.'))
+    }
     xhr.onload = () => {
+      stopProgressPolling(item)
       item.xhr = null
       let response: unknown
       try { response = JSON.parse(xhr.responseText) } catch { response = null }
@@ -766,7 +830,10 @@ async function uploadQueued() {
 }
 
 async function retryUpload(item: UploadQueueItem) {
+  stopProgressPolling(item)
   item.status = 'queued'
+  item.processingStage = ''
+  item.progress = 0
   await uploadQueued()
 }
 
@@ -799,6 +866,7 @@ onMounted(() => { void restoreSession() })
 onBeforeUnmount(() => {
   if (previewTimer) clearTimeout(previewTimer)
   uploadQueue.value.forEach((item) => {
+    stopProgressPolling(item)
     item.xhr?.abort()
     URL.revokeObjectURL(item.previewUrl)
   })
@@ -966,14 +1034,18 @@ onBeforeUnmount(() => {
                 <div>
                   <strong>{{ item.file.name }}</strong>
                   <label>Alt text (optional) <input v-model="item.altText" maxlength="2000"></label>
-                  <progress v-if="item.status === 'uploading'" max="100" :value="item.progress">{{ item.progress }}%</progress>
+                  <progress v-if="item.status === 'uploading' || item.status === 'processing'" max="100" :value="item.progress">{{ item.progress }}%</progress>
                   <p v-if="item.error" class="message message--error">{{ item.error }}</p>
-                  <span class="upload-status">{{ item.status }}<template v-if="item.status === 'uploading'"> · {{ item.progress }}%</template></span>
+                  <span class="upload-status" role="status">
+                    <template v-if="item.status === 'uploading'">Uploading · {{ item.progress }}%</template>
+                    <template v-else-if="item.status === 'processing'">Processing · {{ item.progress }}% · {{ processingStageLabel(item.processingStage) }}</template>
+                    <template v-else>{{ item.status }}</template>
+                  </span>
                 </div>
                 <div class="upload-item-actions">
                   <button v-if="item.status === 'failed' || item.status === 'cancelled'" class="button-secondary" type="button" @click="retryUpload(item)">Retry</button>
                   <button v-if="item.status === 'uploading' || item.status === 'queued'" class="button-quiet" type="button" @click="cancelUpload(item)">Cancel</button>
-                  <button v-else class="button-quiet" type="button" @click="removeUpload(item)">Remove</button>
+                  <button v-else-if="item.status !== 'processing'" class="button-quiet" type="button" @click="removeUpload(item)">Remove</button>
                 </div>
               </article>
               <button :disabled="uploadRunning || !uploadQueue.some((item) => ['queued', 'failed'].includes(item.status))" type="button" @click="uploadQueued">

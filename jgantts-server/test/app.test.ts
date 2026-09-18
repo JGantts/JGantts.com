@@ -944,6 +944,26 @@ test('uploads local media and serves immutable originals and derivatives', async
   assert.ok(regeneratedMedia.renditions.every(({ url }) => /-v-[a-f0-9]{8}/.test(url)));
   assert.equal(media.listForPost('media-api-post')[0].pipelineVersion, PHOTO_PIPELINE_VERSION);
 
+  const regenerateAllUrl = '/api/admin/media/regenerate-all';
+  assert.equal((await request(app, regenerateAllUrl, { method: 'POST' })).status, 401);
+  const regeneratedAllResponse = await request(app, regenerateAllUrl, {
+    method: 'POST', headers: { authorization: 'Bearer media-secret' },
+  });
+  assert.equal(regeneratedAllResponse.status, 200);
+  assert.equal(regeneratedAllResponse.headers['cache-control'], 'no-store');
+  const regeneratedAll = JSON.parse(regeneratedAllResponse.body) as {
+    failed: number;
+    pipelineVersion: number;
+    regenerated: number;
+    results: Array<{ id: string; status: string }>;
+    total: number;
+  };
+  assert.equal(regeneratedAll.pipelineVersion, PHOTO_PIPELINE_VERSION);
+  assert.equal(regeneratedAll.total, 1);
+  assert.equal(regeneratedAll.regenerated, 1);
+  assert.equal(regeneratedAll.failed, 0);
+  assert.deepEqual(regeneratedAll.results.map(({ id, status }) => [id, status]), [[uploaded.id, 'regenerated']]);
+
   const feedWithMedia = await request(app, '/feed.xml');
   const sitemapWithMedia = await request(app, '/sitemap.xml');
   assert.ok(feedWithMedia.body.includes(uploaded.urls.large));

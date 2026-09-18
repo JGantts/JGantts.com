@@ -74,6 +74,7 @@ const uploadRunning = ref(false)
 const mediaDrafts = reactive<Record<string, { altText: string; caption: string; title: string; location: string; date: string; time: string }>>({})
 const mediaSavingId = ref<string | null>(null)
 const mediaRegeneratingId = ref<string | null>(null)
+const allMediaRegenerating = ref(false)
 const mediaPipelineNotice = ref('')
 const mediaPipelineFailed = ref(false)
 const mediaDialog = ref<HTMLDialogElement | null>(null)
@@ -496,6 +497,39 @@ async function rerunPhotoPipeline(item: PostMedia) {
   }
 }
 
+type BulkPhotoPipelineResult = {
+  failed: number
+  pipelineVersion: number
+  regenerated: number
+  total: number
+}
+
+async function rerunAllPhotoPipelines() {
+  if (allMediaRegenerating.value) return
+  if (!window.confirm('Rerun the photo pipeline for every uploaded photo? This may take a while.')) return
+  allMediaRegenerating.value = true
+  error.value = ''
+  notice.value = ''
+  try {
+    const result = await adminRequest<BulkPhotoPipelineResult>(
+      '/api/admin/media/regenerate-all',
+      { method: 'POST' },
+    )
+    await loadPosts()
+    if (result.total === 0) {
+      notice.value = 'There are no photos to rerun.'
+    } else if (result.failed > 0) {
+      notice.value = `Photo pipeline v${result.pipelineVersion} reran ${result.regenerated} of ${result.total} photos; ${result.failed} failed.`
+    } else {
+      notice.value = `Photo pipeline v${result.pipelineVersion} reran all ${result.regenerated} photos.`
+    }
+  } catch (pipelineError) {
+    error.value = message(pipelineError)
+  } finally {
+    allMediaRegenerating.value = false
+  }
+}
+
 async function selectHero(item: PostMedia) {
   if (!selectedId.value) return
   try {
@@ -865,6 +899,9 @@ onBeforeUnmount(() => {
           <h1>Post editor</h1>
         </div>
         <div class="toolbar-actions">
+          <button class="button-quiet" :disabled="allMediaRegenerating" type="button" @click="rerunAllPhotoPipelines">
+            {{ allMediaRegenerating ? 'Rerunning all photos…' : 'Rerun all photos' }}
+          </button>
           <button class="button-secondary" :disabled="busy" type="button" @click="newDraft">New draft</button>
           <button class="button-quiet" type="button" @click="signOut">Log out</button>
         </div>

@@ -4,6 +4,7 @@ import type { MediaService } from '../media/media-service';
 import type { MastodonSyndicationService } from '../syndication/mastodon-syndication-service';
 import type { FacebookSyndicationService } from '../syndication/facebook-syndication-service';
 import type { FacebookClientLike } from '../syndication/facebook-client';
+import { buildPostTeaser } from '../syndication/mastodon-syndication-service';
 import { resolvePostPreview } from '../site/post-preview';
 import { revisionedPostPath } from '../site/revision-url';
 
@@ -40,11 +41,20 @@ export function createAdminPostsRouter(
     const preview = resolvePostPreview(post, postMedia).token;
     const revision = posts.currentRevision(post.id);
     const versioned = posts.hasMultiplePublishedRevisions(post.id);
+    const syndications = [mastodon?.getForPost(post.id), facebook?.getForPost(post.id)]
+      .filter((item) => item !== null && item !== undefined)
+      .map((item) => ({
+        destination: item.destination,
+        remoteUrl: item.remoteUrl,
+        state: item.state,
+      }));
     return {
       ...post,
       canonicalUrl: revisionedPostPath(post.slug, revision, versioned),
       preview,
       shareUrl: revisionedPostPath(post.slug, revision, versioned, preview),
+      syndications,
+      teaser: buildPostTeaser(post),
       ...(versioned ? { revision } : {}),
       media: postMedia,
     };

@@ -20,8 +20,17 @@ type AdminPost = {
   slug: string
   shareUrl: string
   status: 'draft' | 'published' | 'archived'
+  syndications: SyndicationSummary[]
+  teaser: string
   updatedAt: string
   revision?: number
+}
+type SyndicationDestination = 'facebook' | 'mastodon'
+type SyndicationState = 'pending' | 'published' | 'failed' | 'uncertain'
+type SyndicationSummary = {
+  destination: SyndicationDestination
+  remoteUrl: string | null
+  state: SyndicationState
 }
 type RevisionPhoto = { id: string; title: string | null; altText: string; caption: string | null; displayOrder: number; focalX: number | null; focalY: number | null; width: number | null; height: number | null; isHero: boolean }
 type RevisionSyndication = { publicationRevision: number; destination?: string; state: string; remoteUrl: string | null; remoteStatusId: string | null; updatedAt: string }
@@ -32,9 +41,10 @@ function formatHistoryDate(value: string): string {
 
 type Syndication = {
   attemptCount: number
+  destination: SyndicationDestination
   lastError: string | null
   remoteUrl: string | null
-  state: 'pending' | 'published' | 'failed' | 'uncertain'
+  state: SyndicationState
 }
 
 const tokenInput = ref('')
@@ -117,13 +127,35 @@ const syndicationButtonLabel = computed(() => {
   return 'Retry required'
 })
 
-function postThumbnails(post: AdminPost): PostMedia[] {
+function postThumbnail(post: AdminPost): PostMedia {
   const hero = post.media.find((item) => item.id === post.heroMediaId)
-  return hero ? [hero, ...post.media.filter((item) => item.id !== hero.id)].slice(0, 3) : post.media.slice(0, 3)
+  return hero ?? post.media[0]!
 }
 
 function postLabel(post: AdminPost): string {
   return post.title || post.location || post.slug
+}
+
+function postTeaserFirstLine(post: AdminPost): string {
+  return post.teaser.split(/\r?\n/).find((line) => line.trim())?.trim() || postLabel(post)
+}
+
+function syndicationLabel(item: SyndicationSummary): string {
+  const destination = item.destination === 'facebook' ? 'Facebook' : 'Mastodon'
+  return `${destination}: ${item.state}`
+}
+
+function replacePostSyndication(postId: string, item: SyndicationSummary) {
+  const index = posts.value.findIndex((post) => post.id === postId)
+  const post = posts.value[index]
+  if (!post) return
+  posts.value.splice(index, 1, {
+    ...post,
+    syndications: [
+      ...post.syndications.filter(({ destination }) => destination !== item.destination),
+      item,
+    ],
+  })
 }
 
 function postDate(date: number | null): string {
@@ -239,20 +271,31 @@ function copyToForm(post: AdminPost) {
 }
 
 async function loadFacebookSyndication(postId: string) {
-  try { facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${postId}/syndications/facebook`) }
+  try {
+    facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${postId}/syndications/facebook`)
+    replacePostSyndication(postId, facebookSyndication.value)
+  }
   catch (loadError) { if (!(loadError instanceof AdminApiError && loadError.status === 404)) error.value = message(loadError) }
 }
 
 async function syndicateFacebook() {
   if (!selectedId.value || !window.confirm('Create the public Facebook Page link post now?')) return
   const saved = await save(); if (!saved) return
-  try { facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${saved.id}/syndications/facebook`, jsonRequest('POST')); notice.value = 'Facebook publication queued.' }
+  try {
+    facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${saved.id}/syndications/facebook`, jsonRequest('POST'))
+    replacePostSyndication(saved.id, facebookSyndication.value)
+    notice.value = 'Facebook publication queued.'
+  }
   catch (publishError) { error.value = message(publishError) }
 }
 
 async function retryFacebookSyndication() {
   if (!selectedId.value) return
-  try { facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${selectedId.value}/syndications/facebook/retry`, jsonRequest('POST')); notice.value = 'Facebook publication queued again.' }
+  try {
+    facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${selectedId.value}/syndications/facebook/retry`, jsonRequest('POST'))
+    replacePostSyndication(selectedId.value, facebookSyndication.value)
+    notice.value = 'Facebook publication queued again.'
+  }
   catch (retryError) { error.value = message(retryError) }
 }
 
@@ -261,6 +304,7 @@ async function reconcileFacebookSyndication() {
   try {
     const result = await adminRequest<{ syndication: Syndication; candidates: Array<{ id: string; url: string }> }>(`/api/admin/posts/${selectedId.value}/syndications/facebook/reconcile`, jsonRequest('POST'))
     facebookSyndication.value = result.syndication
+    replacePostSyndication(selectedId.value, result.syndication)
     facebookCandidates.value = result.candidates
     notice.value = result.candidates.length === 1 ? 'Facebook publication attached.' : 'No single Facebook match was found; review candidates before resolving.'
   } catch (reconcileError) { error.value = message(reconcileError) }
@@ -268,7 +312,12 @@ async function reconcileFacebookSyndication() {
 
 async function resolveFacebookCandidate(candidate: { id: string; url: string }) {
   if (!selectedId.value || !window.confirm('Attach this Facebook post to the local publication?')) return
-  try { facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${selectedId.value}/syndications/facebook/resolve`, jsonRequest('POST', candidate)); facebookCandidates.value = []; notice.value = 'Facebook publication resolved.' }
+  try {
+    facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${selectedId.value}/syndications/facebook/resolve`, jsonRequest('POST', candidate))
+    replacePostSyndication(selectedId.value, facebookSyndication.value)
+    facebookCandidates.value = []
+    notice.value = 'Facebook publication resolved.'
+  }
   catch (resolveError) { error.value = message(resolveError) }
 }
 
@@ -573,6 +622,7 @@ async function loadSyndication(postId: string) {
     syndication.value = await adminRequest<Syndication>(
       `/api/admin/posts/${postId}/syndications/mastodon`,
     )
+    replacePostSyndication(postId, syndication.value)
   } catch (loadError) {
     if (!(loadError instanceof AdminApiError && loadError.status === 404)) error.value = message(loadError)
   }
@@ -601,6 +651,7 @@ async function syndicate() {
       `/api/admin/posts/${saved.id}/syndications/mastodon`,
       jsonRequest(editing ? 'PATCH' : 'POST'),
     )
+    replacePostSyndication(saved.id, syndication.value)
     notice.value = editing ? 'Mastodon teaser update queued.' : 'Mastodon publication queued.'
   } catch (syndicationError) {
     error.value = message(syndicationError)
@@ -616,6 +667,7 @@ async function retrySyndication() {
       `/api/admin/posts/${selectedId.value}/syndications/mastodon/retry`,
       jsonRequest('POST'),
     )
+    replacePostSyndication(selectedId.value, syndication.value)
     notice.value = 'Mastodon publication queued again.'
   } catch (retryError) {
     error.value = message(retryError)
@@ -808,21 +860,34 @@ onBeforeUnmount(() => {
             type="button"
             @click="copyToForm(post)"
           >
-            <span v-if="post.media.length" class="post-thumbnails" aria-hidden="true">
+            <span v-if="post.media.length" class="post-thumbnail" aria-hidden="true">
               <img
-                v-for="photo in postThumbnails(post)"
-                :key="photo.id"
                 alt=""
                 decoding="async"
                 loading="lazy"
-                :src="photo.urls.thumbnail"
+                :src="postThumbnail(post).urls.thumbnail"
               >
-              <span v-if="post.media.length > 3" class="photo-count">+{{ post.media.length - 3 }}</span>
+              <span v-if="post.media.length > 1" class="photo-count">+{{ post.media.length - 1 }}</span>
             </span>
-            <span v-else class="post-thumbnail-empty" aria-hidden="true">No photos</span>
+            <span v-else class="post-thumbnail-empty" aria-hidden="true">No photo</span>
             <span class="post-list-copy">
-              <strong>{{ postLabel(post) }}</strong>
-              <span>{{ postDate(post.date) }} · {{ post.status }}</span>
+              <strong :title="post.teaser">{{ postTeaserFirstLine(post) }}</strong>
+              <span class="post-list-meta">
+                <span>{{ postDate(post.date) }} · {{ post.status }}</span>
+                <span v-if="post.syndications.length" class="post-syndications">
+                  <span
+                    v-for="item in post.syndications"
+                    :key="item.destination"
+                    class="syndication-icon"
+                    :class="[`is-${item.destination}`, `is-${item.state}`]"
+                    role="img"
+                    :aria-label="syndicationLabel(item)"
+                    :title="syndicationLabel(item)"
+                  >
+                    <span aria-hidden="true">{{ item.destination === 'facebook' ? 'f' : 'M' }}</span>
+                  </span>
+                </span>
+              </span>
             </span>
           </button>
           <p v-if="!posts.length">No saved posts yet.</p>
@@ -1099,7 +1164,7 @@ onBeforeUnmount(() => {
 .login-card { display: grid; gap: 1rem; margin: 5rem auto; max-width: 30rem; padding: clamp(1.5rem, 5vw, 3rem); }
 .login-card h1, .admin-toolbar h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700; line-height: 1; }
 .login-card form, .editor-form, .upload-form, .mastodon-panel { display: grid; gap: 1rem; }
-.eyebrow, .section-heading span, .post-list-copy > span, .post-count, .post-list-controls label > span, .post-thumbnail-empty, .syndication-state { color: var(--muted); font-family: 'Azeret Mono Variable', monospace; font-size: 0.72rem; }
+.eyebrow, .section-heading span, .post-list-meta, .post-count, .post-list-controls label > span, .post-thumbnail-empty, .syndication-state { color: var(--muted); font-family: 'Azeret Mono Variable', monospace; font-size: 0.72rem; }
 .admin-toolbar, .toolbar-actions, .editor-actions, .status-row, .section-heading { align-items: center; display: flex; gap: 0.75rem; justify-content: space-between; }
 .admin-toolbar { margin-bottom: 1.25rem; }
 .admin-workspace { align-items: start; display: grid; gap: 1rem; grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr); }
@@ -1113,11 +1178,18 @@ onBeforeUnmount(() => {
 .post-list strong { font-weight: 650; overflow-wrap: anywhere; }
 .post-list-copy { display: grid; gap: 0.3rem; min-width: 0; }
 .post-list-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.post-thumbnails { display: grid; grid-template-columns: repeat(3, 1fr); height: 3.4rem; overflow: hidden; position: relative; }
-.post-thumbnails img { height: 100%; min-width: 0; object-fit: cover; width: 100%; }
-.post-thumbnails img:only-child { grid-column: 1 / -1; }
+.post-list-meta { align-items: center; display: flex; gap: 0.45rem; justify-content: space-between; min-width: 0; }
+.post-list-meta > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.post-thumbnail { border-radius: 0.4rem; height: 3.8rem; overflow: hidden; position: relative; }
+.post-thumbnail img { height: 100%; object-fit: cover; width: 100%; }
 .photo-count { align-items: center; background: rgba(0, 0, 0, 0.68); bottom: 0; color: white; display: flex; font-size: 0.65rem; padding: 0.15rem 0.25rem; position: absolute; right: 0; }
-.post-thumbnail-empty { align-items: center; background: color-mix(in srgb, var(--border) 50%, transparent); display: flex; height: 3.4rem; justify-content: center; }
+.post-thumbnail-empty { align-items: center; background: color-mix(in srgb, var(--border) 50%, transparent); border-radius: 0.4rem; display: flex; height: 3.8rem; justify-content: center; }
+.post-syndications { display: flex; flex: 0 0 auto; gap: 0.25rem; }
+.syndication-icon { align-items: center; border: 1px solid color-mix(in srgb, currentColor 45%, transparent); border-radius: 50%; box-sizing: border-box; color: white; display: inline-flex; font-family: Arial, sans-serif; font-size: 0.68rem; font-weight: 800; height: 1.15rem; justify-content: center; line-height: 1; width: 1.15rem; }
+.syndication-icon.is-mastodon { background: #6364ff; }
+.syndication-icon.is-facebook { background: #1877f2; font-size: 0.82rem; }
+.syndication-icon:not(.is-published) { filter: grayscale(0.75); opacity: 0.55; }
+.syndication-icon.is-failed, .syndication-icon.is-uncertain { box-shadow: 0 0 0 2px #e5484d; }
 .editor-card { display: grid; gap: 2rem; padding: clamp(1rem, 3vw, 2rem); }
 label { display: grid; font-size: 0.85rem; font-weight: 600; gap: 0.4rem; }
 label small { color: var(--muted); font-size: 0.72rem; font-weight: 400; }

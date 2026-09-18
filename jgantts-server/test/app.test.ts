@@ -410,11 +410,13 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
     method: 'POST',
   });
   assert.equal(createdResponse.status, 201);
-  const created = JSON.parse(createdResponse.body) as { bodyHtml: string; id: string; slug: string; status: string; time: string; title: string };
+  const created = JSON.parse(createdResponse.body) as { bodyHtml: string; id: string; slug: string; status: string; syndications: unknown[]; teaser: string; time: string; title: string };
   assert.equal(created.status, 'draft');
   assert.equal(created.time, '21:15');
   assert.equal(created.title, 'First local post');
   assert.equal(created.slug, 'first-local-post');
+  assert.equal(created.teaser.split('\n')[0], 'First local post');
+  assert.deepEqual(created.syndications, []);
   assert.match(created.bodyHtml, /<h1>Hello<\/h1>/);
   assert.match(created.bodyHtml, /<strong>world<\/strong>/);
   assert.doesNotMatch(created.bodyHtml, /script|javascript:/i);
@@ -566,6 +568,16 @@ test('protects and idempotently queues the explicit Mastodon syndication API', a
   });
   assert.equal(first.status, 202);
   assert.equal(JSON.parse(first.body).state, 'pending');
+
+  const adminList = await request(app, '/api/admin/posts', {
+    headers: { authorization: 'Bearer syndication-secret' },
+  });
+  const listedPost = JSON.parse(adminList.body).items[0] as {
+    syndications: Array<{ destination: string; remoteUrl: string | null; state: string }>;
+    teaser: string;
+  };
+  assert.equal(listedPost.teaser, '');
+  assert.deepEqual(listedPost.syndications, [{ destination: 'mastodon', remoteUrl: null, state: 'pending' }]);
 
   const repeated = await request(app, pathname, {
     headers: { authorization: 'Bearer syndication-secret' },

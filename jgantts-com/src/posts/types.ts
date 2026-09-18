@@ -11,6 +11,7 @@ export type PostMedia = {
   displayOrder: number
   focalX: number | null
   focalY: number | null
+  pipelineVersion: number | null
   postId: string
   placeholder: {
     byteSize: number

@@ -21,7 +21,7 @@ import {
 } from '../src/config';
 import { openContentDatabase } from '../src/db/database';
 import { MediaRepository } from '../src/media/media-repository';
-import { MediaService } from '../src/media/media-service';
+import { MediaService, PHOTO_PIPELINE_VERSION } from '../src/media/media-service';
 import { HealthService } from '../src/observability/health-service';
 import { createStructuredLogger } from '../src/observability/logger';
 import { PostRepository } from '../src/posts/post-repository';
@@ -816,6 +816,7 @@ test('uploads local media and serves immutable originals and derivatives', async
   const uploaded = JSON.parse(uploadedResponse.body) as {
     id: string;
     originalPath?: string;
+    pipelineVersion: number | null;
     placeholder: { url: string; width: number };
     derivatives?: unknown;
     renditions: Array<{ url: string; width: number }>;
@@ -823,6 +824,7 @@ test('uploads local media and serves immutable originals and derivatives', async
   };
   assert.equal(uploaded.originalPath, undefined);
   assert.equal(uploaded.derivatives, undefined);
+  assert.equal(uploaded.pipelineVersion, PHOTO_PIPELINE_VERSION);
   assert.deepEqual(uploaded.renditions.map((rendition) => rendition.width), [24, 24]);
   assert.equal(uploaded.placeholder.width, 24);
   assert.equal(uploadedResponse.headers.location, uploaded.urls.original);
@@ -919,6 +921,25 @@ test('uploads local media and serves immutable originals and derivatives', async
   for (const field of ['originalPath', 'derivatives', 'processingError', 'renditionManifest']) {
     assert.equal(Object.hasOwn(normalized[0], field), false);
   }
+
+  const regenerateUrl = `/api/admin/media/${uploaded.id}/regenerate`;
+  assert.equal((await request(app, regenerateUrl, { method: 'POST' })).status, 401);
+  assert.equal((await request(app, '/api/admin/media/missing/regenerate', {
+    method: 'POST', headers: { authorization: 'Bearer media-secret' },
+  })).status, 404);
+  const regeneratedResponse = await request(app, regenerateUrl, {
+    method: 'POST', headers: { authorization: 'Bearer media-secret' },
+  });
+  assert.equal(regeneratedResponse.status, 200);
+  assert.equal(regeneratedResponse.headers['cache-control'], 'no-store');
+  const regeneratedMedia = JSON.parse(regeneratedResponse.body) as {
+    pipelineVersion: number | null;
+    renditions: Array<{ url: string }>;
+  };
+  assert.equal(regeneratedMedia.pipelineVersion, PHOTO_PIPELINE_VERSION);
+  assert.ok(regeneratedMedia.renditions.every(({ url }) => /-v-[a-f0-9]{8}/.test(url)));
+  assert.equal(media.listForPost('media-api-post')[0].pipelineVersion, PHOTO_PIPELINE_VERSION);
+
   const feedWithMedia = await request(app, '/feed.xml');
   const sitemapWithMedia = await request(app, '/sitemap.xml');
   assert.ok(feedWithMedia.body.includes(uploaded.urls.large));

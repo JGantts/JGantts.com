@@ -515,6 +515,18 @@ verified against the live domain.
   and a compiled CLI smoke run. All 62 server tests, type checking, both
   production builds pass on Node 22.23.2.
 
+### 2026-09-18 — Versioned photo pipeline reruns
+
+- Rendition manifests now record the explicit photo-pipeline version separately
+  from their manifest schema version. New uploads and regenerated sets use the
+  current version; legacy manifests remain honestly marked as unversioned.
+- The authenticated photo-details dialog shows the stored pipeline version and
+  can rerun the complete pipeline for one photo. Reruns verify and atomically
+  promote a new set before deleting superseded derivatives, and concurrent
+  requests for the same photo share one operation.
+- The admin response exposes the new version and uses the media update timestamp
+  to refresh cached thumbnails after a successful rerun.
+
 ### 2026-09-05 — Adversarial pipeline coverage
 
 - Added an explicit 80-megapixel input ceiling checked before decode work and a

@@ -73,6 +73,9 @@ const uploadQueue = ref<UploadQueueItem[]>([])
 const uploadRunning = ref(false)
 const mediaDrafts = reactive<Record<string, { altText: string; caption: string; title: string; location: string; date: string; time: string }>>({})
 const mediaSavingId = ref<string | null>(null)
+const mediaRegeneratingId = ref<string | null>(null)
+const mediaPipelineNotice = ref('')
+const mediaPipelineFailed = ref(false)
 const mediaDialog = ref<HTMLDialogElement | null>(null)
 const editingMediaId = ref<string | null>(null)
 const orderSaving = ref(false)
@@ -130,6 +133,11 @@ const syndicationButtonLabel = computed(() => {
 function postThumbnail(post: AdminPost): PostMedia {
   const hero = post.media.find((item) => item.id === post.heroMediaId)
   return hero ?? post.media[0]!
+}
+
+function mediaThumbnailUrl(item: PostMedia): string {
+  const separator = item.urls.thumbnail.includes('?') ? '&' : '?'
+  return `${item.urls.thumbnail}${separator}admin=${encodeURIComponent(item.updatedAt)}`
 }
 
 function postLabel(post: AdminPost): string {
@@ -228,6 +236,8 @@ function usePostDateTime(draft: DateTimeDraft) {
 
 function openMediaDetails(item: PostMedia) {
   editingMediaId.value = item.id
+  mediaPipelineNotice.value = ''
+  mediaPipelineFailed.value = false
   requestAnimationFrame(() => mediaDialog.value?.showModal())
 }
 
@@ -457,6 +467,32 @@ async function saveMedia(item: PostMedia) {
     error.value = message(mediaError)
   } finally {
     mediaSavingId.value = null
+  }
+}
+
+async function rerunPhotoPipeline(item: PostMedia) {
+  if (mediaRegeneratingId.value) return
+  const draft = { ...mediaDrafts[item.id] }
+  mediaRegeneratingId.value = item.id
+  mediaPipelineNotice.value = ''
+  mediaPipelineFailed.value = false
+  error.value = ''
+  notice.value = ''
+  try {
+    const updated = await adminRequest<PostMedia>(
+      `/api/admin/media/${item.id}/regenerate`,
+      { method: 'POST' },
+    )
+    replaceMedia(updated)
+    Object.assign(mediaDrafts[item.id], draft)
+    notice.value = `Photo pipeline v${updated.pipelineVersion} completed.`
+    mediaPipelineNotice.value = notice.value
+  } catch (pipelineError) {
+    error.value = message(pipelineError)
+    mediaPipelineNotice.value = error.value
+    mediaPipelineFailed.value = true
+  } finally {
+    mediaRegeneratingId.value = null
   }
 }
 
@@ -865,7 +901,7 @@ onBeforeUnmount(() => {
                 alt=""
                 decoding="async"
                 loading="lazy"
-                :src="postThumbnail(post).urls.thumbnail"
+                :src="mediaThumbnailUrl(postThumbnail(post))"
               >
               <span v-if="post.media.length > 1" class="photo-count">+{{ post.media.length - 1 }}</span>
             </span>
@@ -908,7 +944,7 @@ onBeforeUnmount(() => {
                   :key="item.id"
                   :alt="item.altText"
                   :class="{ 'post-preview-hero': item.id === selected?.heroMediaId }"
-                  :src="item.urls.thumbnail"
+                  :src="mediaThumbnailUrl(item)"
                 >
               </div>
               <div class="post-preview-copy">
@@ -938,7 +974,7 @@ onBeforeUnmount(() => {
                 @drop.prevent="dropMedia(item.id)"
               >
                 <button class="media-preview" type="button" :aria-label="`Set focal point for photo ${index + 1}`" @click="setFocalPoint(item, $event)">
-                  <img :alt="item.altText" :src="item.urls.thumbnail">
+                  <img :alt="item.altText" :src="mediaThumbnailUrl(item)">
                   <span class="focal-marker" :style="{ left: `${(item.focalX ?? 0.5) * 100}%`, top: `${(item.focalY ?? 0.5) * 100}%` }"></span>
                 </button>
                 <figcaption>
@@ -1110,8 +1146,27 @@ onBeforeUnmount(() => {
             </div>
             <button class="button-quiet dialog-close" type="button" aria-label="Close photo details" @click="closeMediaDetails">×</button>
           </header>
-          <img :alt="editingMedia.altText" :src="editingMedia.urls.thumbnail">
-          <p class="photo-technical">{{ editingMedia.width }} × {{ editingMedia.height }} · {{ editingMedia.processingState }}</p>
+          <img :alt="editingMedia.altText" :src="mediaThumbnailUrl(editingMedia)">
+          <div class="photo-pipeline-status">
+            <p class="photo-technical">
+              {{ editingMedia.width }} × {{ editingMedia.height }} · {{ editingMedia.processingState }} ·
+              pipeline {{ editingMedia.pipelineVersion === null ? 'legacy/unversioned' : `v${editingMedia.pipelineVersion}` }}
+            </p>
+            <button
+              class="button-secondary"
+              :disabled="mediaRegeneratingId === editingMedia.id || mediaSavingId === editingMedia.id"
+              type="button"
+              @click="rerunPhotoPipeline(editingMedia)"
+            >
+              {{ mediaRegeneratingId === editingMedia.id ? 'Running pipeline…' : 'Rerun photo pipeline' }}
+            </button>
+          </div>
+          <p
+            v-if="mediaPipelineNotice"
+            class="message"
+            :class="{ 'message--error': mediaPipelineFailed }"
+            role="status"
+          >{{ mediaPipelineNotice }}</p>
           <label>Title <input v-model="mediaDrafts[editingMedia.id].title" maxlength="200"></label>
           <label>Alt text (optional) <textarea v-model="mediaDrafts[editingMedia.id].altText" maxlength="2000" rows="3"></textarea></label>
           <label>Caption <textarea v-model="mediaDrafts[editingMedia.id].caption" maxlength="5000" rows="3"></textarea></label>
@@ -1147,7 +1202,7 @@ onBeforeUnmount(() => {
             </div>
           </fieldset>
           <div class="editor-actions">
-            <button :disabled="mediaSavingId === editingMedia.id" type="submit">
+            <button :disabled="mediaSavingId === editingMedia.id || mediaRegeneratingId === editingMedia.id" type="submit">
               {{ mediaSavingId === editingMedia.id ? 'Saving…' : 'Save photo details' }}
             </button>
             <button class="button-secondary" type="button" @click="closeMediaDetails">Cancel</button>
@@ -1252,6 +1307,8 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .media-details-form h2 { font-size: 1.4rem; font-weight: 650; }
 .media-details-form > img { aspect-ratio: 16 / 9; border-radius: 0.65rem; object-fit: cover; width: 100%; }
 .photo-technical { color: var(--muted); font-family: 'Azeret Mono Variable', monospace; font-size: 0.72rem; margin-top: -0.5rem; }
+.photo-pipeline-status { align-items: center; display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: space-between; }
+.photo-pipeline-status .photo-technical { margin: 0; }
 .dialog-close { font-size: 1.6rem; line-height: 1; padding: 0.2rem 0.45rem; }
 .date-time-editor { border: 1px solid var(--border); border-radius: 0.65rem; display: grid; gap: 0.75rem; margin: 0; min-width: 0; padding: 0.9rem; }
 .date-time-editor legend { font-size: 0.85rem; font-weight: 650; padding: 0 0.3rem; }

@@ -32,7 +32,7 @@ const post = {
     altText: 'Responsive test photo', byteSize: 1, caption: null, checksumSha256: 'test',
     createdAt: '2026-09-17T12:00:00.000Z', date: null, displayOrder: 0,
     focalX: null, focalY: null, height: 1800, id: 'media-1', location: null,
-    mimeType: 'image/jpeg', placeholder: null, postId: 'responsive-photo',
+    mimeType: 'image/jpeg', pipelineVersion: 1, placeholder: null, postId: 'responsive-photo',
     processingState: 'ready', renditions, time: null, title: null,
     updatedAt: '2026-09-17T12:00:00.000Z', width: 2400,
     urls: {

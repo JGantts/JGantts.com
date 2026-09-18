@@ -18,6 +18,7 @@ function localMedia(): PostMedia {
     id: 'photo',
     location: null,
     mimeType: 'image/jpeg',
+    pipelineVersion: 1,
     placeholder: {
       byteSize: 100,
       colorSpace: 'srgb',

@@ -19,6 +19,7 @@ export interface MediaRendition {
 export type RenditionFormat = 'avif' | 'jpeg' | 'png' | 'webp';
 
 export interface RenditionManifest {
+  pipelineVersion: number;
   renditions: MediaRendition[];
   version: 1;
 }

@@ -71,6 +71,16 @@ export function createAdminMediaRouter(media: MediaService): express.Router {
     });
   });
 
+  router.post('/:id/regenerate', (req, res, next) => {
+    void media.regenerate(req.params.id).then((result) => {
+      if (!result) {
+        res.status(404).json({ error: { code: 'not_found', message: 'Media not found.' } });
+        return;
+      }
+      res.set('Cache-Control', 'no-store').json(result);
+    }, next);
+  });
+
   router.delete('/:id', (req, res, next) => {
     try {
       media.deleteImage(req.params.id);

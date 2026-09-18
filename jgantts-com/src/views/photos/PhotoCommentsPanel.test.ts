@@ -98,7 +98,7 @@ describe('PhotoCommentsPanel', () => {
     mockMatchMedia(true)
     const wrapper = mount(PhotoCommentsPanel, {
       attachTo: document.body,
-      props: { ...baseProps, open: true, replyCount: 3 },
+      props: { ...baseProps, open: true, qrCodeUrl: 'data:image/png;base64,qr', replyCount: 3 },
       global: { stubs: { MediaCarousel: true } },
     })
     await wrapper.vm.$nextTick()
@@ -110,11 +110,16 @@ describe('PhotoCommentsPanel', () => {
     expect(panel.textContent).toContain('3 replies')
     expect(panel.querySelector('.comments-context')?.tagName).toBe('ARTICLE')
     expect(panel.querySelector('.comments-post-text')?.textContent).toContain('A long-form photo description.')
-    expect(panel.querySelector('.photo-share-native')).not.toBeNull()
-    expect(panel.querySelector('.photo-share-menu')).toBeNull()
-    ;(panel.querySelector('.photo-share-native') as HTMLButtonElement).click()
+    expect(panel.querySelector('.photo-share-menu')).not.toBeNull()
+    ;(panel.querySelector('[aria-label="Share this photo post"]') as HTMLButtonElement).click()
     await wrapper.vm.$nextTick()
+    expect(panel.querySelector('.photo-share-popover')).not.toBeNull()
+    ;(Array.from(panel.querySelectorAll('button')).find((button) => button.textContent === 'Share…') as HTMLButtonElement).click()
     expect(wrapper.emitted('copyLink')).toEqual([[]])
+    ;(Array.from(panel.querySelectorAll('button')).find((button) => button.textContent === 'Share as QR code') as HTMLButtonElement).click()
+    await wrapper.vm.$nextTick()
+    ;(panel.querySelector('.photo-qr-fullscreen-trigger') as HTMLButtonElement).click()
+    expect(wrapper.emitted('openQr')).toEqual([[]])
     expect(document.body.style.overflow).toBe('hidden')
 
     await wrapper.setProps({ open: false })
@@ -193,6 +198,9 @@ describe('PhotoCommentsPanel', () => {
     expect(wrapper.find('.comments-post-text').attributes('style')).toBeUndefined()
     expect(wrapper.find('.photo-share-menu').exists()).toBe(true)
     expect(wrapper.find('.photo-share-native').exists()).toBe(false)
+    await wrapper.get('[aria-label="Share this photo post"]').trigger('click')
+    await wrapper.get('.photo-qr-toggle').trigger('click')
+    expect(wrapper.find('.photo-qr-panel').exists()).toBe(true)
     wrapper.unmount()
   })
 

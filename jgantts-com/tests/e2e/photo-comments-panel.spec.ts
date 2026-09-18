@@ -109,6 +109,22 @@ test('desktop share button opens the share menu', async ({ page }) => {
 
   await expect(shareButton).toHaveAttribute('aria-expanded', 'true')
   await expect(shareMenu.locator('.photo-share-popover')).toBeVisible()
+  await shareMenu.getByRole('button', { name: 'Share as QR code' }).click()
+  await expect(shareMenu.getByRole('img', { name: 'QR code for this photo post' })).toBeVisible()
+})
+
+test('mobile share menu opens and enlarges the QR code', async ({ page }) => {
+  await page.goto('/photos/photo-1')
+  await page.getByRole('button', { name: /View comments/ }).click()
+
+  const sheet = page.getByRole('dialog', { name: 'Replies' })
+  await sheet.getByRole('button', { name: 'Share this photo post' }).click()
+  await sheet.getByRole('button', { name: 'Share as QR code' }).click()
+
+  const qrPreview = sheet.getByRole('button', { name: 'Enlarge QR code to fill the window' })
+  await expect(qrPreview).toBeVisible()
+  await qrPreview.click()
+  await expect(page.getByRole('dialog', { name: 'Scan to view this photo' })).toBeVisible()
 })
 
 test('closing the mobile sheet restores the visible gallery', async ({ page }) => {

@@ -42,7 +42,8 @@ const sheetQueryText = '(max-width: 64rem), (max-height: 36rem)'
 const portraitSheetQueryText = '(max-width: 64rem) and (orientation: portrait)'
 const isSheet = ref(false)
 const isPortraitSheet = ref(false)
-const desktopShareOpen = ref(false)
+const shareMenuOpen = ref(false)
+const qrShareOpen = ref(false)
 const closeButtonRef = ref<HTMLButtonElement | null>(null)
 let sheetQuery: MediaQueryList | null = null
 let portraitSheetQuery: MediaQueryList | null = null
@@ -122,15 +123,23 @@ async function shareFromSheet() {
   }
 }
 
-function toggleDesktopShareMenu() {
-  desktopShareOpen.value = !desktopShareOpen.value
+function toggleShareMenu() {
+  shareMenuOpen.value = !shareMenuOpen.value
+  if (!shareMenuOpen.value) qrShareOpen.value = false
 }
 
-function closeDesktopShareMenu(event: MouseEvent) {
+function toggleQrShare() {
+  qrShareOpen.value = !qrShareOpen.value
+}
+
+function resetShareMenu() {
+  shareMenuOpen.value = false
+  qrShareOpen.value = false
+}
+
+function closeShareMenu(event: MouseEvent) {
   const target = event.target
-  if (target instanceof Element && !target.closest('.photo-share-menu')) {
-    desktopShareOpen.value = false
-  }
+  if (target instanceof Element && !target.closest('.photo-share-menu')) resetShareMenu()
 }
 
 function requestClose() {
@@ -224,6 +233,10 @@ watch(modalOpen, (open) => {
   }
 }, { immediate: true })
 
+watch(() => props.open, (open) => {
+  if (!open) resetShareMenu()
+})
+
 onMounted(() => {
   sheetQuery = window.matchMedia(sheetQueryText)
   portraitSheetQuery = window.matchMedia(portraitSheetQueryText)
@@ -231,14 +244,14 @@ onMounted(() => {
   sheetQuery.addEventListener('change', syncSheetQuery)
   portraitSheetQuery.addEventListener('change', syncSheetQuery)
   window.addEventListener('popstate', handlePopState)
-  document.addEventListener('click', closeDesktopShareMenu)
+  document.addEventListener('click', closeShareMenu)
 })
 
 onBeforeUnmount(() => {
   sheetQuery?.removeEventListener('change', syncSheetQuery)
   portraitSheetQuery?.removeEventListener('change', syncSheetQuery)
   window.removeEventListener('popstate', handlePopState)
-  document.removeEventListener('click', closeDesktopShareMenu)
+  document.removeEventListener('click', closeShareMenu)
   discardHistoryEntry()
   emit('modalChange', false)
 })
@@ -308,38 +321,34 @@ onBeforeUnmount(() => {
               </DrawerTitle>
               <span>{{ replyLabel }}</span>
             </div>
-        <button
-          v-if="isSheet"
-          type="button"
-          class="photo-share-button photo-share-native"
-          aria-label="Share this photo post"
-          @click="shareFromSheet"
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
-          Share
-        </button>
-        <div v-else class="photo-share-menu">
+        <div class="photo-share-menu">
           <button
             type="button"
             class="photo-share-button"
             aria-label="Share this photo post"
-            :aria-expanded="desktopShareOpen"
-            @click.stop="toggleDesktopShareMenu"
+            :aria-expanded="shareMenuOpen"
+            @click.stop="toggleShareMenu"
           >
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
             Share
           </button>
-          <div v-if="desktopShareOpen" class="photo-share-popover">
+          <div v-if="shareMenuOpen" class="photo-share-popover">
             <p>Share this photo post</p>
+            <button v-if="isSheet" type="button" @click="shareFromSheet">Share…</button>
             <a :href="facebookShareUrl" target="_blank" rel="noopener noreferrer">Share on Facebook <span aria-hidden="true">↗</span></a>
             <a :href="xShareUrl" target="_blank" rel="noopener noreferrer">Share on X <span aria-hidden="true">↗</span></a>
             <a :href="linkedinShareUrl" target="_blank" rel="noopener noreferrer">Share on LinkedIn <span aria-hidden="true">↗</span></a>
             <a :href="emailShareUrl">Share by email</a>
             <button type="button" @click="emit('copyLink')">Copy link</button>
             <p class="photo-share-status" role="status" aria-live="polite">{{ shareStatus }}</p>
-            <details class="photo-qr-share">
-              <summary>Share as QR code</summary>
-              <div class="photo-qr-panel">
+            <div class="photo-qr-share">
+              <button
+                type="button"
+                class="photo-qr-toggle"
+                :aria-expanded="qrShareOpen"
+                @click="toggleQrShare"
+              >Share as QR code</button>
+              <div v-if="qrShareOpen" class="photo-qr-panel">
                 <button
                   v-if="qrCodeUrl"
                   type="button"
@@ -357,7 +366,7 @@ onBeforeUnmount(() => {
                 <p>Scan to open this photo post</p>
                 <a v-if="qrCodeUrl" :href="qrCodeUrl" :download="qrDownloadName">Download QR code</a>
               </div>
-            </details>
+            </div>
           </div>
         </div>
         <button
@@ -823,11 +832,6 @@ button.photo-share-button {
   font-family: inherit;
 }
 
-.photo-share-button::-webkit-details-marker,
-.photo-qr-share > summary::-webkit-details-marker {
-  display: none;
-}
-
 .photo-share-button svg {
   fill: currentColor;
   height: 0.9rem;
@@ -844,7 +848,7 @@ button.photo-share-button {
 .photo-share-button:focus-visible,
 .photo-share-popover a:focus-visible,
 .photo-share-popover button:focus-visible,
-.photo-qr-share > summary:focus-visible {
+.photo-qr-toggle:focus-visible {
   outline: 2px solid var(--photos-accent);
   outline-offset: 2px;
 }
@@ -875,7 +879,7 @@ button.photo-share-button {
 
 .photo-share-popover > a,
 .photo-share-popover > button,
-.photo-qr-share > summary {
+.photo-qr-toggle {
   align-items: center;
   background: transparent;
   border: 0;
@@ -894,7 +898,7 @@ button.photo-share-button {
 
 .photo-share-popover > a:hover,
 .photo-share-popover > button:hover,
-.photo-qr-share > summary:hover {
+.photo-qr-toggle:hover {
   background: var(--photos-accent-soft);
 }
 
@@ -909,10 +913,6 @@ button.photo-share-button {
   border-top: 1px solid var(--photos-border);
   margin-top: 0.2rem;
   padding-top: 0.2rem;
-}
-
-.photo-qr-share > summary {
-  list-style: none;
 }
 
 .photo-qr-panel {

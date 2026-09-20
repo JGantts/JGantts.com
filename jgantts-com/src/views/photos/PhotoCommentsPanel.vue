@@ -608,8 +608,8 @@ onBeforeUnmount(() => {
 
 .comments-context-content {
   display: grid;
-  gap: 0.5rem;
-  padding-top: 0.3rem;
+  gap: 0.3rem;
+  padding-top: 0.15rem;
 }
 
 .post-meta-header,
@@ -691,7 +691,7 @@ onBeforeUnmount(() => {
 
 .comments-post-text :deep(.local-post-overlay) {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.35rem;
 }
 
 .comments-post-text :deep(.local-post-overlay p) {
@@ -702,6 +702,7 @@ onBeforeUnmount(() => {
 .comments-post-text :deep(.local-post-title) {
   font-size: 1.05rem;
   font-style: italic;
+  line-height: 1.3;
 }
 
 .comments-post-text :deep(.local-post-location),
@@ -709,6 +710,7 @@ onBeforeUnmount(() => {
   color: var(--photos-muted);
   font-family: 'Azeret Mono Variable', monospace;
   font-size: 0.75rem;
+  line-height: 1.35;
 }
 
 .comments-post-text :deep(a) {

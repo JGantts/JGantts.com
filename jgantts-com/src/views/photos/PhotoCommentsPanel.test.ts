@@ -74,7 +74,7 @@ afterEach(() => {
 })
 
 describe('PhotoCommentsPanel', () => {
-  it('uses a compact trigger and keeps the sheet out of the accessibility tree while closed', async () => {
+  it('uses the open header content in the dock and keeps the sheet out of the accessibility tree while closed', async () => {
     mockMatchMedia(true)
     const wrapper = mount(PhotoCommentsPanel, {
       attachTo: document.body,
@@ -84,10 +84,17 @@ describe('PhotoCommentsPanel', () => {
     await wrapper.vm.$nextTick()
 
     const trigger = wrapper.get('.comments-dock-trigger')
-    expect(trigger.text()).toContain('View comments')
+    expect(trigger.text()).toContain('Replies')
+    expect(trigger.text()).toContain('0 replies')
     expect(trigger.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.find('.comments-dock .photo-share-menu').exists()).toBe(true)
+    expect(wrapper.find('.comments-dock-clear').exists()).toBe(true)
     expect(document.querySelector('#photo-comments-panel')).toBeNull()
     expect(document.body.style.overflow).toBe('')
+
+    await wrapper.get('.comments-dock .photo-share-button').trigger('click')
+    expect(wrapper.find('.comments-dock .photo-share-popover').exists()).toBe(true)
+    expect(wrapper.emitted('update:open')).toBeUndefined()
 
     await trigger.trigger('click')
     expect(wrapper.emitted('update:open')).toEqual([[true]])

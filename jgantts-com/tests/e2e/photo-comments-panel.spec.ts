@@ -92,7 +92,7 @@ test.beforeEach(async ({ page }) => {
 test('direct photo loads keep comments docked until the user opens them', async ({ page }) => {
   await page.goto('/photos/photo-5')
 
-  const dock = page.getByRole('button', { name: /View comments/ })
+  const dock = page.locator('.comments-dock-trigger')
   await expect(dock).toBeVisible()
   await expect(page.getByRole('dialog', { name: 'Replies' })).toBeHidden()
   await expect(page).toHaveURL(/\/photos\/photo-5$/)
@@ -102,7 +102,7 @@ test('desktop share button opens the share menu', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/photos/photo-1')
 
-  const shareMenu = page.locator('.photo-share-menu')
+  const shareMenu = page.locator('#photo-comments-panel .photo-share-menu')
   await expect(shareMenu).toBeVisible()
   const shareButton = shareMenu.getByRole('button', { name: 'Share this photo post' })
   await shareButton.click()
@@ -115,7 +115,7 @@ test('desktop share button opens the share menu', async ({ page }) => {
 
 test('mobile share menu opens and enlarges the QR code', async ({ page }) => {
   await page.goto('/photos/photo-1')
-  await page.getByRole('button', { name: /View comments/ }).click()
+  await page.locator('.comments-dock-trigger').click()
 
   const sheet = page.getByRole('dialog', { name: 'Replies' })
   await sheet.getByRole('button', { name: 'Share this photo post' }).click()
@@ -132,7 +132,7 @@ test('closing the mobile sheet restores the visible gallery', async ({ page }) =
   const firstPhoto = page.getByRole('button', { name: /Select post from/ }).first()
   await expect(firstPhoto).toBeVisible()
   await firstPhoto.click()
-  await page.getByRole('button', { name: /View comments/ }).click()
+  await page.locator('.comments-dock-trigger').click()
 
   const sheet = page.getByRole('dialog', { name: 'Replies' })
   await expect(sheet).toBeVisible()
@@ -146,9 +146,10 @@ test('closing the mobile sheet restores the visible gallery', async ({ page }) =
 
 test('mobile sheet locks the gallery and has exactly one vertical scroll owner', async ({ page }) => {
   await page.goto('/photos')
-  await page.getByRole('button', { name: /Select post from/ }).nth(4).scrollIntoViewIfNeeded()
-  await page.getByRole('button', { name: /Select post from/ }).nth(4).click()
-  await page.getByRole('button', { name: /View comments/ }).click()
+  const fifthPhoto = page.getByRole('button', { name: 'Select post from Sep 5, 2026' })
+  await fifthPhoto.scrollIntoViewIfNeeded()
+  await fifthPhoto.click()
+  await page.locator('.comments-dock-trigger').click()
 
   const sheet = page.getByRole('dialog', { name: 'Replies' })
   await expect(sheet).toBeVisible()
@@ -179,7 +180,7 @@ test('keyboard, reduced-motion, and 200% zoom smoke test', async ({ page }) => {
   await page.goto('/photos')
   await page.getByRole('button', { name: /Select post from/ }).first().click()
 
-  const dock = page.getByRole('button', { name: /View comments/ })
+  const dock = page.locator('.comments-dock-trigger')
   await dock.focus()
   await page.keyboard.press('Enter')
   const sheet = page.getByRole('dialog', { name: 'Replies' })
@@ -198,7 +199,7 @@ test('portrait gestures open from the dock, scroll in content, and close from th
   await page.goto('/photos')
   await page.getByRole('button', { name: /Select post from/ }).first().click()
 
-  const dock = page.getByRole('button', { name: /View comments/ })
+  const dock = page.locator('.comments-dock-trigger')
   const dockBox = await dock.boundingBox()
   if (!dockBox) throw new Error('Comments dock was not laid out')
   const x = dockBox.x + dockBox.width / 2
@@ -231,7 +232,7 @@ test('portrait gestures open from the dock, scroll in content, and close from th
   await page.mouse.up()
   await expect(sheet).toBeHidden()
 
-  await page.getByRole('button', { name: /View comments/ }).click()
+  await page.locator('.comments-dock-trigger').click()
   await expect(sheet).toBeVisible()
   await page.locator('.comments-backdrop').click({ position: { x: 12, y: 12 } })
   await expect(sheet).toBeHidden()

@@ -209,6 +209,7 @@ function endDockSwipe(event: PointerEvent, cancelled = false) {
 function handleDockClick(event: MouseEvent) {
   const target = event.target
   if (target instanceof Element && target.closest('.comments-dock-clear')) return
+  if (target instanceof Element && target.closest('.photo-share-menu')) return
   if (performance.now() < suppressDockClickUntil) {
     event.preventDefault()
     event.stopPropagation()
@@ -267,31 +268,79 @@ onBeforeUnmount(() => {
     <div class="photo-comments">
       <div
         v-show="isSheet && !open"
-        class="comments-dock"
+        class="comments-dock comments-panel-header"
         @click="handleDockClick"
         @pointerdown="beginDockSwipe"
         @pointermove="moveDockSwipe"
         @pointerup="endDockSwipe"
         @pointercancel="endDockSwipe($event, true)"
       >
-          <span class="comments-dock-handle" aria-hidden="true"></span>
-          <DrawerTrigger as-child>
-            <button
-              type="button"
-              class="comments-dock-trigger"
-            >
-              <span>View comments</span>
-              <strong>{{ replyLabel }}</strong>
-            </button>
-          </DrawerTrigger>
+        <span class="comments-dock-handle" aria-hidden="true"></span>
+        <DrawerTrigger as-child>
           <button
             type="button"
-            class="comments-dock-clear"
-            aria-label="Close selected photo"
-            @click="emit('clearSelection')"
+            class="comments-dock-trigger"
           >
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
+            <span>Replies</span>
+            <small>{{ replyLabel }}</small>
           </button>
+        </DrawerTrigger>
+        <div class="photo-share-menu">
+          <button
+            type="button"
+            class="photo-share-button"
+            aria-label="Share this photo post"
+            :aria-expanded="shareMenuOpen"
+            @click.stop="toggleShareMenu"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
+            Share
+          </button>
+          <div v-if="shareMenuOpen" class="photo-share-popover">
+            <p>Share this photo post</p>
+            <button type="button" @click="shareFromSheet">Share…</button>
+            <a :href="facebookShareUrl" target="_blank" rel="noopener noreferrer">Share on Facebook <span aria-hidden="true">↗</span></a>
+            <a :href="xShareUrl" target="_blank" rel="noopener noreferrer">Share on X <span aria-hidden="true">↗</span></a>
+            <a :href="linkedinShareUrl" target="_blank" rel="noopener noreferrer">Share on LinkedIn <span aria-hidden="true">↗</span></a>
+            <a :href="emailShareUrl">Share by email</a>
+            <button type="button" @click="emit('copyLink')">Copy link</button>
+            <p class="photo-share-status" role="status" aria-live="polite">{{ shareStatus }}</p>
+            <div class="photo-qr-share">
+              <button
+                type="button"
+                class="photo-qr-toggle"
+                :aria-expanded="qrShareOpen"
+                @click="toggleQrShare"
+              >Share as QR code</button>
+              <div v-if="qrShareOpen" class="photo-qr-panel">
+                <button
+                  v-if="qrCodeUrl"
+                  type="button"
+                  class="photo-qr-fullscreen-trigger"
+                  aria-label="Enlarge QR code to fill the window"
+                  @click="emit('openQr')"
+                >
+                  <img :src="qrCodeUrl" alt="QR code for this photo post">
+                  <span>
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" /></svg>
+                    Tap to enlarge
+                  </span>
+                </button>
+                <p v-else>QR code unavailable.</p>
+                <p>Scan to open this photo post</p>
+                <a v-if="qrCodeUrl" :href="qrCodeUrl" :download="qrDownloadName">Download QR code</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="comments-dock-clear"
+          aria-label="Close selected photo"
+          @click="emit('clearSelection')"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
       </div>
 
       <DrawerPortal disabled>
@@ -992,17 +1041,17 @@ button.photo-share-button {
   }
 
   .comments-dock {
-    align-items: stretch;
+    align-items: center;
     background: color-mix(in srgb, var(--photos-panel) 96%, transparent);
     border: 1px solid var(--photos-border);
     border-bottom: 0;
     border-radius: 1rem 1rem 0 0;
     box-shadow: var(--photos-card-shadow);
     display: grid;
-    gap: 0.5rem;
-    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: 0.65rem;
+    grid-template-columns: minmax(0, 1fr) auto 44px;
     margin-inline: max(0.35rem, env(safe-area-inset-left, 0px)) max(0.35rem, env(safe-area-inset-right, 0px));
-    padding: 0.55rem 0.65rem max(0.55rem, env(safe-area-inset-bottom, 0px));
+    padding: 1.05rem max(0.75rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px)) max(0.75rem, env(safe-area-inset-left, 0px));
     pointer-events: auto;
     position: relative;
     touch-action: pan-x;
@@ -1053,26 +1102,27 @@ button.photo-share-button {
   }
 
   .comments-dock-trigger {
-    align-items: center;
+    align-items: baseline;
     background: transparent;
     border: 0;
     color: var(--photos-text);
     cursor: pointer;
     display: flex;
     font: inherit;
-    justify-content: space-between;
+    gap: 0.5rem;
+    justify-content: flex-start;
     min-height: 44px;
-    padding: 0 0.45rem;
+    padding: 0;
     text-align: left;
   }
 
   .comments-dock-trigger > span {
-    font-size: 0.9rem;
+    font-size: 1.05rem;
     font-weight: 800;
   }
 
-  .comments-dock-trigger > strong {
-    color: var(--photos-accent);
+  .comments-dock-trigger > small {
+    color: var(--photos-muted);
     font-family: 'Azeret Mono Variable', monospace;
     font-size: 0.68rem;
   }

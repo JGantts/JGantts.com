@@ -360,7 +360,7 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
     bodyMarkdown: '# Hello\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(2)) **world**',
     location: 'New York',
     date: 20260906,
-    time: '21:15',
+    time: '18:10',
     title: 'First local post',
   });
 
@@ -412,7 +412,7 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.equal(createdResponse.status, 201);
   const created = JSON.parse(createdResponse.body) as { bodyHtml: string; id: string; slug: string; status: string; syndications: unknown[]; teaser: string; time: string; title: string };
   assert.equal(created.status, 'draft');
-  assert.equal(created.time, '21:15');
+  assert.equal(created.time, '18:10');
   assert.equal(created.title, 'First local post');
   assert.equal(created.slug, 'first-local-post');
   assert.equal(created.teaser.split('\n')[0], 'First local post');
@@ -749,6 +749,10 @@ test('returns safe failures for disabled admin API and invalid author input', as
     method: 'POST',
   });
   assert.equal(invalid.status, 400);
+  assert.equal(
+    JSON.parse(invalid.body).error.message,
+    'slug must contain lowercase letters, numbers, and single hyphens only.',
+  );
 
   const photoOnly = await request(app, '/api/admin/posts', {
     body: JSON.stringify({ slug: 'photo-only' }),
@@ -833,7 +837,7 @@ test('uploads local media and serves immutable originals and derivatives', async
 
   const editedResponse = await request(app, `/api/admin/media/${uploaded.id}`, {
     body: JSON.stringify({
-      altText: 'An updated brown rectangle', caption: 'A visible caption', title: 'Brown study', time: '06:30', focalX: 0.4, focalY: 0.6,
+      altText: 'An updated brown rectangle', caption: 'A visible caption', title: 'Brown study', time: '18:10', focalX: 0.4, focalY: 0.6,
     }),
     headers: { authorization: 'Bearer media-secret', 'content-type': 'application/json' },
     method: 'PATCH',
@@ -841,7 +845,7 @@ test('uploads local media and serves immutable originals and derivatives', async
   assert.equal(editedResponse.status, 200);
   assert.equal(JSON.parse(editedResponse.body).caption, 'A visible caption');
   assert.equal(JSON.parse(editedResponse.body).title, 'Brown study');
-  assert.equal(JSON.parse(editedResponse.body).time, '06:30');
+  assert.equal(JSON.parse(editedResponse.body).time, '18:10');
 
   const orderResponse = await request(app, '/api/admin/posts/media-api-post/media/order', {
     body: JSON.stringify({ mediaIds: [uploaded.id] }),
@@ -1133,7 +1137,7 @@ test('gallery maintenance enforces auth and validation and serializes competing 
   assert.equal((await send(heroUrl, 'PUT', { mediaId: foreign.id })).status, 400);
   assert.equal((await send(editUrl, 'PATCH', { altText: '' })).status, 200);
   const afterBlankAlt = media.listForPost('gallery');
-  for (const body of [{ caption: 42 }, { time: '6:30 PM' }, { time: '06:10' }, { focalX: 0.5 }, { focalX: -1, focalY: 1 }, { postId: 'other' }]) {
+  for (const body of [{ caption: 42 }, { time: '6:30 PM' }, { time: '06:11' }, { focalX: 0.5 }, { focalX: -1, focalY: 1 }, { postId: 'other' }]) {
     assert.equal((await send(editUrl, 'PATCH', body)).status, 400);
   }
   assert.deepEqual(media.listForPost('gallery'), afterBlankAlt);

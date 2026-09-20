@@ -8,12 +8,17 @@ export async function adminRequest<T>(pathname: string, options: RequestInit = {
   const response = await fetch(pathname, { ...options, credentials: 'same-origin' })
   if (!response.ok) {
     let message = `Request failed (${response.status})`
+    let code: string | undefined
     try {
-      const body = await response.json() as { error?: { message?: unknown } }
+      const body = await response.json() as { error?: { code?: unknown; message?: unknown } }
+      if (typeof body.error?.code === 'string') code = body.error.code
       if (typeof body.error?.message === 'string') message = body.error.message
     } catch {
       // The status remains useful when an intermediary returns a non-JSON error.
     }
+    const method = options.method?.toUpperCase() ?? 'GET'
+    const status = `${response.status}${response.statusText ? ` ${response.statusText}` : ''}`
+    console.error(`[Admin API] ${method} ${pathname} failed (${status})${code ? ` [${code}]` : ''}: ${message}`)
     throw new AdminApiError(message, response.status)
   }
   if (response.status === 204) return undefined as T

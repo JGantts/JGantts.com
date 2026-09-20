@@ -72,8 +72,8 @@ function validateDate(value: unknown): number | null {
 
 function validateTime(value: unknown): string | null {
   if (value === null || value === undefined || value === '') return null;
-  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):(?:00|15|20|30|40|45)$/.test(value)) {
-    throw new PostInputError('time must use 24-hour HH:mm format at an allowed minute interval (:00, :15, :20, :30, :40, or :45), or be null.');
+  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):(?:00|10|15|20|30|40|45|50)$/.test(value)) {
+    throw new PostInputError('time must use 24-hour HH:mm format at an allowed minute interval (:00, :10, :15, :20, :30, :40, :45, or :50), or be null.');
   }
   return value;
 }

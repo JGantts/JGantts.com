@@ -12,10 +12,25 @@ export function createErrorHandler(logger: StructuredLogger = NOOP_LOGGER): Erro
 
     const candidateStatus = Number((error as { status?: unknown }).status);
     const status = candidateStatus >= 400 && candidateStatus <= 599 ? candidateStatus : 500;
+    const publicMessage = status < 500
+      && (error as { expose?: unknown }).expose === true
+      && error instanceof Error
+      && error.message
+      ? error.message
+      : status < 500
+        ? 'The API request is invalid.'
+        : 'The server could not complete the request.';
 
     if (status >= 500) {
       logger.error('http_request_failed', {
         error,
+        method: req.method,
+        path: req.path,
+        status,
+      });
+    } else {
+      logger.warn('http_request_rejected', {
+        message: publicMessage,
         method: req.method,
         path: req.path,
         status,
@@ -26,9 +41,7 @@ export function createErrorHandler(logger: StructuredLogger = NOOP_LOGGER): Erro
       res.status(status).json({
         error: {
           code: status < 500 ? 'bad_request' : 'internal_error',
-          message: status < 500
-            ? 'The API request is invalid.'
-            : 'The server could not complete the request.',
+          message: publicMessage,
         },
       });
       return;

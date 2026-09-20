@@ -57,6 +57,8 @@ let suppressDockClickUntil = 0
 const modalOpen = computed(() => isSheet.value && props.open)
 const drawerOpen = computed(() => !isSheet.value || props.open)
 const replyLabel = computed(() => `${props.replyCount} ${props.replyCount === 1 ? 'reply' : 'replies'}`)
+const panelSummaryLabel = computed(() => `Photo details · ${replyLabel.value}`)
+const panelTitle = computed(() => postTitleSnippet(props.post.content))
 
 const formatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
@@ -66,6 +68,23 @@ const numberFormatter = new Intl.NumberFormat()
 
 function displayName(account: PhotoCommentsStatus['account']): string {
   return account.display_name.trim() || account.username
+}
+
+function postTitleSnippet(content: string): string {
+  if (typeof document === 'undefined') return 'Photo details'
+  const container = document.createElement('div')
+  container.innerHTML = content
+  const text = (container.querySelector('.local-post-title')?.textContent
+    || container.querySelector('p')?.textContent
+    || container.textContent
+    || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!text) return 'Photo details'
+  if (text.length <= 64) return text
+  const candidate = text.slice(0, 65)
+  const breakAt = candidate.lastIndexOf(' ')
+  return `${candidate.slice(0, breakAt >= 40 ? breakAt : 64).trimEnd()}…`
 }
 
 function formatDate(date: string): string {
@@ -281,8 +300,8 @@ onBeforeUnmount(() => {
             type="button"
             class="comments-dock-trigger"
           >
-            <span>Replies</span>
-            <small>{{ replyLabel }}</small>
+            <span>{{ panelTitle }}</span>
+            <small>{{ panelSummaryLabel }}</small>
           </button>
         </DrawerTrigger>
         <div class="photo-share-menu">
@@ -366,9 +385,9 @@ onBeforeUnmount(() => {
           <header class="comments-panel-header">
             <div>
               <DrawerTitle as-child>
-                <h1>Replies</h1>
+                <h1>{{ panelTitle }}</h1>
               </DrawerTitle>
-              <span>{{ replyLabel }}</span>
+              <span>{{ panelSummaryLabel }}</span>
             </div>
         <div class="photo-share-menu">
           <button
@@ -422,7 +441,7 @@ onBeforeUnmount(() => {
           ref="closeButtonRef"
           type="button"
           class="comments-close"
-          :aria-label="isSheet ? 'Close comments' : 'Close selected photo'"
+          :aria-label="isSheet ? 'Close photo details' : 'Close selected photo'"
           @click="isSheet ? requestClose() : emit('clearSelection')"
         >
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
@@ -434,7 +453,7 @@ onBeforeUnmount(() => {
           class="comments-context"
           aria-labelledby="photo-comments-context-title"
         >
-          <h2 id="photo-comments-context-title">About this photo</h2>
+          <h2 id="photo-comments-context-title">Description</h2>
           <div class="comments-context-content">
             <header class="post-meta-header">
               <a :href="post.account.url" class="author-link">
@@ -451,6 +470,11 @@ onBeforeUnmount(() => {
             </time>
           </div>
         </article>
+
+        <header class="comments-replies-heading">
+          <h2>Replies</h2>
+          <span>{{ replyLabel }}</span>
+        </header>
 
         <p v-if="discussionState === 'loading'" class="comments-notice" role="status">
           Loading replies…
@@ -502,7 +526,7 @@ onBeforeUnmount(() => {
         <p v-else-if="discussionState === 'not_syndicated'" class="empty-state">
           No Mastodon discussion is connected yet.
         </p>
-        <p v-else-if="discussionState === 'available'" class="empty-state">No comments yet.</p>
+        <p v-else-if="discussionState === 'available'" class="empty-state">No replies yet.</p>
 
         <a v-if="remoteUrl" class="mastodon-reply-link" :href="remoteUrl" target="_blank" rel="noopener noreferrer">
           Reply on Mastodon <span aria-hidden="true">↗</span>
@@ -562,11 +586,15 @@ onBeforeUnmount(() => {
 .comments-panel-header > div:first-child {
   display: grid;
   gap: 0.1rem;
+  min-width: 0;
 }
 
 .comments-panel-header h1 {
   font-size: 1.05rem;
   font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .comments-panel-header > div:first-child > span {
@@ -606,10 +634,31 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
+.comments-replies-heading {
+  align-items: baseline;
+  display: flex;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+
+.comments-replies-heading h2 {
+  color: var(--photos-accent);
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.comments-replies-heading span {
+  color: var(--photos-muted);
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.68rem;
+}
+
 .comments-context-content {
   display: grid;
-  gap: 0.3rem;
-  padding-top: 0.15rem;
+  gap: 0.2rem;
+  padding-top: 0;
 }
 
 .post-meta-header,
@@ -691,7 +740,8 @@ onBeforeUnmount(() => {
 
 .comments-post-text :deep(.local-post-overlay) {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.1rem;
+  padding-bottom: 0.5rem;
 }
 
 .comments-post-text :deep(.local-post-overlay p) {
@@ -1104,16 +1154,17 @@ button.photo-share-button {
   }
 
   .comments-dock-trigger {
-    align-items: baseline;
+    align-items: center;
     background: transparent;
     border: 0;
     color: var(--photos-text);
     cursor: pointer;
-    display: flex;
+    display: grid;
     font: inherit;
-    gap: 0.5rem;
+    gap: 0.1rem;
     justify-content: flex-start;
     min-height: 44px;
+    min-width: 0;
     padding: 0;
     text-align: left;
   }
@@ -1121,6 +1172,9 @@ button.photo-share-button {
   .comments-dock-trigger > span {
     font-size: 1.05rem;
     font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .comments-dock-trigger > small {
@@ -1198,9 +1252,8 @@ button.photo-share-button {
   }
 
   .comments-panel-header > div:first-child {
-    align-items: baseline;
-    display: flex;
-    gap: 0.5rem;
+    display: grid;
+    gap: 0.1rem;
   }
 
   .photo-share-button {

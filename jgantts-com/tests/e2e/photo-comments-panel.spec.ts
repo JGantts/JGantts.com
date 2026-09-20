@@ -94,7 +94,9 @@ test('direct photo loads keep comments docked until the user opens them', async 
 
   const dock = page.locator('.comments-dock-trigger')
   await expect(dock).toBeVisible()
-  await expect(page.getByRole('dialog', { name: 'Replies' })).toBeHidden()
+  await expect(dock).toContainText('Photo 5')
+  await expect(dock).toContainText('Photo details ·')
+  await expect(page.locator('#photo-comments-panel[role="dialog"]')).toBeHidden()
   await expect(page).toHaveURL(/\/photos\/photo-5$/)
 })
 
@@ -117,7 +119,7 @@ test('mobile share menu opens and enlarges the QR code', async ({ page }) => {
   await page.goto('/photos/photo-1')
   await page.locator('.comments-dock-trigger').click()
 
-  const sheet = page.getByRole('dialog', { name: 'Replies' })
+  const sheet = page.locator('#photo-comments-panel[role="dialog"]')
   await sheet.getByRole('button', { name: 'Share this photo post' }).click()
   await sheet.getByRole('button', { name: 'Share as QR code' }).click()
 
@@ -134,9 +136,9 @@ test('closing the mobile sheet restores the visible gallery', async ({ page }) =
   await firstPhoto.click()
   await page.locator('.comments-dock-trigger').click()
 
-  const sheet = page.getByRole('dialog', { name: 'Replies' })
+  const sheet = page.locator('#photo-comments-panel[role="dialog"]')
   await expect(sheet).toBeVisible()
-  await sheet.getByRole('button', { name: 'Close comments' }).click()
+  await sheet.getByRole('button', { name: 'Close photo details' }).click()
 
   await expect(sheet).toBeHidden()
   await expect(page.locator('.comments-backdrop')).toBeHidden()
@@ -151,7 +153,7 @@ test('mobile sheet locks the gallery and has exactly one vertical scroll owner',
   await fifthPhoto.click()
   await page.locator('.comments-dock-trigger').click()
 
-  const sheet = page.getByRole('dialog', { name: 'Replies' })
+  const sheet = page.locator('#photo-comments-panel[role="dialog"]')
   await expect(sheet).toBeVisible()
   expect(await sheet.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
   await expect(page.locator('.gallery-surface')).toHaveAttribute('inert', '')
@@ -183,13 +185,13 @@ test('keyboard, reduced-motion, and 200% zoom smoke test', async ({ page }) => {
   const dock = page.locator('.comments-dock-trigger')
   await dock.focus()
   await page.keyboard.press('Enter')
-  const sheet = page.getByRole('dialog', { name: 'Replies' })
+  const sheet = page.locator('#photo-comments-panel[role="dialog"]')
   await expect(sheet).toBeVisible()
-  await expect(sheet.getByRole('button', { name: 'Close comments' })).toBeFocused()
+  await expect(sheet.getByRole('button', { name: 'Close photo details' })).toBeFocused()
   expect(await sheet.evaluate((element) => getComputedStyle(element).transitionDuration)).toBe('0s')
 
   await page.evaluate(() => { document.documentElement.style.zoom = '2' })
-  await expect(sheet.getByRole('button', { name: 'Close comments' })).toBeVisible()
+  await expect(sheet.getByRole('button', { name: 'Close photo details' })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(sheet).toBeHidden()
   await expect(dock).toBeFocused()
@@ -210,7 +212,7 @@ test('portrait gestures open from the dock, scroll in content, and close from th
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 80 }] })
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
 
-  const sheet = page.getByRole('dialog', { name: 'Replies' })
+  const sheet = page.locator('#photo-comments-panel[role="dialog"]')
   const scroller = sheet.locator('.comments-panel-scroll')
   await expect(sheet).toBeVisible()
   await expect(page.locator('.comments-backdrop')).toBeVisible()

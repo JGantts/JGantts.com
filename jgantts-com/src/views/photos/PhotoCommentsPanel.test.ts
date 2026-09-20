@@ -84,8 +84,8 @@ describe('PhotoCommentsPanel', () => {
     await wrapper.vm.$nextTick()
 
     const trigger = wrapper.get('.comments-dock-trigger')
-    expect(trigger.text()).toContain('Replies')
-    expect(trigger.text()).toContain('0 replies')
+    expect(trigger.text()).toContain('A long-form photo description.')
+    expect(trigger.text()).toContain('Photo details · 0 replies')
     expect(trigger.attributes('aria-expanded')).toBe('false')
     expect(wrapper.find('.comments-dock .photo-share-menu').exists()).toBe(true)
     expect(wrapper.find('.comments-dock-clear').exists()).toBe(true)
@@ -160,7 +160,7 @@ describe('PhotoCommentsPanel', () => {
     })
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
-    expect(document.activeElement?.getAttribute('aria-label')).toBe('Close comments')
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Close photo details')
 
     document.querySelector('#photo-comments-panel')?.dispatchEvent(new KeyboardEvent('keydown', {
       bubbles: true,
@@ -183,7 +183,7 @@ describe('PhotoCommentsPanel', () => {
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
 
-    ;(document.querySelector('[aria-label="Close comments"]') as HTMLButtonElement).click()
+    ;(document.querySelector('[aria-label="Close photo details"]') as HTMLButtonElement).click()
     expect(back).toHaveBeenCalledOnce()
     wrapper.unmount()
   })
@@ -282,7 +282,8 @@ describe('PhotoCommentsPanel', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('.comments-context').element.tagName).toBe('ARTICLE')
-    expect(wrapper.get('.comments-context > h2').text()).toBe('About this photo')
+    expect(wrapper.get('.comments-context > h2').text()).toBe('Description')
+    expect(wrapper.get('.comments-replies-heading').text()).toContain('Replies')
     expect(wrapper.get('.comments-post-text').text()).toContain('Long context')
     expect(wrapper.get('.comments-post-text').attributes('style')).toBeUndefined()
     wrapper.unmount()

@@ -149,8 +149,7 @@ const gap = 10
 const columnCount = computed(() => {
   if (containerWidth.value < 520) return 6
   if (containerWidth.value < 840) return 12
-  if (containerWidth.value < 1240) return 18
-  return 24
+  return 12
 })
 
 const targetGalleryHeight = computed(() => Math.max(420, viewportHeight.value - 170))

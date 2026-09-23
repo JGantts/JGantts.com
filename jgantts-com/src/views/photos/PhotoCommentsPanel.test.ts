@@ -283,6 +283,8 @@ describe('PhotoCommentsPanel', () => {
 
     expect(wrapper.find('.comments-context').element.tagName).toBe('ARTICLE')
     expect(wrapper.get('.comments-context > h2').text()).toBe('Description')
+    expect(wrapper.find('.comments-context .author-link').exists()).toBe(false)
+    expect(wrapper.find('.comments-context .avatar').exists()).toBe(false)
     expect(wrapper.get('.comments-replies-heading').text()).toContain('Replies')
     expect(wrapper.get('.comments-post-text').text()).toContain('Long context')
     expect(wrapper.get('.comments-post-text').attributes('style')).toBeUndefined()

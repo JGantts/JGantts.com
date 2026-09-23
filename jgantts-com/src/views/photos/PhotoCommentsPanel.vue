@@ -455,15 +455,6 @@ onBeforeUnmount(() => {
         >
           <h2 id="photo-comments-context-title">Description</h2>
           <div class="comments-context-content">
-            <header class="post-meta-header">
-              <a :href="post.account.url" class="author-link">
-                <img :src="post.account.avatar" alt="" class="avatar avatar-large" decoding="async" />
-                <span class="author-text">
-                  <strong>{{ displayName(post.account) }}</strong>
-                  <span>@{{ post.account.acct }}</span>
-                </span>
-              </a>
-            </header>
             <div class="comments-post-text" v-html="post.content"></div>
             <time v-if="!post.id.startsWith('local:')" class="comments-post-date" :datetime="post.created_at">
               {{ formatDate(post.created_at) }}
@@ -661,7 +652,6 @@ onBeforeUnmount(() => {
   padding-top: 0;
 }
 
-.post-meta-header,
 .status-header {
   align-items: center;
   display: flex;
@@ -691,11 +681,6 @@ onBeforeUnmount(() => {
   height: 2rem;
   object-fit: cover;
   width: 2rem;
-}
-
-.avatar-large {
-  height: 2.5rem;
-  width: 2.5rem;
 }
 
 .author-text {

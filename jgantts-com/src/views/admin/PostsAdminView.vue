@@ -92,8 +92,6 @@ const editingMediaId = ref<string | null>(null)
 const orderSaving = ref(false)
 const draggedMediaId = ref<string | null>(null)
 const syndication = ref<Syndication | null>(null)
-const facebookSyndication = ref<Syndication | null>(null)
-const facebookCandidates = ref<Array<{ id: string; url: string }>>([])
 const revisionHistory = ref<PublishedRevision[]>([])
 const revisionSyndications = ref<RevisionSyndication[]>([])
 let previewTimer: ReturnType<typeof setTimeout> | null = null
@@ -217,8 +215,11 @@ function postTeaserFirstLine(post: AdminPost): string {
 }
 
 function syndicationLabel(item: SyndicationSummary): string {
-  const destination = item.destination === 'facebook' ? 'Facebook' : 'Mastodon'
-  return `${destination}: ${item.state}`
+  return `Mastodon: ${item.state}`
+}
+
+function visibleSyndications(post: AdminPost): SyndicationSummary[] {
+  return post.syndications.filter(({ destination }) => destination === 'mastodon')
 }
 
 function replacePostSyndication(postId: string, item: SyndicationSummary) {
@@ -347,8 +348,6 @@ function copyToForm(post: AdminPost) {
   autosaveProblem.value = ''
   autosaveState.value = browserIsNewer ? 'browser' : 'saved'
   syndication.value = null
-  facebookSyndication.value = null
-  facebookCandidates.value = []
   revisionHistory.value = []
   revisionSyndications.value = []
   post.media.forEach((item) => {
@@ -359,58 +358,7 @@ function copyToForm(post: AdminPost) {
     scheduleServerSave(post.id, restored)
     void refreshPreview()
   }
-  if (post.status === 'published') { void loadSyndication(post.id); void loadFacebookSyndication(post.id); void loadHistory(post.id) }
-}
-
-async function loadFacebookSyndication(postId: string) {
-  try {
-    facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${postId}/syndications/facebook`)
-    replacePostSyndication(postId, facebookSyndication.value)
-  }
-  catch (loadError) { if (!(loadError instanceof AdminApiError && loadError.status === 404)) error.value = message(loadError) }
-}
-
-async function syndicateFacebook() {
-  if (!selectedId.value || !window.confirm('Create the public Facebook Page link post now?')) return
-  const saved = await save(); if (!saved) return
-  try {
-    facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${saved.id}/syndications/facebook`, jsonRequest('POST'))
-    replacePostSyndication(saved.id, facebookSyndication.value)
-    notice.value = 'Facebook publication queued.'
-  }
-  catch (publishError) { error.value = message(publishError) }
-}
-
-async function retryFacebookSyndication() {
-  if (!selectedId.value) return
-  try {
-    facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${selectedId.value}/syndications/facebook/retry`, jsonRequest('POST'))
-    replacePostSyndication(selectedId.value, facebookSyndication.value)
-    notice.value = 'Facebook publication queued again.'
-  }
-  catch (retryError) { error.value = message(retryError) }
-}
-
-async function reconcileFacebookSyndication() {
-  if (!selectedId.value) return
-  try {
-    const result = await adminRequest<{ syndication: Syndication; candidates: Array<{ id: string; url: string }> }>(`/api/admin/posts/${selectedId.value}/syndications/facebook/reconcile`, jsonRequest('POST'))
-    facebookSyndication.value = result.syndication
-    replacePostSyndication(selectedId.value, result.syndication)
-    facebookCandidates.value = result.candidates
-    notice.value = result.candidates.length === 1 ? 'Facebook publication attached.' : 'No single Facebook match was found; review candidates before resolving.'
-  } catch (reconcileError) { error.value = message(reconcileError) }
-}
-
-async function resolveFacebookCandidate(candidate: { id: string; url: string }) {
-  if (!selectedId.value || !window.confirm('Attach this Facebook post to the local publication?')) return
-  try {
-    facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${selectedId.value}/syndications/facebook/resolve`, jsonRequest('POST', candidate))
-    replacePostSyndication(selectedId.value, facebookSyndication.value)
-    facebookCandidates.value = []
-    notice.value = 'Facebook publication resolved.'
-  }
-  catch (resolveError) { error.value = message(resolveError) }
+  if (post.status === 'published') { void loadSyndication(post.id); void loadHistory(post.id) }
 }
 
 async function newDraft() {
@@ -966,7 +914,7 @@ async function loadHistory(postId: string) {
   try {
     const result = await adminRequest<{ revisions: PublishedRevision[]; syndications: RevisionSyndication[]; publicationHistory: RevisionSyndication[] }>(`/api/admin/posts/${postId}/history`)
     revisionHistory.value = result.revisions
-    revisionSyndications.value = result.publicationHistory
+    revisionSyndications.value = result.publicationHistory.filter(({ destination }) => destination !== 'facebook')
   } catch { revisionHistory.value = []; revisionSyndications.value = [] }
 }
 
@@ -1230,9 +1178,9 @@ onBeforeUnmount(() => {
               <strong :title="post.teaser">{{ postTeaserFirstLine(post) }}</strong>
               <span class="post-list-meta">
                 <span>{{ postDate(post.date) }} · {{ post.status }}</span>
-                <span v-if="post.syndications.length" class="post-syndications">
+                <span v-if="visibleSyndications(post).length" class="post-syndications">
                   <span
-                    v-for="item in post.syndications"
+                    v-for="item in visibleSyndications(post)"
                     :key="item.destination"
                     class="syndication-icon"
                     :class="[`is-${item.destination}`, `is-${item.state}`]"
@@ -1240,7 +1188,7 @@ onBeforeUnmount(() => {
                     :aria-label="syndicationLabel(item)"
                     :title="syndicationLabel(item)"
                   >
-                    <span aria-hidden="true">{{ item.destination === 'facebook' ? 'f' : 'M' }}</span>
+                    <span aria-hidden="true">M</span>
                   </span>
                 </span>
               </span>
@@ -1433,23 +1381,6 @@ onBeforeUnmount(() => {
             <p v-if="syndication?.lastError" class="message message--error">{{ syndication.lastError }}</p>
           </section>
 
-          <section v-if="canSyndicate" class="mastodon-panel" aria-labelledby="facebook-syndication-title">
-            <div class="section-heading"><h2 id="facebook-syndication-title">Facebook Page</h2><span>Explicit syndication only</span></div>
-            <p>Creates an immutable link post pointing to this exact published revision.</p>
-            <div class="editor-actions">
-              <button :disabled="busy || facebookSyndication?.state === 'pending' || facebookSyndication?.state === 'uncertain'" type="button" @click="syndicateFacebook">
-                {{ facebookSyndication?.state === 'pending' ? 'Facebook publication pending' : 'Publish link on Facebook' }}
-              </button>
-              <button v-if="facebookSyndication?.state === 'failed' || (facebookSyndication?.state === 'uncertain' && facebookSyndication.lastError?.startsWith('Reconciliation found no matching'))" class="button-secondary" type="button" @click="retryFacebookSyndication">Retry</button>
-              <button v-if="facebookSyndication?.state === 'uncertain'" class="button-secondary" type="button" @click="reconcileFacebookSyndication">Reconcile</button>
-              <a v-if="facebookSyndication?.remoteUrl" :href="facebookSyndication.remoteUrl" target="_blank">Open on Facebook ↗</a>
-            </div>
-            <p v-if="facebookSyndication" class="syndication-state">State: {{ facebookSyndication.state }} · attempts: {{ facebookSyndication.attemptCount }}</p>
-            <p v-if="facebookSyndication?.state === 'uncertain'" class="message message--error">Delivery is uncertain. Reconcile before retrying.</p>
-            <ul v-if="facebookCandidates.length"><li v-for="candidate in facebookCandidates" :key="candidate.id"><a :href="candidate.url" target="_blank">{{ candidate.url }}</a> <button class="button-quiet" type="button" @click="resolveFacebookCandidate(candidate)">Attach</button></li></ul>
-            <p v-if="facebookSyndication?.lastError" class="message message--error">{{ facebookSyndication.lastError }}</p>
-          </section>
-
           <section v-if="selected && revisionHistory.length" class="mastodon-panel" aria-labelledby="history-title">
             <div class="section-heading"><h2 id="history-title">Published revisions</h2><span>{{ revisionHistory.length }}</span></div>
             <ul>
@@ -1467,7 +1398,7 @@ onBeforeUnmount(() => {
               </li>
             </ul>
             <p v-if="revisionSyndications.length" class="syndication-state">
-              <span v-for="item in revisionSyndications" :key="`${item.publicationRevision}-${item.remoteUrl ?? item.state}`">{{ item.destination === 'facebook' ? 'Facebook' : 'Mastodon' }}: r{{ item.publicationRevision }} {{ item.state }}<a v-if="item.remoteUrl" :href="item.remoteUrl" target="_blank"> ↗</a>{{ ' ' }}</span>
+              <span v-for="item in revisionSyndications" :key="`${item.publicationRevision}-${item.remoteUrl ?? item.state}`">Mastodon: r{{ item.publicationRevision }} {{ item.state }}<a v-if="item.remoteUrl" :href="item.remoteUrl" target="_blank"> ↗</a>{{ ' ' }}</span>
             </p>
           </section>
 
@@ -1581,7 +1512,6 @@ onBeforeUnmount(() => {
 .post-syndications { display: flex; flex: 0 0 auto; gap: 0.25rem; }
 .syndication-icon { align-items: center; border: 1px solid color-mix(in srgb, currentColor 45%, transparent); border-radius: 50%; box-sizing: border-box; color: white; display: inline-flex; font-family: Arial, sans-serif; font-size: 0.68rem; font-weight: 800; height: 1.15rem; justify-content: center; line-height: 1; width: 1.15rem; }
 .syndication-icon.is-mastodon { background: #6364ff; }
-.syndication-icon.is-facebook { background: #1877f2; font-size: 0.82rem; }
 .syndication-icon:not(.is-published) { filter: grayscale(0.75); opacity: 0.55; }
 .syndication-icon.is-failed, .syndication-icon.is-uncertain { box-shadow: 0 0 0 2px #e5484d; }
 .editor-card { display: grid; gap: 2rem; padding: clamp(1rem, 3vw, 2rem); }

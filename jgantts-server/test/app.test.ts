@@ -435,6 +435,23 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.equal(getResponse.status, 200);
   assert.equal(JSON.parse(getResponse.body).slug, created.slug);
 
+  const revisionsBeforeAutosave = (database.prepare(
+    'SELECT COUNT(*) AS count FROM post_revisions WHERE post_id = ?',
+  ).get(created.id) as { count: number }).count;
+  const autosaveResponse = await request(app, `/api/admin/posts/${created.id}/autosave`, {
+    body: JSON.stringify({ bodyMarkdown: 'Autosaved draft' }),
+    headers: {
+      authorization: 'Bearer test-admin-secret',
+      'content-type': 'application/json',
+    },
+    method: 'PATCH',
+  });
+  assert.equal(autosaveResponse.status, 200);
+  assert.equal(JSON.parse(autosaveResponse.body).bodyHtml, '<p>Autosaved draft</p>\n');
+  assert.equal((database.prepare(
+    'SELECT COUNT(*) AS count FROM post_revisions WHERE post_id = ?',
+  ).get(created.id) as { count: number }).count, revisionsBeforeAutosave);
+
   const emptyDraftResponse = await request(app, '/api/admin/posts/empty', {
     headers: { authorization: 'Bearer test-admin-secret' },
     method: 'POST',
@@ -448,6 +465,13 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.deepEqual(emptyDraft.media, []);
   assert.match(emptyDraft.slug, /^[a-f0-9-]{36}$/);
   assert.equal(emptyDraftResponse.headers.location, `/api/admin/posts/${emptyDraft.id}`);
+  const emptyAutosaveResponse = await request(app, `/api/admin/posts/${emptyDraft.id}/autosave`, {
+    body: JSON.stringify({ title: 'Still typing a title' }),
+    headers: { authorization: 'Bearer test-admin-secret', 'content-type': 'application/json' },
+    method: 'PATCH',
+  });
+  assert.equal(emptyAutosaveResponse.status, 200);
+  assert.equal(JSON.parse(emptyAutosaveResponse.body).slug, emptyDraft.slug);
   assert.equal((await request(app, '/api/admin/posts/empty', {
     body: JSON.stringify({ title: 'not accepted' }),
     headers: { authorization: 'Bearer test-admin-secret', 'content-type': 'application/json' },
@@ -494,6 +518,11 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   });
   assert.equal(publishedResponse.status, 200);
   assert.equal(JSON.parse(publishedResponse.body).status, 'published');
+  assert.equal((await request(app, `/api/admin/posts/${created.id}/autosave`, {
+    body: JSON.stringify({ title: 'Must be explicit' }),
+    headers: { authorization: 'Bearer test-admin-secret', 'content-type': 'application/json' },
+    method: 'PATCH',
+  })).status, 409);
   const historyResponse = await request(app, `/api/admin/posts/${created.id}/history`, {
     headers: { authorization: 'Bearer test-admin-secret' },
   });

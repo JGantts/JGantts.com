@@ -170,7 +170,7 @@ export class PostRepository {
     `).all() as PostRow[]).map(mapPost);
   }
 
-  update(id: string, changes: PostChanges, updatedAt = new Date().toISOString()): Post | null {
+  update(id: string, changes: PostChanges, updatedAt = new Date().toISOString(), recordRevision = true): Post | null {
     return inTransaction(this.database, () => {
       const current = this.getById(id);
       if (!current) return null;
@@ -200,12 +200,14 @@ export class PostRepository {
           updated_at = @updatedAt
         WHERE id = @id
       `).run(next);
-      const revision = (this.database.prepare(`
-        SELECT COALESCE(MAX(revision_number), 0) + 1 AS number
-        FROM post_revisions WHERE post_id = ?
-      `).get(id) as { number: number }).number;
-    this.insertRevision(id, revision, updatedAt);
-      this.snapshotMedia(id, revision);
+      if (recordRevision) {
+        const revision = (this.database.prepare(`
+          SELECT COALESCE(MAX(revision_number), 0) + 1 AS number
+          FROM post_revisions WHERE post_id = ?
+        `).get(id) as { number: number }).number;
+        this.insertRevision(id, revision, updatedAt);
+        this.snapshotMedia(id, revision);
+      }
       return this.getById(id);
     });
   }

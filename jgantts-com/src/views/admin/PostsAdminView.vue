@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { AdminApiError, adminRequest, createAdminSession, deleteAdminSession, jsonRequest } from '@/admin/api'
+import { loadAdminPostDraft, saveAdminPostDraft, type AdminPostDraft } from '@/admin/draft-storage'
 import { formatEditorialDateTime } from '@/posts/editorial-date-time'
 import type { PostMedia } from '@/posts/types'
 
@@ -87,6 +88,22 @@ const facebookCandidates = ref<Array<{ id: string; url: string }>>([])
 const revisionHistory = ref<PublishedRevision[]>([])
 const revisionSyndications = ref<RevisionSyndication[]>([])
 let previewTimer: ReturnType<typeof setTimeout> | null = null
+let autosaveTimer: ReturnType<typeof setTimeout> | null = null
+let saveWorker: Promise<void> | null = null
+let observedDraft = ''
+const pendingServerDrafts = new Map<string, AdminPostDraft>()
+const serverContentDrafts = new Map<string, string>()
+const serverUpdatedAt = new Map<string, string>()
+type AutosaveState = 'idle' | 'browser' | 'saving' | 'saved' | 'error'
+const autosaveState = ref<AutosaveState>('idle')
+const autosaveProblem = ref('')
+const autosaveLabel = computed(() => {
+  if (autosaveState.value === 'saving') return 'Saving…'
+  if (autosaveState.value === 'saved') return 'Saved to browser and server'
+  if (autosaveState.value === 'error') return autosaveProblem.value || 'Saved in browser · server retry needed'
+  if (autosaveState.value === 'browser') return 'Saved in this browser'
+  return ''
+})
 const allowedMinutes = ['00', '10', '15', '20', '30', '40', '45', '50']
 const hourOptions = Array.from({ length: 24 }, (_, hour) => hour.toString().padStart(2, '0'))
 
@@ -98,6 +115,46 @@ const form = reactive({
   time: '',
   bodyMarkdown: '',
 })
+
+function postDraft(post: AdminPost): AdminPostDraft {
+  return {
+    bodyMarkdown: post.bodyMarkdown,
+    date: dateInputValue(post.date),
+    location: post.location ?? '',
+    slug: post.slug,
+    time: post.time ?? '',
+    title: post.title ?? '',
+  }
+}
+
+function currentDraft(): AdminPostDraft {
+  return {
+    bodyMarkdown: form.bodyMarkdown,
+    date: form.date,
+    location: form.location,
+    slug: form.slug,
+    time: form.time,
+    title: form.title,
+  }
+}
+
+function draftJson(draft: AdminPostDraft): string {
+  return JSON.stringify(draft)
+}
+
+function draftContentJson(draft: AdminPostDraft): string {
+  const { slug: _slug, ...content } = draft
+  return JSON.stringify(content)
+}
+
+function applyDraft(draft: AdminPostDraft) {
+  form.bodyMarkdown = draft.bodyMarkdown
+  form.date = draft.date
+  form.location = draft.location
+  form.slug = draft.slug
+  form.time = draft.time
+  form.title = draft.title
+}
 
 const selected = computed(() => posts.value.find((post) => post.id === selectedId.value) ?? null)
 const editingMedia = computed(() => selected.value?.media.find((item) => item.id === editingMediaId.value) ?? null)
@@ -260,16 +317,25 @@ function message(value: unknown): string {
 }
 
 function copyToForm(post: AdminPost) {
+  if (selectedId.value && selectedId.value !== post.id) queueCurrentDraftForServer()
   selectedId.value = post.id
-  form.location = post.location ?? ''
-  form.title = post.title ?? ''
-  form.slug = post.slug
-  form.date = dateInputValue(post.date)
-  form.time = post.time ?? ''
-  form.bodyMarkdown = post.bodyMarkdown
-  previewHtml.value = post.bodyHtml
+  const fromServer = postDraft(post)
+  const fromBrowser = loadAdminPostDraft(post.id)
+  const serverTime = Date.parse(post.updatedAt)
+  const browserIsNewer = fromBrowser
+    && draftJson(fromBrowser.draft) !== draftJson(fromServer)
+    && (fromBrowser.serverUpdatedAt === post.updatedAt || !Number.isFinite(serverTime) || fromBrowser.savedAt > serverTime)
+  const restored = browserIsNewer ? fromBrowser.draft : fromServer
+  serverContentDrafts.set(post.id, draftContentJson(fromServer))
+  serverUpdatedAt.set(post.id, post.updatedAt)
+  applyDraft(restored)
+  observedDraft = draftJson(restored)
+  previewHtml.value = browserIsNewer ? '' : post.bodyHtml
+  if (!browserIsNewer) saveAdminPostDraft(post.id, fromServer, post.updatedAt)
   notice.value = ''
   error.value = ''
+  autosaveProblem.value = ''
+  autosaveState.value = browserIsNewer ? 'browser' : 'saved'
   syndication.value = null
   facebookSyndication.value = null
   facebookCandidates.value = []
@@ -278,6 +344,11 @@ function copyToForm(post: AdminPost) {
   post.media.forEach((item) => {
     mediaDrafts[item.id] = { altText: item.altText, caption: item.caption ?? '', title: item.title ?? '', location: item.location ?? '', date: dateInputValue(item.date), time: item.time ?? '' }
   })
+  if (browserIsNewer) {
+    notice.value = 'Recovered newer edits saved in this browser.'
+    scheduleServerSave(post.id, restored)
+    void refreshPreview()
+  }
   if (post.status === 'published') { void loadSyndication(post.id); void loadFacebookSyndication(post.id); void loadHistory(post.id) }
 }
 
@@ -366,6 +437,8 @@ async function login() {
 }
 
 async function signOut() {
+  queueCurrentDraftForServer()
+  if (saveWorker) await saveWorker
   try {
     await deleteAdminSession()
   } catch {
@@ -404,19 +477,19 @@ async function loadPosts() {
   posts.value = result.items
 }
 
-function authorBody() {
+function authorBody(draft = currentDraft(), existingId = selectedId.value, includeSlug = true) {
   const fields = {
-    location: form.location.trim() || null,
-    title: form.title.trim() || null,
-    slug: form.slug.trim(),
-    date: storedDate(form.date),
-    time: form.time || null,
+    location: draft.location.trim() || null,
+    title: draft.title.trim() || null,
+    date: storedDate(draft.date),
+    time: draft.time || null,
+    ...(includeSlug ? { slug: draft.slug.trim() } : {}),
   }
 
   // New photo-only posts do not need to send a body at all. Existing posts still
   // send the field so clearing a previously saved body remains possible.
-  return selectedId.value || form.bodyMarkdown
-    ? { ...fields, bodyMarkdown: form.bodyMarkdown }
+  return existingId || draft.bodyMarkdown
+    ? { ...fields, bodyMarkdown: draft.bodyMarkdown }
     : fields
 }
 
@@ -439,7 +512,7 @@ function replacePost(post: AdminPost) {
   const index = posts.value.findIndex((item) => item.id === post.id)
   if (index === -1) posts.value.unshift(post)
   else posts.value.splice(index, 1, post)
-  copyToForm(post)
+  if (post.id !== selectedId.value) copyToForm(post)
 }
 
 function replaceMedia(updated: PostMedia) {
@@ -615,14 +688,146 @@ async function dropMedia(targetId: string) {
   await saveMediaOrder(media)
 }
 
+function canSaveDraftToServer(draft: AdminPostDraft): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(draft.slug.trim())
+}
+
+function canAutosavePostToServer(postId: string): boolean {
+  return posts.value.find((post) => post.id === postId)?.status === 'draft'
+}
+
+function storeDraftInBrowser(postId: string, draft: AdminPostDraft): boolean {
+  const stored = saveAdminPostDraft(postId, draft, serverUpdatedAt.get(postId) ?? '')
+  if (!stored && postId === selectedId.value) {
+    autosaveProblem.value = 'Browser storage is unavailable'
+    autosaveState.value = 'error'
+  }
+  return stored
+}
+
+function scheduleServerSave(postId: string, draft: AdminPostDraft) {
+  if (autosaveTimer) clearTimeout(autosaveTimer)
+  if (!canAutosavePostToServer(postId)) {
+    return
+  }
+  autosaveTimer = setTimeout(() => {
+    autosaveTimer = null
+    pendingServerDrafts.set(postId, { ...draft })
+    void runSaveWorker()
+  }, 700)
+}
+
+function queueCurrentDraftForServer() {
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer)
+    autosaveTimer = null
+  }
+  const postId = selectedId.value
+  if (!postId) return
+  const draft = currentDraft()
+  if (!canAutosavePostToServer(postId) || serverContentDrafts.get(postId) === draftContentJson(draft)) return
+  pendingServerDrafts.set(postId, draft)
+  void runSaveWorker()
+}
+
+function mergeServerDraft(post: AdminPost, submitted: AdminPostDraft, autosave = false) {
+  const index = posts.value.findIndex((item) => item.id === post.id)
+  if (index === -1) posts.value.unshift(post)
+  else posts.value.splice(index, 1, post)
+
+  const saved = postDraft(post)
+  serverContentDrafts.set(post.id, draftContentJson(saved))
+  serverUpdatedAt.set(post.id, post.updatedAt)
+
+  if (selectedId.value !== post.id) {
+    const local = loadAdminPostDraft(post.id)
+    if (!local || draftJson(local.draft) === draftJson(submitted)) {
+      saveAdminPostDraft(post.id, saved, post.updatedAt)
+    }
+    return
+  }
+
+  const latest = currentDraft()
+  const merged: AdminPostDraft = { ...latest }
+  for (const field of Object.keys(saved) as Array<keyof AdminPostDraft>) {
+    if (autosave && field === 'slug') continue
+    if (latest[field] === submitted[field]) merged[field] = saved[field]
+  }
+  applyDraft(merged)
+  observedDraft = draftJson(merged)
+  storeDraftInBrowser(post.id, merged)
+
+  const serverHasLatest = autosave
+    ? draftContentJson(merged) === draftContentJson(saved)
+    : draftJson(merged) === draftJson(saved)
+  if (serverHasLatest) {
+    autosaveProblem.value = ''
+    autosaveState.value = draftJson(merged) === draftJson(saved) ? 'saved' : 'browser'
+  } else {
+    autosaveState.value = 'browser'
+    scheduleServerSave(post.id, merged)
+  }
+}
+
+function runSaveWorker(): Promise<void> {
+  if (saveWorker) return saveWorker
+  const work = async () => {
+    while (pendingServerDrafts.size) {
+      const entry = pendingServerDrafts.entries().next().value as [string, AdminPostDraft] | undefined
+      if (!entry) break
+      const [postId, draft] = entry
+      pendingServerDrafts.delete(postId)
+      if (serverContentDrafts.get(postId) === draftContentJson(draft)) continue
+      if (postId === selectedId.value) {
+        autosaveProblem.value = ''
+        autosaveState.value = 'saving'
+      }
+      try {
+        const post = await adminRequest<AdminPost>(
+          `/api/admin/posts/${postId}/autosave`,
+          jsonRequest('PATCH', authorBody(draft, postId, false)),
+        )
+        mergeServerDraft(post, draft, true)
+      } catch (saveError) {
+        const saveMessage = message(saveError)
+        if (postId === selectedId.value) {
+          autosaveProblem.value = `Saved in browser · ${saveMessage}`
+          autosaveState.value = 'error'
+        }
+      }
+    }
+  }
+  saveWorker = work().finally(() => {
+    saveWorker = null
+    if (pendingServerDrafts.size) void runSaveWorker()
+  })
+  return saveWorker
+}
+
 async function save(): Promise<AdminPost | null> {
   error.value = ''
   notice.value = ''
   busy.value = true
   try {
-    const post = selectedId.value
-      ? await adminRequest<AdminPost>(`/api/admin/posts/${selectedId.value}`, jsonRequest('PATCH', authorBody()))
-      : await adminRequest<AdminPost>('/api/admin/posts', jsonRequest('POST', authorBody()))
+    if (selectedId.value) {
+      const postId = selectedId.value
+      if (autosaveTimer) {
+        clearTimeout(autosaveTimer)
+        autosaveTimer = null
+      }
+      if (saveWorker) await saveWorker
+      const draft = currentDraft()
+      storeDraftInBrowser(postId, draft)
+      if (!canSaveDraftToServer(draft)) throw new Error('Fix the slug before saving to the server.')
+      const post = await adminRequest<AdminPost>(
+        `/api/admin/posts/${postId}`,
+        jsonRequest('PATCH', authorBody(draft, postId)),
+      )
+      mergeServerDraft(post, draft)
+      notice.value = 'Saved.'
+      return post
+    }
+    const post = await adminRequest<AdminPost>('/api/admin/posts', jsonRequest('POST', authorBody()))
     replacePost(post)
     notice.value = 'Saved.'
     return post
@@ -864,10 +1069,26 @@ watch(() => form.bodyMarkdown, () => {
   previewTimer = setTimeout(() => { void refreshPreview() }, 350)
 })
 
+watch(
+  () => [form.bodyMarkdown, form.date, form.location, form.slug, form.time, form.title],
+  () => {
+    const draft = currentDraft()
+    const serialized = draftJson(draft)
+    if (serialized === observedDraft) return
+    observedDraft = serialized
+    const postId = selectedId.value
+    if (!postId) return
+    autosaveProblem.value = ''
+    autosaveState.value = storeDraftInBrowser(postId, draft) ? 'browser' : 'error'
+    scheduleServerSave(postId, draft)
+  },
+)
+
 onMounted(() => { void restoreSession() })
 
 onBeforeUnmount(() => {
   if (previewTimer) clearTimeout(previewTimer)
+  queueCurrentDraftForServer()
   uploadQueue.value.forEach((item) => {
     item.xhr?.abort()
     URL.revokeObjectURL(item.previewUrl)
@@ -1055,9 +1276,10 @@ onBeforeUnmount(() => {
             </div>
           </section>
 
-          <form class="editor-form" @submit.prevent="save">
+          <form class="editor-form" @submit.prevent="save" @keydown.meta.s.prevent="save" @keydown.ctrl.s.prevent="save">
             <div class="status-row">
               <span class="status-chip">{{ selected?.status || 'unsaved' }}</span>
+              <span v-if="autosaveLabel" class="autosave-status" :class="{ 'autosave-status--error': autosaveState === 'error' }" role="status">{{ autosaveLabel }}</span>
               <a v-if="selected?.status === 'published'" :href="selected.shareUrl" target="_blank">View post ↗</a>
             </div>
             <label>Title <input v-model="form.title" maxlength="200"></label>
@@ -1109,7 +1331,7 @@ onBeforeUnmount(() => {
             </fieldset>
             <label>Body (Markdown) <span class="optional-field">Optional</span> <textarea v-model="form.bodyMarkdown" class="markdown-editor" maxlength="100000"></textarea></label>
             <div class="editor-actions">
-              <button :disabled="busy" type="submit">{{ busy ? 'Working…' : selectedId ? 'Save changes' : 'Create draft' }}</button>
+              <button :disabled="busy" type="submit">{{ busy ? 'Working…' : selectedId ? 'Save now' : 'Create draft' }}</button>
               <button v-if="canPublish" class="button-secondary" :disabled="busy" type="button" @click="publish">Publish locally</button>
               <button v-if="selected?.status === 'published'" class="button-secondary" :disabled="busy" type="button" @click="unpublish">Unpublish</button>
               <button v-if="selected && selected.status !== 'archived'" class="button-quiet" :disabled="busy" type="button" @click="archive">Archive</button>
@@ -1295,6 +1517,8 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .button-secondary { background: transparent; border-color: var(--accent); color: var(--accent); }
 .button-quiet { background: transparent; color: var(--muted); }
 .status-chip { border: 1px solid var(--border); border-radius: 999px; font-family: 'Azeret Mono Variable', monospace; font-size: 0.7rem; padding: 0.25rem 0.55rem; }
+.autosave-status { color: var(--muted); flex: 1; font-family: 'Azeret Mono Variable', monospace; font-size: 0.7rem; }
+.autosave-status--error { color: #e5484d; }
 .status-row a, .editor-actions a { color: var(--accent); font-size: 0.8rem; }
 .media-panel, .mastodon-panel { border-top: 1px solid var(--border); padding-top: 1.5rem; }
 .revision-photo-thumb { width: 3rem; height: 3rem; object-fit: cover; vertical-align: middle; margin-right: .5rem; border-radius: .25rem; background: var(--surface); }

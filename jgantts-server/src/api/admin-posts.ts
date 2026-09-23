@@ -98,6 +98,19 @@ export function createAdminPostsRouter(
     }
   });
 
+  router.patch('/:id/autosave', (req, res, next) => {
+    try {
+      const post = posts.autosaveDraft(req.params.id, parseBody(req.body, true));
+      if (!post) {
+        res.status(404).json({ error: { code: 'not_found', message: 'Post not found.' } });
+        return;
+      }
+      res.set('Cache-Control', 'no-store').json(responsePost(post));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.patch('/:id', (req, res, next) => {
     try {
       const post = posts.updateFromAuthor(req.params.id, parseBody(req.body, true));

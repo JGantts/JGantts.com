@@ -110,6 +110,25 @@ export function createAdminPostsRouter(
     }
   });
 
+  router.post('/social-previews/regenerate-all', async (_req, res, next) => {
+    try {
+      if (!socialPreviews) throw Object.assign(new Error('Social preview service is unavailable.'), { status: 503 });
+      const results = await socialPreviews.generateAll({ concurrency: 2 });
+      const failed = results.filter((item) => item.state === 'failed').length;
+      const generated = results.filter((item) => item.state === 'current').length;
+      const noPhotos = results.filter((item) => item.state === 'none').length;
+      res.set('Cache-Control', 'no-store').json({
+        failed,
+        generated,
+        noPhotos,
+        results,
+        total: results.length,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.patch('/:id/autosave', (req, res, next) => {
     try {
       const post = posts.autosaveDraft(req.params.id, parseBody(req.body, true));

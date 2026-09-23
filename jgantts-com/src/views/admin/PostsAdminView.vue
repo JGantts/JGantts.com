@@ -84,6 +84,7 @@ const mediaDrafts = reactive<Record<string, { altText: string; caption: string; 
 const mediaSavingId = ref<string | null>(null)
 const mediaRegeneratingId = ref<string | null>(null)
 const allMediaRegenerating = ref(false)
+const allCollagesRegenerating = ref(false)
 const mediaPipelineNotice = ref('')
 const mediaPipelineFailed = ref(false)
 const mediaDialog = ref<HTMLDialogElement | null>(null)
@@ -609,6 +610,39 @@ async function rerunAllPhotoPipelines() {
     error.value = message(pipelineError)
   } finally {
     allMediaRegenerating.value = false
+  }
+}
+
+type BulkCollageResult = {
+  failed: number
+  generated: number
+  noPhotos: number
+  total: number
+}
+
+async function regenerateAllCollages() {
+  if (allCollagesRegenerating.value) return
+  if (!window.confirm('Regenerate social preview collages for every post with photos? This may take a while.')) return
+  allCollagesRegenerating.value = true
+  error.value = ''
+  notice.value = ''
+  try {
+    const result = await adminRequest<BulkCollageResult>(
+      '/api/admin/posts/social-previews/regenerate-all',
+      { method: 'POST' },
+    )
+    await loadPosts()
+    if (result.generated === 0 && result.failed === 0) {
+      notice.value = 'There are no post collages to generate.'
+    } else if (result.failed > 0) {
+      notice.value = `Generated ${result.generated} collages; ${result.failed} failed and ${result.noPhotos} posts had no photos.`
+    } else {
+      notice.value = `Generated all ${result.generated} collages${result.noPhotos ? `; ${result.noPhotos} posts had no photos` : ''}.`
+    }
+  } catch (collageError) {
+    error.value = message(collageError)
+  } finally {
+    allCollagesRegenerating.value = false
   }
 }
 
@@ -1145,8 +1179,11 @@ onBeforeUnmount(() => {
           <h1>Post editor</h1>
         </div>
         <div class="toolbar-actions">
-          <button class="button-quiet" :disabled="allMediaRegenerating" type="button" @click="rerunAllPhotoPipelines">
+          <button class="button-quiet" :disabled="allMediaRegenerating || allCollagesRegenerating" type="button" @click="rerunAllPhotoPipelines">
             {{ allMediaRegenerating ? 'Rerunning all photos…' : 'Rerun all photos' }}
+          </button>
+          <button class="button-quiet" :disabled="allCollagesRegenerating || allMediaRegenerating" type="button" @click="regenerateAllCollages">
+            {{ allCollagesRegenerating ? 'Regenerating all collages…' : 'Regenerate all collages' }}
           </button>
           <button class="button-secondary" :disabled="busy" type="button" @click="newDraft">New draft</button>
           <button class="button-quiet" type="button" @click="signOut">Log out</button>

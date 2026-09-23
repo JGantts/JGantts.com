@@ -466,11 +466,6 @@ async function openPhoto(id: string) {
     return
   }
 
-  if (activePostId) {
-    emit('clear')
-    return
-  }
-
   selectedPostVisibility.value = 1
   emit('visibility', 1)
   emit('select', record.postIndex)
@@ -481,9 +476,7 @@ function photoActionLabel(id: string): string {
   if (!record) return 'Select photo post'
   const date = formatClusterDate(record.post.created_at)
   if (record.post.id === effectiveActivePostId.value) return `Open photo from selected post dated ${date}`
-  return effectiveActivePostId.value
-    ? 'Clear selected post'
-    : `Select post from ${date}`
+  return `Select post from ${date}`
 }
 
 function cornerRadii(card: PlacedPhotoCard, cards: PlacedPhotoCard[]) {

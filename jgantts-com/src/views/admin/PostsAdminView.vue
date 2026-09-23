@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { AdminApiError, adminRequest, createAdminSession, deleteAdminSession, jsonRequest } from '@/admin/api'
 import { loadAdminPostDraft, saveAdminPostDraft, type AdminPostDraft } from '@/admin/draft-storage'
+import { effectiveHeroMediaId } from '@/admin/post-hero'
 import { formatEditorialDateTime } from '@/posts/editorial-date-time'
 import type { PostMedia } from '@/posts/types'
 
@@ -171,9 +172,10 @@ const filteredPosts = computed(() => {
 })
 const canPublish = computed(() => selected.value?.status === 'draft')
 const canSyndicate = computed(() => selected.value?.status === 'published')
+const selectedHeroMediaId = computed(() => effectiveHeroMediaId(selected.value))
 const previewMedia = computed(() => {
   const media = selected.value?.media ?? []
-  const hero = media.find((item) => item.id === selected.value?.heroMediaId)
+  const hero = media.find((item) => item.id === selectedHeroMediaId.value)
   return hero ? [hero, ...media.filter((item) => item.id !== hero.id)] : media
 })
 const previewDateAndTime = computed(() => formatEditorialDateTime(storedDate(form.date), form.time || null))
@@ -1201,7 +1203,7 @@ onBeforeUnmount(() => {
                   v-for="item in previewMedia"
                   :key="item.id"
                   :alt="item.altText"
-                  :class="{ 'post-preview-hero': item.id === selected?.heroMediaId }"
+                  :class="{ 'post-preview-hero': item.id === selectedHeroMediaId }"
                   :src="mediaThumbnailUrl(item)"
                 >
               </div>
@@ -1237,7 +1239,7 @@ onBeforeUnmount(() => {
                 </button>
                 <figcaption>
                   <div class="media-order-actions">
-                    <button class="button-secondary" :class="{ 'is-selected': selected?.heroMediaId === item.id }" type="button" @click="selectHero(item)">{{ selected?.heroMediaId === item.id ? 'Hero photo' : 'Set as hero' }}</button>
+                    <button class="button-secondary" :class="{ 'is-selected': selectedHeroMediaId === item.id }" type="button" @click="selectHero(item)">{{ selectedHeroMediaId === item.id ? 'Hero photo' : 'Set as hero' }}</button>
                     <button class="button-quiet" type="button" @click="removeMedia(item)">Remove photo</button>
                   </div>
                   <div class="media-order-actions" aria-label="Change photo position">

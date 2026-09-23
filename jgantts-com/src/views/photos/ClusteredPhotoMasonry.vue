@@ -913,12 +913,13 @@ onBeforeUnmount(() => {
   padding: 0;
   pointer-events: auto;
   position: absolute;
-  transform-origin: center;
-  transition: box-shadow 160ms ease, transform 180ms ease;
+  transition: box-shadow 160ms ease;
 }
 
-.photo-cluster .photo-card {
-  transform: scale(calc(1 - (0.03 * var(--selection-emphasis))));
+.photo-cluster .photo-card :deep(.responsive-photo) {
+  transform-origin: center;
+  transform: scale(calc(1.03 - (0.03 * var(--selection-emphasis))));
+  transition: transform 180ms ease;
 }
 
 .photo-cluster.is-active .photo-card {
@@ -1073,6 +1074,7 @@ onBeforeUnmount(() => {
   .cluster-highlight,
   .photo-cluster,
   .photo-masonry,
+  .photo-card :deep(.responsive-photo),
   .photo-card,
   .photo-card img { transition: none; }
 }

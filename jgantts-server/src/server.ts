@@ -20,6 +20,8 @@ import { SyndicationRepository } from './syndication/syndication-repository';
 import { FacebookClient } from './syndication/facebook-client';
 import { FacebookSyndicationService } from './syndication/facebook-syndication-service';
 import { loadBuildInfo } from './build-info';
+import { SocialPreviewRepository } from './social-preview/social-preview-repository';
+import { SocialPreviewService } from './social-preview/social-preview-service';
 
 export function startServer(): Server {
   const logger = createStructuredLogger();
@@ -30,8 +32,15 @@ export function startServer(): Server {
   const contentDatabase = openContentDatabase(config.databasePath);
   const postRepository = new PostRepository(contentDatabase);
   const postService = new PostService(postRepository);
+  const mediaRepository = new MediaRepository(contentDatabase);
   const mediaService = new MediaService(
-    new MediaRepository(contentDatabase),
+    mediaRepository,
+    postRepository,
+    config.mediaRoot,
+  );
+  const socialPreviews = new SocialPreviewService(
+    new SocialPreviewRepository(contentDatabase),
+    mediaRepository,
     postRepository,
     config.mediaRoot,
   );
@@ -46,11 +55,12 @@ export function startServer(): Server {
     config.mastodonOrigin,
     Boolean(config.mastodonAccessToken),
     mediaService,
+    socialPreviews,
   );
   const facebookClient = config.facebookPageId && config.facebookAccessToken && config.facebookGraphApiVersion
     ? new FacebookClient(config.facebookPageId, config.facebookAccessToken, config.facebookGraphApiVersion) : null;
   const facebookSyndication = new FacebookSyndicationService(
-    syndicationRepository, postService, config.siteOrigin, config.facebookPageId, Boolean(config.facebookAccessToken && config.facebookGraphApiVersion), mediaService,
+    syndicationRepository, postService, config.siteOrigin, config.facebookPageId, Boolean(config.facebookAccessToken && config.facebookGraphApiVersion), mediaService, socialPreviews,
   );
   const outboxWorker = mastodonSyndication.enabled || facebookSyndication.enabled
     ? new OutboxWorker(
@@ -97,6 +107,7 @@ export function startServer(): Server {
       facebookClient: facebookClient ?? undefined,
       media: mediaService,
       posts: postService,
+      socialPreviews,
     },
     siteOrigin: config.siteOrigin,
   }).listen(config.port, () => {

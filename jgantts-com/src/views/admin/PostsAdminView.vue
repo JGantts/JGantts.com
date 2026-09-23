@@ -22,6 +22,12 @@ type AdminPost = {
   slug: string
   shareUrl: string
   status: 'draft' | 'published' | 'archived'
+  socialPreview: {
+    image: { alt: string; height: number; mimeType: 'image/jpeg'; url: string; width: number } | null
+    schemaVersion: number
+    selectedMediaIds: string[]
+    state: 'current' | 'missing' | 'none' | 'outdated'
+  }
   syndications: SyndicationSummary[]
   teaser: string
   updatedAt: string
@@ -61,6 +67,7 @@ const error = ref('')
 const busy = ref(false)
 const previewHtml = ref('')
 const previewBusy = ref(false)
+const socialPreviewBusy = ref(false)
 type UploadQueueItem = {
   altText: string
   error: string
@@ -861,6 +868,22 @@ async function publish() {
   }
 }
 
+async function generateSocialPreview() {
+  if (!selectedId.value) return
+  error.value = ''
+  socialPreviewBusy.value = true
+  try {
+    await adminRequest(`/api/admin/posts/${selectedId.value}/social-preview`, jsonRequest('POST'))
+    const post = await adminRequest<AdminPost>(`/api/admin/posts/${selectedId.value}`)
+    replacePost(post)
+    notice.value = post.socialPreview.image ? 'Social preview collage updated.' : 'This post has no photos to collage.'
+  } catch (previewError) {
+    error.value = message(previewError)
+  } finally {
+    socialPreviewBusy.value = false
+  }
+}
+
 async function archive() {
   if (!selectedId.value || !window.confirm('Archive this post? Its canonical page will return Gone.')) return
   error.value = ''
@@ -1218,6 +1241,24 @@ onBeforeUnmount(() => {
                 <p v-else-if="!form.location.trim() && !form.date && !form.time" class="empty-state">Photo-only post</p>
               </div>
             </article>
+            <div v-if="selectedId && selected?.media.length" class="social-preview-panel">
+              <div class="section-heading">
+                <div>
+                  <h3>Social sharing image</h3>
+                  <span>{{ selected.socialPreview.state === 'current' ? 'Current 1200 × 630 collage' : 'Needs regeneration' }}</span>
+                </div>
+                <button class="button-secondary" :disabled="socialPreviewBusy" type="button" @click="generateSocialPreview">
+                  {{ socialPreviewBusy ? 'Generating…' : selected.socialPreview.state === 'current' ? 'Regenerate collage' : 'Generate collage' }}
+                </button>
+              </div>
+              <img
+                v-if="selected.socialPreview.image"
+                class="social-preview-image"
+                :alt="selected.socialPreview.image.alt"
+                :src="selected.socialPreview.image.url"
+              >
+              <p v-else class="empty-state">The collage will use the hero first, then up to four more photos in display order.</p>
+            </div>
           </section>
 
           <section v-if="selectedId" class="media-panel media-panel--primary" aria-labelledby="media-title">
@@ -1531,6 +1572,9 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .post-preview-media img { aspect-ratio: 1; border-radius: 0.35rem; object-fit: cover; width: 100%; }
 .post-preview-media .post-preview-hero { aspect-ratio: 16 / 9; grid-column: 1 / -1; }
 .post-preview-copy { min-width: 0; }
+.social-preview-panel { border-top: 1px solid var(--border); margin-top: 1rem; padding-top: 1rem; }
+.social-preview-panel .section-heading > div { display: grid; gap: 0.2rem; }
+.social-preview-image { aspect-ratio: 1200 / 630; border: 1px solid var(--border); border-radius: 0.75rem; display: block; margin-top: 0.75rem; object-fit: cover; width: min(100%, 48rem); }
 .post-preview-copy h3 { font-size: clamp(1.25rem, 3vw, 2rem); font-weight: 700; line-height: 1.1; margin-bottom: 0.55rem; overflow-wrap: anywhere; }
 .post-preview-meta { color: var(--muted); display: flex; flex-wrap: wrap; font-family: 'Azeret Mono Variable', monospace; font-size: 0.7rem; gap: 0.35rem 0.8rem; margin-bottom: 0.8rem; }
 .preview-body { line-height: 1.65; }

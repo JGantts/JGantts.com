@@ -12,6 +12,7 @@ import { createAdminMediaRouter } from './admin-media';
 import { createAdminPostsRouter } from './admin-posts';
 import { resolvePostPreview } from '../site/post-preview';
 import { revisionedPostPath } from '../site/revision-url';
+import type { SocialPreviewService } from '../social-preview/social-preview-service';
 
 export type BuildInfoProvider = () => BuildInfo;
 
@@ -23,6 +24,7 @@ export interface ApiServices {
   facebookSyndication?: FacebookSyndicationService;
   facebookClient?: FacebookClientLike;
   posts?: PostService;
+  socialPreviews?: SocialPreviewService;
 }
 
 export interface ApiOptions {
@@ -90,7 +92,7 @@ export function createApiRouter(
     router.use(
       '/admin/posts',
       createAdminAuth(options.adminToken ?? ''),
-      createAdminPostsRouter(services.posts, services.media, services.mastodonSyndication, services.facebookSyndication, services.facebookClient),
+      createAdminPostsRouter(services.posts, services.media, services.mastodonSyndication, services.facebookSyndication, services.facebookClient, services.socialPreviews),
     );
 
     router.get('/posts', (req, res, next) => {
@@ -109,7 +111,7 @@ export function createApiRouter(
           ...page,
           items: page.items.map((post) => {
             const media = services.media?.listForPost(post.id) ?? [];
-            const preview = resolvePostPreview(post, media).token;
+            const preview = resolvePostPreview(post, media, services.socialPreviews?.status(post.id).image).token;
             const revision = services.posts?.currentRevision(post.id) ?? 1;
             const versioned = services.posts?.hasMultiplePublishedRevisions(post.id) ?? false;
             return {
@@ -158,7 +160,7 @@ export function createApiRouter(
         return;
       }
       const media = services.media?.listForPost(post.id) ?? [];
-      const preview = resolvePostPreview(post, media).token;
+      const preview = resolvePostPreview(post, media, services.socialPreviews?.status(post.id).image).token;
       const revision = postService.currentRevision(post.id);
       const versioned = postService.hasMultiplePublishedRevisions(post.id);
       res.set({

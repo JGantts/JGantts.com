@@ -5,12 +5,14 @@ import { escapeHtml, renderAppHtml, upsertMeta } from './html';
 import { getPageMeta, getRequestOrigin, type ResolvedPageMeta } from './metadata';
 import { revisionedPostPath } from './revision-url';
 import { resolvePostPreview } from './post-preview';
+import type { SocialPreviewImage } from '../social-preview/types';
 
 export interface CanonicalPostPage extends Post {
   canonicalUrl?: string;
   media: PublicMedia[];
   preview?: string;
   shareUrl?: string;
+  socialPreview?: SocialPreviewImage | null;
 }
 
 function safeJson(value: unknown): string {
@@ -41,7 +43,7 @@ export function getCanonicalPostMeta(
 ): ResolvedPageMeta {
   const defaults = getPageMeta(req, configuredSiteOrigin);
   const origin = getRequestOrigin(req, configuredSiteOrigin);
-  const preview = resolvePostPreview(post, post.media);
+  const preview = resolvePostPreview(post, post.media, post.socialPreview);
   const image = preview.image?.url;
   return {
     title: `${preview.title} | JGantts`,
@@ -65,7 +67,7 @@ export function renderCanonicalPostHtml(
   configuredSiteOrigin: string,
 ): string {
   const meta = getCanonicalPostMeta(req, post, configuredSiteOrigin);
-  const preview = resolvePostPreview(post, post.media);
+  const preview = resolvePostPreview(post, post.media, post.socialPreview);
   const socialImage = preview.image;
   let html = renderAppHtml(req, appHtmlTemplate, configuredSiteOrigin, meta, 'article');
   if (post.preview) {
@@ -81,6 +83,8 @@ export function renderCanonicalPostHtml(
     html = upsertMeta(html, 'property', 'og:image:type', socialImage.mimeType);
     html = upsertMeta(html, 'property', 'og:image:width', String(socialImage.width));
     html = upsertMeta(html, 'property', 'og:image:height', String(socialImage.height));
+    html = upsertMeta(html, 'property', 'og:image:alt', socialImage.alt);
+    html = upsertMeta(html, 'name', 'twitter:image:alt', socialImage.alt);
   }
   html = upsertMeta(html, 'property', 'article:published_time', post.publishedAt ?? '');
   html = upsertMeta(html, 'property', 'article:modified_time', post.updatedAt);

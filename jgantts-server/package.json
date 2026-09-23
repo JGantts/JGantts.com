@@ -13,6 +13,7 @@
     "schema:check": "node dist/cli/check-schema-compatibility.js",
     "dev": "tsx watch src/server.ts",
     "media:regenerate": "node dist/cli/regenerate-media.js",
+    "social-previews:regenerate": "node dist/cli/regenerate-social-previews.js",
     "smoke": "npm run build && node scripts/smoke-test.js",
     "smoke:live": "node scripts/smoke-test.js --live",
     "smoke:local": "npm run build && node scripts/smoke-test.js --local",

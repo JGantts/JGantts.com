@@ -51,7 +51,9 @@ export function createApp(options: AppOptions = {}): express.Express {
   app.use('/api', createApiRouter(getBuildInfo, options.services, {
     adminToken: options.adminToken,
   }));
-  if (options.services?.media) app.use('/media', createMediaRouter(options.services.media));
+  if (options.services?.media) {
+    app.use('/media', createMediaRouter(options.services.media, options.services.socialPreviews));
+  }
 
   const postsService = options.services?.posts;
   if (postsService) {
@@ -106,7 +108,8 @@ export function createApp(options: AppOptions = {}): express.Express {
       const currentRevision = options.services?.posts?.currentRevision(post.id) ?? 1;
       const versioned = options.services?.posts?.hasMultiplePublishedRevisions(post.id) ?? false;
       const media = options.services?.media?.listForPost(post.id) ?? [];
-      const preview = resolvePostPreview(post, media).token;
+      const socialPreview = options.services?.socialPreviews?.status(post.id).image;
+      const preview = resolvePostPreview(post, media, socialPreview).token;
       const shareRequest = req.query.preview !== undefined || req.query.build !== undefined;
       if (post.slug !== req.params.slug) {
         res.redirect(308, revisionedPostPath(post.slug, currentRevision, versioned, shareRequest ? preview : undefined));
@@ -129,6 +132,7 @@ export function createApp(options: AppOptions = {}): express.Express {
         revision: versioned ? currentRevision : undefined,
         shareUrl: revisionedPostPath(post.slug, currentRevision, versioned, preview),
         media,
+        socialPreview,
       };
       res.status(200).type('html').set('Cache-Control', 'no-cache')
         .send(renderCanonicalPostHtml(req, appHtmlTemplate, page, configuredSiteOrigin));

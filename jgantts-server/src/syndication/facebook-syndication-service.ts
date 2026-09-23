@@ -5,10 +5,11 @@ import { buildPostTeaser } from './mastodon-syndication-service';
 import type { Syndication } from './types';
 import type { FacebookClientLike, FacebookPostCandidate } from './facebook-client';
 import type { MediaService } from '../media/media-service';
+import type { SocialPreviewService } from '../social-preview/social-preview-service';
 import { resolvePostPreview } from '../site/post-preview';
 
 export class FacebookSyndicationService {
-  constructor(private readonly repository: SyndicationRepository, private readonly posts: PostService, private readonly siteOrigin: string, private readonly pageId: string, private readonly hasAccessToken: boolean, private readonly media?: MediaService) {}
+  constructor(private readonly repository: SyndicationRepository, private readonly posts: PostService, private readonly siteOrigin: string, private readonly pageId: string, private readonly hasAccessToken: boolean, private readonly media?: MediaService, private readonly socialPreviews?: SocialPreviewService) {}
   get enabled(): boolean { return Boolean(this.siteOrigin && this.pageId && this.hasAccessToken); }
   getForPost(postId: string): Syndication | null { return this.repository.getLatestForPost(postId, 'facebook'); }
   listForPost(postId: string): Syndication[] { return this.repository.listForPost(postId).filter((item) => item.destination === 'facebook'); }
@@ -16,7 +17,11 @@ export class FacebookSyndicationService {
   queue(postId: string): { queued: boolean; syndication: Syndication } {
     if (!this.enabled) throw Object.assign(new Error('Facebook syndication is not configured.'), { status: 503 });
     const post = this.posts.findById(postId); if (!post) throw Object.assign(new Error('Post not found.'), { status: 404 });
-    const preview = resolvePostPreview(post, this.media?.listForPost(post.id) ?? []).token;
+    const preview = resolvePostPreview(
+      post,
+      this.media?.listForPost(post.id) ?? [],
+      this.socialPreviews?.status(post.id).image,
+    ).token;
     const url = `${this.siteOrigin}${revisionedPostPath(post.slug, this.posts.currentRevision(post.id), this.posts.hasMultiplePublishedRevisions(post.id), preview)}`;
     return this.repository.queuePublication({ destination: 'facebook', canonicalUrl: url, postId, remoteInstance: `page:${this.pageId}`, teaser: buildPostTeaser(post) });
   }

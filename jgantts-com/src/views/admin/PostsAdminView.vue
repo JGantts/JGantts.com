@@ -76,7 +76,7 @@ type UploadQueueItem = {
   id: string
   previewUrl: string
   progress: number
-  status: 'cancelled' | 'failed' | 'queued' | 'uploading' | 'uploaded'
+  status: 'cancelled' | 'failed' | 'queued' | 'uploading' | 'processing' | 'uploaded'
   xhr: XMLHttpRequest | null
 }
 const uploadQueue = ref<UploadQueueItem[]>([])
@@ -996,14 +996,23 @@ function uploadOne(item: UploadQueueItem): Promise<PostMedia> {
     item.xhr = xhr
     xhr.open('POST', '/api/admin/media')
     xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) item.progress = Math.round((event.loaded / event.total) * 100)
+      if (event.lengthComputable) {
+        item.progress = Math.min(99, Math.floor((event.loaded / event.total) * 100))
+      }
+    }
+    xhr.upload.onload = () => {
+      item.progress = 100
+      item.status = 'processing'
     }
     xhr.onabort = () => {
       item.status = 'cancelled'
       item.xhr = null
       reject(new Error('Upload cancelled.'))
     }
-    xhr.onerror = () => reject(new Error('Network error while uploading.'))
+    xhr.onerror = () => {
+      item.xhr = null
+      reject(new Error('Network error while uploading.'))
+    }
     xhr.onload = () => {
       item.xhr = null
       let response: unknown
@@ -1284,17 +1293,18 @@ onBeforeUnmount(() => {
                   <strong>{{ item.file.name }}</strong>
                   <label>Alt text (optional) <input v-model="item.altText" maxlength="2000"></label>
                   <progress v-if="item.status === 'uploading'" max="100" :value="item.progress">{{ item.progress }}%</progress>
+                  <progress v-else-if="item.status === 'processing'" aria-label="Processing photo"></progress>
                   <p v-if="item.error" class="message message--error">{{ item.error }}</p>
-                  <span class="upload-status">{{ item.status }}<template v-if="item.status === 'uploading'"> · {{ item.progress }}%</template></span>
+                  <span class="upload-status" role="status">{{ item.status === 'processing' ? 'Processing photo… This can take a minute.' : item.status }}<template v-if="item.status === 'uploading'"> · {{ item.progress }}%</template></span>
                 </div>
                 <div class="upload-item-actions">
                   <button v-if="item.status === 'failed' || item.status === 'cancelled'" class="button-secondary" type="button" @click="retryUpload(item)">Retry</button>
                   <button v-if="item.status === 'uploading' || item.status === 'queued'" class="button-quiet" type="button" @click="cancelUpload(item)">Cancel</button>
-                  <button v-else class="button-quiet" type="button" @click="removeUpload(item)">Remove</button>
+                  <button v-else class="button-quiet" :disabled="item.status === 'processing'" type="button" @click="removeUpload(item)">Remove</button>
                 </div>
               </article>
               <button :disabled="uploadRunning || !uploadQueue.some((item) => ['queued', 'failed'].includes(item.status))" type="button" @click="uploadQueued">
-                {{ uploadRunning ? 'Uploading…' : 'Upload ready photos' }}
+                {{ uploadRunning ? (uploadQueue.some((item) => item.status === 'uploading') ? 'Uploading…' : 'Processing photos…') : 'Upload ready photos' }}
               </button>
             </div>
           </section>

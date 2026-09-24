@@ -6,6 +6,10 @@ export interface PageMeta {
   socialTitle: string;
   socialDescription: string;
   socialImage: string;
+  socialImageAlt?: string;
+  socialImageHeight?: number;
+  socialImageMimeType?: string;
+  socialImageWidth?: number;
 }
 
 export interface ResolvedPageMeta extends PageMeta {
@@ -13,11 +17,15 @@ export interface ResolvedPageMeta extends PageMeta {
 }
 
 const DEFAULT_PAGE_META: PageMeta = {
-  title: 'JGantts.com',
-  description: 'JGantts',
-  socialTitle: 'JGantts',
-  socialDescription: 'JGantts',
+  title: 'Jacob Gantt | Programmer & Photographer',
+  description: 'Writing, photographs, and projects from Jacob Gantt in Southern Appalachia.',
+  socialTitle: 'Jacob Gantt — Programmer & Photographer',
+  socialDescription: 'Writing, photographs, and projects from Southern Appalachia.',
   socialImage: '/social-media.png',
+  socialImageAlt: "A collage of Jacob Gantt's published photographs: Appalachian mountains, a swinging bridge, a flower, powerlines at sunset, and floral shadows.",
+  socialImageHeight: 630,
+  socialImageMimeType: 'image/png',
+  socialImageWidth: 1_200,
 };
 
 const ROUTE_META: ReadonlyArray<{ prefix: string; meta: PageMeta }> = [
@@ -31,6 +39,10 @@ const ROUTE_META: ReadonlyArray<{ prefix: string; meta: PageMeta }> = [
       socialDescription:
         'Professional tour guide. Follow Zachary Holmes, get directions, and find tip links in one place.',
       socialImage: '/holmes-social-preview.svg',
+      socialImageAlt: 'Holmes, Zachary — professional tour guide at Desert Adventures.',
+      socialImageHeight: 630,
+      socialImageMimeType: 'image/svg+xml',
+      socialImageWidth: 1_200,
     },
   },
   {
@@ -41,6 +53,10 @@ const ROUTE_META: ReadonlyArray<{ prefix: string; meta: PageMeta }> = [
       socialTitle: 'Kovyálo | JGantts',
       socialDescription: "JGantts' Conworld of Kovyálo.",
       socialImage: '/social-media.png',
+      socialImageAlt: DEFAULT_PAGE_META.socialImageAlt,
+      socialImageHeight: DEFAULT_PAGE_META.socialImageHeight,
+      socialImageMimeType: DEFAULT_PAGE_META.socialImageMimeType,
+      socialImageWidth: DEFAULT_PAGE_META.socialImageWidth,
     },
   },
   {
@@ -51,6 +67,10 @@ const ROUTE_META: ReadonlyArray<{ prefix: string; meta: PageMeta }> = [
       socialTitle: 'Photos | JGantts',
       socialDescription: 'Photos from JGantts',
       socialImage: '/social-media.png',
+      socialImageAlt: DEFAULT_PAGE_META.socialImageAlt,
+      socialImageHeight: DEFAULT_PAGE_META.socialImageHeight,
+      socialImageMimeType: DEFAULT_PAGE_META.socialImageMimeType,
+      socialImageWidth: DEFAULT_PAGE_META.socialImageWidth,
     },
   },
   {
@@ -61,6 +81,10 @@ const ROUTE_META: ReadonlyArray<{ prefix: string; meta: PageMeta }> = [
       socialTitle: 'Posts | JGantts',
       socialDescription: 'Writing and photographs from Jacob Gantt, published here first.',
       socialImage: '/social-media.png',
+      socialImageAlt: DEFAULT_PAGE_META.socialImageAlt,
+      socialImageHeight: DEFAULT_PAGE_META.socialImageHeight,
+      socialImageMimeType: DEFAULT_PAGE_META.socialImageMimeType,
+      socialImageWidth: DEFAULT_PAGE_META.socialImageWidth,
     },
   },
 ];

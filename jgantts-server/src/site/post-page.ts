@@ -51,6 +51,10 @@ export function getCanonicalPostMeta(
     socialTitle: preview.title,
     socialDescription: preview.description,
     socialImage: image ? new URL(image, `${origin}/`).toString() : defaults.socialImage,
+    socialImageAlt: preview.image?.alt ?? defaults.socialImageAlt,
+    socialImageHeight: preview.image?.height ?? defaults.socialImageHeight,
+    socialImageMimeType: preview.image?.mimeType ?? defaults.socialImageMimeType,
+    socialImageWidth: preview.image?.width ?? defaults.socialImageWidth,
     url: new URL(revisionedPostPath(post.slug, postRevision(post), Boolean(post.revision)), `${origin}/`).toString(),
   };
 }

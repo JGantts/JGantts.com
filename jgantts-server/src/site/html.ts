@@ -107,6 +107,22 @@ export function renderAppHtml(
   html = upsertMeta(html, 'property', 'og:title', pageMeta.socialTitle);
   html = upsertMeta(html, 'property', 'og:description', pageMeta.socialDescription);
   html = upsertMeta(html, 'property', 'og:image', pageMeta.socialImage);
+  if (pageMeta.socialImage) {
+    html = upsertMeta(html, 'property', 'og:image:secure_url', pageMeta.socialImage);
+  }
+  if (pageMeta.socialImageMimeType) {
+    html = upsertMeta(html, 'property', 'og:image:type', pageMeta.socialImageMimeType);
+  }
+  if (pageMeta.socialImageWidth) {
+    html = upsertMeta(html, 'property', 'og:image:width', String(pageMeta.socialImageWidth));
+  }
+  if (pageMeta.socialImageHeight) {
+    html = upsertMeta(html, 'property', 'og:image:height', String(pageMeta.socialImageHeight));
+  }
+  if (pageMeta.socialImageAlt) {
+    html = upsertMeta(html, 'property', 'og:image:alt', pageMeta.socialImageAlt);
+    html = upsertMeta(html, 'name', 'twitter:image:alt', pageMeta.socialImageAlt);
+  }
   html = upsertMeta(html, 'property', 'og:site_name', 'JGantts.com');
   html = upsertMeta(html, 'property', 'og:locale', 'en_US');
   html = upsertMeta(html, 'name', 'twitter:card', twitterCard);

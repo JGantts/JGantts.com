@@ -189,8 +189,25 @@ test('renders metadata for newer frontend routes', async () => {
 
   assert.match(kovyalo.body, /<title>Kovyálo<\/title>/);
   assert.match(kovyalo.body, /content="Kovyálo \| JGantts"/);
+  assert.match(kovyalo.body, /property="og:image:type" content="image\/png"/);
+  assert.match(kovyalo.body, /property="og:image:width" content="1200"/);
+  assert.match(kovyalo.body, /property="og:image:height" content="630"/);
+  assert.match(kovyalo.body, /property="og:image:alt" content="A collage of Jacob Gantt's published photographs: Appalachian mountains, a swinging bridge, a flower, powerlines at sunset, and floral shadows\."/);
+  assert.match(kovyalo.body, /name="twitter:image:alt" content="A collage of Jacob Gantt's published photographs: Appalachian mountains, a swinging bridge, a flower, powerlines at sunset, and floral shadows\."/);
   assert.match(photos.body, /<title>JGantts Photos<\/title>/);
   assert.match(photos.body, /content="Photos \| JGantts"/);
+});
+
+test('renders useful default homepage social metadata', async () => {
+  const app = createApp({ appHtmlTemplate: TEMPLATE, siteOrigin: 'https://jgantts.com' });
+  const response = await request(app, '/');
+
+  assert.equal(response.status, 200);
+  assert.match(response.body, /<title>Jacob Gantt \| Programmer &amp; Photographer<\/title>/);
+  assert.match(response.body, /property="og:title" content="Jacob Gantt — Programmer &amp; Photographer"/);
+  assert.match(response.body, /property="og:image" content="https:\/\/jgantts\.com\/social-media\.png"/);
+  assert.match(response.body, /property="og:image:secure_url" content="https:\/\/jgantts\.com\/social-media\.png"/);
+  assert.match(response.body, /name="twitter:card" content="summary_large_image"/);
 });
 
 test('renders the real build and serves real public files', async () => {

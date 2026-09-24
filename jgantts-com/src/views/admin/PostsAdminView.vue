@@ -326,6 +326,7 @@ function message(value: unknown): string {
 
 function copyToForm(post: AdminPost) {
   if (selectedId.value && selectedId.value !== post.id) queueCurrentDraftForServer()
+  if (selectedId.value !== post.id) clearUploadQueue()
   selectedId.value = post.id
   const fromServer = postDraft(post)
   const fromBrowser = loadAdminPostDraft(post.id)
@@ -399,6 +400,7 @@ async function signOut() {
   } catch {
     // Clear the local editor regardless; the server cookie will expire naturally.
   }
+  clearUploadQueue()
   authenticated.value = false
   posts.value = []
   selectedId.value = null
@@ -971,6 +973,15 @@ function dropFiles(event: DragEvent) {
   addFiles(Array.from(event.dataTransfer?.files ?? []).filter((file) => file.type.startsWith('image/')))
 }
 
+function clearUploadQueue() {
+  const previous = uploadQueue.value
+  uploadQueue.value = []
+  previous.forEach((item) => {
+    item.xhr?.abort()
+    URL.revokeObjectURL(item.previewUrl)
+  })
+}
+
 function removeUpload(item: UploadQueueItem) {
   item.xhr?.abort()
   URL.revokeObjectURL(item.previewUrl)
@@ -1028,18 +1039,21 @@ async function uploadQueued() {
   const pending = uploadQueue.value.filter((item) =>
     ['queued', 'failed'].includes(item.status))
   if (!pending.length || uploadRunning.value) return
+  const postId = selectedId.value
   uploadRunning.value = true
   error.value = ''
   let cursor = 0
   const worker = async () => {
     while (cursor < pending.length) {
       const item = pending[cursor++]
+      if (!uploadQueue.value.includes(item) || ['cancelled'].includes(item.status)) continue
       try {
         const uploaded = await uploadOne(item)
         item.status = 'uploaded'
         item.progress = 100
-        const current = selected.value
-        if (current) replacePost({ ...current, media: [...current.media, uploaded] })
+        const index = posts.value.findIndex((post) => post.id === postId)
+        const current = posts.value[index]
+        if (current) posts.value.splice(index, 1, { ...current, media: [...current.media, uploaded] })
       } catch (uploadError) {
         if (item.status !== 'cancelled') item.status = 'failed'
         item.error = message(uploadError)
@@ -1048,7 +1062,9 @@ async function uploadQueued() {
   }
   await Promise.all(Array.from({ length: Math.min(2, pending.length) }, worker))
   uploadRunning.value = false
-  notice.value = `${pending.filter(({ status }) => status === 'uploaded').length} photo(s) uploaded.`
+  if (selectedId.value === postId) {
+    notice.value = `${pending.filter(({ status }) => status === 'uploaded').length} photo(s) uploaded.`
+  }
 }
 
 async function retryUpload(item: UploadQueueItem) {
@@ -1100,10 +1116,7 @@ onMounted(() => { void restoreSession() })
 onBeforeUnmount(() => {
   if (previewTimer) clearTimeout(previewTimer)
   queueCurrentDraftForServer()
-  uploadQueue.value.forEach((item) => {
-    item.xhr?.abort()
-    URL.revokeObjectURL(item.previewUrl)
-  })
+  clearUploadQueue()
 })
 </script>
 

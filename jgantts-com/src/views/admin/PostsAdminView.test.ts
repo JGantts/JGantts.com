@@ -78,3 +78,45 @@ describe('photo upload progress', () => {
     expect(wrapper.text()).toContain('1 photo(s) uploaded.')
   })
 })
+
+
+describe('new draft photos', () => {
+  async function createNewDraft() {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true, json: async () => ({ ...post, id: 'new-draft', slug: 'new-draft' }),
+    } as Response)
+    await wrapper.findAll('button').find((button) => button.text() === 'New draft')!.trigger('click')
+    await flushPromises()
+  }
+
+  it('clears completed upload previews when opening a new draft', async () => {
+    const xhr = await startUpload()
+    xhr.responseText = JSON.stringify({ id: 'photo', urls: { thumbnail: '/media/photo/thumbnail' }, renditions: [], processingState: 'ready' })
+    xhr.onload()
+    await flushPromises()
+    expect(wrapper.find('.upload-item').exists()).toBe(true)
+    expect(wrapper.find('.media-grid').exists()).toBe(true)
+
+    await createNewDraft()
+
+    expect(wrapper.find('.upload-queue').exists()).toBe(false)
+    expect(wrapper.find('.media-grid').exists()).toBe(false)
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:photo')
+    expect(wrapper.find('input[type="file"]').exists()).toBe(true)
+  })
+
+  it('clears an in-flight upload without carrying its result or notice into the new draft', async () => {
+    const xhr = await startUpload()
+    xhr.upload.onload()
+    await flushPromises()
+    const abort = vi.spyOn(xhr, 'abort')
+
+    await createNewDraft()
+
+    expect(abort).toHaveBeenCalledOnce()
+    expect(wrapper.find('.upload-queue').exists()).toBe(false)
+    expect(wrapper.find('.media-grid').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Empty draft created.')
+    expect(wrapper.text()).not.toContain('photo(s) uploaded.')
+  })
+})

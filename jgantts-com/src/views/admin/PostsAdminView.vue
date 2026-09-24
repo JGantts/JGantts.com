@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { AdminApiError, adminRequest, createAdminSession, deleteAdminSession, jsonRequest } from '@/admin/api'
 import { loadAdminPostDraft, saveAdminPostDraft, type AdminPostDraft } from '@/admin/draft-storage'
+import { authorPostBody, storedDate } from '@/admin/post-authoring'
 import { effectiveHeroMediaId } from '@/admin/post-hero'
 import { formatEditorialDateTime } from '@/posts/editorial-date-time'
 import type { PostMedia } from '@/posts/types'
@@ -247,10 +248,6 @@ function dateInputValue(date: number | null): string {
   return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`
 }
 
-function storedDate(date: string): number | null {
-  return date ? Number(date.replaceAll('-', '')) : null
-}
-
 type DateTimeDraft = { date: string; time: string }
 
 function todayInputValue(now = new Date()): string {
@@ -435,20 +432,15 @@ async function loadPosts() {
   posts.value = result.items
 }
 
-function authorBody(draft = currentDraft(), existingId = selectedId.value, includeSlug = true) {
-  const fields = {
-    location: draft.location.trim() || null,
-    title: draft.title.trim() || null,
-    date: storedDate(draft.date),
-    time: draft.time || null,
-    ...(includeSlug ? { slug: draft.slug.trim() } : {}),
-  }
-
-  // New photo-only posts do not need to send a body at all. Existing posts still
-  // send the field so clearing a previously saved body remains possible.
-  return existingId || draft.bodyMarkdown
-    ? { ...fields, bodyMarkdown: draft.bodyMarkdown }
-    : fields
+function authorBody(
+  draft = currentDraft(),
+  existingId = selectedId.value,
+  options: { includeSlug?: boolean; preserveWhitespace?: boolean } = {},
+) {
+  return authorPostBody(draft, {
+    existingPost: Boolean(existingId),
+    ...options,
+  })
 }
 
 function slugifyTitle() {
@@ -776,7 +768,10 @@ function runSaveWorker(): Promise<void> {
       try {
         const post = await adminRequest<AdminPost>(
           `/api/admin/posts/${postId}/autosave`,
-          jsonRequest('PATCH', authorBody(draft, postId, false)),
+          jsonRequest('PATCH', authorBody(draft, postId, {
+            includeSlug: false,
+            preserveWhitespace: true,
+          })),
         )
         mergeServerDraft(post, draft, true)
       } catch (saveError) {

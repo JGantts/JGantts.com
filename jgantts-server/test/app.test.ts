@@ -456,7 +456,11 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
     'SELECT COUNT(*) AS count FROM post_revisions WHERE post_id = ?',
   ).get(created.id) as { count: number }).count;
   const autosaveResponse = await request(app, `/api/admin/posts/${created.id}/autosave`, {
-    body: JSON.stringify({ bodyMarkdown: 'Autosaved draft' }),
+    body: JSON.stringify({
+      bodyMarkdown: 'Autosaved draft ',
+      location: 'Southern Appalachia ',
+      title: 'Still typing ',
+    }),
     headers: {
       authorization: 'Bearer test-admin-secret',
       'content-type': 'application/json',
@@ -464,7 +468,13 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
     method: 'PATCH',
   });
   assert.equal(autosaveResponse.status, 200);
-  assert.equal(JSON.parse(autosaveResponse.body).bodyHtml, '<p>Autosaved draft</p>\n');
+  const autosaved = JSON.parse(autosaveResponse.body) as {
+    bodyHtml: string; bodyMarkdown: string; location: string; title: string;
+  };
+  assert.equal(autosaved.bodyHtml, '<p>Autosaved draft </p>\n');
+  assert.equal(autosaved.bodyMarkdown, 'Autosaved draft ');
+  assert.equal(autosaved.location, 'Southern Appalachia ');
+  assert.equal(autosaved.title, 'Still typing ');
   assert.equal((database.prepare(
     'SELECT COUNT(*) AS count FROM post_revisions WHERE post_id = ?',
   ).get(created.id) as { count: number }).count, revisionsBeforeAutosave);

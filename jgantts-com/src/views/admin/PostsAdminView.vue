@@ -1277,7 +1277,7 @@ onBeforeUnmount(() => {
                 @drop.prevent="dropMedia(item.id)"
               >
                 <button class="media-preview" type="button" :aria-label="`Set focal point for photo ${index + 1}`" @click="setFocalPoint(item, $event)">
-                  <img :alt="item.altText" :src="mediaThumbnailUrl(item)">
+                  <img :alt="item.altText" :src="mediaThumbnailUrl(item)" :width="item.width ?? undefined" :height="item.height ?? undefined">
                   <span class="focal-marker" :style="{ left: `${(item.focalX ?? 0.5) * 100}%`, top: `${(item.focalY ?? 0.5) * 100}%` }"></span>
                 </button>
                 <figcaption>
@@ -1570,8 +1570,8 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .preview-body :deep(ol) { list-style: decimal; padding-left: 1.5rem; }
 .empty-state { color: var(--muted); }
 .media-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); margin-bottom: 1rem; }
-.media-grid img { aspect-ratio: 1; border-radius: 0.5rem; object-fit: cover; width: 100%; }
-.media-preview { background: transparent; border: 0; cursor: crosshair; padding: 0; position: relative; width: 100%; }
+.media-grid img { border-radius: 0.5rem; height: auto; width: 100%; }
+.media-preview { background: transparent; border: 0; cursor: crosshair; display: block; padding: 0; position: relative; width: 100%; }
 .media-preview img { display: block; }
 .focal-marker { background: var(--accent); border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px black; height: 0.8rem; position: absolute; transform: translate(-50%, -50%); width: 0.8rem; }
 .is-selected { background: var(--accent); color: white; }

@@ -17,9 +17,9 @@ import { MastodonClient } from './syndication/mastodon-client';
 import { MastodonSyndicationService } from './syndication/mastodon-syndication-service';
 import { OutboxWorker } from './syndication/outbox-worker';
 import { SyndicationRepository } from './syndication/syndication-repository';
-import { FacebookClient } from './syndication/facebook-client';
-import { FacebookSyndicationService } from './syndication/facebook-syndication-service';
 import { loadBuildInfo } from './build-info';
+import { SocialPreviewRepository } from './social-preview/social-preview-repository';
+import { SocialPreviewService } from './social-preview/social-preview-service';
 
 export function startServer(): Server {
   const logger = createStructuredLogger();
@@ -30,8 +30,15 @@ export function startServer(): Server {
   const contentDatabase = openContentDatabase(config.databasePath);
   const postRepository = new PostRepository(contentDatabase);
   const postService = new PostService(postRepository);
+  const mediaRepository = new MediaRepository(contentDatabase);
   const mediaService = new MediaService(
-    new MediaRepository(contentDatabase),
+    mediaRepository,
+    postRepository,
+    config.mediaRoot,
+  );
+  const socialPreviews = new SocialPreviewService(
+    new SocialPreviewRepository(contentDatabase),
+    mediaRepository,
     postRepository,
     config.mediaRoot,
   );
@@ -46,19 +53,14 @@ export function startServer(): Server {
     config.mastodonOrigin,
     Boolean(config.mastodonAccessToken),
     mediaService,
+    socialPreviews,
   );
-  const facebookClient = config.facebookPageId && config.facebookAccessToken && config.facebookGraphApiVersion
-    ? new FacebookClient(config.facebookPageId, config.facebookAccessToken, config.facebookGraphApiVersion) : null;
-  const facebookSyndication = new FacebookSyndicationService(
-    syndicationRepository, postService, config.siteOrigin, config.facebookPageId, Boolean(config.facebookAccessToken && config.facebookGraphApiVersion), mediaService,
-  );
-  const outboxWorker = mastodonSyndication.enabled || facebookSyndication.enabled
+  const outboxWorker = mastodonSyndication.enabled
     ? new OutboxWorker(
       syndicationRepository,
       mastodonClient,
       5_000,
       logger,
-      facebookClient,
     )
     : null;
   const mastodonComments = new MastodonCommentsService(
@@ -71,7 +73,6 @@ export function startServer(): Server {
     contentDatabase,
     config.mediaRoot,
     mastodonSyndication.enabled,
-    facebookSyndication.enabled,
   );
 
   if (!appHtmlTemplate) {
@@ -93,10 +94,9 @@ export function startServer(): Server {
       health,
       mastodonComments,
       mastodonSyndication,
-      facebookSyndication,
-      facebookClient: facebookClient ?? undefined,
       media: mediaService,
       posts: postService,
+      socialPreviews,
     },
     siteOrigin: config.siteOrigin,
   }).listen(config.port, () => {

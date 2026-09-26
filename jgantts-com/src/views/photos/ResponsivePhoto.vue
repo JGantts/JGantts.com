@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { thumbHashToDataURL } from 'thumbhash'
 import type { PhotoCommentsAttachment } from './photo-comments-types'
 import { useDevicePixelRatio } from './device-pixel-ratio'
 import { responsiveImagePlan, type ImageDisplayContext } from './responsive-image'
@@ -20,6 +21,12 @@ const props = withDefaults(defineProps<{
 })
 
 const loaded = ref(false)
+const root = ref<HTMLElement | null>(null)
+const hasEnteredViewport = ref(false)
+const managesViewportPriority = props.loading === 'lazy'
+  && props.fetchPriority === 'auto'
+  && typeof IntersectionObserver !== 'undefined'
+let viewportObserver: IntersectionObserver | null = null
 const devicePixelRatio = useDevicePixelRatio()
 const connection = navigator as Navigator & { connection?: { saveData?: boolean } }
 const plan = computed(() => props.attachment.localMedia
@@ -40,20 +47,56 @@ const position = computed(() => {
   if (media?.focalX === null || media?.focalY === null || !media) return 'center'
   return `${media.focalX * 100}% ${media.focalY * 100}%`
 })
+const thumbhashPreview = computed(() => {
+  const value = props.attachment.localMedia?.thumbhash ?? props.attachment.thumbhash
+  if (!value || value.length > 128) return ''
+  try {
+    const binary = atob(value)
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0))
+    return thumbHashToDataURL(bytes)
+  } catch {
+    return ''
+  }
+})
 const previewStyle = computed(() => {
-  if (props.context !== 'lightbox') return undefined
   const previewUrl = props.previewUrl
-    || (!props.attachment.localMedia ? props.attachment.preview_url : '')
+    || thumbhashPreview.value
+    || props.attachment.localMedia?.placeholder?.url
+    || (props.context === 'lightbox' ? props.attachment.preview_url : '')
   if (!previewUrl) return undefined
   const safeUrl = previewUrl.replaceAll('"', '%22')
-  return { backgroundImage: `url("${safeUrl}")` }
+  return {
+    backgroundImage: `url("${safeUrl}")`,
+    backgroundPosition: position.value,
+    backgroundSize: props.fit,
+  }
 })
+const effectiveFetchPriority = computed(() => managesViewportPriority
+  ? (hasEnteredViewport.value ? 'high' : 'low')
+  : props.fetchPriority)
+const effectiveLoading = computed(() => managesViewportPriority && hasEnteredViewport.value
+  ? 'eager'
+  : props.loading)
 
 watch(source, () => { loaded.value = false })
+
+onMounted(() => {
+  if (!managesViewportPriority || !root.value) return
+  viewportObserver = new IntersectionObserver(([entry]) => {
+    if (!entry?.isIntersecting) return
+    hasEnteredViewport.value = true
+    viewportObserver?.disconnect()
+    viewportObserver = null
+  }, { threshold: 0.01 })
+  viewportObserver.observe(root.value)
+})
+
+onBeforeUnmount(() => viewportObserver?.disconnect())
 </script>
 
 <template>
   <span
+    ref="root"
     class="responsive-photo"
     :class="{ 'is-loaded': loaded }"
     :style="previewStyle"
@@ -78,8 +121,8 @@ watch(source, () => { loaded.value = false })
         :alt="alt"
         :width="attachment.localMedia?.width ?? undefined"
         :height="attachment.localMedia?.height ?? undefined"
-        :loading="loading"
-        :fetchpriority="fetchPriority"
+        :loading="effectiveLoading"
+        :fetchpriority="effectiveFetchPriority"
         decoding="async"
         :style="{ objectFit: fit, objectPosition: position }"
         @load="loaded = true"
@@ -98,6 +141,7 @@ watch(source, () => { loaded.value = false })
 }
 
 .responsive-photo {
+  background-color: var(--photos-media-bg, #29231f);
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
@@ -105,7 +149,7 @@ watch(source, () => { loaded.value = false })
 
 .responsive-photo img {
   opacity: 0;
-  transition: opacity 120ms ease-out;
+  transition: opacity 220ms ease-out;
 }
 
 .responsive-photo.is-loaded img {

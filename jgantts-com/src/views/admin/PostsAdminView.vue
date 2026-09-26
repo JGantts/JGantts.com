@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, markRaw, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { AdminApiError, adminRequest, createAdminSession, deleteAdminSession, jsonRequest } from '@/admin/api'
+import { loadAdminPostDraft, saveAdminPostDraft, type AdminPostDraft } from '@/admin/draft-storage'
+import { authorPostBody, storedDate } from '@/admin/post-authoring'
+import { effectiveHeroMediaId } from '@/admin/post-hero'
 import { formatEditorialDateTime } from '@/posts/editorial-date-time'
 import type { PostMedia } from '@/posts/types'
 
@@ -20,12 +23,18 @@ type AdminPost = {
   slug: string
   shareUrl: string
   status: 'draft' | 'published' | 'archived'
+  socialPreview: {
+    image: { alt: string; height: number; mimeType: 'image/jpeg'; url: string; width: number } | null
+    schemaVersion: number
+    selectedMediaIds: string[]
+    state: 'current' | 'missing' | 'none' | 'outdated'
+  }
   syndications: SyndicationSummary[]
   teaser: string
   updatedAt: string
   revision?: number
 }
-type SyndicationDestination = 'facebook' | 'mastodon'
+type SyndicationDestination = 'mastodon'
 type SyndicationState = 'pending' | 'published' | 'failed' | 'uncertain'
 type SyndicationSummary = {
   destination: SyndicationDestination
@@ -59,6 +68,7 @@ const error = ref('')
 const busy = ref(false)
 const previewHtml = ref('')
 const previewBusy = ref(false)
+const socialPreviewBusy = ref(false)
 type UploadQueueItem = {
   altText: string
   error: string
@@ -81,16 +91,35 @@ const uploadQueue = ref<UploadQueueItem[]>([])
 const uploadRunning = ref(false)
 const mediaDrafts = reactive<Record<string, { altText: string; caption: string; title: string; location: string; date: string; time: string }>>({})
 const mediaSavingId = ref<string | null>(null)
+const mediaRegeneratingId = ref<string | null>(null)
+const allMediaRegenerating = ref(false)
+const allCollagesRegenerating = ref(false)
+const mediaPipelineNotice = ref('')
+const mediaPipelineFailed = ref(false)
 const mediaDialog = ref<HTMLDialogElement | null>(null)
 const editingMediaId = ref<string | null>(null)
 const orderSaving = ref(false)
 const draggedMediaId = ref<string | null>(null)
 const syndication = ref<Syndication | null>(null)
-const facebookSyndication = ref<Syndication | null>(null)
-const facebookCandidates = ref<Array<{ id: string; url: string }>>([])
 const revisionHistory = ref<PublishedRevision[]>([])
 const revisionSyndications = ref<RevisionSyndication[]>([])
 let previewTimer: ReturnType<typeof setTimeout> | null = null
+let autosaveTimer: ReturnType<typeof setTimeout> | null = null
+let saveWorker: Promise<void> | null = null
+let observedDraft = ''
+const pendingServerDrafts = new Map<string, AdminPostDraft>()
+const serverContentDrafts = new Map<string, string>()
+const serverUpdatedAt = new Map<string, string>()
+type AutosaveState = 'idle' | 'browser' | 'saving' | 'saved' | 'error'
+const autosaveState = ref<AutosaveState>('idle')
+const autosaveProblem = ref('')
+const autosaveLabel = computed(() => {
+  if (autosaveState.value === 'saving') return 'Saving…'
+  if (autosaveState.value === 'saved') return 'Saved to browser and server'
+  if (autosaveState.value === 'error') return autosaveProblem.value || 'Saved in browser · server retry needed'
+  if (autosaveState.value === 'browser') return 'Saved in this browser'
+  return ''
+})
 const allowedMinutes = ['00', '10', '15', '20', '30', '40', '45', '50']
 const hourOptions = Array.from({ length: 24 }, (_, hour) => hour.toString().padStart(2, '0'))
 
@@ -102,6 +131,46 @@ const form = reactive({
   time: '',
   bodyMarkdown: '',
 })
+
+function postDraft(post: AdminPost): AdminPostDraft {
+  return {
+    bodyMarkdown: post.bodyMarkdown,
+    date: dateInputValue(post.date),
+    location: post.location ?? '',
+    slug: post.slug,
+    time: post.time ?? '',
+    title: post.title ?? '',
+  }
+}
+
+function currentDraft(): AdminPostDraft {
+  return {
+    bodyMarkdown: form.bodyMarkdown,
+    date: form.date,
+    location: form.location,
+    slug: form.slug,
+    time: form.time,
+    title: form.title,
+  }
+}
+
+function draftJson(draft: AdminPostDraft): string {
+  return JSON.stringify(draft)
+}
+
+function draftContentJson(draft: AdminPostDraft): string {
+  const { slug: _slug, ...content } = draft
+  return JSON.stringify(content)
+}
+
+function applyDraft(draft: AdminPostDraft) {
+  form.bodyMarkdown = draft.bodyMarkdown
+  form.date = draft.date
+  form.location = draft.location
+  form.slug = draft.slug
+  form.time = draft.time
+  form.title = draft.title
+}
 
 const selected = computed(() => posts.value.find((post) => post.id === selectedId.value) ?? null)
 const editingMedia = computed(() => selected.value?.media.find((item) => item.id === editingMediaId.value) ?? null)
@@ -118,9 +187,10 @@ const filteredPosts = computed(() => {
 })
 const canPublish = computed(() => selected.value?.status === 'draft')
 const canSyndicate = computed(() => selected.value?.status === 'published')
+const selectedHeroMediaId = computed(() => effectiveHeroMediaId(selected.value))
 const previewMedia = computed(() => {
   const media = selected.value?.media ?? []
-  const hero = media.find((item) => item.id === selected.value?.heroMediaId)
+  const hero = media.find((item) => item.id === selectedHeroMediaId.value)
   return hero ? [hero, ...media.filter((item) => item.id !== hero.id)] : media
 })
 const previewDateAndTime = computed(() => formatEditorialDateTime(storedDate(form.date), form.time || null))
@@ -140,6 +210,11 @@ function postThumbnail(post: AdminPost): PostMedia {
   return hero ?? post.media[0]!
 }
 
+function mediaThumbnailUrl(item: PostMedia): string {
+  const separator = item.urls.thumbnail.includes('?') ? '&' : '?'
+  return `${item.urls.thumbnail}${separator}admin=${encodeURIComponent(item.updatedAt)}`
+}
+
 function postLabel(post: AdminPost): string {
   return post.title || post.location || post.slug
 }
@@ -149,8 +224,11 @@ function postTeaserFirstLine(post: AdminPost): string {
 }
 
 function syndicationLabel(item: SyndicationSummary): string {
-  const destination = item.destination === 'facebook' ? 'Facebook' : 'Mastodon'
-  return `${destination}: ${item.state}`
+  return `Mastodon: ${item.state}`
+}
+
+function visibleSyndications(post: AdminPost): SyndicationSummary[] {
+  return post.syndications.filter(({ destination }) => destination === 'mastodon')
 }
 
 function replacePostSyndication(postId: string, item: SyndicationSummary) {
@@ -176,10 +254,6 @@ function dateInputValue(date: number | null): string {
   if (!date) return ''
   const value = date.toString()
   return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`
-}
-
-function storedDate(date: string): number | null {
-  return date ? Number(date.replaceAll('-', '')) : null
 }
 
 type DateTimeDraft = { date: string; time: string }
@@ -236,6 +310,8 @@ function usePostDateTime(draft: DateTimeDraft) {
 
 function openMediaDetails(item: PostMedia) {
   editingMediaId.value = item.id
+  mediaPipelineNotice.value = ''
+  mediaPipelineFailed.value = false
   requestAnimationFrame(() => mediaDialog.value?.showModal())
 }
 
@@ -257,76 +333,38 @@ function message(value: unknown): string {
 }
 
 function copyToForm(post: AdminPost) {
+  if (selectedId.value && selectedId.value !== post.id) queueCurrentDraftForServer()
+  if (selectedId.value !== post.id) clearUploadQueue()
   selectedId.value = post.id
-  form.location = post.location ?? ''
-  form.title = post.title ?? ''
-  form.slug = post.slug
-  form.date = dateInputValue(post.date)
-  form.time = post.time ?? ''
-  form.bodyMarkdown = post.bodyMarkdown
-  previewHtml.value = post.bodyHtml
+  const fromServer = postDraft(post)
+  const fromBrowser = loadAdminPostDraft(post.id)
+  const serverTime = Date.parse(post.updatedAt)
+  const browserIsNewer = fromBrowser
+    && draftJson(fromBrowser.draft) !== draftJson(fromServer)
+    && (fromBrowser.serverUpdatedAt === post.updatedAt || !Number.isFinite(serverTime) || fromBrowser.savedAt > serverTime)
+  const restored = browserIsNewer ? fromBrowser.draft : fromServer
+  serverContentDrafts.set(post.id, draftContentJson(fromServer))
+  serverUpdatedAt.set(post.id, post.updatedAt)
+  applyDraft(restored)
+  observedDraft = draftJson(restored)
+  previewHtml.value = browserIsNewer ? '' : post.bodyHtml
+  if (!browserIsNewer) saveAdminPostDraft(post.id, fromServer, post.updatedAt)
   notice.value = ''
   error.value = ''
+  autosaveProblem.value = ''
+  autosaveState.value = browserIsNewer ? 'browser' : 'saved'
   syndication.value = null
-  facebookSyndication.value = null
-  facebookCandidates.value = []
   revisionHistory.value = []
   revisionSyndications.value = []
   post.media.forEach((item) => {
     mediaDrafts[item.id] = { altText: item.altText, caption: item.caption ?? '', title: item.title ?? '', location: item.location ?? '', date: dateInputValue(item.date), time: item.time ?? '' }
   })
-  if (post.status === 'published') { void loadSyndication(post.id); void loadFacebookSyndication(post.id); void loadHistory(post.id) }
-}
-
-async function loadFacebookSyndication(postId: string) {
-  try {
-    facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${postId}/syndications/facebook`)
-    replacePostSyndication(postId, facebookSyndication.value)
+  if (browserIsNewer) {
+    notice.value = 'Recovered newer edits saved in this browser.'
+    scheduleServerSave(post.id, restored)
+    void refreshPreview()
   }
-  catch (loadError) { if (!(loadError instanceof AdminApiError && loadError.status === 404)) error.value = message(loadError) }
-}
-
-async function syndicateFacebook() {
-  if (!selectedId.value || !window.confirm('Create the public Facebook Page link post now?')) return
-  const saved = await save(); if (!saved) return
-  try {
-    facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${saved.id}/syndications/facebook`, jsonRequest('POST'))
-    replacePostSyndication(saved.id, facebookSyndication.value)
-    notice.value = 'Facebook publication queued.'
-  }
-  catch (publishError) { error.value = message(publishError) }
-}
-
-async function retryFacebookSyndication() {
-  if (!selectedId.value) return
-  try {
-    facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${selectedId.value}/syndications/facebook/retry`, jsonRequest('POST'))
-    replacePostSyndication(selectedId.value, facebookSyndication.value)
-    notice.value = 'Facebook publication queued again.'
-  }
-  catch (retryError) { error.value = message(retryError) }
-}
-
-async function reconcileFacebookSyndication() {
-  if (!selectedId.value) return
-  try {
-    const result = await adminRequest<{ syndication: Syndication; candidates: Array<{ id: string; url: string }> }>(`/api/admin/posts/${selectedId.value}/syndications/facebook/reconcile`, jsonRequest('POST'))
-    facebookSyndication.value = result.syndication
-    replacePostSyndication(selectedId.value, result.syndication)
-    facebookCandidates.value = result.candidates
-    notice.value = result.candidates.length === 1 ? 'Facebook publication attached.' : 'No single Facebook match was found; review candidates before resolving.'
-  } catch (reconcileError) { error.value = message(reconcileError) }
-}
-
-async function resolveFacebookCandidate(candidate: { id: string; url: string }) {
-  if (!selectedId.value || !window.confirm('Attach this Facebook post to the local publication?')) return
-  try {
-    facebookSyndication.value = await adminRequest<Syndication>(`/api/admin/posts/${selectedId.value}/syndications/facebook/resolve`, jsonRequest('POST', candidate))
-    replacePostSyndication(selectedId.value, facebookSyndication.value)
-    facebookCandidates.value = []
-    notice.value = 'Facebook publication resolved.'
-  }
-  catch (resolveError) { error.value = message(resolveError) }
+  if (post.status === 'published') { void loadSyndication(post.id); void loadHistory(post.id) }
 }
 
 async function newDraft() {
@@ -363,11 +401,14 @@ async function login() {
 }
 
 async function signOut() {
+  queueCurrentDraftForServer()
+  if (saveWorker) await saveWorker
   try {
     await deleteAdminSession()
   } catch {
     // Clear the local editor regardless; the server cookie will expire naturally.
   }
+  clearUploadQueue()
   authenticated.value = false
   posts.value = []
   selectedId.value = null
@@ -401,20 +442,15 @@ async function loadPosts() {
   posts.value = result.items
 }
 
-function authorBody() {
-  const fields = {
-    location: form.location.trim() || null,
-    title: form.title.trim() || null,
-    slug: form.slug.trim(),
-    date: storedDate(form.date),
-    time: form.time || null,
-  }
-
-  // New photo-only posts do not need to send a body at all. Existing posts still
-  // send the field so clearing a previously saved body remains possible.
-  return selectedId.value || form.bodyMarkdown
-    ? { ...fields, bodyMarkdown: form.bodyMarkdown }
-    : fields
+function authorBody(
+  draft = currentDraft(),
+  existingId = selectedId.value,
+  options: { includeSlug?: boolean; preserveWhitespace?: boolean } = {},
+) {
+  return authorPostBody(draft, {
+    existingPost: Boolean(existingId),
+    ...options,
+  })
 }
 
 function slugifyTitle() {
@@ -436,7 +472,7 @@ function replacePost(post: AdminPost) {
   const index = posts.value.findIndex((item) => item.id === post.id)
   if (index === -1) posts.value.unshift(post)
   else posts.value.splice(index, 1, post)
-  copyToForm(post)
+  if (post.id !== selectedId.value) copyToForm(post)
 }
 
 function replaceMedia(updated: PostMedia) {
@@ -465,6 +501,98 @@ async function saveMedia(item: PostMedia) {
     error.value = message(mediaError)
   } finally {
     mediaSavingId.value = null
+  }
+}
+
+async function rerunPhotoPipeline(item: PostMedia) {
+  if (mediaRegeneratingId.value) return
+  const draft = { ...mediaDrafts[item.id] }
+  mediaRegeneratingId.value = item.id
+  mediaPipelineNotice.value = ''
+  mediaPipelineFailed.value = false
+  error.value = ''
+  notice.value = ''
+  try {
+    const updated = await adminRequest<PostMedia>(
+      `/api/admin/media/${item.id}/regenerate`,
+      { method: 'POST' },
+    )
+    replaceMedia(updated)
+    Object.assign(mediaDrafts[item.id], draft)
+    notice.value = `Photo pipeline v${updated.pipelineVersion} completed.`
+    mediaPipelineNotice.value = notice.value
+  } catch (pipelineError) {
+    error.value = message(pipelineError)
+    mediaPipelineNotice.value = error.value
+    mediaPipelineFailed.value = true
+  } finally {
+    mediaRegeneratingId.value = null
+  }
+}
+
+type BulkPhotoPipelineResult = {
+  failed: number
+  pipelineVersion: number
+  regenerated: number
+  total: number
+}
+
+async function rerunAllPhotoPipelines() {
+  if (allMediaRegenerating.value) return
+  if (!window.confirm('Rerun the photo pipeline for every uploaded photo? This may take a while.')) return
+  allMediaRegenerating.value = true
+  error.value = ''
+  notice.value = ''
+  try {
+    const result = await adminRequest<BulkPhotoPipelineResult>(
+      '/api/admin/media/regenerate-all',
+      { method: 'POST' },
+    )
+    await loadPosts()
+    if (result.total === 0) {
+      notice.value = 'There are no photos to rerun.'
+    } else if (result.failed > 0) {
+      notice.value = `Photo pipeline v${result.pipelineVersion} reran ${result.regenerated} of ${result.total} photos; ${result.failed} failed.`
+    } else {
+      notice.value = `Photo pipeline v${result.pipelineVersion} reran all ${result.regenerated} photos.`
+    }
+  } catch (pipelineError) {
+    error.value = message(pipelineError)
+  } finally {
+    allMediaRegenerating.value = false
+  }
+}
+
+type BulkCollageResult = {
+  failed: number
+  generated: number
+  noPhotos: number
+  total: number
+}
+
+async function regenerateAllCollages() {
+  if (allCollagesRegenerating.value) return
+  if (!window.confirm('Regenerate social preview collages for every post with photos? This may take a while.')) return
+  allCollagesRegenerating.value = true
+  error.value = ''
+  notice.value = ''
+  try {
+    const result = await adminRequest<BulkCollageResult>(
+      '/api/admin/posts/social-previews/regenerate-all',
+      { method: 'POST' },
+    )
+    await loadPosts()
+    if (result.generated === 0 && result.failed === 0) {
+      notice.value = 'There are no post collages to generate.'
+    } else if (result.failed > 0) {
+      notice.value = `Generated ${result.generated} collages; ${result.failed} failed and ${result.noPhotos} posts had no photos.`
+    } else {
+      notice.value = `Generated all ${result.generated} collages${result.noPhotos ? `; ${result.noPhotos} posts had no photos` : ''}.`
+    }
+  } catch (collageError) {
+    error.value = message(collageError)
+  } finally {
+    allCollagesRegenerating.value = false
   }
 }
 
@@ -553,14 +681,149 @@ async function dropMedia(targetId: string) {
   await saveMediaOrder(media)
 }
 
+function canSaveDraftToServer(draft: AdminPostDraft): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(draft.slug.trim())
+}
+
+function canAutosavePostToServer(postId: string): boolean {
+  return posts.value.find((post) => post.id === postId)?.status === 'draft'
+}
+
+function storeDraftInBrowser(postId: string, draft: AdminPostDraft): boolean {
+  const stored = saveAdminPostDraft(postId, draft, serverUpdatedAt.get(postId) ?? '')
+  if (!stored && postId === selectedId.value) {
+    autosaveProblem.value = 'Browser storage is unavailable'
+    autosaveState.value = 'error'
+  }
+  return stored
+}
+
+function scheduleServerSave(postId: string, draft: AdminPostDraft) {
+  if (autosaveTimer) clearTimeout(autosaveTimer)
+  if (!canAutosavePostToServer(postId)) {
+    return
+  }
+  autosaveTimer = setTimeout(() => {
+    autosaveTimer = null
+    pendingServerDrafts.set(postId, { ...draft })
+    void runSaveWorker()
+  }, 700)
+}
+
+function queueCurrentDraftForServer() {
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer)
+    autosaveTimer = null
+  }
+  const postId = selectedId.value
+  if (!postId) return
+  const draft = currentDraft()
+  if (!canAutosavePostToServer(postId) || serverContentDrafts.get(postId) === draftContentJson(draft)) return
+  pendingServerDrafts.set(postId, draft)
+  void runSaveWorker()
+}
+
+function mergeServerDraft(post: AdminPost, submitted: AdminPostDraft, autosave = false) {
+  const index = posts.value.findIndex((item) => item.id === post.id)
+  if (index === -1) posts.value.unshift(post)
+  else posts.value.splice(index, 1, post)
+
+  const saved = postDraft(post)
+  serverContentDrafts.set(post.id, draftContentJson(saved))
+  serverUpdatedAt.set(post.id, post.updatedAt)
+
+  if (selectedId.value !== post.id) {
+    const local = loadAdminPostDraft(post.id)
+    if (!local || draftJson(local.draft) === draftJson(submitted)) {
+      saveAdminPostDraft(post.id, saved, post.updatedAt)
+    }
+    return
+  }
+
+  const latest = currentDraft()
+  const merged: AdminPostDraft = { ...latest }
+  for (const field of Object.keys(saved) as Array<keyof AdminPostDraft>) {
+    if (autosave && field === 'slug') continue
+    if (latest[field] === submitted[field]) merged[field] = saved[field]
+  }
+  applyDraft(merged)
+  observedDraft = draftJson(merged)
+  storeDraftInBrowser(post.id, merged)
+
+  const serverHasLatest = autosave
+    ? draftContentJson(merged) === draftContentJson(saved)
+    : draftJson(merged) === draftJson(saved)
+  if (serverHasLatest) {
+    autosaveProblem.value = ''
+    autosaveState.value = draftJson(merged) === draftJson(saved) ? 'saved' : 'browser'
+  } else {
+    autosaveState.value = 'browser'
+    scheduleServerSave(post.id, merged)
+  }
+}
+
+function runSaveWorker(): Promise<void> {
+  if (saveWorker) return saveWorker
+  const work = async () => {
+    while (pendingServerDrafts.size) {
+      const entry = pendingServerDrafts.entries().next().value as [string, AdminPostDraft] | undefined
+      if (!entry) break
+      const [postId, draft] = entry
+      pendingServerDrafts.delete(postId)
+      if (serverContentDrafts.get(postId) === draftContentJson(draft)) continue
+      if (postId === selectedId.value) {
+        autosaveProblem.value = ''
+        autosaveState.value = 'saving'
+      }
+      try {
+        const post = await adminRequest<AdminPost>(
+          `/api/admin/posts/${postId}/autosave`,
+          jsonRequest('PATCH', authorBody(draft, postId, {
+            includeSlug: false,
+            preserveWhitespace: true,
+          })),
+        )
+        mergeServerDraft(post, draft, true)
+      } catch (saveError) {
+        const saveMessage = message(saveError)
+        if (postId === selectedId.value) {
+          autosaveProblem.value = `Saved in browser · ${saveMessage}`
+          autosaveState.value = 'error'
+        }
+      }
+    }
+  }
+  saveWorker = work().finally(() => {
+    saveWorker = null
+    if (pendingServerDrafts.size) void runSaveWorker()
+  })
+  return saveWorker
+}
+
 async function save(): Promise<AdminPost | null> {
   error.value = ''
   notice.value = ''
   busy.value = true
   try {
-    const post = selectedId.value
-      ? await adminRequest<AdminPost>(`/api/admin/posts/${selectedId.value}`, jsonRequest('PATCH', authorBody()))
-      : await adminRequest<AdminPost>('/api/admin/posts', jsonRequest('POST', authorBody()))
+    if (selectedId.value) {
+      const postId = selectedId.value
+      if (autosaveTimer) {
+        clearTimeout(autosaveTimer)
+        autosaveTimer = null
+      }
+      if (saveWorker) await saveWorker
+      const draft = currentDraft()
+      storeDraftInBrowser(postId, draft)
+      if (!canSaveDraftToServer(draft)) throw new Error('Fix the slug before saving to the server.')
+      const post = await adminRequest<AdminPost>(
+        `/api/admin/posts/${postId}`,
+        jsonRequest('PATCH', authorBody(draft, postId)),
+      )
+      mergeServerDraft(post, draft)
+      notice.value = 'Saved.'
+      return post
+    }
+    const post = await adminRequest<AdminPost>('/api/admin/posts', jsonRequest('POST', authorBody()))
     replacePost(post)
     notice.value = 'Saved.'
     return post
@@ -589,6 +852,22 @@ async function publish() {
     error.value = message(publishError)
   } finally {
     busy.value = false
+  }
+}
+
+async function generateSocialPreview() {
+  if (!selectedId.value) return
+  error.value = ''
+  socialPreviewBusy.value = true
+  try {
+    await adminRequest(`/api/admin/posts/${selectedId.value}/social-preview`, jsonRequest('POST'))
+    const post = await adminRequest<AdminPost>(`/api/admin/posts/${selectedId.value}`)
+    replacePost(post)
+    notice.value = post.socialPreview.image ? 'Social preview collage updated.' : 'This post has no photos to collage.'
+  } catch (previewError) {
+    error.value = message(previewError)
+  } finally {
+    socialPreviewBusy.value = false
   }
 }
 
@@ -729,6 +1008,7 @@ function startProgressPolling(item: UploadQueueItem, uploadId: string, xhr: XMLH
       })
       if (!response.ok || item.xhr !== xhr || item.status !== 'processing') return
       const progress = await response.json() as UploadProgressResponse
+      if (!Number.isFinite(progress.percent)) return
       item.progress = Math.max(0, Math.min(100, progress.percent))
       item.processingStage = progress.stage
     } catch {
@@ -739,6 +1019,16 @@ function startProgressPolling(item: UploadQueueItem, uploadId: string, xhr: XMLH
   }
   void poll()
   item.progressPoll = window.setInterval(() => { void poll() }, 350)
+}
+
+function clearUploadQueue() {
+  const previous = uploadQueue.value
+  uploadQueue.value = []
+  previous.forEach((item) => {
+    stopProgressPolling(item)
+    item.xhr?.abort()
+    URL.revokeObjectURL(item.previewUrl)
+  })
 }
 
 function removeUpload(item: UploadQueueItem) {
@@ -767,10 +1057,12 @@ function uploadOne(item: UploadQueueItem): Promise<PostMedia> {
   item.progress = 0
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    item.xhr = xhr
+    item.xhr = markRaw(xhr)
     xhr.open('POST', '/api/admin/media')
     xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) item.progress = Math.round((event.loaded / event.total) * 100)
+      if (event.lengthComputable) {
+        item.progress = Math.min(99, Math.floor((event.loaded / event.total) * 100))
+      }
     }
     xhr.upload.onload = () => {
       if (item.xhr !== xhr || item.status !== 'uploading') return
@@ -806,18 +1098,21 @@ async function uploadQueued() {
   const pending = uploadQueue.value.filter((item) =>
     ['queued', 'failed'].includes(item.status))
   if (!pending.length || uploadRunning.value) return
+  const postId = selectedId.value
   uploadRunning.value = true
   error.value = ''
   let cursor = 0
   const worker = async () => {
     while (cursor < pending.length) {
       const item = pending[cursor++]
+      if (!uploadQueue.value.includes(item) || ['cancelled'].includes(item.status)) continue
       try {
         const uploaded = await uploadOne(item)
         item.status = 'uploaded'
         item.progress = 100
-        const current = selected.value
-        if (current) replacePost({ ...current, media: [...current.media, uploaded] })
+        const index = posts.value.findIndex((post) => post.id === postId)
+        const current = posts.value[index]
+        if (current) posts.value.splice(index, 1, { ...current, media: [...current.media, uploaded] })
       } catch (uploadError) {
         if (item.status !== 'cancelled') item.status = 'failed'
         item.error = message(uploadError)
@@ -826,7 +1121,9 @@ async function uploadQueued() {
   }
   await Promise.all(Array.from({ length: Math.min(2, pending.length) }, worker))
   uploadRunning.value = false
-  notice.value = `${pending.filter(({ status }) => status === 'uploaded').length} photo(s) uploaded.`
+  if (selectedId.value === postId) {
+    notice.value = `${pending.filter(({ status }) => status === 'uploaded').length} photo(s) uploaded.`
+  }
 }
 
 async function retryUpload(item: UploadQueueItem) {
@@ -861,15 +1158,27 @@ watch(() => form.bodyMarkdown, () => {
   previewTimer = setTimeout(() => { void refreshPreview() }, 350)
 })
 
+watch(
+  () => [form.bodyMarkdown, form.date, form.location, form.slug, form.time, form.title],
+  () => {
+    const draft = currentDraft()
+    const serialized = draftJson(draft)
+    if (serialized === observedDraft) return
+    observedDraft = serialized
+    const postId = selectedId.value
+    if (!postId) return
+    autosaveProblem.value = ''
+    autosaveState.value = storeDraftInBrowser(postId, draft) ? 'browser' : 'error'
+    scheduleServerSave(postId, draft)
+  },
+)
+
 onMounted(() => { void restoreSession() })
 
 onBeforeUnmount(() => {
   if (previewTimer) clearTimeout(previewTimer)
-  uploadQueue.value.forEach((item) => {
-    stopProgressPolling(item)
-    item.xhr?.abort()
-    URL.revokeObjectURL(item.previewUrl)
-  })
+  queueCurrentDraftForServer()
+  clearUploadQueue()
 })
 </script>
 
@@ -897,6 +1206,12 @@ onBeforeUnmount(() => {
           <h1>Post editor</h1>
         </div>
         <div class="toolbar-actions">
+          <button class="button-quiet" :disabled="allMediaRegenerating || allCollagesRegenerating" type="button" @click="rerunAllPhotoPipelines">
+            {{ allMediaRegenerating ? 'Rerunning all photos…' : 'Rerun all photos' }}
+          </button>
+          <button class="button-quiet" :disabled="allCollagesRegenerating || allMediaRegenerating" type="button" @click="regenerateAllCollages">
+            {{ allCollagesRegenerating ? 'Regenerating all collages…' : 'Regenerate all collages' }}
+          </button>
           <button class="button-secondary" :disabled="busy" type="button" @click="newDraft">New draft</button>
           <button class="button-quiet" type="button" @click="signOut">Log out</button>
         </div>
@@ -933,7 +1248,7 @@ onBeforeUnmount(() => {
                 alt=""
                 decoding="async"
                 loading="lazy"
-                :src="postThumbnail(post).urls.thumbnail"
+                :src="mediaThumbnailUrl(postThumbnail(post))"
               >
               <span v-if="post.media.length > 1" class="photo-count">+{{ post.media.length - 1 }}</span>
             </span>
@@ -942,9 +1257,9 @@ onBeforeUnmount(() => {
               <strong :title="post.teaser">{{ postTeaserFirstLine(post) }}</strong>
               <span class="post-list-meta">
                 <span>{{ postDate(post.date) }} · {{ post.status }}</span>
-                <span v-if="post.syndications.length" class="post-syndications">
+                <span v-if="visibleSyndications(post).length" class="post-syndications">
                   <span
-                    v-for="item in post.syndications"
+                    v-for="item in visibleSyndications(post)"
                     :key="item.destination"
                     class="syndication-icon"
                     :class="[`is-${item.destination}`, `is-${item.state}`]"
@@ -952,7 +1267,7 @@ onBeforeUnmount(() => {
                     :aria-label="syndicationLabel(item)"
                     :title="syndicationLabel(item)"
                   >
-                    <span aria-hidden="true">{{ item.destination === 'facebook' ? 'f' : 'M' }}</span>
+                    <span aria-hidden="true">M</span>
                   </span>
                 </span>
               </span>
@@ -975,8 +1290,8 @@ onBeforeUnmount(() => {
                   v-for="item in previewMedia"
                   :key="item.id"
                   :alt="item.altText"
-                  :class="{ 'post-preview-hero': item.id === selected?.heroMediaId }"
-                  :src="item.urls.thumbnail"
+                  :class="{ 'post-preview-hero': item.id === selectedHeroMediaId }"
+                  :src="mediaThumbnailUrl(item)"
                 >
               </div>
               <div class="post-preview-copy">
@@ -990,6 +1305,24 @@ onBeforeUnmount(() => {
                 <p v-else-if="!form.location.trim() && !form.date && !form.time" class="empty-state">Photo-only post</p>
               </div>
             </article>
+            <div v-if="selectedId && selected?.media.length" class="social-preview-panel">
+              <div class="section-heading">
+                <div>
+                  <h3>Social sharing image</h3>
+                  <span>{{ selected.socialPreview.state === 'current' ? 'Current 1200 × 630 collage' : 'Needs regeneration' }}</span>
+                </div>
+                <button class="button-secondary" :disabled="socialPreviewBusy" type="button" @click="generateSocialPreview">
+                  {{ socialPreviewBusy ? 'Generating…' : selected.socialPreview.state === 'current' ? 'Regenerate collage' : 'Generate collage' }}
+                </button>
+              </div>
+              <img
+                v-if="selected.socialPreview.image"
+                class="social-preview-image"
+                :alt="selected.socialPreview.image.alt"
+                :src="selected.socialPreview.image.url"
+              >
+              <p v-else class="empty-state">The collage will use the hero first, then up to four more photos in display order.</p>
+            </div>
           </section>
 
           <section v-if="selectedId" class="media-panel media-panel--primary" aria-labelledby="media-title">
@@ -1006,12 +1339,12 @@ onBeforeUnmount(() => {
                 @drop.prevent="dropMedia(item.id)"
               >
                 <button class="media-preview" type="button" :aria-label="`Set focal point for photo ${index + 1}`" @click="setFocalPoint(item, $event)">
-                  <img :alt="item.altText" :src="item.urls.thumbnail">
+                  <img :alt="item.altText" :src="mediaThumbnailUrl(item)">
                   <span class="focal-marker" :style="{ left: `${(item.focalX ?? 0.5) * 100}%`, top: `${(item.focalY ?? 0.5) * 100}%` }"></span>
                 </button>
                 <figcaption>
                   <div class="media-order-actions">
-                    <button class="button-secondary" :class="{ 'is-selected': selected?.heroMediaId === item.id }" type="button" @click="selectHero(item)">{{ selected?.heroMediaId === item.id ? 'Hero photo' : 'Set as hero' }}</button>
+                    <button class="button-secondary" :class="{ 'is-selected': selectedHeroMediaId === item.id }" type="button" @click="selectHero(item)">{{ selectedHeroMediaId === item.id ? 'Hero photo' : 'Set as hero' }}</button>
                     <button class="button-quiet" type="button" @click="removeMedia(item)">Remove photo</button>
                   </div>
                   <div class="media-order-actions" aria-label="Change photo position">
@@ -1045,18 +1378,19 @@ onBeforeUnmount(() => {
                 <div class="upload-item-actions">
                   <button v-if="item.status === 'failed' || item.status === 'cancelled'" class="button-secondary" type="button" @click="retryUpload(item)">Retry</button>
                   <button v-if="item.status === 'uploading' || item.status === 'queued'" class="button-quiet" type="button" @click="cancelUpload(item)">Cancel</button>
-                  <button v-else-if="item.status !== 'processing'" class="button-quiet" type="button" @click="removeUpload(item)">Remove</button>
+                  <button v-else class="button-quiet" :disabled="item.status === 'processing'" type="button" @click="removeUpload(item)">Remove</button>
                 </div>
               </article>
               <button :disabled="uploadRunning || !uploadQueue.some((item) => ['queued', 'failed'].includes(item.status))" type="button" @click="uploadQueued">
-                {{ uploadRunning ? 'Uploading…' : 'Upload ready photos' }}
+                {{ uploadRunning ? (uploadQueue.some((item) => item.status === 'uploading') ? 'Uploading…' : 'Processing photos…') : 'Upload ready photos' }}
               </button>
             </div>
           </section>
 
-          <form class="editor-form" @submit.prevent="save">
+          <form class="editor-form" @submit.prevent="save" @keydown.meta.s.prevent="save" @keydown.ctrl.s.prevent="save">
             <div class="status-row">
               <span class="status-chip">{{ selected?.status || 'unsaved' }}</span>
+              <span v-if="autosaveLabel" class="autosave-status" :class="{ 'autosave-status--error': autosaveState === 'error' }" role="status">{{ autosaveLabel }}</span>
               <a v-if="selected?.status === 'published'" :href="selected.shareUrl" target="_blank">View post ↗</a>
             </div>
             <label>Title <input v-model="form.title" maxlength="200"></label>
@@ -1108,7 +1442,7 @@ onBeforeUnmount(() => {
             </fieldset>
             <label>Body (Markdown) <span class="optional-field">Optional</span> <textarea v-model="form.bodyMarkdown" class="markdown-editor" maxlength="100000"></textarea></label>
             <div class="editor-actions">
-              <button :disabled="busy" type="submit">{{ busy ? 'Working…' : selectedId ? 'Save changes' : 'Create draft' }}</button>
+              <button :disabled="busy" type="submit">{{ busy ? 'Working…' : selectedId ? 'Save now' : 'Create draft' }}</button>
               <button v-if="canPublish" class="button-secondary" :disabled="busy" type="button" @click="publish">Publish locally</button>
               <button v-if="selected?.status === 'published'" class="button-secondary" :disabled="busy" type="button" @click="unpublish">Unpublish</button>
               <button v-if="selected && selected.status !== 'archived'" class="button-quiet" :disabled="busy" type="button" @click="archive">Archive</button>
@@ -1130,23 +1464,6 @@ onBeforeUnmount(() => {
             <p v-if="syndication?.lastError" class="message message--error">{{ syndication.lastError }}</p>
           </section>
 
-          <section v-if="canSyndicate" class="mastodon-panel" aria-labelledby="facebook-syndication-title">
-            <div class="section-heading"><h2 id="facebook-syndication-title">Facebook Page</h2><span>Explicit syndication only</span></div>
-            <p>Creates an immutable link post pointing to this exact published revision.</p>
-            <div class="editor-actions">
-              <button :disabled="busy || facebookSyndication?.state === 'pending' || facebookSyndication?.state === 'uncertain'" type="button" @click="syndicateFacebook">
-                {{ facebookSyndication?.state === 'pending' ? 'Facebook publication pending' : 'Publish link on Facebook' }}
-              </button>
-              <button v-if="facebookSyndication?.state === 'failed' || (facebookSyndication?.state === 'uncertain' && facebookSyndication.lastError?.startsWith('Reconciliation found no matching'))" class="button-secondary" type="button" @click="retryFacebookSyndication">Retry</button>
-              <button v-if="facebookSyndication?.state === 'uncertain'" class="button-secondary" type="button" @click="reconcileFacebookSyndication">Reconcile</button>
-              <a v-if="facebookSyndication?.remoteUrl" :href="facebookSyndication.remoteUrl" target="_blank">Open on Facebook ↗</a>
-            </div>
-            <p v-if="facebookSyndication" class="syndication-state">State: {{ facebookSyndication.state }} · attempts: {{ facebookSyndication.attemptCount }}</p>
-            <p v-if="facebookSyndication?.state === 'uncertain'" class="message message--error">Delivery is uncertain. Reconcile before retrying.</p>
-            <ul v-if="facebookCandidates.length"><li v-for="candidate in facebookCandidates" :key="candidate.id"><a :href="candidate.url" target="_blank">{{ candidate.url }}</a> <button class="button-quiet" type="button" @click="resolveFacebookCandidate(candidate)">Attach</button></li></ul>
-            <p v-if="facebookSyndication?.lastError" class="message message--error">{{ facebookSyndication.lastError }}</p>
-          </section>
-
           <section v-if="selected && revisionHistory.length" class="mastodon-panel" aria-labelledby="history-title">
             <div class="section-heading"><h2 id="history-title">Published revisions</h2><span>{{ revisionHistory.length }}</span></div>
             <ul>
@@ -1164,7 +1481,7 @@ onBeforeUnmount(() => {
               </li>
             </ul>
             <p v-if="revisionSyndications.length" class="syndication-state">
-              <span v-for="item in revisionSyndications" :key="`${item.publicationRevision}-${item.remoteUrl ?? item.state}`">{{ item.destination === 'facebook' ? 'Facebook' : 'Mastodon' }}: r{{ item.publicationRevision }} {{ item.state }}<a v-if="item.remoteUrl" :href="item.remoteUrl" target="_blank"> ↗</a>{{ ' ' }}</span>
+              <span v-for="item in revisionSyndications" :key="`${item.publicationRevision}-${item.remoteUrl ?? item.state}`">Mastodon: r{{ item.publicationRevision }} {{ item.state }}<a v-if="item.remoteUrl" :href="item.remoteUrl" target="_blank"> ↗</a>{{ ' ' }}</span>
             </p>
           </section>
 
@@ -1182,8 +1499,27 @@ onBeforeUnmount(() => {
             </div>
             <button class="button-quiet dialog-close" type="button" aria-label="Close photo details" @click="closeMediaDetails">×</button>
           </header>
-          <img :alt="editingMedia.altText" :src="editingMedia.urls.thumbnail">
-          <p class="photo-technical">{{ editingMedia.width }} × {{ editingMedia.height }} · {{ editingMedia.processingState }}</p>
+          <img :alt="editingMedia.altText" :src="mediaThumbnailUrl(editingMedia)">
+          <div class="photo-pipeline-status">
+            <p class="photo-technical">
+              {{ editingMedia.width }} × {{ editingMedia.height }} · {{ editingMedia.processingState }} ·
+              pipeline {{ editingMedia.pipelineVersion === null ? 'legacy/unversioned' : `v${editingMedia.pipelineVersion}` }}
+            </p>
+            <button
+              class="button-secondary"
+              :disabled="mediaRegeneratingId === editingMedia.id || mediaSavingId === editingMedia.id"
+              type="button"
+              @click="rerunPhotoPipeline(editingMedia)"
+            >
+              {{ mediaRegeneratingId === editingMedia.id ? 'Running pipeline…' : 'Rerun photo pipeline' }}
+            </button>
+          </div>
+          <p
+            v-if="mediaPipelineNotice"
+            class="message"
+            :class="{ 'message--error': mediaPipelineFailed }"
+            role="status"
+          >{{ mediaPipelineNotice }}</p>
           <label>Title <input v-model="mediaDrafts[editingMedia.id].title" maxlength="200"></label>
           <label>Alt text (optional) <textarea v-model="mediaDrafts[editingMedia.id].altText" maxlength="2000" rows="3"></textarea></label>
           <label>Caption <textarea v-model="mediaDrafts[editingMedia.id].caption" maxlength="5000" rows="3"></textarea></label>
@@ -1219,7 +1555,7 @@ onBeforeUnmount(() => {
             </div>
           </fieldset>
           <div class="editor-actions">
-            <button :disabled="mediaSavingId === editingMedia.id" type="submit">
+            <button :disabled="mediaSavingId === editingMedia.id || mediaRegeneratingId === editingMedia.id" type="submit">
               {{ mediaSavingId === editingMedia.id ? 'Saving…' : 'Save photo details' }}
             </button>
             <button class="button-secondary" type="button" @click="closeMediaDetails">Cancel</button>
@@ -1259,7 +1595,6 @@ onBeforeUnmount(() => {
 .post-syndications { display: flex; flex: 0 0 auto; gap: 0.25rem; }
 .syndication-icon { align-items: center; border: 1px solid color-mix(in srgb, currentColor 45%, transparent); border-radius: 50%; box-sizing: border-box; color: white; display: inline-flex; font-family: Arial, sans-serif; font-size: 0.68rem; font-weight: 800; height: 1.15rem; justify-content: center; line-height: 1; width: 1.15rem; }
 .syndication-icon.is-mastodon { background: #6364ff; }
-.syndication-icon.is-facebook { background: #1877f2; font-size: 0.82rem; }
 .syndication-icon:not(.is-published) { filter: grayscale(0.75); opacity: 0.55; }
 .syndication-icon.is-failed, .syndication-icon.is-uncertain { box-shadow: 0 0 0 2px #e5484d; }
 .editor-card { display: grid; gap: 2rem; padding: clamp(1rem, 3vw, 2rem); }
@@ -1275,6 +1610,8 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .button-secondary { background: transparent; border-color: var(--accent); color: var(--accent); }
 .button-quiet { background: transparent; color: var(--muted); }
 .status-chip { border: 1px solid var(--border); border-radius: 999px; font-family: 'Azeret Mono Variable', monospace; font-size: 0.7rem; padding: 0.25rem 0.55rem; }
+.autosave-status { color: var(--muted); flex: 1; font-family: 'Azeret Mono Variable', monospace; font-size: 0.7rem; }
+.autosave-status--error { color: #e5484d; }
 .status-row a, .editor-actions a { color: var(--accent); font-size: 0.8rem; }
 .media-panel, .mastodon-panel { border-top: 1px solid var(--border); padding-top: 1.5rem; }
 .revision-photo-thumb { width: 3rem; height: 3rem; object-fit: cover; vertical-align: middle; margin-right: .5rem; border-radius: .25rem; background: var(--surface); }
@@ -1285,6 +1622,9 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .post-preview-media img { aspect-ratio: 1; border-radius: 0.35rem; object-fit: cover; width: 100%; }
 .post-preview-media .post-preview-hero { aspect-ratio: 16 / 9; grid-column: 1 / -1; }
 .post-preview-copy { min-width: 0; }
+.social-preview-panel { border-top: 1px solid var(--border); margin-top: 1rem; padding-top: 1rem; }
+.social-preview-panel .section-heading > div { display: grid; gap: 0.2rem; }
+.social-preview-image { aspect-ratio: 1200 / 630; border: 1px solid var(--border); border-radius: 0.75rem; display: block; margin-top: 0.75rem; object-fit: cover; width: min(100%, 48rem); }
 .post-preview-copy h3 { font-size: clamp(1.25rem, 3vw, 2rem); font-weight: 700; line-height: 1.1; margin-bottom: 0.55rem; overflow-wrap: anywhere; }
 .post-preview-meta { color: var(--muted); display: flex; flex-wrap: wrap; font-family: 'Azeret Mono Variable', monospace; font-size: 0.7rem; gap: 0.35rem 0.8rem; margin-bottom: 0.8rem; }
 .preview-body { line-height: 1.65; }
@@ -1324,6 +1664,8 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .media-details-form h2 { font-size: 1.4rem; font-weight: 650; }
 .media-details-form > img { aspect-ratio: 16 / 9; border-radius: 0.65rem; object-fit: cover; width: 100%; }
 .photo-technical { color: var(--muted); font-family: 'Azeret Mono Variable', monospace; font-size: 0.72rem; margin-top: -0.5rem; }
+.photo-pipeline-status { align-items: center; display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: space-between; }
+.photo-pipeline-status .photo-technical { margin: 0; }
 .dialog-close { font-size: 1.6rem; line-height: 1; padding: 0.2rem 0.45rem; }
 .date-time-editor { border: 1px solid var(--border); border-radius: 0.65rem; display: grid; gap: 0.75rem; margin: 0; min-width: 0; padding: 0.9rem; }
 .date-time-editor legend { font-size: 0.85rem; font-weight: 650; padding: 0 0.3rem; }

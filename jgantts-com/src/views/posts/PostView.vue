@@ -3,7 +3,8 @@ import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import QRCode from 'qrcode'
 import { formatEditorialDateTime, machineEditorialDateTime } from '@/posts/editorial-date-time'
-import { canonicalPostPath, postPath } from '@/posts/post-url'
+import { postPath } from '@/posts/post-url'
+import { updatePostDocumentMeta } from '@/posts/document-meta'
 import type {
   CanonicalPost,
   MastodonCommentNode,
@@ -11,7 +12,7 @@ import type {
 } from '@/posts/types'
 import MastodonComment from './MastodonComment.vue'
 
-const props = defineProps<{ slug: string }>()
+const props = defineProps<{ slug: string; initialPost?: CanonicalPost }>()
 const router = useRouter()
 const post = ref<CanonicalPost | null>(null)
 const loading = ref(true)
@@ -66,6 +67,7 @@ async function copyShareLink(value: CanonicalPost) {
 }
 
 function initialPost(): CanonicalPost | null {
+  if (props.initialPost?.slug === props.slug) return props.initialPost
   const element = document.querySelector<HTMLScriptElement>('#__POST_DATA__')
   if (!element?.textContent) return null
   try {
@@ -74,68 +76,6 @@ function initialPost(): CanonicalPost | null {
   } catch {
     return null
   }
-}
-
-function updateDocumentMeta(value: CanonicalPost) {
-  const title = value.title || value.location || 'Post by Jacob Gantt'
-  const firstLine = (text: string | null) => text?.split(/\r?\n/, 1)[0]?.trim() || ''
-  const description = [
-    firstLine(value.title),
-    firstLine(value.bodyMarkdown),
-    firstLine(value.location),
-    formatEditorialDateTime(value.date, value.time) || '',
-  ].filter(Boolean).join('\n') || 'A post from Jacob Gantt on JGantts.com.'
-  const image = (value.media.find((item) => item.id === value.heroMediaId) ?? value.media[0])?.urls.large
-  const canonicalUrl = new URL(canonicalPostPath(value), window.location.origin).toString()
-  const shareUrl = new URL(postPath(value), window.location.origin).toString()
-  const setMeta = (attribute: 'name' | 'property', key: string, content: string) => {
-    let element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`)
-    if (!element) {
-      element = document.createElement('meta')
-      element.setAttribute(attribute, key)
-      document.head.appendChild(element)
-    }
-    element.content = content
-  }
-  document.title = `${title} | JGantts`
-  setMeta('name', 'description', description)
-  setMeta('property', 'og:title', title)
-  setMeta('property', 'og:description', description)
-  setMeta('property', 'og:type', 'article')
-  setMeta('property', 'og:url', shareUrl)
-  setMeta('property', 'og:image', new URL(image || '/social-media.png', window.location.origin).toString())
-  setMeta('property', 'article:published_time', value.publishedAt)
-  setMeta('property', 'article:modified_time', value.updatedAt)
-  setMeta('name', 'twitter:card', image ? 'summary_large_image' : 'summary')
-  setMeta('name', 'twitter:title', title)
-  setMeta('name', 'twitter:description', description)
-  setMeta('name', 'twitter:image', new URL(image || '/social-media.png', window.location.origin).toString())
-
-  let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
-  if (!canonical) {
-    canonical = document.createElement('link')
-    canonical.rel = 'canonical'
-    document.head.appendChild(canonical)
-  }
-  canonical.href = canonicalUrl
-
-  const oldJsonLd = document.head.querySelector('#__POST_JSON_LD__')
-  oldJsonLd?.remove()
-  const jsonLd = document.createElement('script')
-  jsonLd.id = '__POST_JSON_LD__'
-  jsonLd.type = 'application/ld+json'
-  jsonLd.textContent = JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: title,
-    description,
-    datePublished: value.publishedAt,
-    dateModified: value.updatedAt,
-    mainEntityOfPage: canonicalUrl,
-    image: value.media.map((item) => new URL(item.urls.original, window.location.origin).toString()),
-    author: { '@type': 'Person', name: 'Jacob Gantt', url: window.location.origin },
-  }).replace(/</g, '\\u003c')
-  document.head.appendChild(jsonLd)
 }
 
 function buildCommentTree(response: MastodonCommentsResponse): MastodonCommentNode[] {
@@ -182,7 +122,7 @@ async function loadPost() {
   const embedded = initialPost()
   if (embedded) {
     post.value = embedded
-    updateDocumentMeta(embedded)
+    updatePostDocumentMeta(embedded)
     void prepareQrCode(embedded)
     loading.value = false
     void loadComments(embedded.slug)
@@ -199,7 +139,7 @@ async function loadPost() {
     if (!response.ok) throw new Error(`Post request failed (${response.status})`)
     const loaded = await response.json() as CanonicalPost
     post.value = loaded
-    updateDocumentMeta(loaded)
+    updatePostDocumentMeta(loaded)
     void prepareQrCode(loaded)
     void loadComments(loaded.slug)
     if (loaded.slug !== props.slug) await router.replace(`/photos/${loaded.slug}`)

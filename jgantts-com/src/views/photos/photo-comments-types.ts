@@ -10,6 +10,7 @@ export type PhotoCommentsAccount = {
 
 export type PhotoCommentsAttachment = {
   blurhash?: string | null
+  thumbhash?: string | null
   description?: string | null
   preview_url: string
   meta?: {

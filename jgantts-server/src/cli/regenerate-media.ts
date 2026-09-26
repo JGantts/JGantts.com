@@ -28,7 +28,9 @@ async function main(): Promise<void> {
     );
     const results = await service.regenerateAll(options);
     for (const result of results) {
-      const detail = result.error ? `: ${result.error}` : ` (${result.renditionCount} renditions)`;
+      const detail = result.error
+        ? `: ${result.error}`
+        : ` (pipeline v${result.pipelineVersion}, ${result.renditionCount} renditions)`;
       console.log(`${result.status}: ${result.id}${detail}`);
     }
     const failures = results.filter(({ status }) => status === 'failed').length;

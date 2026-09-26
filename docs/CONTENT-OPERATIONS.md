@@ -14,6 +14,7 @@ $JGANTTS_DATA_ROOT/
   media/
     originals/
     derived/
+    social/
 ```
 
 Defaults:
@@ -21,27 +22,30 @@ Defaults:
 - Development: `jgantts-server/.data`
 - Production: `/var/lib/jgantts`
 
-Production configuration rejects a data root located inside `jgantts-server`,
-because application releases must never contain persistent content. The
+Production configuration rejects a data root located anywhere inside the
+deployment tree, because application releases must never contain persistent content. The
 systemd service account needs read/write access to the configured data root;
 other users should not have write access.
 
 Set `JGANTTS_ADMIN_TOKEN` to a high-entropy secret to enable the admin API. It is
-sent as an `Authorization: Bearer …` header and must exist only in server-side
-configuration. When it is absent, public reads remain available and admin routes
-return `503 admin_unavailable`.
+accepted via an `Authorization: Bearer …` header or exchanged at
+`POST /api/admin/session` for the protected cookie described below. Store the
+configured secret outside releases and never put it in browser draft storage.
+When it is absent, public reads remain available and admin content routes return
+`503 admin_unavailable`.
 
-The initial media API accepts JPEG, PNG, WebP, and AVIF images up to 100 MB. Alt
-text is required. The original bytes are retained and 1,600 px and 480 px WebP
-derivatives are generated without upscaling.
+The media API accepts JPEG, PNG, WebP, AVIF, and HEIC/HEIF sources up to
+100 MiB per file. `altText` must be a string; an empty string is accepted.
+Original bytes remain downloadable, while responsive WebP, JPEG/PNG, and AVIF
+renditions and placeholders serve browsers. See the [media architecture](architecture/server/media.md)
+and [server README](../jgantts-server/README.md) for batch semantics and limits.
 
 ## Private post editor
 
 Open `/admin/posts` and unlock it with `JGANTTS_ADMIN_TOKEN`. After validation,
 the server keeps the sign-in in an `HttpOnly`, `Secure`, `SameSite=Strict`
-cookie. Frontend JavaScript cannot read the token. The cookie persists across
-reloads and browser restarts until **Log out** is clicked or the configured
-admin token is rotated.
+cookie. Frontend JavaScript cannot read the cookie. It expires after one year;
+**Log out** clears it, and rotating the configured admin token invalidates it.
 
 The editor can create and update drafts, preview sanitized Markdown, upload and
 review images, publish locally, archive posts, inspect Mastodon state, queue a
@@ -50,56 +54,13 @@ Mastodon syndication remain separate confirmed actions. The route is omitted
 from public navigation and emits `noindex, nofollow`; API authentication remains
 the security boundary.
 
-## Facebook Page syndication
+## Retired Facebook syndication
 
-Facebook is optional and disabled unless all three server-only settings are
-present in `/etc/jgantts-com/jgantts-com.env`:
-
-```text
-FACEBOOK_PAGE_ID=replace-with-page-id
-FACEBOOK_PAGE_ACCESS_TOKEN=replace-with-page-token
-FACEBOOK_GRAPH_API_VERSION=v25.0
-```
-
-The token is never returned to the browser or written to logs. Rotate it by
-issuing a replacement Page token, updating the protected environment file, and
-restarting the service; revoke the old token in Meta after the restart is
-healthy. Do not call a token permanent.
-
-The editor creates one immutable Page link post for the current published
-revision. Permission or validation failures are terminal; transport ambiguity
-becomes `uncertain`. Use **Reconcile** before any retry. Exactly one matching
-Page post is attached automatically. Zero matches enable an explicit retry;
-multiple matches require selecting a candidate and using **Attach**. Local edits
-never update or delete an existing Facebook post.
-
-Endpoints require the admin session or bearer token:
-
-```text
-GET  /api/admin/posts/POST_ID/syndications/facebook
-POST /api/admin/posts/POST_ID/syndications/facebook
-POST /api/admin/posts/POST_ID/syndications/facebook/retry
-POST /api/admin/posts/POST_ID/syndications/facebook/reconcile
-POST /api/admin/posts/POST_ID/syndications/facebook/resolve
-```
-
-Keep Facebook disabled during migration and smoke tests by omitting all three
-settings. This does not disable local publishing or Mastodon. Before enabling
-production publication, verify the Page task, required Meta permissions, Graph
-version support, token lifecycle, Sharing Debugger preview, and one canary's
-stored remote ID/permalink.
-
-### Facebook preview checklist
-
-Before a canary, inspect the live revision URL in Meta's Sharing Debugger for:
-
-- first and later revision URLs, redirects, and cache refresh;
-- titled, titleless, and photo-only posts;
-- hero images and missing-hero fallback;
-- portrait and landscape renditions, dimensions, and MIME type;
-- archived or unpublished content remaining inaccessible; and
-- canonical URL, title/description fallbacks, crawler access, and absence of
-  private image metadata.
+Facebook Page publication has been removed. Former administrative endpoints
+return JSON 404s, and legacy `FACEBOOK_*` environment settings are ignored and
+can be removed. Historical database records remain for recovery, but the worker,
+publication history, and health checks exclude them. No remote Facebook posts
+are changed. Public “Share on Facebook” links remain ordinary browser links.
 
 ## Mastodon syndication
 
@@ -126,14 +87,16 @@ curl --fail-with-body --request POST \
   https://jgantts.com/api/admin/posts/POST_ID/syndications/mastodon
 ```
 
-To supply an explicit teaser, send JSON with one `teaser` field. Repeating the
+Send no body or `{}`; a `teaser` field is rejected. The server derives the teaser
+from the saved title, location, date, and time. Repeating the
 queue request returns the existing syndication and cannot create another remote
 status, even after local edits. Inspect its state with `GET` on the same URL.
 Failed publication can be queued again with `POST` to the same URL plus
 `/retry`.
 
 Local edits never alter Mastodon automatically. Explicitly queue an update to
-the existing remote teaser with `PATCH` and a JSON `teaser` field. Publication
+the existing remote teaser with `PATCH` and no body or `{}`, using the latest
+saved post fields. Publication
 and edits run through the durable SQLite outbox. The worker recovers abandoned
 jobs after restart, uses a stable idempotency key, honors rate-limit delays, and
 stops retrying permanent authentication or validation failures.
@@ -149,8 +112,7 @@ the reply action link back to Mastodon, which remains authoritative.
 ## Health and logs
 
 `GET /api/health` returns a non-cacheable operational report covering SQLite,
-persistent media directories, outbox backlog and failures, and Mastodon and
-Facebook state independently.
+persistent media directories, outbox backlog and failures, and Mastodon state.
 Database, media, or outbox inspection failure makes the endpoint return `503`.
 An old/failed Mastodon job reports `degraded` with HTTP `200`, because Mastodon
 must not become a hard dependency for the canonical site.
@@ -221,10 +183,11 @@ shared link.
 
 ## Backup
 
-Run the application-aware backup command while the service is running or
-stopped. SQLite's online backup API produces a consistent database snapshot,
-including when WAL mode is active, and original and derived media are copied to
-the same new backup directory.
+The command uses SQLite's online backup API and then copies the full media tree,
+including generated social images. SQLite is consistent internally, but these
+two steps are not an atomic database/media snapshot. Quiesce every writer for a
+restorable content set; neither ordinary CLI mode nor `--quiesced` stops the
+service for you. The deployment backup wrapper handles stopping/restarting it.
 
 ```sh
 cd /home/jgantts-com/node-js/current/jgantts-server

@@ -13,7 +13,6 @@ import { CommentCacheRepository } from '../src/comments/comment-cache-repository
 import { MastodonCommentsService } from '../src/comments/mastodon-comments-service';
 import {
   getRuntimeConfig,
-  normalizeFacebookGraphApiVersion,
   normalizeMastodonOrigin,
   normalizeSiteOrigin,
   parsePort,
@@ -21,7 +20,7 @@ import {
 } from '../src/config';
 import { openContentDatabase } from '../src/db/database';
 import { MediaRepository } from '../src/media/media-repository';
-import { MediaService } from '../src/media/media-service';
+import { MediaService, PHOTO_PIPELINE_VERSION } from '../src/media/media-service';
 import { HealthService } from '../src/observability/health-service';
 import { createStructuredLogger } from '../src/observability/logger';
 import { PostRepository } from '../src/posts/post-repository';
@@ -114,13 +113,9 @@ test('requires a clean HTTPS Mastodon origin', () => {
   assert.throws(() => normalizeMastodonOrigin('https://mastodon.social/path'), /only an origin/);
 });
 
-test('validates Facebook Graph configuration as an all-or-none pinned destination', () => {
-  assert.equal(normalizeFacebookGraphApiVersion(' v25.0 '), 'v25.0');
-  assert.throws(() => normalizeFacebookGraphApiVersion('25.0'), /FACEBOOK_GRAPH_API_VERSION/);
-  assert.throws(() => getRuntimeConfig({ FACEBOOK_PAGE_ID: 'page', FACEBOOK_PAGE_ACCESS_TOKEN: 'token' }), /configured together/);
-  const config = getRuntimeConfig({ FACEBOOK_PAGE_ID: 'page', FACEBOOK_PAGE_ACCESS_TOKEN: 'token', FACEBOOK_GRAPH_API_VERSION: 'v25.0' });
-  assert.equal(config.facebookPageId, 'page');
-  assert.equal(config.facebookGraphApiVersion, 'v25.0');
+test('ignores retired Facebook settings, including partial legacy configuration', () => {
+  const config = getRuntimeConfig({ FACEBOOK_PAGE_ID: 'old-page', FACEBOOK_GRAPH_API_VERSION: 'invalid' });
+  assert.equal(Object.keys(config).some((key) => key.startsWith('facebook')), false);
 });
 
 test('validates PORT', () => {
@@ -189,8 +184,25 @@ test('renders metadata for newer frontend routes', async () => {
 
   assert.match(kovyalo.body, /<title>Kovyálo<\/title>/);
   assert.match(kovyalo.body, /content="Kovyálo \| JGantts"/);
+  assert.match(kovyalo.body, /property="og:image:type" content="image\/png"/);
+  assert.match(kovyalo.body, /property="og:image:width" content="1200"/);
+  assert.match(kovyalo.body, /property="og:image:height" content="630"/);
+  assert.match(kovyalo.body, /property="og:image:alt" content="A collage of Jacob Gantt's published photographs: Appalachian mountains, a swinging bridge, a flower, powerlines at sunset, and floral shadows\."/);
+  assert.match(kovyalo.body, /name="twitter:image:alt" content="A collage of Jacob Gantt's published photographs: Appalachian mountains, a swinging bridge, a flower, powerlines at sunset, and floral shadows\."/);
   assert.match(photos.body, /<title>JGantts Photos<\/title>/);
   assert.match(photos.body, /content="Photos \| JGantts"/);
+});
+
+test('renders useful default homepage social metadata', async () => {
+  const app = createApp({ appHtmlTemplate: TEMPLATE, siteOrigin: 'https://jgantts.com' });
+  const response = await request(app, '/');
+
+  assert.equal(response.status, 200);
+  assert.match(response.body, /<title>Jacob Gantt \| Programmer &amp; Photographer<\/title>/);
+  assert.match(response.body, /property="og:title" content="Jacob Gantt — Programmer &amp; Photographer"/);
+  assert.match(response.body, /property="og:image" content="https:\/\/jgantts\.com\/social-media\.png"/);
+  assert.match(response.body, /property="og:image:secure_url" content="https:\/\/jgantts\.com\/social-media\.png"/);
+  assert.match(response.body, /name="twitter:card" content="summary_large_image"/);
 });
 
 test('renders the real build and serves real public files', async () => {
@@ -360,7 +372,7 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
     bodyMarkdown: '# Hello\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(2)) **world**',
     location: 'New York',
     date: 20260906,
-    time: '21:15',
+    time: '18:10',
     title: 'First local post',
   });
 
@@ -412,7 +424,7 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.equal(createdResponse.status, 201);
   const created = JSON.parse(createdResponse.body) as { bodyHtml: string; id: string; slug: string; status: string; syndications: unknown[]; teaser: string; time: string; title: string };
   assert.equal(created.status, 'draft');
-  assert.equal(created.time, '21:15');
+  assert.equal(created.time, '18:10');
   assert.equal(created.title, 'First local post');
   assert.equal(created.slug, 'first-local-post');
   assert.equal(created.teaser.split('\n')[0], 'First local post');
@@ -435,6 +447,33 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.equal(getResponse.status, 200);
   assert.equal(JSON.parse(getResponse.body).slug, created.slug);
 
+  const revisionsBeforeAutosave = (database.prepare(
+    'SELECT COUNT(*) AS count FROM post_revisions WHERE post_id = ?',
+  ).get(created.id) as { count: number }).count;
+  const autosaveResponse = await request(app, `/api/admin/posts/${created.id}/autosave`, {
+    body: JSON.stringify({
+      bodyMarkdown: 'Autosaved draft ',
+      location: 'Southern Appalachia ',
+      title: 'Still typing ',
+    }),
+    headers: {
+      authorization: 'Bearer test-admin-secret',
+      'content-type': 'application/json',
+    },
+    method: 'PATCH',
+  });
+  assert.equal(autosaveResponse.status, 200);
+  const autosaved = JSON.parse(autosaveResponse.body) as {
+    bodyHtml: string; bodyMarkdown: string; location: string; title: string;
+  };
+  assert.equal(autosaved.bodyHtml, '<p>Autosaved draft </p>\n');
+  assert.equal(autosaved.bodyMarkdown, 'Autosaved draft ');
+  assert.equal(autosaved.location, 'Southern Appalachia ');
+  assert.equal(autosaved.title, 'Still typing ');
+  assert.equal((database.prepare(
+    'SELECT COUNT(*) AS count FROM post_revisions WHERE post_id = ?',
+  ).get(created.id) as { count: number }).count, revisionsBeforeAutosave);
+
   const emptyDraftResponse = await request(app, '/api/admin/posts/empty', {
     headers: { authorization: 'Bearer test-admin-secret' },
     method: 'POST',
@@ -448,6 +487,13 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   assert.deepEqual(emptyDraft.media, []);
   assert.match(emptyDraft.slug, /^[a-f0-9-]{36}$/);
   assert.equal(emptyDraftResponse.headers.location, `/api/admin/posts/${emptyDraft.id}`);
+  const emptyAutosaveResponse = await request(app, `/api/admin/posts/${emptyDraft.id}/autosave`, {
+    body: JSON.stringify({ title: 'Still typing a title' }),
+    headers: { authorization: 'Bearer test-admin-secret', 'content-type': 'application/json' },
+    method: 'PATCH',
+  });
+  assert.equal(emptyAutosaveResponse.status, 200);
+  assert.equal(JSON.parse(emptyAutosaveResponse.body).slug, emptyDraft.slug);
   assert.equal((await request(app, '/api/admin/posts/empty', {
     body: JSON.stringify({ title: 'not accepted' }),
     headers: { authorization: 'Bearer test-admin-secret', 'content-type': 'application/json' },
@@ -494,6 +540,11 @@ test('protects admin routes and creates, edits, and publishes sanitized posts', 
   });
   assert.equal(publishedResponse.status, 200);
   assert.equal(JSON.parse(publishedResponse.body).status, 'published');
+  assert.equal((await request(app, `/api/admin/posts/${created.id}/autosave`, {
+    body: JSON.stringify({ title: 'Must be explicit' }),
+    headers: { authorization: 'Bearer test-admin-secret', 'content-type': 'application/json' },
+    method: 'PATCH',
+  })).status, 409);
   const historyResponse = await request(app, `/api/admin/posts/${created.id}/history`, {
     headers: { authorization: 'Bearer test-admin-secret' },
   });
@@ -686,7 +737,15 @@ test('uses a content-derived preview URL while keeping the canonical URL stable'
   assert.match(canonical.body, /rel="canonical" href="https:\/\/jgantts\.com\/photos\/build-post"/);
 
   const apiPost = await request(app, '/api/posts/build-post');
-  const preview = JSON.parse(apiPost.body).preview as string;
+  const apiData = JSON.parse(apiPost.body);
+  const preview = apiData.preview as string;
+  assert.equal(apiData.previewMeta.token, preview);
+  assert.equal(apiData.previewMeta.description, 'Fresh preview');
+  const listData = JSON.parse((await request(app, '/api/posts')).body);
+  assert.deepEqual(listData.items[0].previewMeta, apiData.previewMeta);
+  assert.match(canonical.body, /name="twitter:card" content="summary"/);
+  assert.ok(canonical.body.includes('"previewMeta":'));
+
   assert.match(preview, /^[0-9a-f]{16}$/);
 
   const current = await request(app, `/photos/build-post?preview=${preview}`);
@@ -749,6 +808,10 @@ test('returns safe failures for disabled admin API and invalid author input', as
     method: 'POST',
   });
   assert.equal(invalid.status, 400);
+  assert.equal(
+    JSON.parse(invalid.body).error.message,
+    'slug must contain lowercase letters, numbers, and single hyphens only.',
+  );
 
   const photoOnly = await request(app, '/api/admin/posts', {
     body: JSON.stringify({ slug: 'photo-only' }),
@@ -817,6 +880,8 @@ test('uploads local media and serves immutable originals and derivatives', async
   const uploaded = JSON.parse(uploadedResponse.body) as {
     id: string;
     originalPath?: string;
+    pipelineVersion: number | null;
+    thumbhash: string | null;
     placeholder: { url: string; width: number };
     derivatives?: unknown;
     renditions: Array<{ url: string; width: number }>;
@@ -824,6 +889,8 @@ test('uploads local media and serves immutable originals and derivatives', async
   };
   assert.equal(uploaded.originalPath, undefined);
   assert.equal(uploaded.derivatives, undefined);
+  assert.equal(uploaded.pipelineVersion, PHOTO_PIPELINE_VERSION);
+  assert.ok(uploaded.thumbhash && Buffer.from(uploaded.thumbhash, 'base64').length > 5);
   assert.deepEqual(uploaded.renditions.map((rendition) => rendition.width), [24, 24]);
   assert.equal(uploaded.placeholder.width, 24);
   assert.equal(uploadedResponse.headers.location, uploaded.urls.original);
@@ -843,7 +910,7 @@ test('uploads local media and serves immutable originals and derivatives', async
 
   const editedResponse = await request(app, `/api/admin/media/${uploaded.id}`, {
     body: JSON.stringify({
-      altText: 'An updated brown rectangle', caption: 'A visible caption', title: 'Brown study', time: '06:30', focalX: 0.4, focalY: 0.6,
+      altText: 'An updated brown rectangle', caption: 'A visible caption', title: 'Brown study', time: '18:10', focalX: 0.4, focalY: 0.6,
     }),
     headers: { authorization: 'Bearer media-secret', 'content-type': 'application/json' },
     method: 'PATCH',
@@ -851,7 +918,7 @@ test('uploads local media and serves immutable originals and derivatives', async
   assert.equal(editedResponse.status, 200);
   assert.equal(JSON.parse(editedResponse.body).caption, 'A visible caption');
   assert.equal(JSON.parse(editedResponse.body).title, 'Brown study');
-  assert.equal(JSON.parse(editedResponse.body).time, '06:30');
+  assert.equal(JSON.parse(editedResponse.body).time, '18:10');
 
   const orderResponse = await request(app, '/api/admin/posts/media-api-post/media/order', {
     body: JSON.stringify({ mediaIds: [uploaded.id] }),
@@ -933,6 +1000,47 @@ test('uploads local media and serves immutable originals and derivatives', async
   for (const field of ['originalPath', 'derivatives', 'processingError', 'renditionManifest']) {
     assert.equal(Object.hasOwn(normalized[0], field), false);
   }
+
+  const regenerateUrl = `/api/admin/media/${uploaded.id}/regenerate`;
+  assert.equal((await request(app, regenerateUrl, { method: 'POST' })).status, 401);
+  assert.equal((await request(app, '/api/admin/media/missing/regenerate', {
+    method: 'POST', headers: { authorization: 'Bearer media-secret' },
+  })).status, 404);
+  const regeneratedResponse = await request(app, regenerateUrl, {
+    method: 'POST', headers: { authorization: 'Bearer media-secret' },
+  });
+  assert.equal(regeneratedResponse.status, 200);
+  assert.equal(regeneratedResponse.headers['cache-control'], 'no-store');
+  const regeneratedMedia = JSON.parse(regeneratedResponse.body) as {
+    pipelineVersion: number | null;
+    renditions: Array<{ url: string }>;
+    thumbhash: string | null;
+  };
+  assert.equal(regeneratedMedia.pipelineVersion, PHOTO_PIPELINE_VERSION);
+  assert.ok(regeneratedMedia.thumbhash && Buffer.from(regeneratedMedia.thumbhash, 'base64').length > 5);
+  assert.ok(regeneratedMedia.renditions.every(({ url }) => /-v-[a-f0-9]{8}/.test(url)));
+  assert.equal(media.listForPost('media-api-post')[0].pipelineVersion, PHOTO_PIPELINE_VERSION);
+
+  const regenerateAllUrl = '/api/admin/media/regenerate-all';
+  assert.equal((await request(app, regenerateAllUrl, { method: 'POST' })).status, 401);
+  const regeneratedAllResponse = await request(app, regenerateAllUrl, {
+    method: 'POST', headers: { authorization: 'Bearer media-secret' },
+  });
+  assert.equal(regeneratedAllResponse.status, 200);
+  assert.equal(regeneratedAllResponse.headers['cache-control'], 'no-store');
+  const regeneratedAll = JSON.parse(regeneratedAllResponse.body) as {
+    failed: number;
+    pipelineVersion: number;
+    regenerated: number;
+    results: Array<{ id: string; status: string }>;
+    total: number;
+  };
+  assert.equal(regeneratedAll.pipelineVersion, PHOTO_PIPELINE_VERSION);
+  assert.equal(regeneratedAll.total, 1);
+  assert.equal(regeneratedAll.regenerated, 1);
+  assert.equal(regeneratedAll.failed, 0);
+  assert.deepEqual(regeneratedAll.results.map(({ id, status }) => [id, status]), [[uploaded.id, 'regenerated']]);
+
   const feedWithMedia = await request(app, '/feed.xml');
   const sitemapWithMedia = await request(app, '/sitemap.xml');
   assert.ok(feedWithMedia.body.includes(uploaded.urls.large));
@@ -1102,7 +1210,7 @@ test('gallery maintenance enforces auth and validation and serializes competing 
   assert.equal((await send(heroUrl, 'PUT', { mediaId: foreign.id })).status, 400);
   assert.equal((await send(editUrl, 'PATCH', { altText: '' })).status, 200);
   const afterBlankAlt = media.listForPost('gallery');
-  for (const body of [{ caption: 42 }, { time: '6:30 PM' }, { time: '06:10' }, { focalX: 0.5 }, { focalX: -1, focalY: 1 }, { postId: 'other' }]) {
+  for (const body of [{ caption: 42 }, { time: '6:30 PM' }, { time: '06:11' }, { focalX: 0.5 }, { focalX: -1, focalY: 1 }, { postId: 'other' }]) {
     assert.equal((await send(editUrl, 'PATCH', body)).status, 400);
   }
   assert.deepEqual(media.listForPost('gallery'), afterBlankAlt);
@@ -1133,4 +1241,19 @@ test('gallery maintenance enforces auth and validation and serializes competing 
   const cookie = session.headers['set-cookie']![0].split(';')[0];
   assert.equal((await request(app, heroUrl, { method: 'PUT', body: JSON.stringify({ mediaId: ids[1] }),
     headers: { cookie, 'content-type': 'application/json' } })).status, 200);
+});
+
+test('retired Facebook administrative routes return JSON 404s', async (t) => {
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostService(new PostRepository(database));
+  const post = posts.createDraft({ bodyMarkdown: 'A post' });
+  const app = createApp({ adminToken: 'secret', appHtmlTemplate: TEMPLATE, services: { posts } });
+  for (const [method, suffix] of [['GET', ''], ['POST', ''], ['POST', '/retry'], ['POST', '/reconcile'], ['POST', '/resolve']]) {
+    const response = await request(app, `/api/admin/posts/${post.id}/syndications/facebook${suffix}`, {
+      method, headers: { authorization: 'Bearer secret' },
+    });
+    assert.equal(response.status, 404);
+    assert.equal(JSON.parse(response.body).error.code, 'not_found');
+  }
 });

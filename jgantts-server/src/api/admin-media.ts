@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import express from 'express';
 import multer from 'multer';
-import type { MediaProcessingStage, MediaService } from '../media/media-service';
+import {
+  PHOTO_PIPELINE_VERSION, type MediaProcessingStage, type MediaService,
+} from '../media/media-service';
 import { PostInputError } from '../posts/errors';
 
 const MAX_BATCH_BYTES = 250 * 1024 * 1024;
@@ -113,6 +115,30 @@ export function createAdminMediaRouter(media: MediaService): express.Router {
         res.status(200).set('Cache-Control', 'no-store').json({ results });
       })().catch(next);
     });
+  });
+
+  router.post('/regenerate-all', (_req, res, next) => {
+    void media.regenerateAll({ concurrency: 2 }).then((results) => {
+      const regenerated = results.filter(({ status }) => status === 'regenerated').length;
+      const failed = results.filter(({ status }) => status === 'failed').length;
+      res.set('Cache-Control', 'no-store').json({
+        failed,
+        pipelineVersion: PHOTO_PIPELINE_VERSION,
+        regenerated,
+        results,
+        total: results.length,
+      });
+    }, next);
+  });
+
+  router.post('/:id/regenerate', (req, res, next) => {
+    void media.regenerate(req.params.id).then((result) => {
+      if (!result) {
+        res.status(404).json({ error: { code: 'not_found', message: 'Media not found.' } });
+        return;
+      }
+      res.set('Cache-Control', 'no-store').json(result);
+    }, next);
   });
 
   router.delete('/:id', (req, res, next) => {

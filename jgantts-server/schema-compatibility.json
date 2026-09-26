@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "minimumDatabaseVersion": 0,
-  "maximumDatabaseVersion": 12,
-  "releaseDatabaseVersion": 12,
-  "expandContractRequiredAfterVersion": 12,
+  "maximumDatabaseVersion": 13,
+  "releaseDatabaseVersion": 13,
+  "expandContractRequiredAfterVersion": 13,
   "migrationPolicy": "expand-contract"
 }

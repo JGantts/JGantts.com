@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto';
 import type { PublicMedia } from '../media/media-service';
 import type { Post } from '../posts/types';
+import type { SocialPreviewImage } from '../social-preview/types';
 
-export const PREVIEW_SCHEMA_VERSION = 1;
+export const PREVIEW_SCHEMA_VERSION = 2;
 
 export interface SocialImage {
+  alt: string;
   height: number | null;
   mimeType: string;
   url: string;
@@ -74,17 +76,28 @@ function socialImageFor(post: Post, media: PublicMedia[]): SocialImage | null {
     .sort((left, right) => right.width - left.width)[0];
   if (rendition) {
     return {
+      alt: hero.altText || post.title?.trim() || 'Post photo',
       height: rendition.height,
       mimeType: rendition.format === 'png' ? 'image/png' : 'image/jpeg',
       url: rendition.url,
       width: rendition.width,
     };
   }
-  return { height: hero.height, mimeType: hero.mimeType, url: hero.urls.original, width: hero.width };
+  return {
+    alt: hero.altText || post.title?.trim() || 'Post photo',
+    height: hero.height,
+    mimeType: hero.mimeType,
+    url: hero.urls.original,
+    width: hero.width,
+  };
 }
 
-export function resolvePostPreview(post: Post, media: PublicMedia[]): PostPreview {
-  const image = socialImageFor(post, media);
+export function resolvePostPreview(
+  post: Post,
+  media: PublicMedia[],
+  generatedImage?: SocialPreviewImage | null,
+): PostPreview {
+  const image = generatedImage ?? socialImageFor(post, media);
   const title = post.title?.trim() || 'Post by Jacob Gantt';
   const description = [
     firstLine(post.title),

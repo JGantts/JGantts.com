@@ -27,6 +27,14 @@ export type PhotoMasonry = {
   clusters: PlacedPhotoCluster[]
 }
 
+export function comparePhotoScreenPosition(
+  left: Pick<PlacedPhotoCard, 'x' | 'y' | 'width'>,
+  right: Pick<PlacedPhotoCard, 'x' | 'y' | 'width'>,
+) {
+  return left.y - right.y
+    || (left.x + left.width / 2) - (right.x + right.width / 2)
+}
+
 type GridCard = PhotoCard & { columnSpan: number; rowSpan: number }
 
 const POSITION_EPSILON = 0.001

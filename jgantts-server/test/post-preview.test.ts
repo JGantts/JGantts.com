@@ -27,7 +27,7 @@ function post(changes: Partial<Post> = {}): Post {
 }
 
 test('builds deterministic preview tokens from the rendered preview model', () => {
-  assert.equal(PREVIEW_SCHEMA_VERSION, 1);
+  assert.equal(PREVIEW_SCHEMA_VERSION, 2);
   const first = resolvePostPreview(post(), []);
   const repeated = resolvePostPreview(post(), []);
   assert.deepEqual(repeated, first);

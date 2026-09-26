@@ -2,11 +2,13 @@ import express from 'express';
 import type { AuthorPostChanges, AuthorPostInput, PostService } from '../posts/post-service';
 import type { MediaService } from '../media/media-service';
 import type { MastodonSyndicationService } from '../syndication/mastodon-syndication-service';
-import type { FacebookSyndicationService } from '../syndication/facebook-syndication-service';
-import type { FacebookClientLike } from '../syndication/facebook-client';
 import { buildPostTeaser } from '../syndication/mastodon-syndication-service';
 import { resolvePostPreview } from '../site/post-preview';
 import { revisionedPostPath } from '../site/revision-url';
+import {
+  SOCIAL_PREVIEW_SCHEMA_VERSION,
+  type SocialPreviewService,
+} from '../social-preview/social-preview-service';
 
 const AUTHOR_FIELDS = new Set(['bodyMarkdown', 'location', 'date', 'time', 'title', 'slug']);
 
@@ -32,16 +34,21 @@ export function createAdminPostsRouter(
   posts: PostService,
   media?: MediaService,
   mastodon?: MastodonSyndicationService,
-  facebook?: FacebookSyndicationService,
-  facebookClient?: FacebookClientLike,
+  socialPreviews?: SocialPreviewService,
 ): express.Router {
   const router = express.Router();
   const responsePost = (post: NonNullable<ReturnType<PostService['findById']>>) => {
     const postMedia = media?.listForPost(post.id) ?? [];
-    const preview = resolvePostPreview(post, postMedia).token;
+    const socialPreview = socialPreviews?.status(post.id) ?? {
+      image: null,
+      schemaVersion: SOCIAL_PREVIEW_SCHEMA_VERSION,
+      selectedMediaIds: postMedia.slice(0, 5).map((item) => item.id),
+      state: postMedia.length ? 'missing' : 'none',
+    };
+    const preview = resolvePostPreview(post, postMedia, socialPreview.image).token;
     const revision = posts.currentRevision(post.id);
     const versioned = posts.hasMultiplePublishedRevisions(post.id);
-    const syndications = [mastodon?.getForPost(post.id), facebook?.getForPost(post.id)]
+    const syndications = [mastodon?.getForPost(post.id)]
       .filter((item) => item !== null && item !== undefined)
       .map((item) => ({
         destination: item.destination,
@@ -57,6 +64,7 @@ export function createAdminPostsRouter(
       teaser: buildPostTeaser(post),
       ...(versioned ? { revision } : {}),
       media: postMedia,
+      socialPreview,
     };
   };
 
@@ -98,6 +106,38 @@ export function createAdminPostsRouter(
     }
   });
 
+  router.post('/social-previews/regenerate-all', async (_req, res, next) => {
+    try {
+      if (!socialPreviews) throw Object.assign(new Error('Social preview service is unavailable.'), { status: 503 });
+      const results = await socialPreviews.generateAll({ concurrency: 2 });
+      const failed = results.filter((item) => item.state === 'failed').length;
+      const generated = results.filter((item) => item.state === 'current').length;
+      const noPhotos = results.filter((item) => item.state === 'none').length;
+      res.set('Cache-Control', 'no-store').json({
+        failed,
+        generated,
+        noPhotos,
+        results,
+        total: results.length,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.patch('/:id/autosave', (req, res, next) => {
+    try {
+      const post = posts.autosaveDraft(req.params.id, parseBody(req.body, true));
+      if (!post) {
+        res.status(404).json({ error: { code: 'not_found', message: 'Post not found.' } });
+        return;
+      }
+      res.set('Cache-Control', 'no-store').json(responsePost(post));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.patch('/:id', (req, res, next) => {
     try {
       const post = posts.updateFromAuthor(req.params.id, parseBody(req.body, true));
@@ -111,14 +151,25 @@ export function createAdminPostsRouter(
     }
   });
 
-  router.post('/:id/publish', (req, res, next) => {
+  router.post('/:id/publish', async (req, res, next) => {
     try {
+      if (socialPreviews) await socialPreviews.generate(req.params.id);
       const post = posts.publish(req.params.id);
       if (!post) {
         res.status(404).json({ error: { code: 'not_found', message: 'Post not found.' } });
         return;
       }
       res.json(responsePost(post));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/:id/social-preview', async (req, res, next) => {
+    try {
+      if (!socialPreviews) throw Object.assign(new Error('Social preview service is unavailable.'), { status: 503 });
+      const result = await socialPreviews.generate(req.params.id);
+      res.set('Cache-Control', 'no-store').json(result);
     } catch (error) {
       next(error);
     }
@@ -190,7 +241,7 @@ export function createAdminPostsRouter(
     res.set('Cache-Control', 'no-store').json({
       revisions: posts.publishedRevisions(post.id),
       syndications: mastodon?.listForPost(post.id) ?? [],
-      publicationHistory: [...(mastodon?.listPublicationHistory(post.id) ?? []), ...(facebook?.listPublicationHistory(post.id) ?? [])],
+      publicationHistory: mastodon?.listPublicationHistory(post.id) ?? [],
     });
   });
 
@@ -232,13 +283,6 @@ export function createAdminPostsRouter(
         next(error);
       }
     });
-  }
-  if (facebook) {
-    router.get('/:id/syndications/facebook', (req, res) => { const item = facebook.getForPost(req.params.id); if (!item) { res.status(404).json({ error: { code: 'not_found', message: 'Post has not been syndicated.' } }); return; } res.set('Cache-Control', 'no-store').json(item); });
-    router.post('/:id/syndications/facebook', (req, res, next) => { try { validateEmptySyndicationBody(req.body); const result = facebook.queue(req.params.id); res.status(result.queued ? 202 : 200).set('Cache-Control', 'no-store').json(result.syndication); } catch (error) { next(error); } });
-    router.post('/:id/syndications/facebook/retry', (req, res, next) => { try { res.status(202).json(facebook.retry(req.params.id)); } catch (error) { next(error); } });
-    router.post('/:id/syndications/facebook/reconcile', async (req, res, next) => { try { if (!facebookClient) throw Object.assign(new Error('Facebook syndication is not configured.'), { status: 503 }); const result = await facebook.reconcile(req.params.id, facebookClient); res.status(200).json(result); } catch (error) { next(error); } });
-    router.post('/:id/syndications/facebook/resolve', (req, res, next) => { try { if (!isRecord(req.body) || typeof req.body.id !== 'string' || typeof req.body.url !== 'string' || Object.keys(req.body).some((key) => !['id', 'url'].includes(key))) throw Object.assign(new Error('Resolution requires only id and url.'), { status: 400 }); res.status(200).json(facebook.resolve(req.params.id, { id: req.body.id, url: req.body.url })); } catch (error) { next(error); } });
   }
 
   return router;

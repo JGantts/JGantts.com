@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { calculatePhotoMasonry, type PhotoCard, type PlacedPhotoCard } from './masonry'
+import {
+  calculatePhotoMasonry,
+  comparePhotoScreenPosition,
+  type PhotoCard,
+  type PlacedPhotoCard,
+} from './masonry'
 import ResponsivePhoto from './ResponsivePhoto.vue'
 import type { PhotoCommentsAttachment } from './photo-comments-types'
 
 type PhotoPost = {
+  content: string
   id: string
   created_at: string
   media_attachments: PhotoCommentsAttachment[]
@@ -143,8 +149,7 @@ const gap = 10
 const columnCount = computed(() => {
   if (containerWidth.value < 520) return 6
   if (containerWidth.value < 840) return 12
-  if (containerWidth.value < 1240) return 18
-  return 24
+  return 12
 })
 
 const targetGalleryHeight = computed(() => Math.max(420, viewportHeight.value - 170))
@@ -203,16 +208,28 @@ const masonry = computed(() =>
 )
 
 const recordsById = computed(() => new Map(imageRecords.value.map((record) => [record.id, record])))
+const lightboxImageRecords = computed(() => {
+  const placedCards = masonry.value.clusters
+    .flatMap((cluster) => cluster.cards)
+    .sort(comparePhotoScreenPosition)
+  const placedIds = new Set(placedCards.map((card) => card.id))
+  return [
+    ...placedCards.map((card) => recordsById.value.get(card.id)!),
+    ...imageRecords.value.filter((record) => !placedIds.has(record.id)),
+  ]
+})
 const activePhotoIndex = computed(() =>
-  imageRecords.value.findIndex((record) => record.id === activePhotoId.value),
+  lightboxImageRecords.value.findIndex((record) => record.id === activePhotoId.value),
 )
-const activePhoto = computed(() => imageRecords.value[activePhotoIndex.value] ?? null)
+const activePhoto = computed(() => lightboxImageRecords.value[activePhotoIndex.value] ?? null)
+const activePostFirstLine = computed(() => firstPostLine(activePhoto.value?.post.content ?? ''))
 const activeLightboxSize = computed(() => {
   const original = activePhoto.value?.attachment.meta?.original
   const aspect = original?.aspect
     ?? (original?.width && original.height ? original.width / original.height : 4 / 3)
-  const maximumWidth = Math.max(1, viewportWidth.value - 128)
-  const maximumHeight = Math.max(1, viewportHeight.value - 128)
+  const isMobile = viewportWidth.value <= 36 * 16
+  const maximumWidth = Math.max(1, viewportWidth.value - (isMobile ? 0 : 128))
+  const maximumHeight = Math.max(1, viewportHeight.value - (isMobile ? 112 : 128))
   const width = Math.min(maximumWidth, maximumHeight * aspect, original?.width ?? Number.POSITIVE_INFINITY)
   return { height: width / aspect, width }
 })
@@ -415,6 +432,24 @@ function formatClusterDate(value: string): string {
   return clusterDateFormatter.format(new Date(value))
 }
 
+function firstPostLine(content: string): string {
+  const container = document.createElement('div')
+  container.innerHTML = content
+  const blocks = container.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote')
+
+  for (const block of blocks) {
+    const copy = block.cloneNode(true) as HTMLElement
+    copy.querySelectorAll('br').forEach((breakElement) => breakElement.replaceWith('\n'))
+    const line = copy.textContent
+      ?.split(/\r?\n/)
+      .map((value) => value.trim())
+      .find(Boolean)
+    if (line) return line
+  }
+
+  return container.textContent?.trim() ?? ''
+}
+
 async function openPhoto(id: string) {
   const record = recordsById.value.get(id)
   if (!record) return
@@ -431,11 +466,6 @@ async function openPhoto(id: string) {
     return
   }
 
-  if (activePostId) {
-    emit('clear')
-    return
-  }
-
   selectedPostVisibility.value = 1
   emit('visibility', 1)
   emit('select', record.postIndex)
@@ -446,9 +476,7 @@ function photoActionLabel(id: string): string {
   if (!record) return 'Select photo post'
   const date = formatClusterDate(record.post.created_at)
   if (record.post.id === effectiveActivePostId.value) return `Open photo from selected post dated ${date}`
-  return effectiveActivePostId.value
-    ? 'Clear selected post'
-    : `Select post from ${date}`
+  return `Select post from ${date}`
 }
 
 function cornerRadii(card: PlacedPhotoCard, cards: PlacedPhotoCard[]) {
@@ -675,10 +703,10 @@ function closePhoto() {
 
 function showPhoto(offset: number) {
   const nextIndex = Math.min(
-    imageRecords.value.length - 1,
+    lightboxImageRecords.value.length - 1,
     Math.max(0, activePhotoIndex.value + offset),
   )
-  const nextPhoto = imageRecords.value[nextIndex]
+  const nextPhoto = lightboxImageRecords.value[nextIndex]
   if (!nextPhoto) return
   expandedPreviewUrl.value = containerRef.value
     ?.querySelector<HTMLImageElement>(`[data-photo-id="${CSS.escape(nextPhoto.id)}"] img`)
@@ -839,16 +867,15 @@ onBeforeUnmount(() => {
             loading="eager"
             :preview-url="expandedPreviewUrl"
           />
-          <figcaption>
-            <span>{{ formatClusterDate(activePhoto.post.created_at) }}</span>
-            <span v-if="activePhoto.attachment.description">{{ activePhoto.attachment.description }}</span>
+          <figcaption v-if="activePostFirstLine">
+            <span>{{ activePostFirstLine }}</span>
           </figcaption>
         </figure>
         <button
           type="button"
           class="lightbox-nav lightbox-next"
           aria-label="Next photo"
-          :disabled="activePhotoIndex >= imageRecords.length - 1"
+          :disabled="activePhotoIndex >= lightboxImageRecords.length - 1"
           @click="showPhoto(1)"
         >→</button>
       </dialog>
@@ -886,12 +913,13 @@ onBeforeUnmount(() => {
   padding: 0;
   pointer-events: auto;
   position: absolute;
-  transform-origin: center;
-  transition: box-shadow 160ms ease, transform 180ms ease;
+  transition: box-shadow 160ms ease;
 }
 
-.photo-cluster .photo-card {
-  transform: scale(calc(1 - (0.03 * var(--selection-emphasis))));
+.photo-cluster .photo-card :deep(.responsive-photo) {
+  transform-origin: center;
+  transform: scale(calc(1.03 - (0.03 * var(--selection-emphasis))));
+  transition: transform 180ms ease;
 }
 
 .photo-cluster.is-active .photo-card {
@@ -1046,15 +1074,16 @@ onBeforeUnmount(() => {
   .cluster-highlight,
   .photo-cluster,
   .photo-masonry,
+  .photo-card :deep(.responsive-photo),
   .photo-card,
   .photo-card img { transition: none; }
 }
 
 @media (max-width: 36rem) {
-  .photo-lightbox { padding: 3.5rem 0.75rem; }
-  .lightbox-figure img {
+  .photo-lightbox { padding: 3.5rem 0; }
+  .lightbox-photo {
     max-height: calc(100dvh - 7rem);
-    max-width: calc(100vw - 1.5rem);
+    max-width: 100vw;
   }
   .lightbox-nav {
     bottom: max(1rem, env(safe-area-inset-bottom));

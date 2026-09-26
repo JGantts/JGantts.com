@@ -278,6 +278,25 @@ export const migrations: readonly Migration[] = [
         SELECT post_id, 'mastodon', publication_revision, state, remote_status_id, remote_url, created_at, updated_at FROM mastodon_publication_history;
     `,
   },
+  {
+    version: 13,
+    name: 'generated_social_previews',
+    sql: `
+      CREATE TABLE social_previews (
+        post_id TEXT PRIMARY KEY REFERENCES posts(id) ON DELETE CASCADE,
+        fingerprint TEXT NOT NULL UNIQUE,
+        relative_path TEXT NOT NULL UNIQUE,
+        mime_type TEXT NOT NULL,
+        width INTEGER NOT NULL CHECK (width > 0),
+        height INTEGER NOT NULL CHECK (height > 0),
+        byte_size INTEGER NOT NULL CHECK (byte_size > 0),
+        schema_version INTEGER NOT NULL CHECK (schema_version > 0),
+        selected_media_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      ) STRICT;
+    `,
+  },
 ];
 
 export function migrateDatabase(database: Database.Database): void {

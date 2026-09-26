@@ -40,9 +40,8 @@ Authoring -> JGantts database -> canonical post page
   and compatibility checks are tracked in photo roadmap items 4.6 and 5.1.
   Completed checklist entries below record the original implementation.
 - Next item: 7.6 — run the production smoke tests after deployment.
-- Planned extension: Facebook Page link syndication is specified separately in
-  `FACEBOOK-SYNDICATION-ROADMAP.md`; it preserves this roadmap's canonical-site
-  and independent-destination boundaries.
+- Retired extension: Facebook Page syndication has been removed. Its original
+  plan remains in `FACEBOOK-SYNDICATION-ROADMAP.md` for history.
 - Existing implementation: canonical posts, local media, private authoring,
   Mastodon link syndication and reply projection are complete. Production has
   persistent storage; the pending deploy adds expanded health/logging and a

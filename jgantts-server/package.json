@@ -13,6 +13,7 @@
     "schema:check": "node dist/cli/check-schema-compatibility.js",
     "dev": "tsx watch src/server.ts",
     "media:regenerate": "node dist/cli/regenerate-media.js",
+    "social-previews:regenerate": "node dist/cli/regenerate-social-previews.js",
     "smoke": "npm run build && node scripts/smoke-test.js",
     "smoke:live": "node scripts/smoke-test.js --live",
     "smoke:local": "npm run build && node scripts/smoke-test.js --local",
@@ -27,7 +28,8 @@
     "marked": "^18.0.11",
     "multer": "^2.3.0",
     "sanitize-html": "^2.17.7",
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.4",
+    "thumbhash": "^0.1.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",

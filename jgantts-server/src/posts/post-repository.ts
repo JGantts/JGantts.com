@@ -1,5 +1,6 @@
 import type { ContentDatabase } from '../db/database';
 import { inTransaction } from '../db/database';
+import { PostConflictError } from './errors';
 import type {
   NewPost,
   Post,
@@ -170,16 +171,19 @@ export class PostRepository {
     `).all() as PostRow[]).map(mapPost);
   }
 
-  update(id: string, changes: PostChanges, updatedAt = new Date().toISOString()): Post | null {
+  update(id: string, changes: PostChanges, updatedAt = new Date().toISOString(), recordRevision = true): Post | null {
     return inTransaction(this.database, () => {
       const current = this.getById(id);
       if (!current) return null;
       const next = { ...current, ...changes, updatedAt };
 
       if (changes.slug && changes.slug !== current.slug) {
-        this.database.prepare(`
+        const redirect = this.database.prepare(`
           INSERT INTO slug_redirects (slug, post_id, created_at) VALUES (?, ?, ?)
+          ON CONFLICT(slug) DO UPDATE SET created_at = excluded.created_at
+          WHERE slug_redirects.post_id = excluded.post_id
         `).run(current.slug, id, updatedAt);
+        if (!redirect.changes) throw new PostConflictError('That post slug belongs to another post.');
       }
 
       this.database.prepare(`
@@ -200,12 +204,14 @@ export class PostRepository {
           updated_at = @updatedAt
         WHERE id = @id
       `).run(next);
-      const revision = (this.database.prepare(`
-        SELECT COALESCE(MAX(revision_number), 0) + 1 AS number
-        FROM post_revisions WHERE post_id = ?
-      `).get(id) as { number: number }).number;
-    this.insertRevision(id, revision, updatedAt);
-      this.snapshotMedia(id, revision);
+      if (recordRevision) {
+        const revision = (this.database.prepare(`
+          SELECT COALESCE(MAX(revision_number), 0) + 1 AS number
+          FROM post_revisions WHERE post_id = ?
+        `).get(id) as { number: number }).number;
+        this.insertRevision(id, revision, updatedAt);
+        this.snapshotMedia(id, revision);
+      }
       return this.getById(id);
     });
   }

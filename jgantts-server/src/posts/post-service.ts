@@ -72,8 +72,8 @@ function validateDate(value: unknown): number | null {
 
 function validateTime(value: unknown): string | null {
   if (value === null || value === undefined || value === '') return null;
-  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):(?:00|15|20|30|40|45)$/.test(value)) {
-    throw new PostInputError('time must use 24-hour HH:mm format at an allowed minute interval (:00, :15, :20, :30, :40, or :45), or be null.');
+  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):(?:00|10|15|20|30|40|45|50)$/.test(value)) {
+    throw new PostInputError('time must use 24-hour HH:mm format at an allowed minute interval (:00, :10, :15, :20, :30, :40, :45, or :50), or be null.');
   }
   return value;
 }
@@ -190,7 +190,12 @@ export class PostService {
     return this.posts.update(id, changes);
   }
 
-  updateFromAuthor(id: string, changes: AuthorPostChanges): Post | null {
+  updateFromAuthor(
+    id: string,
+    changes: AuthorPostChanges,
+    options: { generateSlug?: boolean; recordRevision?: boolean } = {},
+  ): Post | null {
+    const { generateSlug = true, recordRevision = true } = options;
     if (Object.keys(changes).length === 0) throw new PostInputError('At least one post field is required.');
     const repositoryChanges: PostChanges = {};
     if ('location' in changes) repositoryChanges.location = validateText(changes.location, 'location', 500, false);
@@ -208,14 +213,23 @@ export class PostService {
       repositoryChanges.bodyMarkdown = bodyMarkdown;
       repositoryChanges.bodyHtml = renderPostMarkdown(bodyMarkdown);
       const current = this.posts.getById(id);
-      if (current && current.slug === current.id) {
+      if (generateSlug && current && current.slug === current.id) {
         const baseSlug = slugifyPost(repositoryChanges.title ?? current.title, bodyMarkdown);
         let slug = baseSlug;
         for (let suffix = 2; this.posts.getBySlug(slug); suffix += 1) slug = `${baseSlug}-${suffix}`;
         repositoryChanges.slug = slug;
       }
     }
-    return this.posts.update(id, repositoryChanges);
+    return this.posts.update(id, repositoryChanges, new Date().toISOString(), recordRevision);
+  }
+
+  autosaveDraft(id: string, changes: AuthorPostChanges): Post | null {
+    const post = this.posts.getById(id);
+    if (!post) return null;
+    if (post.status !== 'draft') {
+      throw new PostConflictError('Only drafts can be autosaved. Use an explicit save for published or archived posts.');
+    }
+    return this.updateFromAuthor(id, changes, { generateSlug: false, recordRevision: false });
   }
 
   publish(id: string, publishedAt = new Date().toISOString()): Post | null {

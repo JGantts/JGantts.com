@@ -92,9 +92,11 @@ test.beforeEach(async ({ page }) => {
 test('direct photo loads keep comments docked until the user opens them', async ({ page }) => {
   await page.goto('/photos/photo-5')
 
-  const dock = page.getByRole('button', { name: /View comments/ })
+  const dock = page.locator('.comments-dock-trigger')
   await expect(dock).toBeVisible()
-  await expect(page.getByRole('dialog', { name: 'Replies' })).toBeHidden()
+  await expect(dock).toContainText('Photo 5')
+  await expect(dock).toContainText('Photo details ·')
+  await expect(page.locator('#photo-comments-panel[role="dialog"]')).toBeHidden()
   await expect(page).toHaveURL(/\/photos\/photo-5$/)
 })
 
@@ -102,13 +104,29 @@ test('desktop share button opens the share menu', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/photos/photo-1')
 
-  const shareMenu = page.locator('.photo-share-menu')
+  const shareMenu = page.locator('#photo-comments-panel .photo-share-menu')
   await expect(shareMenu).toBeVisible()
   const shareButton = shareMenu.getByRole('button', { name: 'Share this photo post' })
   await shareButton.click()
 
   await expect(shareButton).toHaveAttribute('aria-expanded', 'true')
   await expect(shareMenu.locator('.photo-share-popover')).toBeVisible()
+  await shareMenu.getByRole('button', { name: 'Share as QR code' }).click()
+  await expect(shareMenu.getByRole('img', { name: 'QR code for this photo post' })).toBeVisible()
+})
+
+test('mobile share menu opens and enlarges the QR code', async ({ page }) => {
+  await page.goto('/photos/photo-1')
+  await page.locator('.comments-dock-trigger').click()
+
+  const sheet = page.locator('#photo-comments-panel[role="dialog"]')
+  await sheet.getByRole('button', { name: 'Share this photo post' }).click()
+  await sheet.getByRole('button', { name: 'Share as QR code' }).click()
+
+  const qrPreview = sheet.getByRole('button', { name: 'Enlarge QR code to fill the window' })
+  await expect(qrPreview).toBeVisible()
+  await qrPreview.click()
+  await expect(page.getByRole('dialog', { name: 'Scan to view this photo' })).toBeVisible()
 })
 
 test('closing the mobile sheet restores the visible gallery', async ({ page }) => {
@@ -116,11 +134,11 @@ test('closing the mobile sheet restores the visible gallery', async ({ page }) =
   const firstPhoto = page.getByRole('button', { name: /Select post from/ }).first()
   await expect(firstPhoto).toBeVisible()
   await firstPhoto.click()
-  await page.getByRole('button', { name: /View comments/ }).click()
+  await page.locator('.comments-dock-trigger').click()
 
-  const sheet = page.getByRole('dialog', { name: 'Replies' })
+  const sheet = page.locator('#photo-comments-panel[role="dialog"]')
   await expect(sheet).toBeVisible()
-  await sheet.getByRole('button', { name: 'Close comments' }).click()
+  await sheet.getByRole('button', { name: 'Close photo details' }).click()
 
   await expect(sheet).toBeHidden()
   await expect(page.locator('.comments-backdrop')).toBeHidden()
@@ -130,11 +148,12 @@ test('closing the mobile sheet restores the visible gallery', async ({ page }) =
 
 test('mobile sheet locks the gallery and has exactly one vertical scroll owner', async ({ page }) => {
   await page.goto('/photos')
-  await page.getByRole('button', { name: /Select post from/ }).nth(4).scrollIntoViewIfNeeded()
-  await page.getByRole('button', { name: /Select post from/ }).nth(4).click()
-  await page.getByRole('button', { name: /View comments/ }).click()
+  const fifthPhoto = page.getByRole('button', { name: 'Select post from Sep 5, 2026' })
+  await fifthPhoto.scrollIntoViewIfNeeded()
+  await fifthPhoto.click()
+  await page.locator('.comments-dock-trigger').click()
 
-  const sheet = page.getByRole('dialog', { name: 'Replies' })
+  const sheet = page.locator('#photo-comments-panel[role="dialog"]')
   await expect(sheet).toBeVisible()
   expect(await sheet.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
   await expect(page.locator('.gallery-surface')).toHaveAttribute('inert', '')
@@ -163,16 +182,16 @@ test('keyboard, reduced-motion, and 200% zoom smoke test', async ({ page }) => {
   await page.goto('/photos')
   await page.getByRole('button', { name: /Select post from/ }).first().click()
 
-  const dock = page.getByRole('button', { name: /View comments/ })
+  const dock = page.locator('.comments-dock-trigger')
   await dock.focus()
   await page.keyboard.press('Enter')
-  const sheet = page.getByRole('dialog', { name: 'Replies' })
+  const sheet = page.locator('#photo-comments-panel[role="dialog"]')
   await expect(sheet).toBeVisible()
-  await expect(sheet.getByRole('button', { name: 'Close comments' })).toBeFocused()
+  await expect(sheet.getByRole('button', { name: 'Close photo details' })).toBeFocused()
   expect(await sheet.evaluate((element) => getComputedStyle(element).transitionDuration)).toBe('0s')
 
   await page.evaluate(() => { document.documentElement.style.zoom = '2' })
-  await expect(sheet.getByRole('button', { name: 'Close comments' })).toBeVisible()
+  await expect(sheet.getByRole('button', { name: 'Close photo details' })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(sheet).toBeHidden()
   await expect(dock).toBeFocused()
@@ -182,7 +201,7 @@ test('portrait gestures open from the dock, scroll in content, and close from th
   await page.goto('/photos')
   await page.getByRole('button', { name: /Select post from/ }).first().click()
 
-  const dock = page.getByRole('button', { name: /View comments/ })
+  const dock = page.locator('.comments-dock-trigger')
   const dockBox = await dock.boundingBox()
   if (!dockBox) throw new Error('Comments dock was not laid out')
   const x = dockBox.x + dockBox.width / 2
@@ -193,7 +212,7 @@ test('portrait gestures open from the dock, scroll in content, and close from th
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - 80 }] })
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
 
-  const sheet = page.getByRole('dialog', { name: 'Replies' })
+  const sheet = page.locator('#photo-comments-panel[role="dialog"]')
   const scroller = sheet.locator('.comments-panel-scroll')
   await expect(sheet).toBeVisible()
   await expect(page.locator('.comments-backdrop')).toBeVisible()
@@ -215,8 +234,37 @@ test('portrait gestures open from the dock, scroll in content, and close from th
   await page.mouse.up()
   await expect(sheet).toBeHidden()
 
-  await page.getByRole('button', { name: /View comments/ }).click()
+  await page.locator('.comments-dock-trigger').click()
   await expect(sheet).toBeVisible()
   await page.locator('.comments-backdrop').click({ position: { x: 12, y: 12 } })
   await expect(sheet).toBeHidden()
+})
+
+test('text-only canonical posts remain visible after Vue mounts', async ({ page }) => {
+  const article = { ...posts[0], id: 'article', slug: 'article', media: [], title: 'Text-only article',
+    bodyHtml: '<p>This article stays visible.</p>', canonicalUrl: '/photos/article?rev=4',
+    shareUrl: '/photos/article?rev=4&preview=article-preview' }
+  await page.route('**/api/posts?*', (route) => route.fulfill({json:{items:[article],nextCursor:null}}))
+  await page.goto('/photos/article?rev=4&preview=article-preview')
+  await expect(page.getByRole('heading', {name:'Text-only article'})).toBeVisible()
+  await expect(page.getByText('This article stays visible.')).toBeVisible()
+  await expect(page).toHaveTitle('Text-only article | JGantts')
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/photos\/article\?rev=4$/)
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', /rev=4&preview=article-preview$/)
+})
+
+test('older photos load after text-only pages and selection maintains article metadata', async ({ page }) => {
+  const photo = {...posts[0], canonicalUrl:'/photos/photo-1?rev=4',shareUrl:'/photos/photo-1?rev=4&preview=new-preview'}
+  await page.route('**/api/posts?*', (route) => route.fulfill({json:new URL(route.request().url()).searchParams.has('cursor')
+    ? {items:[photo],nextCursor:null}
+    : {items:Array.from({length:50},(_,index)=>({...posts[0],id:`text-${index}`,slug:`text-${index}`,media:[]})),nextCursor:'older'}}))
+  await page.goto('/photos')
+  await page.getByRole('button', {name:'Load more photos'}).click()
+  await page.getByRole('button', {name:/Select post from/}).click()
+  await expect(page).toHaveURL(/\/photos\/photo-1\?rev=4$/)
+  await expect(page).toHaveTitle('Photo 1 | JGantts')
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', /rev=4&preview=new-preview$/)
+  await page.goBack()
+  await expect(page).toHaveTitle('JGantts Photos')
+  await expect(page.locator('#__POST_JSON_LD__')).toHaveCount(0)
 })

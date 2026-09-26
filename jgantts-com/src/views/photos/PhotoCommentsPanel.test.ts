@@ -74,7 +74,7 @@ afterEach(() => {
 })
 
 describe('PhotoCommentsPanel', () => {
-  it('uses a compact trigger and keeps the sheet out of the accessibility tree while closed', async () => {
+  it('uses the open header content in the dock and keeps the sheet out of the accessibility tree while closed', async () => {
     mockMatchMedia(true)
     const wrapper = mount(PhotoCommentsPanel, {
       attachTo: document.body,
@@ -84,10 +84,17 @@ describe('PhotoCommentsPanel', () => {
     await wrapper.vm.$nextTick()
 
     const trigger = wrapper.get('.comments-dock-trigger')
-    expect(trigger.text()).toContain('View comments')
+    expect(trigger.text()).toContain('A long-form photo description.')
+    expect(trigger.text()).toContain('Photo details · 0 replies')
     expect(trigger.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.find('.comments-dock .photo-share-menu').exists()).toBe(true)
+    expect(wrapper.find('.comments-dock-clear').exists()).toBe(true)
     expect(document.querySelector('#photo-comments-panel')).toBeNull()
     expect(document.body.style.overflow).toBe('')
+
+    await wrapper.get('.comments-dock .photo-share-button').trigger('click')
+    expect(wrapper.find('.comments-dock .photo-share-popover').exists()).toBe(true)
+    expect(wrapper.emitted('update:open')).toBeUndefined()
 
     await trigger.trigger('click')
     expect(wrapper.emitted('update:open')).toEqual([[true]])
@@ -98,7 +105,7 @@ describe('PhotoCommentsPanel', () => {
     mockMatchMedia(true)
     const wrapper = mount(PhotoCommentsPanel, {
       attachTo: document.body,
-      props: { ...baseProps, open: true, replyCount: 3 },
+      props: { ...baseProps, open: true, qrCodeUrl: 'data:image/png;base64,qr', replyCount: 3 },
       global: { stubs: { MediaCarousel: true } },
     })
     await wrapper.vm.$nextTick()
@@ -110,11 +117,16 @@ describe('PhotoCommentsPanel', () => {
     expect(panel.textContent).toContain('3 replies')
     expect(panel.querySelector('.comments-context')?.tagName).toBe('ARTICLE')
     expect(panel.querySelector('.comments-post-text')?.textContent).toContain('A long-form photo description.')
-    expect(panel.querySelector('.photo-share-native')).not.toBeNull()
-    expect(panel.querySelector('.photo-share-menu')).toBeNull()
-    ;(panel.querySelector('.photo-share-native') as HTMLButtonElement).click()
+    expect(panel.querySelector('.photo-share-menu')).not.toBeNull()
+    ;(panel.querySelector('[aria-label="Share this photo post"]') as HTMLButtonElement).click()
     await wrapper.vm.$nextTick()
+    expect(panel.querySelector('.photo-share-popover')).not.toBeNull()
+    ;(Array.from(panel.querySelectorAll('button')).find((button) => button.textContent === 'Share…') as HTMLButtonElement).click()
     expect(wrapper.emitted('copyLink')).toEqual([[]])
+    ;(Array.from(panel.querySelectorAll('button')).find((button) => button.textContent === 'Share as QR code') as HTMLButtonElement).click()
+    await wrapper.vm.$nextTick()
+    ;(panel.querySelector('.photo-qr-fullscreen-trigger') as HTMLButtonElement).click()
+    expect(wrapper.emitted('openQr')).toEqual([[]])
     expect(document.body.style.overflow).toBe('hidden')
 
     await wrapper.setProps({ open: false })
@@ -148,7 +160,7 @@ describe('PhotoCommentsPanel', () => {
     })
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
-    expect(document.activeElement?.getAttribute('aria-label')).toBe('Close comments')
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Close photo details')
 
     document.querySelector('#photo-comments-panel')?.dispatchEvent(new KeyboardEvent('keydown', {
       bubbles: true,
@@ -171,7 +183,7 @@ describe('PhotoCommentsPanel', () => {
     await wrapper.vm.$nextTick()
     await wrapper.vm.$nextTick()
 
-    ;(document.querySelector('[aria-label="Close comments"]') as HTMLButtonElement).click()
+    ;(document.querySelector('[aria-label="Close photo details"]') as HTMLButtonElement).click()
     expect(back).toHaveBeenCalledOnce()
     wrapper.unmount()
   })
@@ -193,6 +205,9 @@ describe('PhotoCommentsPanel', () => {
     expect(wrapper.find('.comments-post-text').attributes('style')).toBeUndefined()
     expect(wrapper.find('.photo-share-menu').exists()).toBe(true)
     expect(wrapper.find('.photo-share-native').exists()).toBe(false)
+    await wrapper.get('[aria-label="Share this photo post"]').trigger('click')
+    await wrapper.get('.photo-qr-toggle').trigger('click')
+    expect(wrapper.find('.photo-qr-panel').exists()).toBe(true)
     wrapper.unmount()
   })
 
@@ -267,7 +282,10 @@ describe('PhotoCommentsPanel', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('.comments-context').element.tagName).toBe('ARTICLE')
-    expect(wrapper.get('.comments-context > h2').text()).toBe('About this photo')
+    expect(wrapper.get('.comments-context > h2').text()).toBe('Description')
+    expect(wrapper.find('.comments-context .author-link').exists()).toBe(false)
+    expect(wrapper.find('.comments-context .avatar').exists()).toBe(false)
+    expect(wrapper.get('.comments-replies-heading').text()).toContain('Replies')
     expect(wrapper.get('.comments-post-text').text()).toContain('Long context')
     expect(wrapper.get('.comments-post-text').attributes('style')).toBeUndefined()
     wrapper.unmount()

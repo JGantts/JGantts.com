@@ -30,6 +30,7 @@ jobs:
       - name: Install and build website
         run: |
           npm ci
+          npm test
           npm run build
         working-directory: ./jgantts-com
 
@@ -48,6 +49,9 @@ jobs:
       - name: Smoke-test compiled server
         run: npm run smoke:local
         working-directory: ./jgantts-server
+
+      - name: Test incremental map orchestration
+        run: python3 -m unittest discover -s python -p 'test_*.py'
 
       - name: Test deployment tooling
         run: |

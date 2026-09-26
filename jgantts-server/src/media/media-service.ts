@@ -21,6 +21,9 @@ const MAX_IMAGE_PIXELS = 80_000_000;
 export const RESPONSIVE_IMAGE_WIDTHS = [320, 480, 768, 1_024, 1_600, 2_400] as const;
 const MINIMUM_AVIF_WIDTH = 768;
 const PLACEHOLDER_WIDTH = 32;
+// Increment this whenever the generated formats, dimensions, quality settings,
+// placeholder recipe, or other output-affecting behavior changes.
+export const PHOTO_PIPELINE_VERSION = 2;
 const renditionFormats: Record<RenditionFormat, { extension: string; mimeType: string }> = {
   avif: { extension: 'avif', mimeType: 'image/avif' },
   jpeg: { extension: 'jpg', mimeType: 'image/jpeg' },
@@ -86,6 +89,8 @@ export interface PublicMedia extends Omit<
   MediaRecord,
   'originalPath' | 'derivatives' | 'processingError' | 'renditionManifest'
 > {
+  pipelineVersion: number | null;
+  thumbhash: string | null;
   placeholder: (Omit<MediaRendition, 'format' | 'path' | 'purpose' | 'variant'> & {
     format: 'webp'; purpose: 'placeholder'; url: string; variant: string;
   }) | null;
@@ -123,6 +128,7 @@ export interface MediaProcessingHooks {
 
 export interface RegenerationResult {
   id: string;
+  pipelineVersion: number;
   renditionCount: number;
   status: 'failed' | 'planned' | 'regenerated';
   error?: string;
@@ -141,6 +147,13 @@ function publicMedia(media: MediaRecord, revision: number, versioned: boolean): 
     .filter((rendition) => rendition.purpose !== 'placeholder')
     .map((rendition) => ({ ...toPublicRendition(rendition), purpose: 'responsive' as const }));
   const storedPlaceholder = storedRenditions.find((rendition) => rendition.purpose === 'placeholder');
+  const manifestPipelineVersion = manifest.pipelineVersion;
+  const pipelineVersion = Number.isInteger(manifestPipelineVersion) && manifestPipelineVersion! > 0
+    ? manifestPipelineVersion!
+    : null;
+  const thumbhash = typeof manifest.thumbhash === 'string' && manifest.thumbhash.length <= 128
+    ? manifest.thumbhash
+    : null;
   const placeholder = storedPlaceholder
     ? { ...toPublicRendition(storedPlaceholder), format: 'webp' as const,
       purpose: 'placeholder' as const }
@@ -165,6 +178,8 @@ function publicMedia(media: MediaRecord, revision: number, versioned: boolean): 
     focalY: media.focalY,
     displayOrder: media.displayOrder,
     processingState: media.processingState,
+    pipelineVersion,
+    thumbhash,
     placeholder,
     createdAt: media.createdAt,
     updatedAt: media.updatedAt,
@@ -210,6 +225,17 @@ async function writePlaceholder(buffer: Buffer, outputPath: string): Promise<sha
     .toColourspace('srgb').blur(1).webp({ quality: 25, effort: 4 }).toFile(outputPath);
 }
 
+async function generateThumbhash(buffer: Buffer): Promise<string> {
+  const { data, info } = await sharp(buffer).autoOrient().resize({
+    width: 100,
+    height: 100,
+    fit: 'inside',
+    withoutEnlargement: true,
+  }).toColourspace('srgb').ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { rgbaToThumbHash } = await import('thumbhash');
+  return Buffer.from(rgbaToThumbHash(info.width, info.height, data)).toString('base64');
+}
+
 function responsiveWidths(sourceWidth: number): number[] {
   return Array.from(new Set([
     ...RESPONSIVE_IMAGE_WIDTHS.filter((width) => width <= sourceWidth),
@@ -229,6 +255,7 @@ async function stageRenditionSet(
   derivatives: Record<string, string>;
   renditions: MediaRendition[];
   stagedFiles: StagedMediaFile[];
+  thumbhash: string;
 }> {
   const renditions: MediaRendition[] = [];
   const derivatives: Record<string, string> = {};
@@ -238,6 +265,7 @@ async function stageRenditionSet(
     count + 2 + (width >= MINIMUM_AVIF_WIDTH ? 1 : 0), 0);
   let completed = 0;
   const reportCompleted = () => onProgress?.(++completed, total);
+  const thumbhash = await generateThumbhash(buffer);
   const addRendition = (rendition: MediaRendition, name: string, stagedPath: string) => {
     renditions.push(rendition);
     derivatives[rendition.variant] = rendition.path;
@@ -296,7 +324,7 @@ async function stageRenditionSet(
     Math.abs(rendition.width - target) < Math.abs(closest.width - target) ? rendition : closest).path;
   derivatives.thumbnail = closestPath(480);
   derivatives.large = closestPath(1_600);
-  return { derivatives, renditions, stagedFiles };
+  return { derivatives, renditions, stagedFiles, thumbhash };
 }
 
 async function verifyStagedFiles(
@@ -362,6 +390,7 @@ function cleanStaleStagingDirectories(mediaRoot: string): void {
 
 export class MediaService {
   private readonly directories;
+  private readonly regenerationTasks = new Map<string, Promise<PublicMedia | null>>();
 
   constructor(
     private readonly media: MediaRepository,
@@ -471,7 +500,12 @@ export class MediaService {
           .reduce((next, item) => Math.max(next, item.displayOrder + 1), 0),
         processingState: 'ready',
         processingError: null,
-        renditionManifest: { version: 1, renditions },
+        renditionManifest: {
+          version: 1,
+          pipelineVersion: PHOTO_PIPELINE_VERSION,
+          renditions,
+          thumbhash: stagedSet.thumbhash,
+        },
         createdAt,
         updatedAt: createdAt,
       });
@@ -549,6 +583,7 @@ export class MediaService {
         } catch (error) {
           results[index] = {
             id: record.id,
+            pipelineVersion: PHOTO_PIPELINE_VERSION,
             renditionCount: 0,
             status: 'failed',
             error: error instanceof Error ? error.message : 'Unknown regeneration failure.',
@@ -558,6 +593,30 @@ export class MediaService {
     };
     await Promise.all(Array.from({ length: Math.min(concurrency, records.length) }, worker));
     return results;
+  }
+
+  regenerate(id: string): Promise<PublicMedia | null> {
+    const active = this.regenerationTasks.get(id);
+    if (active) return active;
+    const task = this.regenerateOne(id).finally(() => {
+      if (this.regenerationTasks.get(id) === task) this.regenerationTasks.delete(id);
+    });
+    this.regenerationTasks.set(id, task);
+    return task;
+  }
+
+  private async regenerateOne(id: string): Promise<PublicMedia | null> {
+    const record = this.media.getById(id);
+    if (!record) return null;
+    await this.regenerateImage(record, false);
+    const regenerated = this.media.getById(id);
+    return regenerated
+      ? publicMedia(
+        regenerated,
+        this.posts.getCurrentRevision(regenerated.postId),
+        this.posts.getPublishedRevisionCount(regenerated.postId) > 1,
+      )
+      : null;
   }
 
   private async regenerateImage(record: MediaRecord, dryRun: boolean): Promise<RegenerationResult> {
@@ -579,7 +638,12 @@ export class MediaService {
       (count, width) => count + 2 + (width >= MINIMUM_AVIF_WIDTH ? 1 : 0),
       0,
     );
-    if (dryRun) return { id: record.id, renditionCount, status: 'planned' };
+    if (dryRun) return {
+      id: record.id,
+      pipelineVersion: PHOTO_PIPELINE_VERSION,
+      renditionCount,
+      status: 'planned',
+    };
 
     const generation = randomUUID().replaceAll('-', '').slice(0, 8);
     const suffix = `-v-${generation}`;
@@ -596,7 +660,12 @@ export class MediaService {
       const replacement = this.media.replaceRenditions(record.id, {
         derivatives: stagedSet.derivatives,
         height: renditionInput.metadata.autoOrient.height,
-        renditionManifest: { version: 1, renditions: stagedSet.renditions },
+        renditionManifest: {
+          version: 1,
+          pipelineVersion: PHOTO_PIPELINE_VERSION,
+          renditions: stagedSet.renditions,
+          thumbhash: stagedSet.thumbhash,
+        },
         width: renditionInput.metadata.autoOrient.width,
       }, new Date().toISOString());
       if (!replacement) throw new Error('Media record disappeared during regeneration.');
@@ -610,7 +679,12 @@ export class MediaService {
           try { fs.rmSync(oldPath, { force: true }); } catch { /* Leave orphan cleanup to the audit command. */ }
         }
       }
-      return { id: record.id, renditionCount: stagedSet.renditions.length, status: 'regenerated' };
+      return {
+        id: record.id,
+        pipelineVersion: PHOTO_PIPELINE_VERSION,
+        renditionCount: stagedSet.renditions.length,
+        status: 'regenerated',
+      };
     } catch (error) {
       if (!updated) for (const promotedPath of promotedPaths) fs.rmSync(promotedPath, { force: true });
       throw error;
@@ -760,8 +834,8 @@ function validateEditorialDate(value: unknown): number | null {
 
 function validateEditorialTime(value: unknown): string | null {
   if (value === null || value === '') return null;
-  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):(?:00|15|20|30|40|45)$/.test(value)) {
-    throw new PostInputError('time must use 24-hour HH:mm format at an allowed minute interval (:00, :15, :20, :30, :40, or :45), or be null.');
+  if (typeof value !== 'string' || !/^(?:[01]\d|2[0-3]):(?:00|10|15|20|30|40|45|50)$/.test(value)) {
+    throw new PostInputError('time must use 24-hour HH:mm format at an allowed minute interval (:00, :10, :15, :20, :30, :40, :45, or :50), or be null.');
   }
   return value;
 }

@@ -42,7 +42,8 @@ const sheetQueryText = '(max-width: 64rem), (max-height: 36rem)'
 const portraitSheetQueryText = '(max-width: 64rem) and (orientation: portrait)'
 const isSheet = ref(false)
 const isPortraitSheet = ref(false)
-const desktopShareOpen = ref(false)
+const shareMenuOpen = ref(false)
+const qrShareOpen = ref(false)
 const closeButtonRef = ref<HTMLButtonElement | null>(null)
 let sheetQuery: MediaQueryList | null = null
 let portraitSheetQuery: MediaQueryList | null = null
@@ -56,6 +57,8 @@ let suppressDockClickUntil = 0
 const modalOpen = computed(() => isSheet.value && props.open)
 const drawerOpen = computed(() => !isSheet.value || props.open)
 const replyLabel = computed(() => `${props.replyCount} ${props.replyCount === 1 ? 'reply' : 'replies'}`)
+const panelSummaryLabel = computed(() => `Photo details · ${replyLabel.value}`)
+const panelTitle = computed(() => postTitleSnippet(props.post.content))
 
 const formatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
@@ -65,6 +68,23 @@ const numberFormatter = new Intl.NumberFormat()
 
 function displayName(account: PhotoCommentsStatus['account']): string {
   return account.display_name.trim() || account.username
+}
+
+function postTitleSnippet(content: string): string {
+  if (typeof document === 'undefined') return 'Photo details'
+  const container = document.createElement('div')
+  container.innerHTML = content
+  const text = (container.querySelector('.local-post-title')?.textContent
+    || container.querySelector('p')?.textContent
+    || container.textContent
+    || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!text) return 'Photo details'
+  if (text.length <= 64) return text
+  const candidate = text.slice(0, 65)
+  const breakAt = candidate.lastIndexOf(' ')
+  return `${candidate.slice(0, breakAt >= 40 ? breakAt : 64).trimEnd()}…`
 }
 
 function formatDate(date: string): string {
@@ -122,15 +142,23 @@ async function shareFromSheet() {
   }
 }
 
-function toggleDesktopShareMenu() {
-  desktopShareOpen.value = !desktopShareOpen.value
+function toggleShareMenu() {
+  shareMenuOpen.value = !shareMenuOpen.value
+  if (!shareMenuOpen.value) qrShareOpen.value = false
 }
 
-function closeDesktopShareMenu(event: MouseEvent) {
+function toggleQrShare() {
+  qrShareOpen.value = !qrShareOpen.value
+}
+
+function resetShareMenu() {
+  shareMenuOpen.value = false
+  qrShareOpen.value = false
+}
+
+function closeShareMenu(event: MouseEvent) {
   const target = event.target
-  if (target instanceof Element && !target.closest('.photo-share-menu')) {
-    desktopShareOpen.value = false
-  }
+  if (target instanceof Element && !target.closest('.photo-share-menu')) resetShareMenu()
 }
 
 function requestClose() {
@@ -200,6 +228,7 @@ function endDockSwipe(event: PointerEvent, cancelled = false) {
 function handleDockClick(event: MouseEvent) {
   const target = event.target
   if (target instanceof Element && target.closest('.comments-dock-clear')) return
+  if (target instanceof Element && target.closest('.photo-share-menu')) return
   if (performance.now() < suppressDockClickUntil) {
     event.preventDefault()
     event.stopPropagation()
@@ -224,6 +253,10 @@ watch(modalOpen, (open) => {
   }
 }, { immediate: true })
 
+watch(() => props.open, (open) => {
+  if (!open) resetShareMenu()
+})
+
 onMounted(() => {
   sheetQuery = window.matchMedia(sheetQueryText)
   portraitSheetQuery = window.matchMedia(portraitSheetQueryText)
@@ -231,14 +264,14 @@ onMounted(() => {
   sheetQuery.addEventListener('change', syncSheetQuery)
   portraitSheetQuery.addEventListener('change', syncSheetQuery)
   window.addEventListener('popstate', handlePopState)
-  document.addEventListener('click', closeDesktopShareMenu)
+  document.addEventListener('click', closeShareMenu)
 })
 
 onBeforeUnmount(() => {
   sheetQuery?.removeEventListener('change', syncSheetQuery)
   portraitSheetQuery?.removeEventListener('change', syncSheetQuery)
   window.removeEventListener('popstate', handlePopState)
-  document.removeEventListener('click', closeDesktopShareMenu)
+  document.removeEventListener('click', closeShareMenu)
   discardHistoryEntry()
   emit('modalChange', false)
 })
@@ -254,31 +287,79 @@ onBeforeUnmount(() => {
     <div class="photo-comments">
       <div
         v-show="isSheet && !open"
-        class="comments-dock"
+        class="comments-dock comments-panel-header"
         @click="handleDockClick"
         @pointerdown="beginDockSwipe"
         @pointermove="moveDockSwipe"
         @pointerup="endDockSwipe"
         @pointercancel="endDockSwipe($event, true)"
       >
-          <span class="comments-dock-handle" aria-hidden="true"></span>
-          <DrawerTrigger as-child>
-            <button
-              type="button"
-              class="comments-dock-trigger"
-            >
-              <span>View comments</span>
-              <strong>{{ replyLabel }}</strong>
-            </button>
-          </DrawerTrigger>
+        <span class="comments-dock-handle" aria-hidden="true"></span>
+        <DrawerTrigger as-child>
           <button
             type="button"
-            class="comments-dock-clear"
-            aria-label="Close selected photo"
-            @click="emit('clearSelection')"
+            class="comments-dock-trigger"
           >
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
+            <span>{{ panelTitle }}</span>
+            <small>{{ panelSummaryLabel }}</small>
           </button>
+        </DrawerTrigger>
+        <div class="photo-share-menu">
+          <button
+            type="button"
+            class="photo-share-button"
+            aria-label="Share this photo post"
+            :aria-expanded="shareMenuOpen"
+            @click.stop="toggleShareMenu"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
+            Share
+          </button>
+          <div v-if="shareMenuOpen" class="photo-share-popover">
+            <p>Share this photo post</p>
+            <button type="button" @click="shareFromSheet">Share…</button>
+            <a :href="facebookShareUrl" target="_blank" rel="noopener noreferrer">Share on Facebook <span aria-hidden="true">↗</span></a>
+            <a :href="xShareUrl" target="_blank" rel="noopener noreferrer">Share on X <span aria-hidden="true">↗</span></a>
+            <a :href="linkedinShareUrl" target="_blank" rel="noopener noreferrer">Share on LinkedIn <span aria-hidden="true">↗</span></a>
+            <a :href="emailShareUrl">Share by email</a>
+            <button type="button" @click="emit('copyLink')">Copy link</button>
+            <p class="photo-share-status" role="status" aria-live="polite">{{ shareStatus }}</p>
+            <div class="photo-qr-share">
+              <button
+                type="button"
+                class="photo-qr-toggle"
+                :aria-expanded="qrShareOpen"
+                @click="toggleQrShare"
+              >Share as QR code</button>
+              <div v-if="qrShareOpen" class="photo-qr-panel">
+                <button
+                  v-if="qrCodeUrl"
+                  type="button"
+                  class="photo-qr-fullscreen-trigger"
+                  aria-label="Enlarge QR code to fill the window"
+                  @click="emit('openQr')"
+                >
+                  <img :src="qrCodeUrl" alt="QR code for this photo post">
+                  <span>
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" /></svg>
+                    Tap to enlarge
+                  </span>
+                </button>
+                <p v-else>QR code unavailable.</p>
+                <p>Scan to open this photo post</p>
+                <a v-if="qrCodeUrl" :href="qrCodeUrl" :download="qrDownloadName">Download QR code</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="comments-dock-clear"
+          aria-label="Close selected photo"
+          @click="emit('clearSelection')"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
       </div>
 
       <DrawerPortal disabled>
@@ -304,42 +385,38 @@ onBeforeUnmount(() => {
           <header class="comments-panel-header">
             <div>
               <DrawerTitle as-child>
-                <h1>Replies</h1>
+                <h1>{{ panelTitle }}</h1>
               </DrawerTitle>
-              <span>{{ replyLabel }}</span>
+              <span>{{ panelSummaryLabel }}</span>
             </div>
-        <button
-          v-if="isSheet"
-          type="button"
-          class="photo-share-button photo-share-native"
-          aria-label="Share this photo post"
-          @click="shareFromSheet"
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
-          Share
-        </button>
-        <div v-else class="photo-share-menu">
+        <div class="photo-share-menu">
           <button
             type="button"
             class="photo-share-button"
             aria-label="Share this photo post"
-            :aria-expanded="desktopShareOpen"
-            @click.stop="toggleDesktopShareMenu"
+            :aria-expanded="shareMenuOpen"
+            @click.stop="toggleShareMenu"
           >
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.4 3.4 0 0 0 0-2.6l6.7-3.9A3 3 0 1 0 15 5a3 3 0 0 0 .1.7L8.4 9.6a3 3 0 1 0 0 4.8l6.7 3.9A3 3 0 1 0 18 16Z"/></svg>
             Share
           </button>
-          <div v-if="desktopShareOpen" class="photo-share-popover">
+          <div v-if="shareMenuOpen" class="photo-share-popover">
             <p>Share this photo post</p>
+            <button v-if="isSheet" type="button" @click="shareFromSheet">Share…</button>
             <a :href="facebookShareUrl" target="_blank" rel="noopener noreferrer">Share on Facebook <span aria-hidden="true">↗</span></a>
             <a :href="xShareUrl" target="_blank" rel="noopener noreferrer">Share on X <span aria-hidden="true">↗</span></a>
             <a :href="linkedinShareUrl" target="_blank" rel="noopener noreferrer">Share on LinkedIn <span aria-hidden="true">↗</span></a>
             <a :href="emailShareUrl">Share by email</a>
             <button type="button" @click="emit('copyLink')">Copy link</button>
             <p class="photo-share-status" role="status" aria-live="polite">{{ shareStatus }}</p>
-            <details class="photo-qr-share">
-              <summary>Share as QR code</summary>
-              <div class="photo-qr-panel">
+            <div class="photo-qr-share">
+              <button
+                type="button"
+                class="photo-qr-toggle"
+                :aria-expanded="qrShareOpen"
+                @click="toggleQrShare"
+              >Share as QR code</button>
+              <div v-if="qrShareOpen" class="photo-qr-panel">
                 <button
                   v-if="qrCodeUrl"
                   type="button"
@@ -357,14 +434,14 @@ onBeforeUnmount(() => {
                 <p>Scan to open this photo post</p>
                 <a v-if="qrCodeUrl" :href="qrCodeUrl" :download="qrDownloadName">Download QR code</a>
               </div>
-            </details>
+            </div>
           </div>
         </div>
         <button
           ref="closeButtonRef"
           type="button"
           class="comments-close"
-          :aria-label="isSheet ? 'Close comments' : 'Close selected photo'"
+          :aria-label="isSheet ? 'Close photo details' : 'Close selected photo'"
           @click="isSheet ? requestClose() : emit('clearSelection')"
         >
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
@@ -376,23 +453,19 @@ onBeforeUnmount(() => {
           class="comments-context"
           aria-labelledby="photo-comments-context-title"
         >
-          <h2 id="photo-comments-context-title">About this photo</h2>
+          <h2 id="photo-comments-context-title">Description</h2>
           <div class="comments-context-content">
-            <header class="post-meta-header">
-              <a :href="post.account.url" class="author-link">
-                <img :src="post.account.avatar" alt="" class="avatar avatar-large" decoding="async" />
-                <span class="author-text">
-                  <strong>{{ displayName(post.account) }}</strong>
-                  <span>@{{ post.account.acct }}</span>
-                </span>
-              </a>
-            </header>
             <div class="comments-post-text" v-html="post.content"></div>
             <time v-if="!post.id.startsWith('local:')" class="comments-post-date" :datetime="post.created_at">
               {{ formatDate(post.created_at) }}
             </time>
           </div>
         </article>
+
+        <header class="comments-replies-heading">
+          <h2>Replies</h2>
+          <span>{{ replyLabel }}</span>
+        </header>
 
         <p v-if="discussionState === 'loading'" class="comments-notice" role="status">
           Loading replies…
@@ -444,7 +517,7 @@ onBeforeUnmount(() => {
         <p v-else-if="discussionState === 'not_syndicated'" class="empty-state">
           No Mastodon discussion is connected yet.
         </p>
-        <p v-else-if="discussionState === 'available'" class="empty-state">No comments yet.</p>
+        <p v-else-if="discussionState === 'available'" class="empty-state">No replies yet.</p>
 
         <a v-if="remoteUrl" class="mastodon-reply-link" :href="remoteUrl" target="_blank" rel="noopener noreferrer">
           Reply on Mastodon <span aria-hidden="true">↗</span>
@@ -504,11 +577,15 @@ onBeforeUnmount(() => {
 .comments-panel-header > div:first-child {
   display: grid;
   gap: 0.1rem;
+  min-width: 0;
 }
 
 .comments-panel-header h1 {
   font-size: 1.05rem;
   font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .comments-panel-header > div:first-child > span {
@@ -548,13 +625,33 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
-.comments-context-content {
-  display: grid;
+.comments-replies-heading {
+  align-items: baseline;
+  display: flex;
   gap: 0.5rem;
-  padding-top: 0.3rem;
+  min-height: 44px;
 }
 
-.post-meta-header,
+.comments-replies-heading h2 {
+  color: var(--photos-accent);
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.comments-replies-heading span {
+  color: var(--photos-muted);
+  font-family: 'Azeret Mono Variable', monospace;
+  font-size: 0.68rem;
+}
+
+.comments-context-content {
+  display: grid;
+  gap: 0.2rem;
+  padding-top: 0;
+}
+
 .status-header {
   align-items: center;
   display: flex;
@@ -584,11 +681,6 @@ onBeforeUnmount(() => {
   height: 2rem;
   object-fit: cover;
   width: 2rem;
-}
-
-.avatar-large {
-  height: 2.5rem;
-  width: 2.5rem;
 }
 
 .author-text {
@@ -633,7 +725,8 @@ onBeforeUnmount(() => {
 
 .comments-post-text :deep(.local-post-overlay) {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.1rem;
+  padding-bottom: 0.5rem;
 }
 
 .comments-post-text :deep(.local-post-overlay p) {
@@ -644,6 +737,7 @@ onBeforeUnmount(() => {
 .comments-post-text :deep(.local-post-title) {
   font-size: 1.05rem;
   font-style: italic;
+  line-height: 1.3;
 }
 
 .comments-post-text :deep(.local-post-location),
@@ -651,6 +745,7 @@ onBeforeUnmount(() => {
   color: var(--photos-muted);
   font-family: 'Azeret Mono Variable', monospace;
   font-size: 0.75rem;
+  line-height: 1.35;
 }
 
 .comments-post-text :deep(a) {
@@ -823,11 +918,6 @@ button.photo-share-button {
   font-family: inherit;
 }
 
-.photo-share-button::-webkit-details-marker,
-.photo-qr-share > summary::-webkit-details-marker {
-  display: none;
-}
-
 .photo-share-button svg {
   fill: currentColor;
   height: 0.9rem;
@@ -844,7 +934,7 @@ button.photo-share-button {
 .photo-share-button:focus-visible,
 .photo-share-popover a:focus-visible,
 .photo-share-popover button:focus-visible,
-.photo-qr-share > summary:focus-visible {
+.photo-qr-toggle:focus-visible {
   outline: 2px solid var(--photos-accent);
   outline-offset: 2px;
 }
@@ -875,7 +965,7 @@ button.photo-share-button {
 
 .photo-share-popover > a,
 .photo-share-popover > button,
-.photo-qr-share > summary {
+.photo-qr-toggle {
   align-items: center;
   background: transparent;
   border: 0;
@@ -894,7 +984,7 @@ button.photo-share-button {
 
 .photo-share-popover > a:hover,
 .photo-share-popover > button:hover,
-.photo-qr-share > summary:hover {
+.photo-qr-toggle:hover {
   background: var(--photos-accent-soft);
 }
 
@@ -909,10 +999,6 @@ button.photo-share-button {
   border-top: 1px solid var(--photos-border);
   margin-top: 0.2rem;
   padding-top: 0.2rem;
-}
-
-.photo-qr-share > summary {
-  list-style: none;
 }
 
 .photo-qr-panel {
@@ -992,17 +1078,17 @@ button.photo-share-button {
   }
 
   .comments-dock {
-    align-items: stretch;
+    align-items: center;
     background: color-mix(in srgb, var(--photos-panel) 96%, transparent);
     border: 1px solid var(--photos-border);
     border-bottom: 0;
     border-radius: 1rem 1rem 0 0;
     box-shadow: var(--photos-card-shadow);
     display: grid;
-    gap: 0.5rem;
-    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: 0.65rem;
+    grid-template-columns: minmax(0, 1fr) auto 44px;
     margin-inline: max(0.35rem, env(safe-area-inset-left, 0px)) max(0.35rem, env(safe-area-inset-right, 0px));
-    padding: 0.55rem 0.65rem max(0.55rem, env(safe-area-inset-bottom, 0px));
+    padding: 1.05rem max(0.75rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px)) max(0.75rem, env(safe-area-inset-left, 0px));
     pointer-events: auto;
     position: relative;
     touch-action: pan-x;
@@ -1058,21 +1144,26 @@ button.photo-share-button {
     border: 0;
     color: var(--photos-text);
     cursor: pointer;
-    display: flex;
+    display: grid;
     font: inherit;
-    justify-content: space-between;
+    gap: 0.1rem;
+    justify-content: flex-start;
     min-height: 44px;
-    padding: 0 0.45rem;
+    min-width: 0;
+    padding: 0;
     text-align: left;
   }
 
   .comments-dock-trigger > span {
-    font-size: 0.9rem;
+    font-size: 1.05rem;
     font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .comments-dock-trigger > strong {
-    color: var(--photos-accent);
+  .comments-dock-trigger > small {
+    color: var(--photos-muted);
     font-family: 'Azeret Mono Variable', monospace;
     font-size: 0.68rem;
   }
@@ -1146,9 +1237,8 @@ button.photo-share-button {
   }
 
   .comments-panel-header > div:first-child {
-    align-items: baseline;
-    display: flex;
-    gap: 0.5rem;
+    display: grid;
+    gap: 0.1rem;
   }
 
   .photo-share-button {

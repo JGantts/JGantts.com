@@ -1,6 +1,11 @@
 # Facebook Page Syndication Roadmap
 
-Last updated: 2026-09-07
+Last updated: 2026-09-26
+
+**Retired:** Facebook syndication was removed at the author's request. There is
+no active implementation or rollout task. Legacy database records remain inert;
+see [current operations](CONTENT-OPERATIONS.md#retired-facebook-syndication).
+The original plan and checklist below are historical, not instructions to resume it.
 
 ## Objective
 
@@ -32,7 +37,7 @@ Authoring -> JGantts database -> canonical photo/post page
   and Page-token lifecycle before starting Phase 1. Those are external policy,
   not stable application assumptions.
 
-## Current state
+## Historical state before retirement
 
 - Status: In progress — foundation and server-side Facebook queue are implemented; production rollout remains disabled pending Meta verification.
 - Active item: 2.6 — add Facebook client and transition tests.

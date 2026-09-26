@@ -74,3 +74,22 @@ test('reports missing writable media storage as an unhealthy core dependency', (
   assert.equal(report.checks.media.status, 'unhealthy');
   assert.deepEqual(report.checks.mastodon, { configured: false, status: 'disabled' });
 });
+
+test('retired Facebook jobs do not degrade active integration health', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jgantts-health-retired-'));
+  const database = openContentDatabase(':memory:');
+  t.after(() => { database.close(); fs.rmSync(root, { recursive: true, force: true }); });
+  const mediaRoot = path.join(root, 'media');
+  ensureMediaDirectories(mediaRoot);
+  for (const state of ['pending', 'processing', 'failed']) {
+    database.prepare(`INSERT INTO outbox_jobs
+      (kind, aggregate_id, payload_json, state, available_at, locked_at, created_at, updated_at)
+      VALUES ('facebook.publish_link', ?, '{}', ?, '2000-01-01', '2000-01-01', '2000-01-01', '2000-01-01')`).run(`legacy-${state}`, state);
+  }
+  const report = new HealthService(database, mediaRoot, true).inspect();
+  assert.equal(report.status, 'ok');
+  assert.equal(report.checks.outbox.pending, 0);
+  assert.equal(report.checks.outbox.failed, 0);
+  assert.equal(report.checks.outbox.processing, 0);
+  assert.equal('facebook' in report.checks, false);
+});

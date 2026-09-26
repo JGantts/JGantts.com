@@ -2,7 +2,23 @@
 
 Reviewed commit `b451ad7`. Documentation corrections accompany this report; application code is unchanged. P1 means fix promptly; P2 means a normal-priority defect. These are source-level findings reproduced locally, not observations of production incidents.
 
-## Findings
+## Resolution
+
+The follow-up removes Facebook syndication (findings 1, 3, 4). Legacy jobs are inert;
+Mastodon is the sole active destination. Findings 2, 5, 6, 7, 8, and 9 are fixed:
+text-only articles render, unchanged map builds retain staging, slug reuse is safe,
+sharing preserves tokens, browser metadata follows posts, and the gallery offers
+cursor-based load-more. Regression tests cover these behaviors. The findings below
+are the historical observations at the reviewed commit, not current limitations.
+
+Follow-up validation: 79 server tests, 42 frontend tests, 10 browser tests
+(across the full existing suite and the expanded photo suite), and 2 Python
+orchestration tests passed. Frontend production build and compiled-server smoke
+passed. Architecture links and required leaf fields passed validation. Python
+regressions mock external raster tools; no full GDAL build or remote publication
+was attempted.
+
+## Original findings
 
 1. **P1 — Crash recovery can duplicate Facebook posts.** [claimNext](../../jgantts-server/src/syndication/syndication-repository.ts#L213) reclaims every stale processing job, including `facebook.publish_link`. If Facebook accepted the post before the process died without recording completion, the next worker publishes it again. The Facebook client has no idempotency key. Reproduction: queue/claim a Facebook job, then claim six minutes later; the same publication is returned for execution. Route abandoned Facebook requests into uncertainty/reconciliation instead of automatic replay.
 

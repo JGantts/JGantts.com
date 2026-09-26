@@ -8,7 +8,7 @@
 
 **Consumers:** browsers before Vue mounts, crawlers, feed readers, and syndicated links.
 
-**Invariants:** `/photos/:slug` is canonical; `/posts/:slug` redirects. Draft/missing posts return 404, archived posts 410. Old slugs and outdated revisions redirect to current content; revision queries do not serve historical snapshots. Multiple published revisions enable revisioned canonical URLs. Share URLs add a preview fingerprint; stale preview/build queries redirect. Current client navigation overwrites post metadata with route defaults; see [review](../../reviews/2026-09-26-architecture-review.md). HTML is revalidated; immutable assets have longer caching.
+**Invariants:** `/photos/:slug` is canonical; `/posts/:slug` redirects. Draft/missing posts return 404, archived posts 410. Old slugs and outdated revisions redirect to current content; revision queries do not serve historical snapshots. Multiple published revisions enable revisioned canonical URLs. Share URLs add a preview fingerprint; stale preview/build queries redirect. API responses expose the same resolved preview model for [client metadata](../website/post-metadata.md). HTML is revalidated; immutable assets have longer caching.
 
 **Source:** [site modules](../../../jgantts-server/src/site), [HTTP ordering](../../../jgantts-server/src/app.ts), [client metadata](../../../jgantts-com/src/router/index.ts), [post URL helpers](../../../jgantts-com/src/posts/post-url.ts).
 

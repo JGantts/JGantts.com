@@ -8,7 +8,7 @@
 
 **Consumers:** [browser map](browser.md) and the workflow's separate `deploy-maps` job.
 
-**Invariants:** production output goes to `maps-rendered`; dev output goes to `jgantts-com/PUBLIC/assets/maps`. Hashes include raster/layer parameters, but [no-change builds currently fail](../../reviews/2026-09-26-architecture-review.md). Parent-region paths, bounds, zooms, and dark variants must agree with browser code. Generated outputs are not authoritative source rasters. The main script copies region JSON alongside compiled assets.
+**Invariants:** production output goes to `maps-rendered`; dev output goes to `jgantts-com/PUBLIC/assets/maps`. Hashes include raster/layer parameters. Staging survives through asset copying, including unchanged builds, and is cleaned on success or failure. Parent-region paths, bounds, zooms, and dark variants must agree with browser code. Generated outputs are not authoritative source rasters. The main script copies region JSON alongside compiled assets.
 
 **Source:** [build driver](../../../python/make_all_tiles.py), [tiler](../../../python/tile_pm.py), [paths](../../../python/path_constants.py), [supporting tools](../../../python), [source assets](../../../maps-sources), [deployment workflow](../../../.github/workflows/deploy.yml).
 

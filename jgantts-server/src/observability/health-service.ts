@@ -6,7 +6,6 @@ export interface HealthReport {
   checks: {
     database: { status: 'ok' | 'unhealthy' };
     mastodon: { configured: boolean; status: 'ok' | 'disabled' | 'degraded' };
-    facebook: { configured: boolean; status: 'ok' | 'disabled' | 'degraded' };
     media: { status: 'ok' | 'unhealthy' };
     outbox: {
       failed: number;
@@ -36,7 +35,6 @@ export class HealthService {
     private readonly database: ContentDatabase,
     private readonly mediaRoot: string,
     private readonly mastodonConfigured: boolean,
-    private readonly facebookConfigured = false,
   ) {}
 
   inspect(now = new Date()): HealthReport {
@@ -76,7 +74,7 @@ export class HealthService {
           COALESCE(SUM(CASE WHEN state = 'failed' THEN 1 ELSE 0 END), 0) AS failed,
           MIN(CASE WHEN state = 'pending' THEN created_at END) AS oldest_pending_at,
           COALESCE(SUM(CASE WHEN state = 'processing' AND locked_at <= ? THEN 1 ELSE 0 END), 0) AS stale_processing
-        FROM outbox_jobs
+        FROM outbox_jobs WHERE kind IN ('mastodon.publish_status', 'mastodon.edit_status')
       `).get(staleBefore) as OutboxCounts;
       const backlogOld = counts.oldest_pending_at !== null
         && Date.parse(counts.oldest_pending_at) <= now.getTime() - BACKLOG_DEGRADED_AFTER_MS;
@@ -96,16 +94,14 @@ export class HealthService {
     const mastodonStatus = !this.mastodonConfigured
       ? 'disabled'
       : outbox.status === 'degraded' ? 'degraded' : 'ok';
-    const facebookStatus = !this.facebookConfigured ? 'disabled' : outbox.status === 'degraded' ? 'degraded' : 'ok';
     return {
       checks: {
         database: { status: databaseStatus },
         mastodon: { configured: this.mastodonConfigured, status: mastodonStatus },
-        facebook: { configured: this.facebookConfigured, status: facebookStatus },
         media: { status: mediaStatus },
         outbox,
       },
-      status: coreUnhealthy ? 'unhealthy' : mastodonStatus === 'degraded' || facebookStatus === 'degraded' ? 'degraded' : 'ok',
+      status: coreUnhealthy ? 'unhealthy' : mastodonStatus === 'degraded' ? 'degraded' : 'ok',
       timestamp: now.toISOString(),
     };
   }

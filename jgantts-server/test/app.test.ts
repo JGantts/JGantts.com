@@ -13,7 +13,6 @@ import { CommentCacheRepository } from '../src/comments/comment-cache-repository
 import { MastodonCommentsService } from '../src/comments/mastodon-comments-service';
 import {
   getRuntimeConfig,
-  normalizeFacebookGraphApiVersion,
   normalizeMastodonOrigin,
   normalizeSiteOrigin,
   parsePort,
@@ -114,13 +113,9 @@ test('requires a clean HTTPS Mastodon origin', () => {
   assert.throws(() => normalizeMastodonOrigin('https://mastodon.social/path'), /only an origin/);
 });
 
-test('validates Facebook Graph configuration as an all-or-none pinned destination', () => {
-  assert.equal(normalizeFacebookGraphApiVersion(' v25.0 '), 'v25.0');
-  assert.throws(() => normalizeFacebookGraphApiVersion('25.0'), /FACEBOOK_GRAPH_API_VERSION/);
-  assert.throws(() => getRuntimeConfig({ FACEBOOK_PAGE_ID: 'page', FACEBOOK_PAGE_ACCESS_TOKEN: 'token' }), /configured together/);
-  const config = getRuntimeConfig({ FACEBOOK_PAGE_ID: 'page', FACEBOOK_PAGE_ACCESS_TOKEN: 'token', FACEBOOK_GRAPH_API_VERSION: 'v25.0' });
-  assert.equal(config.facebookPageId, 'page');
-  assert.equal(config.facebookGraphApiVersion, 'v25.0');
+test('ignores retired Facebook settings, including partial legacy configuration', () => {
+  const config = getRuntimeConfig({ FACEBOOK_PAGE_ID: 'old-page', FACEBOOK_GRAPH_API_VERSION: 'invalid' });
+  assert.equal(Object.keys(config).some((key) => key.startsWith('facebook')), false);
 });
 
 test('validates PORT', () => {
@@ -742,7 +737,15 @@ test('uses a content-derived preview URL while keeping the canonical URL stable'
   assert.match(canonical.body, /rel="canonical" href="https:\/\/jgantts\.com\/photos\/build-post"/);
 
   const apiPost = await request(app, '/api/posts/build-post');
-  const preview = JSON.parse(apiPost.body).preview as string;
+  const apiData = JSON.parse(apiPost.body);
+  const preview = apiData.preview as string;
+  assert.equal(apiData.previewMeta.token, preview);
+  assert.equal(apiData.previewMeta.description, 'Fresh preview');
+  const listData = JSON.parse((await request(app, '/api/posts')).body);
+  assert.deepEqual(listData.items[0].previewMeta, apiData.previewMeta);
+  assert.match(canonical.body, /name="twitter:card" content="summary"/);
+  assert.ok(canonical.body.includes('"previewMeta":'));
+
   assert.match(preview, /^[0-9a-f]{16}$/);
 
   const current = await request(app, `/photos/build-post?preview=${preview}`);
@@ -1224,4 +1227,19 @@ test('gallery maintenance enforces auth and validation and serializes competing 
   const cookie = session.headers['set-cookie']![0].split(';')[0];
   assert.equal((await request(app, heroUrl, { method: 'PUT', body: JSON.stringify({ mediaId: ids[1] }),
     headers: { cookie, 'content-type': 'application/json' } })).status, 200);
+});
+
+test('retired Facebook administrative routes return JSON 404s', async (t) => {
+  const database = openContentDatabase(':memory:');
+  t.after(() => database.close());
+  const posts = new PostService(new PostRepository(database));
+  const post = posts.createDraft({ bodyMarkdown: 'A post' });
+  const app = createApp({ adminToken: 'secret', appHtmlTemplate: TEMPLATE, services: { posts } });
+  for (const [method, suffix] of [['GET', ''], ['POST', ''], ['POST', '/retry'], ['POST', '/reconcile'], ['POST', '/resolve']]) {
+    const response = await request(app, `/api/admin/posts/${post.id}/syndications/facebook${suffix}`, {
+      method, headers: { authorization: 'Bearer secret' },
+    });
+    assert.equal(response.status, 404);
+    assert.equal(JSON.parse(response.body).error.code, 'not_found');
+  }
 });

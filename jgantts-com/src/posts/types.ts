@@ -49,6 +49,13 @@ export type PostMedia = {
   width: number | null
 }
 
+export type PostPreviewMeta = {
+  title: string
+  description: string
+  cardType: 'summary' | 'summary_large_image'
+  image: { alt: string; height: number | null; mimeType: string; url: string; width: number | null } | null
+}
+
 export type CanonicalPost = {
   canonicalUrl: string
   title: string | null
@@ -62,6 +69,7 @@ export type CanonicalPost = {
   media: PostMedia[]
   publishedAt: string
   preview: string
+  previewMeta?: PostPreviewMeta
   shareUrl: string
   slug: string
   updatedAt: string

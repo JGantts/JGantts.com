@@ -8,7 +8,7 @@
 
 **Consumers:** every browser feature. `BuildInfo.vue` reads `/api/build` for release identity.
 
-**Invariants:** client navigation updates document metadata; initial crawler metadata comes from the server. `/posts/:slug` redirects to `/photos/:slug`. Route records, rather than leftover view files, determine active pages: `PostView.vue` and `PhotosLayout.vue` are not wired into the current router.
+**Invariants:** client navigation updates document metadata; initial crawler metadata comes from the server. `/posts/:slug` redirects to `/photos/:slug`. The gallery embeds `PostView.vue` for text-only posts; `PhotosLayout.vue` is unused. Article routes defer [metadata](post-metadata.md) to the post view; other routes clear article metadata.
 
 **Source:** [router](../../../jgantts-com/src/router/index.ts), [bootstrap](../../../jgantts-com/src/main.ts), [App](../../../jgantts-com/src/App.vue), [layouts](../../../jgantts-com/src/layouts), [standalone views](../../../jgantts-com/src/views), [styles](../../../jgantts-com/src/assets/main.css).
 

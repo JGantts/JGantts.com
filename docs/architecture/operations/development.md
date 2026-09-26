@@ -10,7 +10,7 @@
 
 **Invariants:** Vite uses port 42301 and proxies `/api`, `/media`, feeds, and sitemap; server defaults to 3000. Production Vite builds exclude `PUBLIC`, which is served/packaged separately. Live-backend mode sends requests to production.
 
-**Checks:** frontend `npm test`, `npm run build`, and `npm run test:e2e`; server `npm run check`, `npm run build`, and `npm run smoke:local`. CI also tests packaging/deployment tooling, but currently does not invoke frontend unit or Playwright suites.
+**Checks:** frontend `npm test`, `npm run build`, and `npm run test:e2e`; server `npm run check`, `npm run build`, and `npm run smoke:local`. CI runs frontend unit tests, Python orchestration tests (`python3 -m unittest discover -s python -p 'test_*.py'`), and deployment tooling; Playwright runs separately.
 
 **Source:** [root scripts](../../../package.json), [frontend scripts](../../../jgantts-com/package.json), [Vite](../../../jgantts-com/vite.config.ts), [server scripts](../../../jgantts-server/package.json), [CI](../../../.github/workflows/ci.yml), [Playwright config](../../../jgantts-com/playwright.config.ts).
 

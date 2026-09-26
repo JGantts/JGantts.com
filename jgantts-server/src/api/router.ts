@@ -6,8 +6,6 @@ import { ADMIN_SESSION_COOKIE, adminTokenMatches, createAdminAuth } from '../mid
 import type { HealthService } from '../observability/health-service';
 import type { PostService } from '../posts/post-service';
 import type { MastodonSyndicationService } from '../syndication/mastodon-syndication-service';
-import type { FacebookSyndicationService } from '../syndication/facebook-syndication-service';
-import type { FacebookClientLike } from '../syndication/facebook-client';
 import { createAdminMediaRouter } from './admin-media';
 import { createAdminPostsRouter } from './admin-posts';
 import { resolvePostPreview } from '../site/post-preview';
@@ -21,8 +19,6 @@ export interface ApiServices {
   mastodonComments?: MastodonCommentsService;
   media?: MediaService;
   mastodonSyndication?: MastodonSyndicationService;
-  facebookSyndication?: FacebookSyndicationService;
-  facebookClient?: FacebookClientLike;
   posts?: PostService;
   socialPreviews?: SocialPreviewService;
 }
@@ -92,7 +88,7 @@ export function createApiRouter(
     router.use(
       '/admin/posts',
       createAdminAuth(options.adminToken ?? ''),
-      createAdminPostsRouter(services.posts, services.media, services.mastodonSyndication, services.facebookSyndication, services.facebookClient, services.socialPreviews),
+      createAdminPostsRouter(services.posts, services.media, services.mastodonSyndication, services.socialPreviews),
     );
 
     router.get('/posts', (req, res, next) => {
@@ -111,13 +107,15 @@ export function createApiRouter(
           ...page,
           items: page.items.map((post) => {
             const media = services.media?.listForPost(post.id) ?? [];
-            const preview = resolvePostPreview(post, media, services.socialPreviews?.status(post.id).image).token;
+            const previewMeta = resolvePostPreview(post, media, services.socialPreviews?.status(post.id).image);
+            const preview = previewMeta.token;
             const revision = services.posts?.currentRevision(post.id) ?? 1;
             const versioned = services.posts?.hasMultiplePublishedRevisions(post.id) ?? false;
             return {
               ...post,
               canonicalUrl: revisionedPostPath(post.slug, revision, versioned),
               preview,
+              previewMeta,
               shareUrl: revisionedPostPath(post.slug, revision, versioned, preview),
               ...(versioned ? { revision } : {}),
               media,
@@ -160,7 +158,8 @@ export function createApiRouter(
         return;
       }
       const media = services.media?.listForPost(post.id) ?? [];
-      const preview = resolvePostPreview(post, media, services.socialPreviews?.status(post.id).image).token;
+      const previewMeta = resolvePostPreview(post, media, services.socialPreviews?.status(post.id).image);
+      const preview = previewMeta.token;
       const revision = postService.currentRevision(post.id);
       const versioned = postService.hasMultiplePublishedRevisions(post.id);
       res.set({
@@ -170,6 +169,7 @@ export function createApiRouter(
         ...post,
         canonicalUrl: revisionedPostPath(post.slug, revision, versioned),
         preview,
+        previewMeta,
         shareUrl: revisionedPostPath(post.slug, revision, versioned, preview),
         ...(versioned ? { revision } : {}),
         media,

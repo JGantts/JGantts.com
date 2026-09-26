@@ -109,7 +109,8 @@ export function createApp(options: AppOptions = {}): express.Express {
       const versioned = options.services?.posts?.hasMultiplePublishedRevisions(post.id) ?? false;
       const media = options.services?.media?.listForPost(post.id) ?? [];
       const socialPreview = options.services?.socialPreviews?.status(post.id).image;
-      const preview = resolvePostPreview(post, media, socialPreview).token;
+      const previewMeta = resolvePostPreview(post, media, socialPreview);
+      const preview = previewMeta.token;
       const shareRequest = req.query.preview !== undefined || req.query.build !== undefined;
       if (post.slug !== req.params.slug) {
         res.redirect(308, revisionedPostPath(post.slug, currentRevision, versioned, shareRequest ? preview : undefined));
@@ -129,6 +130,7 @@ export function createApp(options: AppOptions = {}): express.Express {
         ...post,
         canonicalUrl: revisionedPostPath(post.slug, currentRevision, versioned),
         preview,
+        previewMeta,
         revision: versioned ? currentRevision : undefined,
         shareUrl: revisionedPostPath(post.slug, currentRevision, versioned, preview),
         media,

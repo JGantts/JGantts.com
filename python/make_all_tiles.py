@@ -68,22 +68,6 @@ def make_out_file_path(args):
         return OUTPUT_DIR(args.dev)
     return out_file_path
 
-def make_temp_out_dir():
-    with tempfile.TemporaryDirectory() as temp_dir:
-
-        def temp_out_file_path(path):
-            p = Path(path)
-
-            if p.is_absolute():
-                return p
-
-            return Path(temp_dir) / p
-
-        def get_temp_dir():
-            return temp_dir
-
-        return (temp_out_file_path, get_temp_dir)
-
 # ---------------------------------------------------
 # hashing
 # ---------------------------------------------------
@@ -269,6 +253,10 @@ def main():
     need("gdalwarp")
     need("gdal_translate")
 
+    with tempfile.TemporaryDirectory() as temp_dir:
+        build_all_tiles(args, Path(temp_dir))
+
+def build_all_tiles(args, temp_dir):
     out_file_path = make_out_file_path(args)
 
     final_output_dir = out_file_path()
@@ -294,7 +282,8 @@ def main():
         else:
             print(f"[SKIP ] {key}")
 
-    (temp_out_file_path, get_temp_dir) = make_temp_out_dir()
+    def temp_out_file_path(relative_path):
+        return temp_dir / relative_path
 
     regions_json_in = Path(REGIONS_JSON_IN).resolve()
     regions_json_out = Path(REGIONS_JSON_OUT(args.dev)).resolve()
@@ -586,7 +575,6 @@ def main():
 
     print("\n=== COPYING COMPILED IMAGES ===")
 
-    temp_dir = get_temp_dir()
     output_dir = out_file_path()
 
     os.makedirs(output_dir, exist_ok=True)

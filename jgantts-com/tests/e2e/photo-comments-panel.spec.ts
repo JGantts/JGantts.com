@@ -239,3 +239,32 @@ test('portrait gestures open from the dock, scroll in content, and close from th
   await page.locator('.comments-backdrop').click({ position: { x: 12, y: 12 } })
   await expect(sheet).toBeHidden()
 })
+
+test('text-only canonical posts remain visible after Vue mounts', async ({ page }) => {
+  const article = { ...posts[0], id: 'article', slug: 'article', media: [], title: 'Text-only article',
+    bodyHtml: '<p>This article stays visible.</p>', canonicalUrl: '/photos/article?rev=4',
+    shareUrl: '/photos/article?rev=4&preview=article-preview' }
+  await page.route('**/api/posts?*', (route) => route.fulfill({json:{items:[article],nextCursor:null}}))
+  await page.goto('/photos/article?rev=4&preview=article-preview')
+  await expect(page.getByRole('heading', {name:'Text-only article'})).toBeVisible()
+  await expect(page.getByText('This article stays visible.')).toBeVisible()
+  await expect(page).toHaveTitle('Text-only article | JGantts')
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/photos\/article\?rev=4$/)
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', /rev=4&preview=article-preview$/)
+})
+
+test('older photos load after text-only pages and selection maintains article metadata', async ({ page }) => {
+  const photo = {...posts[0], canonicalUrl:'/photos/photo-1?rev=4',shareUrl:'/photos/photo-1?rev=4&preview=new-preview'}
+  await page.route('**/api/posts?*', (route) => route.fulfill({json:new URL(route.request().url()).searchParams.has('cursor')
+    ? {items:[photo],nextCursor:null}
+    : {items:Array.from({length:50},(_,index)=>({...posts[0],id:`text-${index}`,slug:`text-${index}`,media:[]})),nextCursor:'older'}}))
+  await page.goto('/photos')
+  await page.getByRole('button', {name:'Load more photos'}).click()
+  await page.getByRole('button', {name:/Select post from/}).click()
+  await expect(page).toHaveURL(/\/photos\/photo-1\?rev=4$/)
+  await expect(page).toHaveTitle('Photo 1 | JGantts')
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', /rev=4&preview=new-preview$/)
+  await page.goBack()
+  await expect(page).toHaveTitle('JGantts Photos')
+  await expect(page.locator('#__POST_JSON_LD__')).toHaveCount(0)
+})

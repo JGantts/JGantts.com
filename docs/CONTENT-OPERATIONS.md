@@ -54,57 +54,13 @@ Mastodon syndication remain separate confirmed actions. The route is omitted
 from public navigation and emits `noindex, nofollow`; API authentication remains
 the security boundary.
 
-## Facebook Page syndication
+## Retired Facebook syndication
 
-Facebook is optional and disabled unless all three server-only settings are
-present in `/etc/jgantts-com/jgantts-com.env`:
-
-```text
-FACEBOOK_PAGE_ID=replace-with-page-id
-FACEBOOK_PAGE_ACCESS_TOKEN=replace-with-page-token
-FACEBOOK_GRAPH_API_VERSION=v25.0
-```
-
-The token is never returned to the browser or written to logs. Rotate it by
-issuing a replacement Page token, updating the protected environment file, and
-restarting the service; revoke the old token in Meta after the restart is
-healthy. Do not call a token permanent.
-
-Facebook publication is currently API-only; the editor has no Facebook controls.
-The queue reuses one publication record per post/destination, even after local
-revisions. Transport ambiguity becomes `uncertain`; the reconcile endpoint
-attaches exactly one matching Page post, and the resolve endpoint accepts a
-chosen remote ID/permalink. Local edits never update or delete Facebook posts.
-Manual retry currently fails, and stale-job recovery can duplicate publication;
-see the [confirmed defects and reproduction steps](reviews/2026-09-26-architecture-review.md).
-
-Endpoints require the admin session or bearer token:
-
-```text
-GET  /api/admin/posts/POST_ID/syndications/facebook
-POST /api/admin/posts/POST_ID/syndications/facebook
-POST /api/admin/posts/POST_ID/syndications/facebook/retry
-POST /api/admin/posts/POST_ID/syndications/facebook/reconcile
-POST /api/admin/posts/POST_ID/syndications/facebook/resolve
-```
-
-Keep Facebook disabled during migration and smoke tests by omitting all three
-settings. This does not disable local publishing or Mastodon. Before enabling
-production publication, verify the Page task, required Meta permissions, Graph
-version support, token lifecycle, Sharing Debugger preview, and one canary's
-stored remote ID/permalink.
-
-### Facebook preview checklist
-
-Before a canary, inspect the live revision URL in Meta's Sharing Debugger for:
-
-- first and later revision URLs, redirects, and cache refresh;
-- titled, titleless, and photo-only posts;
-- hero images and missing-hero fallback;
-- portrait and landscape renditions, dimensions, and MIME type;
-- archived or unpublished content remaining inaccessible; and
-- canonical URL, title/description fallbacks, crawler access, and absence of
-  private image metadata.
+Facebook Page publication has been removed. Former administrative endpoints
+return JSON 404s, and legacy `FACEBOOK_*` environment settings are ignored and
+can be removed. Historical database records remain for recovery, but the worker,
+publication history, and health checks exclude them. No remote Facebook posts
+are changed. Public “Share on Facebook” links remain ordinary browser links.
 
 ## Mastodon syndication
 
@@ -156,8 +112,7 @@ the reply action link back to Mastodon, which remains authoritative.
 ## Health and logs
 
 `GET /api/health` returns a non-cacheable operational report covering SQLite,
-persistent media directories, outbox backlog and failures, and Mastodon and
-Facebook state independently.
+persistent media directories, outbox backlog and failures, and Mastodon state.
 Database, media, or outbox inspection failure makes the endpoint return `503`.
 An old/failed Mastodon job reports `degraded` with HTTP `200`, because Mastodon
 must not become a hard dependency for the canonical site.

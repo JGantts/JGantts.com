@@ -1,6 +1,6 @@
 # Private authoring
 
-**Responsibility:** edit post text/photo metadata, order/select hero media, recover drafts, and explicitly publish locally or to Mastodon. Facebook endpoints currently have no editor controls.
+**Responsibility:** edit post text/photo metadata, order/select hero media, recover drafts, and explicitly publish locally or to Mastodon.
 
 **Entry points:** `/admin/posts` → `PostsAdminView.vue`; `adminRequest` and session helpers wrap `/api/admin` calls.
 

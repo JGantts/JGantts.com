@@ -74,6 +74,7 @@ export function renderCanonicalPostHtml(
   const preview = resolvePostPreview(post, post.media, post.socialPreview);
   const socialImage = preview.image;
   let html = renderAppHtml(req, appHtmlTemplate, configuredSiteOrigin, meta, 'article');
+  html = upsertMeta(html, 'name', 'twitter:card', preview.cardType);
   if (post.preview) {
     const origin = getRequestOrigin(req, configuredSiteOrigin);
     const shareUrl = new URL(

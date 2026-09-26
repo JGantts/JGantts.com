@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router'
 import QRCode from 'qrcode'
 import ClusteredPhotoMasonry from './ClusteredPhotoMasonry.vue'
 import PhotoCommentsPanel from './PhotoCommentsPanel.vue'
+import PostView from '../posts/PostView.vue'
+import { updatePostDocumentMeta } from '@/posts/document-meta'
+import { applyRouteDocumentMeta } from '@/router/document-meta'
 import type {
   DisplayPhotoComment,
   PhotoCommentsStatus,
@@ -11,8 +14,8 @@ import type {
   ThreadedPhotoComment,
 } from './photo-comments-types'
 import { formatEditorialDateTime, machineEditorialDateTime } from '@/posts/editorial-date-time'
-import type { CanonicalPost, MastodonCommentsResponse } from '@/posts/types'
-import { postPath } from '@/posts/post-url'
+import type { CanonicalPost, MastodonCommentsResponse, PostPage } from '@/posts/types'
+import { canonicalPostPath, postPath } from '@/posts/post-url'
 
 const props = defineProps<{
   postId?: string
@@ -41,6 +44,16 @@ const localPosts = ref<CanonicalPost[]>([])
 const localThreads = ref<PhotoCommentsThread[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+const pageError = ref('')
+const loadingMore = ref(false)
+const nextCursor = ref<string | null>(null)
+const routeError = ref('')
+const routeLoading = ref(false)
+const galleryPosts = computed(() => localPosts.value.filter((post) => post.media.length > 0))
+const routedPost = computed(() => localPosts.value.find((post) => post.slug === props.postId))
+const textPost = computed(() => routedPost.value?.media.length === 0 ? routedPost.value : null)
+let routeRequest = 0
+let disposed = false
 
 const activeTootIndex = ref<number | null>(null)
 const selectedPostVisibility = ref(1)
@@ -86,7 +99,8 @@ function photoRouteId(post: PhotoCommentsStatus) {
 }
 
 function photoShareUrl(post: PhotoCommentsStatus) {
-  return new URL(`/photos/${encodeURIComponent(photoRouteId(post))}`, window.location.origin).toString()
+  const localPost = localPosts.value.find((candidate) => `local:${candidate.id}` === post.id)
+  return new URL(localPost ? postPath(localPost) : (post.url || `/photos/${encodeURIComponent(photoRouteId(post))}`), window.location.origin).toString()
 }
 
 function photoShareTitle(post: PhotoCommentsStatus) {
@@ -201,7 +215,7 @@ function selectToot(nextIndex: number) {
 
   const localPost = localPosts.value.find((candidate) => `local:${candidate.id}` === postId)
   const routeId = localPost?.slug ?? postId
-  if (props.postId !== routeId) void router.push(`/photos/${routeId}`)
+  if (props.postId !== routeId) void router.push(localPost ? canonicalPostPath(localPost) : `/photos/${encodeURIComponent(routeId)}`)
 }
 
 async function clearSelection(options: { restoreFocus?: boolean } = {}) {
@@ -220,7 +234,7 @@ async function clearSelection(options: { restoreFocus?: boolean } = {}) {
 }
 
 function syncSelectionFromRoute(postId = props.postId) {
-  const localIndex = localPosts.value.findIndex((post) => post.slug === postId)
+  const localIndex = galleryPosts.value.findIndex((post) => post.slug === postId)
   activeTootIndex.value = postId && localIndex >= 0 ? localIndex : null
   if (activeTootIndex.value === -1) activeTootIndex.value = null
   selectedPostVisibility.value = 1
@@ -248,8 +262,8 @@ async function scrollToRoutedPost(routeId: string, clusterId = routeId) {
   }
 }
 
-watch(() => props.postId, (postId) => {
-  syncSelectionFromRoute(postId)
+watch(() => props.postId, () => {
+  if (!loading.value) void syncRoutedPost()
 })
 
 watch(activeToot, (toot) => {
@@ -265,7 +279,7 @@ function handlePageClick(event: MouseEvent) {
   const target = event.target
   if (!(target instanceof Element)) return
   if (!target.closest('.photo-share-menu')) closePhotoShareMenus()
-  if (target.closest('.photo-comments') || target.closest('.photo-lightbox')) return
+  if (target.closest('.photo-comments') || target.closest('.photo-lightbox') || target.closest('.photo-pagination')) return
 
   const photoCard = target.closest('.photo-card')
   const photoCluster = photoCard?.closest<HTMLElement>('[data-cluster-key]')
@@ -274,114 +288,178 @@ function handlePageClick(event: MouseEvent) {
   clearSelection()
 }
 
+function threadFor(post: CanonicalPost): PhotoCommentsThread {
+  return {
+    post: {
+      account: { acct: 'jgantts', avatar: '/favicon.png', display_name: 'Jacob Gantt', url: '/', username: 'jgantts' },
+      content: localPostOverlay(post),
+      created_at: post.publishedAt,
+      favourites_count: 0,
+      id: `local:${post.id}`,
+      media_attachments: post.media.map((media) => ({
+        description: media.altText,
+        localMedia: media,
+        meta: { original: { height: media.height ?? undefined, width: media.width ?? undefined } },
+        preview_url: media.urls.thumbnail,
+        thumbhash: media.thumbhash,
+        type: 'image' as const,
+        url: media.urls.large,
+      })),
+      mentions: [],
+      reblogs_count: 0,
+      replies_count: 0,
+      sensitive: false,
+      spoiler_text: '',
+      tags: [],
+      uri: postPath(post),
+      url: postPath(post),
+      visibility: 'public' as const,
+      in_reply_to_id: null,
+    },
+    comments: [],
+    discussionState: 'loading',
+    remoteUrl: null,
+    stale: false,
+    truncated: false,
+  }
+}
+
+async function loadComments(thread: PhotoCommentsThread, slug: string) {
+  try {
+    const commentsResponse = await fetch(`/api/posts/${encodeURIComponent(slug)}/comments/mastodon`)
+    if (!commentsResponse.ok) {
+      thread.discussionState = 'unavailable'
+      return
+    }
+    const result = await commentsResponse.json() as MastodonCommentsResponse
+    thread.remoteUrl = result.remoteUrl ?? null
+    thread.discussionState = result.state
+    thread.stale = result.stale
+    thread.truncated = result.truncated
+    const statuses = (result.comments ?? []).map((comment) => ({
+      account: { acct: comment.account.handle, avatar: comment.account.avatarUrl ?? '/favicon.png', display_name: comment.account.displayName, url: comment.account.url, username: comment.account.handle },
+      content: comment.contentHtml,
+      created_at: comment.createdAt,
+      favourites_count: 0,
+      id: comment.id,
+      media_attachments: comment.attachments.map((attachment) => ({
+        description: attachment.description,
+        preview_url: attachment.previewUrl,
+        type: 'image' as const,
+        url: attachment.url,
+      })),
+      mentions: [],
+      reblogs_count: 0,
+      replies_count: 0,
+      sensitive: false,
+      spoiler_text: '',
+      tags: [],
+      uri: comment.url,
+      url: comment.url,
+      visibility: 'public' as const,
+      in_reply_to_id: comment.parentId,
+    })) as PhotoCommentsStatus[]
+    thread.comments = buildCommentTree(statuses)
+  } catch {
+    // The local post remains browsable when its remote discussion is unavailable.
+    thread.discussionState = 'unavailable'
+  }
+}
+
+function mergePosts(items: CanonicalPost[]) {
+  const merged = new Map(localPosts.value.map((post) => [post.id, post]))
+  for (const post of items) merged.set(post.id, post)
+  localPosts.value = [...merged.values()]
+  const previous = new Map(localThreads.value.map((thread) => [thread.post.id, thread]))
+  localThreads.value = galleryPosts.value.map((post) => {
+    const existing = previous.get(`local:${post.id}`)
+    if (existing) {
+      existing.post = threadFor(post).post
+      return existing
+    }
+    return threadFor(post)
+  })
+  for (const [index, thread] of localThreads.value.entries()) {
+    if (!previous.has(thread.post.id)) void loadComments(thread, galleryPosts.value[index]!.slug)
+  }
+  syncSelectionFromRoute()
+}
+
+async function loadPage(cursor?: string) {
+  const query = new URLSearchParams({ limit: '50' })
+  if (cursor) query.set('cursor', cursor)
+  const response = await fetch(`/api/posts?${query}`)
+  if (!response.ok) throw new Error('Could not load photo posts.')
+  const page = await response.json() as PostPage
+  if (disposed) return
+  mergePosts(page.items)
+  nextCursor.value = page.nextCursor ?? null
+}
+
+async function loadMore() {
+  if (!nextCursor.value || loadingMore.value) return
+  loadingMore.value = true
+  pageError.value = ''
+  try {
+    await loadPage(nextCursor.value)
+  } catch {
+    pageError.value = 'Could not load more photo posts. Please try again.'
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+async function syncRoutedPost(scroll = false) {
+  const request = ++routeRequest
+  const slug = props.postId
+  routeError.value = ''
+  routeLoading.value = false
+  syncSelectionFromRoute()
+  if (!slug) return
+  let post = localPosts.value.find((item) => item.slug === slug)
+  try {
+    if (!post) {
+      routeLoading.value = true
+      const response = await fetch(`/api/posts/${encodeURIComponent(slug)}`)
+      if (!response.ok) throw new Error(response.status === 404
+        ? 'This post could not be found.' : 'Could not load this post.')
+      post = await response.json() as CanonicalPost
+      if (disposed || request !== routeRequest) return
+      mergePosts([post])
+    }
+    if (disposed || request !== routeRequest) return
+    updatePostDocumentMeta(post)
+    if (post.slug !== slug) {
+      await router.replace(router.currentRoute.value.query.preview !== undefined
+        ? postPath(post) : canonicalPostPath(post))
+      return
+    }
+    syncSelectionFromRoute()
+    if (scroll && activeToot.value) await scrollToRoutedPost(slug, activeToot.value.post.id)
+  } catch (cause) {
+    if (disposed || request !== routeRequest) return
+    routeError.value = cause instanceof Error ? cause.message : 'Could not load this post.'
+    applyRouteDocumentMeta(router.currentRoute.value)
+  } finally {
+    if (request === routeRequest) routeLoading.value = false
+  }
+}
+
 onMounted(async () => {
   document.addEventListener('click', handlePageClick)
-
   try {
-    syncSelectionFromRoute()
-    await fetch('/api/posts?limit=50').then(async (response) => {
-        if (!response.ok) return
-        const page = await response.json() as { items?: CanonicalPost[] }
-        const routedSlug = props.postId
-        const items = page.items ?? []
-        if (routedSlug && !items.some((post) => post.slug === routedSlug)) {
-          const routedResponse = await fetch(`/api/posts/${encodeURIComponent(routedSlug)}`)
-          if (routedResponse.ok) items.push(await routedResponse.json() as CanonicalPost)
-        }
-        localPosts.value = items.filter((post) => post.media.length > 0)
-        localThreads.value = localPosts.value.map((post) => ({
-          post: {
-            account: { acct: 'jgantts', avatar: '/favicon.png', display_name: 'Jacob Gantt', url: '/', username: 'jgantts' },
-            content: localPostOverlay(post),
-            created_at: post.publishedAt,
-            favourites_count: 0,
-            id: `local:${post.id}`,
-            media_attachments: post.media.map((media) => ({
-              description: media.altText,
-              localMedia: media,
-              meta: { original: { height: media.height ?? undefined, width: media.width ?? undefined } },
-              preview_url: media.urls.thumbnail,
-              thumbhash: media.thumbhash,
-              type: 'image' as const,
-              url: media.urls.large,
-            })),
-            mentions: [],
-            reblogs_count: 0,
-            replies_count: 0,
-            sensitive: false,
-            spoiler_text: '',
-            tags: [],
-            uri: postPath(post),
-            url: postPath(post),
-            visibility: 'public' as const,
-            in_reply_to_id: null,
-          },
-          comments: [],
-          discussionState: 'loading',
-          remoteUrl: null,
-          stale: false,
-          truncated: false,
-        }))
-        void Promise.all(localThreads.value.map(async (thread, index) => {
-          try {
-            const commentsResponse = await fetch(`/api/posts/${encodeURIComponent(localPosts.value[index]!.slug)}/comments/mastodon`)
-            if (!commentsResponse.ok) {
-              thread.discussionState = 'unavailable'
-              return
-            }
-            const result = await commentsResponse.json() as MastodonCommentsResponse
-            thread.remoteUrl = result.remoteUrl ?? null
-            thread.discussionState = result.state
-            thread.stale = result.stale
-            thread.truncated = result.truncated
-            const statuses = (result.comments ?? []).map((comment) => ({
-              account: { acct: comment.account.handle, avatar: comment.account.avatarUrl ?? '/favicon.png', display_name: comment.account.displayName, url: comment.account.url, username: comment.account.handle },
-              content: comment.contentHtml,
-              created_at: comment.createdAt,
-              favourites_count: 0,
-              id: comment.id,
-              media_attachments: comment.attachments.map((attachment) => ({
-                description: attachment.description,
-                preview_url: attachment.previewUrl,
-                type: 'image' as const,
-                url: attachment.url,
-              })),
-              mentions: [],
-              reblogs_count: 0,
-              replies_count: 0,
-              sensitive: false,
-              spoiler_text: '',
-              tags: [],
-              uri: comment.url,
-              url: comment.url,
-              visibility: 'public' as const,
-              in_reply_to_id: comment.parentId,
-            })) as PhotoCommentsStatus[]
-            thread.comments = buildCommentTree(statuses)
-          } catch {
-            // The local post remains browsable when its remote discussion is unavailable.
-            thread.discussionState = 'unavailable'
-          }
-        }))
-      }).catch(() => {
-        error.value = 'Could not load photo posts.'
-      })
-
-    // The first route sync runs before the asynchronous local-post collection is
-    // available. Resolve it again now so a hard refresh retains the selected post.
-    syncSelectionFromRoute()
-    loading.value = false
-    if (props.postId && activeToot.value) {
-      await scrollToRoutedPost(props.postId, activeToot.value.post.id)
-    }
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Could not load photo posts.'
+    await loadPage()
+  } catch {
+    error.value = 'Could not load photo posts.'
   } finally {
     loading.value = false
   }
+  if (!disposed) await syncRoutedPost(true)
 })
 
 onBeforeUnmount(() => {
+  disposed = true
+  routeRequest += 1
   document.removeEventListener('click', handlePageClick)
   restoreQrDocumentOverflow()
 })
@@ -429,7 +507,8 @@ function flattenComments(statuses: ThreadedPhotoComment[], depth = 0): DisplayPh
 </script>
 
 <template>
-  <main class="photos-page">
+  <PostView v-if="textPost" :key="textPost.id" :slug="textPost.slug" :initial-post="textPost" />
+  <main v-else class="photos-page">
     <section class="conversation-shell" aria-live="polite">
       <div v-if="loading" class="loading-state">
         Loading photo posts...
@@ -439,8 +518,11 @@ function flattenComments(statuses: ThreadedPhotoComment[], depth = 0): DisplayPh
         <p>{{ error }}</p>
       </div>
 
+      <p v-if="routeLoading" class="loading-state" role="status">Loading post…</p>
+      <p v-else-if="routeError" class="error-state" role="alert">{{ routeError }}</p>
+
       <section
-        v-if="!loading && !error && allToots.length"
+        v-if="!loading && allToots.length"
         class="toot-carousel"
         aria-label="Photo posts"
       >
@@ -485,6 +567,12 @@ function flattenComments(statuses: ThreadedPhotoComment[], depth = 0): DisplayPh
             @open-qr="openQrFullscreen"
           />
       </section>
+      <div v-if="!loading && nextCursor" class="photo-pagination">
+        <p v-if="pageError" role="alert">{{ pageError }}</p>
+        <button type="button" :disabled="loadingMore" @click="loadMore">
+          {{ loadingMore ? 'Loading…' : 'Load more photos' }}
+        </button>
+      </div>
     </section>
 
     <dialog
@@ -531,6 +619,22 @@ function flattenComments(statuses: ThreadedPhotoComment[], depth = 0): DisplayPh
 </template>
 
 <style scoped>
+.photo-pagination {
+  padding: 1.5rem;
+  text-align: center;
+}
+.photo-pagination button {
+  background: var(--photos-panel);
+  border: 1px solid var(--photos-border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  min-height: 44px;
+  padding: 0.75rem 1.25rem;
+}
+.photo-pagination button:focus-visible { outline: 2px solid var(--photos-accent); outline-offset: 3px; }
+.photo-pagination button:disabled { cursor: wait; opacity: 0.7; }
+
 .photos-page {
   --photos-gutter: clamp(0.75rem, 2vw, 1.5rem);
   --photos-bg: #f4efe8;

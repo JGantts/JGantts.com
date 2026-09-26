@@ -34,7 +34,7 @@ type AdminPost = {
   updatedAt: string
   revision?: number
 }
-type SyndicationDestination = 'facebook' | 'mastodon'
+type SyndicationDestination = 'mastodon'
 type SyndicationState = 'pending' | 'published' | 'failed' | 'uncertain'
 type SyndicationSummary = {
   destination: SyndicationDestination
@@ -911,7 +911,7 @@ async function loadHistory(postId: string) {
   try {
     const result = await adminRequest<{ revisions: PublishedRevision[]; syndications: RevisionSyndication[]; publicationHistory: RevisionSyndication[] }>(`/api/admin/posts/${postId}/history`)
     revisionHistory.value = result.revisions
-    revisionSyndications.value = result.publicationHistory.filter(({ destination }) => destination !== 'facebook')
+    revisionSyndications.value = result.publicationHistory
   } catch { revisionHistory.value = []; revisionSyndications.value = [] }
 }
 

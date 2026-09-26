@@ -1,5 +1,6 @@
 import type { ContentDatabase } from '../db/database';
 import { inTransaction } from '../db/database';
+import { PostConflictError } from './errors';
 import type {
   NewPost,
   Post,
@@ -177,9 +178,12 @@ export class PostRepository {
       const next = { ...current, ...changes, updatedAt };
 
       if (changes.slug && changes.slug !== current.slug) {
-        this.database.prepare(`
+        const redirect = this.database.prepare(`
           INSERT INTO slug_redirects (slug, post_id, created_at) VALUES (?, ?, ?)
+          ON CONFLICT(slug) DO UPDATE SET created_at = excluded.created_at
+          WHERE slug_redirects.post_id = excluded.post_id
         `).run(current.slug, id, updatedAt);
+        if (!redirect.changes) throw new PostConflictError('That post slug belongs to another post.');
       }
 
       this.database.prepare(`

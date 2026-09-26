@@ -2,8 +2,6 @@ import express from 'express';
 import type { AuthorPostChanges, AuthorPostInput, PostService } from '../posts/post-service';
 import type { MediaService } from '../media/media-service';
 import type { MastodonSyndicationService } from '../syndication/mastodon-syndication-service';
-import type { FacebookSyndicationService } from '../syndication/facebook-syndication-service';
-import type { FacebookClientLike } from '../syndication/facebook-client';
 import { buildPostTeaser } from '../syndication/mastodon-syndication-service';
 import { resolvePostPreview } from '../site/post-preview';
 import { revisionedPostPath } from '../site/revision-url';
@@ -36,8 +34,6 @@ export function createAdminPostsRouter(
   posts: PostService,
   media?: MediaService,
   mastodon?: MastodonSyndicationService,
-  facebook?: FacebookSyndicationService,
-  facebookClient?: FacebookClientLike,
   socialPreviews?: SocialPreviewService,
 ): express.Router {
   const router = express.Router();
@@ -52,7 +48,7 @@ export function createAdminPostsRouter(
     const preview = resolvePostPreview(post, postMedia, socialPreview.image).token;
     const revision = posts.currentRevision(post.id);
     const versioned = posts.hasMultiplePublishedRevisions(post.id);
-    const syndications = [mastodon?.getForPost(post.id), facebook?.getForPost(post.id)]
+    const syndications = [mastodon?.getForPost(post.id)]
       .filter((item) => item !== null && item !== undefined)
       .map((item) => ({
         destination: item.destination,
@@ -245,7 +241,7 @@ export function createAdminPostsRouter(
     res.set('Cache-Control', 'no-store').json({
       revisions: posts.publishedRevisions(post.id),
       syndications: mastodon?.listForPost(post.id) ?? [],
-      publicationHistory: [...(mastodon?.listPublicationHistory(post.id) ?? []), ...(facebook?.listPublicationHistory(post.id) ?? [])],
+      publicationHistory: mastodon?.listPublicationHistory(post.id) ?? [],
     });
   });
 
@@ -287,13 +283,6 @@ export function createAdminPostsRouter(
         next(error);
       }
     });
-  }
-  if (facebook) {
-    router.get('/:id/syndications/facebook', (req, res) => { const item = facebook.getForPost(req.params.id); if (!item) { res.status(404).json({ error: { code: 'not_found', message: 'Post has not been syndicated.' } }); return; } res.set('Cache-Control', 'no-store').json(item); });
-    router.post('/:id/syndications/facebook', (req, res, next) => { try { validateEmptySyndicationBody(req.body); const result = facebook.queue(req.params.id); res.status(result.queued ? 202 : 200).set('Cache-Control', 'no-store').json(result.syndication); } catch (error) { next(error); } });
-    router.post('/:id/syndications/facebook/retry', (req, res, next) => { try { res.status(202).json(facebook.retry(req.params.id)); } catch (error) { next(error); } });
-    router.post('/:id/syndications/facebook/reconcile', async (req, res, next) => { try { if (!facebookClient) throw Object.assign(new Error('Facebook syndication is not configured.'), { status: 503 }); const result = await facebook.reconcile(req.params.id, facebookClient); res.status(200).json(result); } catch (error) { next(error); } });
-    router.post('/:id/syndications/facebook/resolve', (req, res, next) => { try { if (!isRecord(req.body) || typeof req.body.id !== 'string' || typeof req.body.url !== 'string' || Object.keys(req.body).some((key) => !['id', 'url'].includes(key))) throw Object.assign(new Error('Resolution requires only id and url.'), { status: 400 }); res.status(200).json(facebook.resolve(req.params.id, { id: req.body.id, url: req.body.url })); } catch (error) { next(error); } });
   }
 
   return router;

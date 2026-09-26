@@ -6,9 +6,9 @@
 
 **Dependencies:** posts/revisions, preview-aware site URLs, media/social previews, configured provider credentials, and the [outbox repository](outbox.md). Provider clients encapsulate remote HTTP APIs.
 
-**Consumers:** authoring/API clients, the worker, publication history, and Mastodon comments.
+**Consumers:** the Mastodon editor, administrative API clients, worker, publication history, and Mastodon comments. Facebook is API-only.
 
-**Invariants:** payloads derive from site content; publication is explicit. Records track destination and revision. Mastodon requests use idempotency keys. An uncertain Facebook response requires reconciliation/resolution rather than blind republishing, because the remote post may already exist. Provider configuration gates availability; local posts remain authoritative.
+**Invariants:** payloads derive from site content; publication is explicit. One publication record is reused per post/destination; later local revisions do not create another publication. Mastodon supports explicit edits. Uncertain Facebook responses enter reconciliation, but [recovery defects remain](../../../reviews/2026-09-26-architecture-review.md). Provider configuration gates availability; local posts remain authoritative.
 
 **Source:** [destination services, clients, and types](../../../../jgantts-server/src/syndication), [admin routes](../../../../jgantts-server/src/api/admin-posts.ts), [configuration](../../../../jgantts-server/src/config.ts), [syndication tests](../../../../jgantts-server/test/syndication.test.ts).
 

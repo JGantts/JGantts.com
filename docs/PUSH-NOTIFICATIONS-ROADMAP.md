@@ -310,9 +310,9 @@ No unchecked release item is implied complete by the local implementation.
   migration, lifecycle, cancellation, and HTTP contracts; type checking passed.
 - Frontend `npm test`: 54 tests passed. `npm run build` passed; the existing
   large map bundle warning remains.
-- Complete Chrome Playwright suite: 16 passed. After adding the worker-update
-  regression, the seven notification/install tests passed again, including a
-  live service-worker update that waits without reloading the open page.
+- Complete Chrome Playwright suite: 17 passed on the branch rebased onto current
+  production, including a live service-worker update that waits without reloading
+  the open page.
 - Server `npm run smoke:local` passed against compiled output.
 - `node scripts/test-package-release.js` passed, including required installation
   assets and failure when the worker is absent.
@@ -331,3 +331,18 @@ the installation ID or publication audience cutoff. Prepared deliveries using
 superseded keys lose their leases and retry with current keys; already accepted
 messages are not replayed. Server checks, frontend tests/build, and compiled-server
 smoke checks passed again after these fixes.
+
+### Integration and hosted CI
+
+The implementation is committed on `feat/push-home-screen`, based on production
+commit `32fed1b`. The newer image-processing progress behavior is preserved.
+Local server/frontend checks, all 17 browser tests, smoke checks, and packaging
+pass on the integrated branch. The first hosted CI run passed application, map,
+installer, activation/automatic-rollback, and recovery tests; its systemd check
+exposed a runner-only missing `/usr/bin/node` path. CI now supplies that path from
+`setup-node` without altering the production unit or the self-hosted deploy job.
+
+GitHub exposes only a production environment, and creating a draft PR with the
+current credentials was denied. The remote feature branch is available; no merge
+or production deployment has been performed. Hosted fixture rollback tests do
+not replace the pending schema-14 production-compatible rollback rehearsal.

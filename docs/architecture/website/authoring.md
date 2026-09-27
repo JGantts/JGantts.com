@@ -2,6 +2,13 @@
 
 **Responsibility:** edit post text/photo metadata, order/select hero media, recover drafts, and explicitly publish locally or to Mastodon.
 
+**Notifications:** `/admin/notifications` shares the existing admin cookie session.
+It shows enrollment/send switches, audience, recent events and deliveries, provider
+acceptance timing, and installations. Refreshing never sends; the explicit test
+action targets one active installation allowed by the configured audience.
+The dashboard polls every five seconds only while visible, supports manual refresh,
+and clears private data when authentication expires.
+
 **Entry points:** `/admin/posts` → `PostsAdminView.vue`; `adminRequest` and session helpers wrap `/api/admin` calls.
 
 **Dependencies:** [admin authentication](../server/http.md), [posts](../server/posts.md), [media](../server/media.md), [social previews](../server/previews.md), and [syndication](../server/syndication/index.md).

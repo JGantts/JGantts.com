@@ -185,6 +185,8 @@ const router = createRouter({
       path: '/admin',
       component: MainLayout,
       children: [
+        { path: '', redirect: '/admin/posts' },
+        { path: 'notifications', name: 'Notification dashboard', component: () => import('@/views/admin/NotificationsAdminView.vue'), meta: { title: 'Notifications admin | JGantts', robots: 'noindex, nofollow' } },
         {
           path: 'posts',
           name: 'Post editor',

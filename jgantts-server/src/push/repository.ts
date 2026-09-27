@@ -129,10 +129,37 @@ export class PushRepository {
     this.db.prepare(`UPDATE push_deliveries SET state = ?, last_status = ?, available_at = ?, updated_at = ?, lease_token = NULL, lease_until = NULL
       WHERE id = ? AND lease_token = ? AND state = 'processing'`).run(state, status, next, Date.now(), job.id, job.lease_token);
   }
+  dashboard(audience: PushAudience, now = Date.now()) {
+    // Explicit projections keep subscription secrets and notification bodies private.
+    const events = this.db.prepare(`SELECT e.id, e.kind, e.state, e.created_at AS createdAt,
+      e.expires_at AS expiresAt, p.title, p.slug,
+      COUNT(d.id) AS total, SUM(CASE WHEN d.state = 'accepted' THEN 1 ELSE 0 END) AS accepted,
+      SUM(CASE WHEN d.state IN ('pending', 'processing') THEN 1 ELSE 0 END) AS waiting,
+      SUM(CASE WHEN d.state = 'failed' THEN 1 ELSE 0 END) AS failed,
+      SUM(CASE WHEN d.state = 'cancelled' THEN 1 ELSE 0 END) AS cancelled
+      FROM (SELECT * FROM push_publication_events ORDER BY created_at DESC, id DESC LIMIT 50) e
+      LEFT JOIN posts p ON p.id = e.post_id LEFT JOIN push_deliveries d ON d.event_id = e.id
+      GROUP BY e.id ORDER BY e.created_at DESC, e.id DESC`).all();
+    const recentDeliveries = this.db.prepare(`SELECT d.id, d.event_id AS eventId,
+      s.installation_id AS installationId, d.state, d.attempts, d.last_status AS lastStatus,
+      d.available_at AS availableAt, d.updated_at AS updatedAt, e.created_at AS createdAt,
+      e.kind, p.title, p.slug,
+      CASE WHEN d.state = 'accepted' THEN MAX(0, d.updated_at - e.created_at) ELSE NULL END AS acceptedAfterMs
+      FROM push_deliveries d JOIN push_publication_events e ON e.id = d.event_id
+      JOIN push_subscriptions s ON s.id = d.subscription_id LEFT JOIN posts p ON p.id = e.post_id
+      ORDER BY d.updated_at DESC, d.id DESC LIMIT 100`).all();
+    const installations = (this.db.prepare(`SELECT installation_id AS id, active,
+      created_at AS createdAt, last_seen_at AS lastSeenAt FROM push_subscriptions
+      ORDER BY active DESC, last_seen_at DESC, id DESC LIMIT 100`).all() as {
+        id: string; active: number; createdAt: number; lastSeenAt: number;
+      }[]).map(row => ({ ...row, active: Boolean(row.active), allowed: audience === '*' || audience.includes(row.id) }));
+    const pendingEvents = this.db.prepare("SELECT COUNT(*) FROM push_publication_events WHERE state = 'pending' AND expires_at > ?").pluck().get(now) as number;
+    return { ...this.status(now), capturedAt: now, pendingEvents, events, recentDeliveries, installations };
+  }
   status(now = Date.now()) {
     const active = this.db.prepare('SELECT COUNT(*) AS count FROM push_subscriptions WHERE active = 1').get() as { count: number };
     const states = this.db.prepare('SELECT state, COUNT(*) AS count FROM push_deliveries GROUP BY state').all();
-    const oldest = this.db.prepare("SELECT MIN(available_at) AS value FROM push_deliveries WHERE state IN ('pending', 'processing')").get() as { value: number | null };
+    const oldest = this.db.prepare("SELECT MIN(e.created_at) AS value FROM push_publication_events e WHERE (e.state = 'pending' AND e.expires_at > ?) OR EXISTS (SELECT 1 FROM push_deliveries d WHERE d.event_id = e.id AND d.state IN ('pending', 'processing'))").get(now) as { value: number | null };
     const retries = this.db.prepare("SELECT COUNT(*) AS count FROM push_deliveries WHERE state = 'pending' AND attempts > 0").get() as { count: number };
     const keyVersions = this.db.prepare('SELECT key_version AS version, COUNT(*) AS count FROM push_subscriptions WHERE active = 1 GROUP BY key_version').all();
     return { keyVersions, activeSubscriptions: active.count, retryingDeliveries: retries.count, deliveries: states, oldestPendingAgeSeconds: oldest.value === null ? 0 : Math.max(0, Math.floor((now - oldest.value) / 1000)) };

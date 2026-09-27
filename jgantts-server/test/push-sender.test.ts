@@ -31,10 +31,12 @@ test('transport encrypts a visible payload, pins validated DNS, and rejects redi
     return req;
   });
   const send = createPushSender(config);
-  await send(subscription, '{"title":"Test"}', config.keyVersion, 60);
+  assert.equal(await send(subscription, '{"title":"Test"}', config.keyVersion, 60), 201);
+  responseStatus = 202;
+  assert.equal(await send(subscription, '{}', config.keyVersion, 60), 202);
   responseStatus = 302;
   await assert.rejects(send(subscription, '{}', config.keyVersion, 60), (error: unknown) => error instanceof PushSendError && error.status === 302);
-  assert.equal(requests, 2);
+  assert.equal(requests, 3);
 });
 
 test('DNS answers with any private address are rejected before opening a connection', async t => {

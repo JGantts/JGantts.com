@@ -1,3 +1,4 @@
+import { setImmediate } from 'node:timers/promises';
 import sanitizeHtml from 'sanitize-html';
 import type { StructuredLogger } from '../observability/logger';
 import { NOOP_LOGGER } from '../observability/logger';
@@ -40,24 +41,28 @@ export class PushWorker {
   runOnce(): Promise<void> {
     if (this.active) return this.active;
     this.active = (async () => {
+      let more = false;
       do {
         this.wakeRequested = false;
-        await this.run();
-      } while (this.wakeRequested && !this.stopped);
+        more = await this.run();
+        // Yield between batches so publishing, revocation, and shutdown can run.
+        if (more || this.wakeRequested) await setImmediate();
+      } while ((more || this.wakeRequested) && !this.stopped);
     })().catch(() => this.logger.error('push_worker_failed', { message: 'Push queue operation failed.' })).finally(() => { this.active = null; });
     return this.active;
   }
   private async run() {
-    if (this.stopped) return;
+    if (this.stopped) return false;
     this.repository.maintain();
-    if (!this.config.sendEnabled || this.stopped) return;
-    this.repository.fanOut();
+    if (!this.config.sendEnabled || this.stopped) return false;
+    const expanded = this.repository.fanOut();
     const jobs: PushDelivery[] = [];
     for (let i = 0; i < 4; i++) {
       const job = this.repository.claim(this.config.audience);
       if (job) jobs.push(job);
     }
     await Promise.all(jobs.map(job => this.deliver(job)));
+    return expanded || jobs.length === 4;
   }
   private async deliver(job: PushDelivery) {
     if (!this.repository.current(job.id, job.lease_token)) return;
@@ -67,7 +72,7 @@ export class PushWorker {
         Math.max(1, Math.floor((job.expires_at - Date.now()) / 1000)),
         () => Boolean(this.repository.current(job.id, job.lease_token)));
       if (delivered === false) { this.repository.finish(job, 'cancelled', null); return; }
-      this.repository.finish(job, 'accepted', 201);
+      this.repository.finish(job, 'accepted', typeof delivered === 'number' ? delivered : 201);
       this.logger.info('push_provider_accepted', { deliveryId: job.id, eventId: job.event_id, elapsedMs: Date.now() - job.event_created_at });
     } catch (error) {
       const status = error instanceof PushSendError ? error.status : null;

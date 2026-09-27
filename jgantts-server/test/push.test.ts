@@ -378,3 +378,46 @@ test('publication arriving during a send wakes another pass without overlapping 
   await worker.runOnce();
   assert.deepEqual(sent, ['first', 'second']);
 });
+
+test('one wake drains multiple publication events and more than four recipients without another tick', async t => {
+  const { db, repository, service, subscribe, draft } = fixture(t);
+  for (let i = 0; i < 9; i++) subscribe(String(i));
+  draft('batch-one'); service.publish('batch-one'); draft('batch-two'); service.publish('batch-two');
+  let active = 0; let peak = 0; let sent = 0;
+  const worker = new PushWorker(repository, config(), async () => {
+    active++; peak = Math.max(peak, active);
+    await new Promise(resolve => setImmediate(resolve));
+    active--; sent++;
+  });
+  worker.wake(); await worker.runOnce();
+  assert.equal(sent, 18); assert.equal(peak, 4);
+  assert.equal(db.prepare("SELECT COUNT(*) FROM push_deliveries WHERE state = 'accepted'").pluck().get(), 18);
+  await worker.stop();
+});
+
+test('dashboard is authenticated, read-only, and exposes event timing without subscription secrets', async t => {
+  const { db, repository, service, subscribe, draft } = fixture(t);
+  const id = subscribe('dashboard'); draft('queued'); service.publish('queued');
+  draft('silent-dashboard'); service.publish('silent-dashboard', undefined, true);
+  const cfg = config(); cfg.audience = [id];
+  const server = createApp({ adminToken: 'dashboard-admin', services: { push: { repository, config: cfg } } }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => new Promise<void>(resolve => { server.close(() => resolve()); server.closeAllConnections(); }));
+  const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/admin/push/dashboard`;
+  assert.equal((await fetch(url)).status, 401);
+  const headers = { Authorization: 'Bearer dashboard-admin' };
+  const response = await fetch(url, { headers });
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  const initial = await response.json();
+  assert.equal(initial.pendingEvents, 1);
+  assert.equal(initial.events.find((e: any) => e.id === 'queued').total, 0);
+  assert.equal(initial.events.find((e: any) => e.id === 'silent-dashboard').state, 'suppressed');
+  assert.equal(db.prepare('SELECT COUNT(*) FROM push_deliveries').pluck().get(), 0, 'viewing must not wake or mutate the queue');
+  await new PushWorker(repository, cfg, async () => {}).runOnce();
+  const dashboard = await (await fetch(url, { headers })).json();
+  assert.equal(dashboard.recentDeliveries[0].state, 'accepted');
+  assert.ok(dashboard.recentDeliveries[0].acceptedAfterMs >= 0);
+  assert.equal(dashboard.installations[0].id, id);
+  assert.equal(dashboard.installations[0].allowed, true);
+  assert.doesNotMatch(JSON.stringify(dashboard), /endpoint|credential|p256dh|payload_json|lease_token|privateKey|web.push.apple.com/);
+});

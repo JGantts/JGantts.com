@@ -20,7 +20,7 @@ export function publicAddress(address: string): boolean {
 export class PushSendError extends Error {
   constructor(readonly status: number | null, readonly retryAfterMs = 0) { super('Push provider request failed.'); }
 }
-export type PushSender = (subscription: Subscription, payload: string, version: string, ttl: number, isCurrent?: () => boolean) => Promise<void | boolean>;
+export type PushSender = (subscription: Subscription, payload: string, version: string, ttl: number, isCurrent?: () => boolean) => Promise<void | boolean | number>;
 export function createPushSender(config: PushConfig): PushSender {
   return async (subscription, payload, version, ttl, isCurrent = () => true) => {
     const startedAt = Date.now();
@@ -42,7 +42,7 @@ export function createPushSender(config: PushConfig): PushSender {
       });
     } catch { throw new PushSendError(400); }
     if (!isCurrent()) return false;
-    await new Promise<void>((resolve, reject) => {
+    return await new Promise<number>((resolve, reject) => {
       const req = https.request(endpoint, {
         method: details.method, headers: details.headers, agent: false, family: address.family,
         lookup: (_hostname, _options, callback) => callback(null, address.address, address.family),
@@ -53,7 +53,7 @@ export function createPushSender(config: PushConfig): PushSender {
         const retry = res.headers['retry-after'];
         const raw = typeof retry === 'string' ? retry : '';
         const delay = /^\d+$/.test(raw) ? Number(raw) * 1000 : Math.max(0, Date.parse(raw) - Date.now()) || 0;
-        if (status >= 200 && status < 300) resolve();
+        if (status >= 200 && status < 300) resolve(status);
         else reject(new PushSendError(status, delay));
       });
       const timeout = setTimeout(() => req.destroy(new PushSendError(null)), 15_000);

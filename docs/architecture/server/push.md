@@ -4,7 +4,7 @@
 tracking, and durable Web Push delivery independent of Mastodon.
 
 **Entry points:** `/api/push/config`, subscription POST/DELETE routes, authenticated
-`/api/admin/push/status` and `/api/admin/push/test`, and `PushWorker` at startup.
+`/api/admin/push/status`, `/api/admin/push/dashboard`, and `/api/admin/push/test`, and `PushWorker` at startup.
 
 **Dependencies:** SQLite migration 14 and publication triggers; VAPID keys from
 server configuration; `web-push` for encryption/signing; a pinned, validated HTTPS
@@ -35,7 +35,8 @@ request high Web Push urgency; provider acceptance logs include the event ID and
 elapsed milliseconds since queue creation to distinguish server and device delays.
 
 The worker claims up to four jobs per pass with 60-second leases and at most six
-attempts. Transient failures retry with jitter and `Retry-After`; 404/410 disables
+attempts. It yields between batches and continues until ready work is drained;
+future retries retain their scheduled backoff. Transient failures retry with jitter and `Retry-After`; 404/410 disables
 the endpoint. Provider acceptance is distinct from display or reader receipt.
 A crash after provider acceptance can duplicate delivery; stable notification
 tags reduce repeated presentation, not guarantee exactly-once display. Both
@@ -44,7 +45,10 @@ workers stop before database closure.
 Diagnostic delivery rows and payload snapshots are retained for 30 days after
 expiry/terminal activity; publication markers remain to prevent replay.
 Operational errors record IDs and status codes, never provider payloads or URLs.
-The status API is administrative; site health does not depend on provider uptime.
+The status and dashboard APIs are administrative and read-only; site health does not depend on provider uptime.
+The dashboard returns the latest 50 events and 100 deliveries/installations using explicit
+projections that omit endpoints, credentials, encryption keys, and payload bodies.
+Waiting age starts at event creation, including events that have not been fanned out.
 
 **Source:** [push module](../../../jgantts-server/src/push),
 [API](../../../jgantts-server/src/api/push.ts),

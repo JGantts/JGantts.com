@@ -48,6 +48,7 @@ export function createAdminPushRouter({ repository, config, wake }: PushServices
   const router = express.Router();
   router.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   router.get('/status', (_req, res) => res.json({ ...repository.status(), enabled: config.enabled, sendEnabled: config.sendEnabled, audience: config.audience }));
+  router.get('/dashboard', (_req, res) => res.json({ ...repository.dashboard(config.audience), enabled: config.enabled, sendEnabled: config.sendEnabled, audience: config.audience }));
   router.post('/test', sameOrigin(config.siteOrigin), rateLimit(5), (req, res) => {
     const raw = req.body?.subscriptionId;
     const id = typeof raw === 'string' ? raw.toLowerCase() : raw;

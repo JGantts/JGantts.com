@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import PushAdminPanel from '@/components/PushAdminPanel.vue'
 import { computed, markRaw, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { AdminApiError, adminRequest, createAdminSession, deleteAdminSession, jsonRequest } from '@/admin/api'
 import { loadAdminPostDraft, saveAdminPostDraft, type AdminPostDraft } from '@/admin/draft-storage'
@@ -1220,7 +1219,7 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
-      <PushAdminPanel />
+      <p><RouterLink to="/admin/notifications">Notification dashboard →</RouterLink></p>
       <div class="admin-workspace">
         <aside class="post-list" aria-label="Posts">
           <div class="post-list-controls">

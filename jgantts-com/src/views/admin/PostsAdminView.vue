@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PushAdminPanel from '@/components/PushAdminPanel.vue'
 import { computed, markRaw, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { AdminApiError, adminRequest, createAdminSession, deleteAdminSession, jsonRequest } from '@/admin/api'
 import { loadAdminPostDraft, saveAdminPostDraft, type AdminPostDraft } from '@/admin/draft-storage'
@@ -100,6 +101,7 @@ const mediaDialog = ref<HTMLDialogElement | null>(null)
 const editingMediaId = ref<string | null>(null)
 const orderSaving = ref(false)
 const draggedMediaId = ref<string | null>(null)
+const suppressPush = ref(false)
 const syndication = ref<Syndication | null>(null)
 const revisionHistory = ref<PublishedRevision[]>([])
 const revisionSyndications = ref<RevisionSyndication[]>([])
@@ -335,6 +337,7 @@ function message(value: unknown): string {
 function copyToForm(post: AdminPost) {
   if (selectedId.value && selectedId.value !== post.id) queueCurrentDraftForServer()
   if (selectedId.value !== post.id) clearUploadQueue()
+  if (selectedId.value !== post.id) suppressPush.value = false
   selectedId.value = post.id
   const fromServer = postDraft(post)
   const fromBrowser = loadAdminPostDraft(post.id)
@@ -844,7 +847,7 @@ async function publish() {
   try {
     const post = await adminRequest<AdminPost>(
       `/api/admin/posts/${saved.id}/publish`,
-      jsonRequest('POST'),
+      jsonRequest('POST', { suppressPush: suppressPush.value }),
     )
     replacePost(post)
     notice.value = 'Published on JGantts.com.'
@@ -1217,6 +1220,7 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
+      <PushAdminPanel />
       <div class="admin-workspace">
         <aside class="post-list" aria-label="Posts">
           <div class="post-list-controls">
@@ -1443,6 +1447,7 @@ onBeforeUnmount(() => {
             <label>Body (Markdown) <span class="optional-field">Optional</span> <textarea v-model="form.bodyMarkdown" class="markdown-editor" maxlength="100000"></textarea></label>
             <div class="editor-actions">
               <button :disabled="busy" type="submit">{{ busy ? 'Working…' : selectedId ? 'Save now' : 'Create draft' }}</button>
+              <label v-if="canPublish"><input v-model="suppressPush" type="checkbox" :disabled="busy" /> Publish without notifying subscribers</label>
               <button v-if="canPublish" class="button-secondary" :disabled="busy" type="button" @click="publish">Publish locally</button>
               <button v-if="selected?.status === 'published'" class="button-secondary" :disabled="busy" type="button" @click="unpublish">Unpublish</button>
               <button v-if="selected && selected.status !== 'archived'" class="button-quiet" :disabled="busy" type="button" @click="archive">Archive</button>

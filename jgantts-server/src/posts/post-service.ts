@@ -232,11 +232,11 @@ export class PostService {
     return this.updateFromAuthor(id, changes, { generateSlug: false, recordRevision: false });
   }
 
-  publish(id: string, publishedAt = new Date().toISOString()): Post | null {
+  publish(id: string, publishedAt = new Date().toISOString(), suppressPush = false): Post | null {
     const post = this.posts.getById(id);
     if (!post || post.status === 'archived') return null;
     if (post.status === 'published') return post;
-    return this.posts.update(id, { status: 'published', publishedAt }, publishedAt);
+    return this.posts.update(id, { status: 'published', publishedAt }, publishedAt, true, suppressPush);
   }
 
   unpublish(id: string, updatedAt = new Date().toISOString()): Post | null {

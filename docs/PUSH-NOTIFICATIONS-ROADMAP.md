@@ -17,17 +17,43 @@ other supported browsers can ship first.
 
 ## Current state
 
-- Status: Planned; no push implementation has started.
-- Next item: Phase 1 — settle the publication contract and shared worker setup.
-- The frontend has no service worker registration or web app manifest. An
-  `apple-touch-icon.png` asset already exists.
-- Express serves public APIs and production HTML. Administrative actions use
-  existing token/session authentication; public readers have no account system.
-- SQLite stores posts, revisions, and durable social syndication jobs. The
-  existing outbox worker claims Mastodon jobs only, so it cannot accept push
-  jobs without deliberate changes.
-- Vite disables `publicDir` in production. Adding a worker to a public directory
-  alone does not establish that it will be included and served in a release.
+- Status: Implemented locally; production canaries and physical-device QA remain.
+- Active item: Phase 4 — device/provider verification and controlled rollout.
+- Implemented: opt-in settings, anonymous installation credentials, atomic SQLite
+  first-publication markers, bounded fan-out, retrying worker, author suppression,
+  canary controls, shared service worker, and installation assets.
+- Delivery defaults to disabled, with an empty canary audience. No production
+  subscriptions, notifications, or keys were created during implementation.
+- [Current architecture](architecture/server/push.md) and
+  [operator runbook](architecture/operations/push.md) describe the implementation.
+
+## Implementation decisions and verification
+
+- Adopted the proposed new-post topic, silent-publication option, 24-hour expiry,
+  and 30-day diagnostic retention. The Home Screen app launches at `/photos`.
+- SQLite triggers make publication markers atomic for all write paths. Direct
+  creation as published is treated as an import and suppressed. Historical
+  published revisions seed permanent suppression markers, including unpublished
+  posts. A separate push worker leaves the Mastodon outbox unchanged.
+- The browser generates and stores its 256-bit management credential before the
+  registration request; the server hashes it. This refines the original
+  server-issued proposal so a lost first response remains recoverable. An
+  additional `DELETE /api/push/subscriptions` accepts endpoint plus credential
+  for revocation when that first response's ID was lost.
+- A separate `JGANTTS_PUSH_AUDIENCE` setting permits no recipients, selected
+  canary IDs, or public delivery. Prior VAPID keys remain available through
+  `JGANTTS_PUSH_PREVIOUS_KEYS` during explicit re-subscription.
+- Local verification covers transaction rollback, historical seeding, imports,
+  suppression, edits/republish, subscription ownership, cancellation, audience
+  cutoff, restart/leases, retry limits, shutdown, key validation, DNS pinning,
+  redirect rejection, worker click safety, client recovery, and HTTP assets.
+- Chrome automation covers real worker registration, installation guidance,
+  standalone navigation, no unsolicited permission, narrow/landscape layouts,
+  offline-request retries, and keyboard focus. Light/dark screenshots were
+  inspected locally. Simulated iOS identity is not physical iOS verification.
+- Full frontend and server checks, local smoke, and release packaging are tracked
+  in the final verification record below. No provider acceptance or OS delivery
+  is claimed from mocked transport tests.
 
 Implementation entry points:
 
@@ -39,9 +65,9 @@ Implementation entry points:
 | Durable state and jobs | [persistence](architecture/server/persistence.md), [existing outbox](architecture/server/syndication/outbox.md) |
 | Assets and deployment | [Vite configuration](../jgantts-com/vite.config.ts), [release delivery](architecture/operations/releases.md) |
 
-## Proposed first-release contract
+## First-release contract
 
-These are planning defaults to establish before implementation.
+The implementation adopts these roadmap defaults.
 
 1. Offer one topic: new public posts, including photo and text posts. No reader
    account is required; consent and subscriptions belong to each browser or
@@ -109,7 +135,7 @@ as a later enhancement; it must not become a prerequisite for other browsers.
 ### Subscriptions and API boundaries
 
 Add a dedicated push module and repository, injected through the existing app
-and server composition. Proposed endpoints:
+and server composition. Implemented endpoints:
 
 | Endpoint | Responsibility |
 | --- | --- |
@@ -121,8 +147,8 @@ and server composition. Proposed endpoints:
 
 - Store endpoint, encryption keys, creation/last-seen timestamps, active state,
   VAPID key version, and a hashed management credential. Enforce unique endpoints.
-  Return a high-entropy, installation-scoped management credential at creation;
-  require it for mutation. Knowing a row ID or endpoint must not grant access
+  Accept a browser-generated high-entropy installation credential persisted
+  before creation, store only its hash, and require it for mutation. Knowing a row ID or endpoint must not grant access
   or issue a replacement credential for an existing subscription.
 - Specify recovery for lost credentials before implementation: unsubscribe the
   old browser subscription and explicitly establish a fresh one. Reconcile
@@ -175,9 +201,9 @@ and server composition. Proposed endpoints:
 
 ### Configuration and operations
 
-- Proposed configuration: `JGANTTS_PUSH_ENABLED`, `JGANTTS_PUSH_SEND_ENABLED`,
+- Configuration: `JGANTTS_PUSH_ENABLED`, `JGANTTS_PUSH_SEND_ENABLED`,
   `JGANTTS_PUSH_VAPID_PUBLIC_KEY`, `JGANTTS_PUSH_VAPID_PRIVATE_KEY`, and
-  `JGANTTS_PUSH_VAPID_SUBJECT`. Treat these as new settings, not existing ones.
+  `JGANTTS_PUSH_VAPID_SUBJECT`. These are implemented server settings.
 - Keep the private key in server secrets, outside source control, build output,
   and browser configuration. Persist it across deploys and back it up securely.
   Use separate keys, origins, subscriptions, and databases for staging.
@@ -193,11 +219,11 @@ and server composition. Proposed endpoints:
 
 ### Phase 1 — Contracts and shared worker foundation
 
-- [ ] **1.1** Confirm the new-post topic, automatic first-publication policy,
+- [x] **1.1** Confirm the new-post topic, automatic first-publication policy,
   author suppression control, payload copy, and expiry/retention defaults.
-- [ ] **1.2** Agree on worker ownership and installation handoff with the
+- [x] **1.2** Agree on worker ownership and installation handoff with the
   [iOS Home Screen App roadmap](IOS-HOME-SCREEN-APP-ROADMAP.md).
-- [ ] **1.3** Add and verify stable worker delivery in local development and a
+- [x] **1.3** Add and verify stable worker delivery in local development and a
   packaged production build, with no runtime cache.
 
 Exit condition: the worker loads correctly and the two roadmaps share one
@@ -205,11 +231,11 @@ registration contract.
 
 ### Phase 2 — Consent and subscription lifecycle
 
-- [ ] **2.1** Add migrations, repository, configuration, validation, management
+- [x] **2.1** Add migrations, repository, configuration, validation, management
   credentials, and registration/revocation APIs.
-- [ ] **2.2** Implement subscribe/settings controls with unsupported, install
+- [x] **2.2** Implement subscribe/settings controls with unsupported, install
   required, default, denied, subscribed, pending, and error states.
-- [ ] **2.3** Implement reconciliation, revoke/re-subscribe, lost-credential
+- [x] **2.3** Implement reconciliation, revoke/re-subscribe, lost-credential
   recovery, and a restricted single-device test action.
 
 Exit condition: an opted-in canary device receives a test notification, and
@@ -217,11 +243,11 @@ unsubscribe prevents further sends to that subscription.
 
 ### Phase 3 — Publication and delivery
 
-- [ ] **3.1** Add atomic first-publication events, historical markers, author
+- [x] **3.1** Add atomic first-publication events, historical markers, author
   suppression, and resumable recipient fan-out.
-- [ ] **3.2** Implement the push worker, retries, lease recovery, endpoint
+- [x] **3.2** Implement the push worker, retries, lease recovery, endpoint
   cleanup, cancellation, expiry, and graceful shutdown.
-- [ ] **3.3** Add payload rendering, visible notifications, safe click routing,
+- [x] **3.3** Add payload rendering, visible notifications, safe click routing,
   administrative status, and redacted operational metrics.
 
 Exit condition: a new publication reaches eligible subscribers across restart
@@ -229,12 +255,12 @@ and retry scenarios without affecting publication or social syndication.
 
 ### Phase 4 — Verification and rollout
 
-- [ ] **4.1** Test transaction rollback, duplicate publish requests, edits,
+- [x] **4.1** Test transaction rollback, duplicate publish requests, edits,
   republishing, imports, historical seeding, and post suppression.
-- [ ] **4.2** Test audience cutoff, unsubscribe during fan-out, archive before
+- [x] **4.2** Test audience cutoff, unsubscribe during fan-out, archive before
   send, expired events, lost leases, transient failures, invalid endpoints,
   credentials, request limits, and outbound URL validation.
-- [ ] **4.3** Test component state transitions and worker payload/click handling,
+- [x] **4.3** Test component state transitions and worker payload/click handling,
   including failed server registration and existing windows.
 - [ ] **4.4** Run actual push canaries in supported desktop Chrome/Edge, Firefox,
   Safari, and Android Chrome. Record OS/browser versions and limitations.
@@ -242,7 +268,7 @@ and retry scenarios without affecting publication or social syndication.
   foreground/background/closed app, locked device, permission denial/revocation,
   offline then reconnect, app removal/reinstall, and notification deep links.
   Browser automation alone is not evidence of OS notification delivery.
-- [ ] **4.6** Run frontend tests/build, server check/build, and local smoke checks
+- [x] **4.6** Run frontend tests/build, server check/build, and local smoke checks
   from [development checks](architecture/operations/development.md). Extend
   release smoke checks for worker/manifest MIME types and cache headers.
 - [ ] **4.7** Deploy with sends disabled, verify migrations and assets, then
@@ -266,3 +292,42 @@ the companion roadmap's installation and navigation acceptance criteria.
 Out of scope for v1: native App Store distribution, silent background pushes,
 comment/reply notifications, per-author topics, digests, unread badges, reader
 accounts, and offline post/media storage.
+
+## Remaining release evidence
+
+- [ ] Real desktop/Android provider canaries with OS/browser versions recorded.
+- [ ] Physical iPhone/iPad installation, delivery, Focus/lock-screen, removal,
+  reinstall, VoiceOver, and notification deep-link checks.
+- [ ] HTTPS staging/production VAPID configuration and single-device canary.
+- [ ] Compatible schema-14 rollback rehearsal and installed-worker update check.
+- [ ] Public enablement after canary-era pending work is cancelled.
+
+No unchecked release item is implied complete by the local implementation.
+
+## Local verification record — 2026-09-26
+
+- Server `npm run check`: 104 tests passed, including transport, persistence,
+  migration, lifecycle, cancellation, and HTTP contracts; type checking passed.
+- Frontend `npm test`: 54 tests passed. `npm run build` passed; the existing
+  large map bundle warning remains.
+- Complete Chrome Playwright suite: 16 passed. After adding the worker-update
+  regression, the seven notification/install tests passed again, including a
+  live service-worker update that waits without reloading the open page.
+- Server `npm run smoke:local` passed against compiled output.
+- `node scripts/test-package-release.js` passed, including required installation
+  assets and failure when the worker is absent.
+- A locally packaged archive was extracted and started against an isolated
+  migrated database; install/settings HTML, worker, manifest, four PNG icons,
+  and disabled push configuration all passed HTTP checks.
+- No production deployment or physical-device test was performed.
+
+### Subscription-renewal follow-up
+
+Regression tests reproduced and now cover two additional renewal failures:
+permission-dismissed setup uses the current signing key on its next explicit
+attempt, while established subscriptions still require a reset for VAPID rotation.
+Authenticated re-registration refreshes browser encryption keys without changing
+the installation ID or publication audience cutoff. Prepared deliveries using
+superseded keys lose their leases and retry with current keys; already accepted
+messages are not replayed. Server checks, frontend tests/build, and compiled-server
+smoke checks passed again after these fixes.

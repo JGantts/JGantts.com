@@ -445,16 +445,22 @@ async function syncRoutedPost(scroll = false) {
   }
 }
 
-onMounted(async () => {
-  document.addEventListener('click', handlePageClick)
+async function loadInitialPosts() {
+  loading.value = true
+  error.value = null
   try {
     await loadPage()
   } catch {
-    error.value = 'Could not load photo posts.'
+    error.value = 'Could not load photo posts. Check your connection and try again.'
   } finally {
     loading.value = false
   }
   if (!disposed) await syncRoutedPost(true)
+}
+
+onMounted(() => {
+  document.addEventListener('click', handlePageClick)
+  void loadInitialPosts()
 })
 
 onBeforeUnmount(() => {
@@ -516,10 +522,14 @@ function flattenComments(statuses: ThreadedPhotoComment[], depth = 0): DisplayPh
 
       <div v-else-if="error" class="error-state">
         <p>{{ error }}</p>
+        <button class="retry-button" type="button" @click="loadInitialPosts">Retry loading photos</button>
       </div>
 
       <p v-if="routeLoading" class="loading-state" role="status">Loading post…</p>
-      <p v-else-if="routeError" class="error-state" role="alert">{{ routeError }}</p>
+      <div v-else-if="routeError" class="error-state" role="alert">
+        <p>{{ routeError }}</p>
+        <button class="retry-button" type="button" @click="syncRoutedPost(true)">Retry loading this post</button>
+      </div>
 
       <section
         v-if="!loading && allToots.length"
@@ -871,6 +881,9 @@ function flattenComments(statuses: ThreadedPhotoComment[], depth = 0): DisplayPh
 .author-link:hover strong,
 .timestamp:hover,
 .status-content :deep(a):hover,
+.retry-button { min-height: 44px; padding: .6rem 1rem; margin: .75rem 0; border: 1px solid currentColor; border-radius: .5rem; }
+.retry-button:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+
 .error-state a:hover {
   color: var(--photos-accent);
   text-decoration: underline;

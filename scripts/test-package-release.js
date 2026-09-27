@@ -32,6 +32,9 @@ write('jgantts-server/schema-compatibility.json', '{"schemaVersion":1}\n');
 write('jgantts-com/dist/index.html', '<script src="/assets/index.js"></script>\n');
 write('jgantts-com/dist/assets/index.js', 'console.log("fixture");\n');
 write('jgantts-com/PUBLIC/favicon.png', 'png');
+write('jgantts-com/PUBLIC/sw.js', '// worker');
+write('jgantts-com/PUBLIC/manifest.webmanifest', '{}');
+for (const icon of ['icon-192', 'icon-512', 'maskable-512', 'apple-touch-icon']) write(`jgantts-com/PUBLIC/app-icons/${icon}.png`, 'png');
 write('jgantts-com/PUBLIC/assets/maps/generated.pmtiles', 'must be excluded');
 git('init', '-q');
 git('config', 'user.name', 'Packager Test');
@@ -53,6 +56,9 @@ const entries = execFileSync('tar', ['-tzf', 'artifact/jgantts-site-release.tar.
   cwd: fixtureRoot, encoding: 'utf8',
 });
 assert.doesNotMatch(entries, /PUBLIC\/assets\/maps/);
+assert.match(entries, /PUBLIC\/sw\.js/);
+assert.match(entries, /PUBLIC\/manifest\.webmanifest/);
+assert.match(entries, /PUBLIC\/app-icons\/maskable-512\.png/);
 assert.match(entries, /release-manifest\.json/);
 
 const mismatch = spawnSync(process.execPath, ['scripts/package-release.js', 'mismatch'], {
@@ -60,6 +66,14 @@ const mismatch = spawnSync(process.execPath, ['scripts/package-release.js', 'mis
 });
 assert.notEqual(mismatch.status, 0);
 assert.match(mismatch.stderr, /does not match expected commit/);
+
+fs.unlinkSync(path.join(fixtureRoot, 'jgantts-com/PUBLIC/sw.js'));
+const missingWorker = spawnSync(process.execPath, ['scripts/package-release.js', 'missing-worker'], {
+  cwd: fixtureRoot, encoding: 'utf8', env: { ...process.env, GITHUB_SHA: commit },
+});
+assert.notEqual(missingWorker.status, 0);
+assert.match(missingWorker.stderr, /Required release input is missing.*sw\.js/);
+write('jgantts-com/PUBLIC/sw.js', '// worker');
 
 fs.symlinkSync('favicon.png', path.join(fixtureRoot, 'jgantts-com/PUBLIC/favicon-link.png'));
 const symlink = spawnSync(process.execPath, ['scripts/package-release.js', 'symlink'], {

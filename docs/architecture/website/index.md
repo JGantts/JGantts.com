@@ -9,4 +9,6 @@ The Vue application consumes same-origin content APIs. Express supplies producti
 - [Authoring](authoring.md): private editor, autosave, and explicit publication.
 - [Kovyálo maps](../maps/index.md): separate interactive map experience.
 
+- [Home Screen app](home-screen.md): installation, standalone navigation, and notification settings.
+
 Related: [server](../server/index.md), [development checks](../operations/development.md), [root map](../../../AGENTS.md).

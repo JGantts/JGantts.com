@@ -13,4 +13,6 @@ The browser reads public APIs and uses authenticated authoring endpoints.
 - [Comments](comments.md): cached inbound Mastodon replies.
 - [Observability](observability.md): health, logs, and running build identity.
 
+- [Push notifications](push.md): subscriptions, publication events, and durable Web Push.
+
 Related: [website](../website/index.md), [operations](../operations/index.md), [root map](../../../AGENTS.md).

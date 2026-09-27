@@ -20,7 +20,7 @@ async function loadPosts(cursor?: string) {
     posts.value.push(...page.items)
     nextCursor.value = page.nextCursor
   } catch (loadError) {
-    error.value = loadError instanceof Error ? loadError.message : 'Posts could not be loaded.'
+    error.value = 'Could not load posts. Check your connection and try again.'
   } finally {
     loading.value = false
   }
@@ -36,11 +36,14 @@ onMounted(() => loadPosts())
       <p>Writing and photographs, published here first.</p>
     </header>
 
-    <p v-if="error" class="posts-state" role="alert">{{ error }}</p>
-    <p v-else-if="loading && !posts.length" class="posts-state" role="status">Loading posts…</p>
-    <p v-else-if="!posts.length" class="posts-state">No posts have been published yet.</p>
+    <div v-if="error" class="posts-state" role="alert">
+      <p>{{ error }}</p>
+      <button class="load-more" type="button" :disabled="loading" @click="loadPosts(nextCursor ?? undefined)">Retry loading posts</button>
+    </div>
+    <p v-if="loading && !posts.length" class="posts-state" role="status">Loading posts…</p>
+    <p v-else-if="!posts.length && !error" class="posts-state">No posts have been published yet.</p>
 
-    <section v-else class="post-list" aria-label="Published posts">
+    <section v-if="posts.length" class="post-list" aria-label="Published posts">
       <RouterLink
         v-for="post in posts"
         :key="post.id"
@@ -61,7 +64,7 @@ onMounted(() => loadPosts())
     </section>
 
     <button
-      v-if="nextCursor"
+      v-if="nextCursor && !error"
       class="load-more"
       :disabled="loading"
       type="button"
@@ -155,7 +158,10 @@ onMounted(() => loadPosts())
   font-size: 0.7rem;
 }
 
+.load-more:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+
 .load-more {
+  min-height: 44px;
   border: 1px solid var(--accent);
   border-radius: 999px;
   color: var(--accent);

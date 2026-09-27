@@ -1,3 +1,7 @@
+import { getPushConfig } from './push/config';
+import { PushRepository } from './push/repository';
+import { PushWorker } from './push/worker';
+import { createPushSender } from './push/sender';
 import type { Server } from 'node:http';
 import { createApp } from './app';
 import { getRuntimeConfig } from './config';
@@ -28,6 +32,10 @@ export function startServer(): Server {
   const appHtmlTemplate = readAppHtml(SITE_INDEX_PATH);
   ensureMediaDirectories(config.mediaRoot);
   const contentDatabase = openContentDatabase(config.databasePath);
+  const pushConfig = getPushConfig(process.env, config.siteOrigin);
+  const pushRepository = new PushRepository(contentDatabase);
+  pushRepository.setEnrollment(pushConfig.enabled);
+  const pushWorker = new PushWorker(pushRepository, pushConfig, createPushSender(pushConfig), logger);
   const postRepository = new PostRepository(contentDatabase);
   const postService = new PostService(postRepository);
   const mediaRepository = new MediaRepository(contentDatabase);
@@ -91,6 +99,7 @@ export function startServer(): Server {
     buildInfo,
     logger,
     services: {
+      push: { repository: pushRepository, config: pushConfig },
       health,
       mastodonComments,
       mastodonSyndication,
@@ -102,10 +111,10 @@ export function startServer(): Server {
   }).listen(config.port, () => {
     logger.info('server_started', { commitId: buildInfo.commitId, port: config.port });
     outboxWorker?.start();
+    pushWorker.start();
   });
   server.once('close', () => {
-    if (outboxWorker) void outboxWorker.stop().finally(() => contentDatabase.close());
-    else contentDatabase.close();
+    void Promise.all([outboxWorker?.stop(), pushWorker.stop()]).finally(() => contentDatabase.close());
   });
 
   const shutdown = (signal: NodeJS.Signals) => {

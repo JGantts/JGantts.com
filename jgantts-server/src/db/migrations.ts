@@ -1,3 +1,4 @@
+import { pushSchema } from '../push/schema';
 import type Database from 'better-sqlite3';
 
 export interface Migration {
@@ -297,6 +298,7 @@ export const migrations: readonly Migration[] = [
       ) STRICT;
     `,
   },
+  { version: 14, name: 'web_push_delivery', sql: pushSchema },
 ];
 
 export function migrateDatabase(database: Database.Database): void {

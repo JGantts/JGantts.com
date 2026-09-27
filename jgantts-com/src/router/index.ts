@@ -25,6 +25,8 @@ const router = createRouter({
       path: '/',
       component: MainLayout,
       children: [
+        { path: 'notifications', name: 'Notifications', component: () => import('@/views/NotificationsView.vue'), meta: { title: 'Notifications | JGantts' } },
+        { path: 'install', name: 'Install app', component: () => import('@/views/InstallAppView.vue'), meta: { title: 'Home Screen app | JGantts' } },
         {
           path: '',
           alias: 'welcome/',

@@ -84,6 +84,12 @@ const requiredSources = [
   'jgantts-server/schema-compatibility.json',
   'jgantts-com/dist/index.html',
   'jgantts-com/PUBLIC',
+  'jgantts-com/PUBLIC/sw.js',
+  'jgantts-com/PUBLIC/manifest.webmanifest',
+  'jgantts-com/PUBLIC/app-icons/icon-192.png',
+  'jgantts-com/PUBLIC/app-icons/icon-512.png',
+  'jgantts-com/PUBLIC/app-icons/maskable-512.png',
+  'jgantts-com/PUBLIC/app-icons/apple-touch-icon.png',
 ];
 for (const relativePath of requiredSources) {
   if (!fs.existsSync(path.join(repositoryRoot, relativePath))) fail(`Required release input is missing: ${relativePath}`);
@@ -162,6 +168,8 @@ try {
       'jgantts-server/package-lock.json',
       'jgantts-server/schema-compatibility.json',
       'jgantts-com/dist/index.html',
+      'jgantts-com/PUBLIC/sw.js',
+      'jgantts-com/PUBLIC/manifest.webmanifest',
     ].map((relativePath) => fileRecord(releaseRoot, relativePath)),
   };
   fs.writeFileSync(path.join(releaseRoot, 'release-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);

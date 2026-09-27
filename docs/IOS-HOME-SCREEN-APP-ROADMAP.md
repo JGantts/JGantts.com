@@ -16,17 +16,21 @@ must work and remain useful without notification permission.
 
 ## Current state
 
-- Status: Planned; no Home Screen app implementation has started.
-- Next item: Phase 1 — manifest, icons, and release asset delivery.
-- [The HTML entry](../jgantts-com/index.html) already has theme colors and
-  `viewport-fit=cover`, but no manifest link or explicit Apple touch icon link.
-- [An Apple touch icon](../jgantts-com/public/apple-touch-icon.png) exists; its
-  dimensions and appearance still need review before reuse.
-- [Vue Router](../jgantts-com/src/router/index.ts) uses history navigation, and
-  [Express](../jgantts-server/src/app.ts) serves initial HTML and post redirects.
-- [Vite](../jgantts-com/vite.config.ts) excludes the public directory from
-  production builds. Installation assets require explicit packaging/delivery
-  verification through the existing release pipeline.
+- Status: Implemented locally; physical iPhone/iPad QA and release remain.
+- Active item: Phase 4 — physical-device verification and release.
+- Added the manifest, explicit Apple touch icon, 192/512 PNGs, and a maskable
+  variant generated from the code-native JG mark. The stable identity is `/`,
+  scope is `/`, and launch route is `/photos`.
+- Added `/install` and `/notifications`, persistent reader navigation, standalone
+  prompt suppression, and content-request retry buttons for toolbar-free use.
+- The shared `/sw.js` registers without fetch interception or forced activation.
+  The release packager explicitly requires it, the manifest, and the icon set.
+- [Current architecture](architecture/website/home-screen.md) and
+  [operator runbook](architecture/operations/push.md) describe the implementation.
+- Chrome browser automation verifies guidance, standalone context, root worker
+  registration, manifest identity, narrow/landscape navigation, keyboard focus,
+  and recovery after failed content requests. Light/dark rendered screens and
+  the maskable icon were visually inspected. Physical device behavior is untested.
 
 ## Platform baseline
 
@@ -49,8 +53,8 @@ supported physical devices before release.
 
 - Proposed manifest: stable `id: "/"`, `name: "JGantts.com"`,
   `short_name: "JGantts"`, `start_url: "/photos"`, `scope: "/"`, and
-  `display: "standalone"`, with matching background/theme colors. Confirm the
-  photos-first launch choice before implementation; keep identity stable across
+  `display: "standalone"`, with matching background/theme colors. The implementation adopts
+  the photos-first launch choice; keep identity stable across
   releases, install entry pages, and notification links.
 - Serve `/manifest.webmanifest` with the manifest MIME type and revalidation.
   Provide reviewed 192 × 192 and 512 × 512 PNG icons, a separate maskable icon,
@@ -81,13 +85,13 @@ supported physical devices before release.
 
 ### Phase 1 — App identity and installation assets
 
-- [ ] **1.1** Confirm manifest identity, scope, default launch route, name,
+- [x] **1.1** Confirm manifest identity, scope, default launch route, name,
   colors, and icon artwork.
-- [ ] **1.2** Add the manifest and HTML links; create or adapt the icon set.
-- [ ] **1.3** Package and serve the manifest/icons explicitly, preserving the
+- [x] **1.2** Add the manifest and HTML links; create or adapt the icon set.
+- [x] **1.3** Package and serve the manifest/icons explicitly, preserving the
   existing metadata injection and separate map deployment. Missing assets must
   return 404 rather than SPA HTML.
-- [ ] **1.4** Verify headers and actual asset bytes in a packaged release.
+- [x] **1.4** Verify headers and actual asset bytes in a packaged release.
 
 Exit condition: a physical iPhone can install the intended name/icon and launch
 the standalone app at the chosen route.
@@ -96,7 +100,7 @@ the standalone app at the chosen route.
 
 - [ ] **2.1** Add accessible, dismissible install guidance with copy checked
   against supported iOS/iPadOS versions.
-- [ ] **2.2** Add standalone context detection and persistent navigation/settings
+- [x] **2.2** Add standalone context detection and persistent navigation/settings
   access; retain normal browsing when installation is declined.
 - [ ] **2.3** Verify safe areas, orientation changes, comments/media overlays,
   back navigation, external links, sharing, and offline retry behavior.
@@ -106,7 +110,7 @@ without browser chrome or notification permission.
 
 ### Phase 3 — Push integration
 
-- [ ] **3.1** Consume the shared registration and notification UI from the
+- [x] **3.1** Consume the shared registration and notification UI from the
   [push roadmap](PUSH-NOTIFICATIONS-ROADMAP.md); never register a second worker.
 - [ ] **3.2** From an ordinary iOS tab, guide readers through installation and
   launch. Inside the installed app, offer the explicit notification opt-in.
@@ -148,3 +152,16 @@ Hiding an install prompt does not uninstall readers' apps.
 Out of scope: native Swift/Capacitor packaging, App Store submission, paid Apple
 developer enrollment, offline media downloads, background synchronization, and
 unread badge counts.
+
+## Remaining release evidence
+
+Installation help and push integration are implemented, but their physical iOS
+verification checkboxes remain open. Record actual device/OS versions, screenshots,
+permission outcomes, cold/warm notification launches, VoiceOver, and deployment
+update/rollback results before claiming the corresponding exit conditions.
+
+Local command results are recorded in the
+[push roadmap verification record](PUSH-NOTIFICATIONS-ROADMAP.md#local-verification-record--2026-09-26).
+The extracted archive served the manifest, icon set, and both app routes, and
+an actual browser worker update waited without reloading the open page. These
+checks do not establish iOS installation or OS notification delivery.

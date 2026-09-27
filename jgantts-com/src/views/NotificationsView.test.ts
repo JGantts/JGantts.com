@@ -3,13 +3,14 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import NotificationsView from './NotificationsView.vue'
 import * as client from '@/notifications/client'
 vi.mock('@/notifications/client', () => ({
-  disable: vi.fn(), getConfiguration: vi.fn(), needsInstallation: vi.fn(), persistSubscription: vi.fn(), prepareWorker: vi.fn(), storedInstallation: vi.fn(), subscribe: vi.fn(), supported: vi.fn(),
+  notificationLimits: vi.fn().mockResolvedValue({ maxPerDay: null, maxPerWeek: null }), disable: vi.fn(), getConfiguration: vi.fn(), needsInstallation: vi.fn(), persistSubscription: vi.fn(), prepareWorker: vi.fn(), storedInstallation: vi.fn(), subscribe: vi.fn(), supported: vi.fn(),
   NotificationRequestError: class extends Error { constructor(message: string, public status: number) { super(message) } },
 }))
 const worker = { pushManager: { getSubscription: vi.fn() } }
 const mountSettings = () => mount(NotificationsView, { global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } } })
 beforeEach(() => {
   vi.resetAllMocks(); vi.stubGlobal('Notification', { permission: 'default' })
+  vi.mocked(client.notificationLimits).mockResolvedValue({ maxPerDay: null, maxPerWeek: null })
   vi.mocked(client.supported).mockReturnValue(true)
   vi.mocked(client.getConfiguration).mockResolvedValue({ enabled: true, publicKey: 'key', keyVersion: 'v1', payloadVersion: 1 })
   vi.mocked(client.prepareWorker).mockResolvedValue(worker as unknown as ServiceWorkerRegistration)

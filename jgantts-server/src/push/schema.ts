@@ -83,3 +83,10 @@ WHEN NEW.installation_id = '' BEGIN
   UPDATE push_subscriptions SET installation_id = ${installationUuid} WHERE id = NEW.id;
 END;
 `;
+
+export const pushLimitsSchema = `
+ALTER TABLE push_subscriptions ADD COLUMN max_per_day INTEGER DEFAULT 2 CHECK (max_per_day BETWEEN 0 AND 1000);
+ALTER TABLE push_subscriptions ADD COLUMN max_per_week INTEGER DEFAULT 3 CHECK (max_per_week BETWEEN 0 AND 1000);
+ALTER TABLE push_deliveries ADD COLUMN skip_reason TEXT CHECK (skip_reason IN ('daily_limit', 'weekly_limit'));
+CREATE INDEX push_delivery_frequency ON push_deliveries(subscription_id, state, updated_at);
+`;

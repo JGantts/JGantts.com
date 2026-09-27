@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import NotificationLimits from '@/components/NotificationLimits.vue'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { disable, getConfiguration, needsInstallation, NotificationRequestError, persistSubscription, prepareWorker, storedInstallation, subscribe, supported, type PushConfiguration } from '@/notifications/client'
 
@@ -135,6 +136,7 @@ onBeforeUnmount(() => { disposed = true; document.removeEventListener('visibilit
       </template>
       <p v-if="problem" role="alert">{{ problem }}</p>
     </div>
+    <NotificationLimits v-if="state === 'subscribed' && installationId" :key="installationId" />
     <p class="fine-print">Notifications may arrive later when your device is offline or in Focus mode. Delivery isn't guaranteed.</p>
     <p><a href="/feed.xml">Follow the Atom feed</a> · <RouterLink to="/photos">Back to photos</RouterLink></p>
     <details v-if="installationId" class="troubleshooting">

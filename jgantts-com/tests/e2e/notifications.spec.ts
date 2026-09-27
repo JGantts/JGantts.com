@@ -102,3 +102,34 @@ test('updating the worker waits for an open page instead of taking over or reloa
     await new Promise<void>(resolve => { server.close(() => resolve()); server.closeAllConnections() })
   }
 })
+
+test('subscribers can edit daily and weekly limits and reload saved preferences on mobile', async ({ page }) => {
+  const id = '184a1f93-09e2-430d-8016-1f0765693f00'
+  let limits: { maxPerDay: number | null; maxPerWeek: number | null } = { maxPerDay: 2, maxPerWeek: 3 }
+  await page.addInitScript(({ id }) => {
+    localStorage.setItem('jgantts.push.installation.v1', JSON.stringify({ id, credential: 'owner', endpoint: 'https://web.push.apple.com/example', keyVersion: 'v1' }))
+    Object.defineProperty(Notification, 'permission', { get: () => 'granted' })
+    const subscription = { endpoint: 'https://web.push.apple.com/example', toJSON: () => ({ endpoint: 'https://web.push.apple.com/example' }) }
+    navigator.serviceWorker.register = async () => ({ active: {}, pushManager: { getSubscription: async () => subscription } }) as unknown as ServiceWorkerRegistration
+  }, { id })
+  await page.route('**/api/push/config', route => route.fulfill({ json: { enabled: true, publicKey: 'key', keyVersion: 'v1', payloadVersion: 1 } }))
+  await page.route('**/api/push/subscriptions', route => route.fulfill({ json: { id } }))
+  await page.route('**/api/push/subscriptions/*/preferences', route => {
+    expect(route.request().headers()['x-push-credential']).toBe('owner')
+    if (route.request().method() === 'PUT') limits = route.request().postDataJSON()
+    return route.fulfill({ json: limits })
+  })
+  await page.goto('/notifications')
+  await expect(page.getByLabel('Maximum per day')).toHaveValue('2')
+  await expect(page.getByLabel('Maximum per week')).toHaveValue('3')
+  await page.getByLabel('Maximum per day').fill('1')
+  await page.getByLabel('Maximum per week').fill('')
+  await page.getByRole('button', { name: 'Save limits' }).click()
+  await expect(page.getByText('Notification limits saved for this installation.')).toBeVisible()
+  expect(limits).toEqual({ maxPerDay: 1, maxPerWeek: null })
+  await page.reload()
+  await expect(page.getByLabel('Maximum per day')).toHaveValue('1')
+  await expect(page.getByLabel('Maximum per week')).toHaveValue('')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: '/tmp/notification-limits-mobile.png', fullPage: true })
+})

@@ -34,3 +34,8 @@ admin editor. App use is online-first; no offline media/post storage is promised
 
 Physical-device installation, OS delivery, VoiceOver, and update/rollback QA
 remain release gates in the [Home Screen roadmap](../../IOS-HOME-SCREEN-APP-ROADMAP.md).
+
+Subscribed installations can set daily and weekly maximums in notification
+settings. Defaults are 2 per day and 3 per week; blank means unlimited and 0
+pauses post alerts. The UI explains rolling windows, skipped excess alerts,
+and the exclusion of admin test notifications. Failed saves retain edits.

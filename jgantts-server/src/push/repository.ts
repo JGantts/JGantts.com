@@ -2,6 +2,7 @@ import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { PushAudience } from './config';
 import type { ContentDatabase } from '../db/database';
 import type { Subscription } from './subscription';
+import type { PushLimits } from './limits';
 import { pushError } from './subscription';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -60,6 +61,34 @@ export class PushRepository {
     if (!row || !timingSafeEqual(Buffer.from(row.credential_hash), Buffer.from(hash(credential)))) throw pushError(404, 'Installation not found.');
     this.disable(id);
   }
+  preferences(id: string, credential: string): PushLimits {
+    const row = this.db.prepare(`SELECT credential_hash, max_per_day AS maxPerDay, max_per_week AS maxPerWeek
+      FROM push_subscriptions WHERE installation_id = ? AND active = 1`).get(id) as (PushLimits & { credential_hash: string }) | undefined;
+    if (!row || !timingSafeEqual(Buffer.from(row.credential_hash), Buffer.from(hash(credential)))) throw pushError(404, 'Installation not found.');
+    return { maxPerDay: row.maxPerDay, maxPerWeek: row.maxPerWeek };
+  }
+  savePreferences(id: string, credential: string, limits: PushLimits) {
+    this.preferences(id, credential);
+    this.db.prepare('UPDATE push_subscriptions SET max_per_day = ?, max_per_week = ? WHERE installation_id = ?')
+      .run(limits.maxPerDay, limits.maxPerWeek, id);
+    return limits;
+  }
+  private limitReason(subscriptionId: number, deliveryId: number, now: number): string | null {
+    const limits = this.db.prepare('SELECT max_per_day AS day, max_per_week AS week FROM push_subscriptions WHERE id = ?')
+      .get(subscriptionId) as { day: number | null; week: number | null };
+    if (limits.day === null && limits.week === null) return null;
+    // Processing jobs reserve a slot before network I/O, preventing concurrent
+    // claims from exceeding a cap. Retrying a job never counts itself twice.
+    const counts = this.db.prepare(`SELECT
+      COALESCE(SUM(CASE WHEN d.state = 'processing' OR d.updated_at > ? THEN 1 ELSE 0 END), 0) AS day,
+      COUNT(*) AS week FROM push_deliveries d JOIN push_publication_events e ON e.id = d.event_id
+      WHERE d.subscription_id = ? AND d.id != ? AND e.kind = 'publication'
+      AND (d.state = 'processing' OR (d.state = 'accepted' AND d.updated_at > ?))`)
+      .get(now - 86400_000, subscriptionId, deliveryId, now - 7 * 86400_000) as { day: number; week: number };
+    if (limits.day !== null && counts.day >= limits.day) return 'daily_limit';
+    if (limits.week !== null && counts.week >= limits.week) return 'weekly_limit';
+    return null;
+  }
   disable(id: number) {
     this.db.transaction(() => {
       this.db.prepare('UPDATE push_subscriptions SET active = 0, endpoint = NULL, p256dh = NULL, auth = NULL WHERE id = ?').run(id);
@@ -106,16 +135,23 @@ export class PushRepository {
     if (audience !== '*' && !audience.length) return null;
     return this.db.transaction(() => {
       const allowed = audience === '*' ? '' : `AND s.id IN (${audience.map(() => '?').join(',')})`;
-      const row = this.db.prepare(`SELECT d.id FROM push_deliveries d JOIN push_subscriptions s ON s.id = d.subscription_id
-        JOIN push_publication_events e ON e.id = d.event_id
-        WHERE s.active = 1 AND e.expires_at > ? AND e.state IN ('pending', 'expanded')
-        AND (e.kind = 'test' OR EXISTS (SELECT 1 FROM posts WHERE id = e.post_id AND status = 'published'))
-        AND ((d.state = 'pending' AND d.available_at <= ?) OR (d.state = 'processing' AND d.lease_until <= ?))
-        ${allowed} ORDER BY d.available_at, d.id LIMIT 1`).get(now, now, now, ...(audience === '*' ? [] : audience.map(id => this.resolveId(id) ?? -1))) as { id: number } | undefined;
-      if (!row) return null;
-      const token = randomUUID();
-      this.db.prepare("UPDATE push_deliveries SET state = 'processing', attempts = attempts + 1, lease_token = ?, lease_until = ?, updated_at = ? WHERE id = ?").run(token, now + 60_000, now, row.id);
-      return this.current(row.id, token, now);
+      while (true) {
+        const row = this.db.prepare(`SELECT d.id, d.subscription_id, e.kind FROM push_deliveries d JOIN push_subscriptions s ON s.id = d.subscription_id
+          JOIN push_publication_events e ON e.id = d.event_id
+          WHERE s.active = 1 AND e.expires_at > ? AND e.state IN ('pending', 'expanded')
+          AND (e.kind = 'test' OR EXISTS (SELECT 1 FROM posts WHERE id = e.post_id AND status = 'published'))
+          AND ((d.state = 'pending' AND d.available_at <= ?) OR (d.state = 'processing' AND d.lease_until <= ?))
+          ${allowed} ORDER BY d.available_at, d.id LIMIT 1`).get(now, now, now, ...(audience === '*' ? [] : audience.map(id => this.resolveId(id) ?? -1))) as { id: number; subscription_id: number; kind: string } | undefined;
+        if (!row) return null;
+        const reason = row.kind === 'test' ? null : this.limitReason(row.subscription_id, row.id, now);
+        if (reason) {
+          this.db.prepare("UPDATE push_deliveries SET state = 'cancelled', skip_reason = ?, updated_at = ?, lease_token = NULL, lease_until = NULL WHERE id = ?").run(reason, now, row.id);
+          continue;
+        }
+        const token = randomUUID();
+        this.db.prepare("UPDATE push_deliveries SET state = 'processing', attempts = attempts + 1, lease_token = ?, lease_until = ?, updated_at = ? WHERE id = ?").run(token, now + 60_000, now, row.id);
+        return this.current(row.id, token, now);
+      }
     })();
   }
   current(id: number, token: string, now = Date.now()): PushDelivery | null {
@@ -141,7 +177,7 @@ export class PushRepository {
       LEFT JOIN posts p ON p.id = e.post_id LEFT JOIN push_deliveries d ON d.event_id = e.id
       GROUP BY e.id ORDER BY e.created_at DESC, e.id DESC`).all();
     const recentDeliveries = this.db.prepare(`SELECT d.id, d.event_id AS eventId,
-      s.installation_id AS installationId, d.state, d.attempts, d.last_status AS lastStatus,
+      s.installation_id AS installationId, d.state, d.skip_reason AS skipReason, d.attempts, d.last_status AS lastStatus,
       d.available_at AS availableAt, d.updated_at AS updatedAt, e.created_at AS createdAt,
       e.kind, p.title, p.slug,
       CASE WHEN d.state = 'accepted' THEN MAX(0, d.updated_at - e.created_at) ELSE NULL END AS acceptedAfterMs
@@ -149,7 +185,7 @@ export class PushRepository {
       JOIN push_subscriptions s ON s.id = d.subscription_id LEFT JOIN posts p ON p.id = e.post_id
       ORDER BY d.updated_at DESC, d.id DESC LIMIT 100`).all();
     const installations = (this.db.prepare(`SELECT installation_id AS id, active,
-      created_at AS createdAt, last_seen_at AS lastSeenAt FROM push_subscriptions
+      max_per_day AS maxPerDay, max_per_week AS maxPerWeek, created_at AS createdAt, last_seen_at AS lastSeenAt FROM push_subscriptions
       ORDER BY active DESC, last_seen_at DESC, id DESC LIMIT 100`).all() as {
         id: string; active: number; createdAt: number; lastSeenAt: number;
       }[]).map(row => ({ ...row, active: Boolean(row.active), allowed: audience === '*' || audience.includes(row.id) }));

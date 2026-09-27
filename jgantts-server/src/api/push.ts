@@ -1,4 +1,5 @@
 import express from 'express';
+import { validateLimits } from '../push/limits';
 import { isInstallationUuid, type PushConfig } from '../push/config';
 import type { PushRepository } from '../push/repository';
 import { pushError, validateCredential, validateEndpoint, validateSubscription } from '../push/subscription';
@@ -31,6 +32,16 @@ export function createPushRouter({ repository, config }: PushServices) {
     if (JSON.stringify(req.body ?? {}).length > 4096) throw pushError(413, 'Subscription is too large.');
     if (req.body?.keyVersion !== config.keyVersion) throw pushError(409, 'Reload notification settings before subscribing.');
     res.status(201).json(repository.register(validateSubscription(req.body.subscription), validateCredential(req.body.credential), config.keyVersion));
+  });
+  router.get('/subscriptions/:id/preferences', rateLimit(60), (req, res) => {
+    const id = String(req.params.id).toLowerCase();
+    if (!isInstallationUuid(id)) throw pushError(400, 'Invalid installation ID.');
+    res.json(repository.preferences(id, validateCredential(req.get('X-Push-Credential'))));
+  });
+  router.put('/subscriptions/:id/preferences', sameOrigin(config.siteOrigin), rateLimit(30), (req, res) => {
+    const id = String(req.params.id).toLowerCase();
+    if (!isInstallationUuid(id)) throw pushError(400, 'Invalid installation ID.');
+    res.json(repository.savePreferences(id, validateCredential(req.get('X-Push-Credential')), validateLimits(req.body)));
   });
   router.delete('/subscriptions', sameOrigin(config.siteOrigin), rateLimit(60), (req, res) => {
     repository.revokeEndpoint(validateEndpoint(req.body?.endpoint), validateCredential(req.get('X-Push-Credential')));

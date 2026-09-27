@@ -116,3 +116,14 @@ export async function reconcileInstallation() {
     await persistSubscription(subscription, config);
   }
 }
+
+export type NotificationLimits = { maxPerDay: number | null; maxPerWeek: number | null }
+export async function notificationLimits(limits?: NotificationLimits): Promise<NotificationLimits> {
+  const record = storedInstallation();
+  if (!record?.id) throw new Error('Reconnect this installation before changing limits.');
+  return request(`/api/push/subscriptions/${encodeURIComponent(record.id)}/preferences`, {
+    method: limits ? 'PUT' : 'GET',
+    headers: { 'X-Push-Credential': record.credential, ...(limits ? { 'Content-Type': 'application/json' } : {}) },
+    body: limits ? JSON.stringify(limits) : undefined,
+  });
+}

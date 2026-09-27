@@ -14,9 +14,9 @@ export type NotificationDashboard = {
     total: number; accepted: number; waiting: number; failed: number; cancelled: number
   }[]
   recentDeliveries: {
-    id: number; eventId: string; installationId: string; state: string; attempts: number
+    skipReason: 'daily_limit' | 'weekly_limit' | null; id: number; eventId: string; installationId: string; state: string; attempts: number
     lastStatus: number | null; availableAt: number; updatedAt: number; createdAt: number
     kind: string; title: string | null; slug: string | null; acceptedAfterMs: number | null
   }[]
-  installations: { id: string; active: boolean; allowed: boolean; createdAt: number; lastSeenAt: number }[]
+  installations: { maxPerDay: number | null; maxPerWeek: number | null; id: string; active: boolean; allowed: boolean; createdAt: number; lastSeenAt: number }[]
 }

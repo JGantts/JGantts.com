@@ -312,7 +312,7 @@ test('installation UUID migration preserves credentials, queue ownership, and au
     service.publish('before-migration'); repository.fanOut();
     const queue = db.prepare('SELECT * FROM push_deliveries').all();
     migrateDatabase(db);
-    assert.deepEqual(db.prepare('SELECT * FROM push_deliveries').all(), queue);
+    assert.deepEqual(db.prepare('SELECT * FROM push_deliveries').all(), queue.map((row: any) => ({ ...row, skip_reason: null })));
     const enrolled = repository.register(sub, token, 'v1');
     assert.ok(isInstallationUuid(enrolled.id));
     assert.deepEqual(repository.register(sub, token, 'v1'), enrolled);
@@ -420,4 +420,64 @@ test('dashboard is authenticated, read-only, and exposes event timing without su
   assert.equal(dashboard.installations[0].id, id);
   assert.equal(dashboard.installations[0].allowed, true);
   assert.doesNotMatch(JSON.stringify(dashboard), /endpoint|credential|p256dh|payload_json|lease_token|privateKey|web.push.apple.com/);
+});
+
+test('frequency defaults, concurrent reservations, rolling windows, and test exclusions', t => {
+  const { db, repository, service, draft } = fixture(t);
+  const token = credential(); const id = repository.register(subscription('limits'), token, config().keyVersion).id;
+  assert.deepEqual(repository.preferences(id, token), { maxPerDay: 2, maxPerWeek: 3 });
+  for (const name of ['limit-a', 'limit-b', 'limit-c']) { draft(name); service.publish(name); repository.fanOut(); }
+  const first = repository.claim('*')!; const second = repository.claim('*')!;
+  assert.ok(first); assert.ok(second); assert.equal(repository.claim('*'), null);
+  assert.equal(db.prepare("SELECT skip_reason FROM push_deliveries WHERE event_id = 'limit-c'").pluck().get(), 'daily_limit');
+  repository.finish(first, 'accepted', 201); repository.finish(second, 'accepted', 201);
+  repository.enqueueTest(id); const testJob = repository.claim('*')!;
+  assert.match(testJob.event_id, /^test-/); repository.finish(testJob, 'accepted', 201);
+  // Yesterday's acceptances consume the weekly allowance but not today's.
+  const now = Date.now();
+  db.prepare("UPDATE push_deliveries SET updated_at = ? WHERE event_id IN ('limit-a', 'limit-b')").run(now - 86400_000);
+  draft('limit-d'); service.publish('limit-d'); repository.fanOut();
+  const third = repository.claim('*')!; assert.equal(third.event_id, 'limit-d'); repository.finish(third, 'accepted', 201);
+  draft('limit-e'); service.publish('limit-e'); repository.fanOut();
+  assert.equal(repository.claim('*'), null);
+  assert.equal(db.prepare("SELECT skip_reason FROM push_deliveries WHERE event_id = 'limit-e'").pluck().get(), 'weekly_limit');
+  db.prepare("UPDATE push_deliveries SET updated_at = ? WHERE state = 'accepted'").run(now - 7 * 86400_000);
+  draft('limit-f'); service.publish('limit-f'); repository.fanOut();
+  assert.equal(repository.claim('*')?.event_id, 'limit-f');
+  assert.equal(db.prepare("SELECT state FROM push_deliveries WHERE event_id = 'limit-c'").pluck().get(), 'cancelled', 'skipped posts never replay');
+});
+
+test('preferences persist through registration, can disable or remove caps, and do not block other subscribers', t => {
+  const { repository, service, draft } = fixture(t);
+  const token = credential(); const sub = subscription('paused'); const id = repository.register(sub, token, 'v1').id;
+  repository.savePreferences(id, token, { maxPerDay: 0, maxPerWeek: null });
+  repository.register(sub, token, 'v1');
+  assert.deepEqual(repository.preferences(id, token), { maxPerDay: 0, maxPerWeek: null });
+  const other = repository.register(subscription('other-limit'), credential(), 'v1').id;
+  draft('cap-post'); service.publish('cap-post'); repository.fanOut();
+  assert.equal(repository.claim('*')?.subscription_id, repository.resolveId(other));
+  repository.savePreferences(id, token, { maxPerDay: null, maxPerWeek: null });
+  draft('unlimited-post'); service.publish('unlimited-post'); repository.fanOut();
+  assert.equal(repository.claim([id])?.event_id, 'unlimited-post');
+});
+
+test('preference HTTP endpoints require ownership, validate caps, and remain usable with enrollment off', async t => {
+  const { repository } = fixture(t); const token = credential();
+  const id = repository.register(subscription('preferences-http'), token, 'v1').id;
+  const cfg = config(); cfg.enabled = false;
+  const server = createApp({ services: { push: { repository, config: cfg } } }).listen(0, '127.0.0.1'); await once(server, 'listening');
+  t.after(() => new Promise<void>(resolve => { server.close(() => resolve()); server.closeAllConnections(); }));
+  const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/push/subscriptions/${id}/preferences`;
+  assert.equal((await fetch(url, { headers: { 'X-Push-Credential': credential() } })).status, 404);
+  const headers = { 'X-Push-Credential': token, Origin: cfg.siteOrigin, 'Content-Type': 'application/json' };
+  const initial = await fetch(url, { headers }); assert.equal(initial.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await initial.json(), { maxPerDay: 2, maxPerWeek: 3 });
+  for (const value of [-1, 1.5, '2', 1001]) {
+    assert.equal((await fetch(url, { method: 'PUT', headers, body: JSON.stringify({ maxPerDay: value, maxPerWeek: 3 }) })).status, 400);
+  }
+  assert.equal((await fetch(url, { method: 'PUT', headers: { ...headers, Origin: 'https://other.example' }, body: JSON.stringify({ maxPerDay: 1, maxPerWeek: null }) })).status, 403);
+  const saved = await fetch(url, { method: 'PUT', headers, body: JSON.stringify({ maxPerDay: 1, maxPerWeek: null }) });
+  assert.deepEqual(await saved.json(), { maxPerDay: 1, maxPerWeek: null });
+  repository.revoke(id, token);
+  assert.equal((await fetch(url, { headers })).status, 404);
 });

@@ -60,3 +60,19 @@ See [push operations](../operations/push.md),
 [roadmap / remaining release gates](../../PUSH-NOTIFICATIONS-ROADMAP.md).
 
 Installation IDs exposed to readers are UUIDs (migration 15); integer primary keys remain internal for queue relationships and audience cutoffs. Audience settings and installation API parameters accept UUIDs only.
+
+Subscriber frequency preferences (migration 16) default to 2 per rolling 24 hours
+and 3 per rolling 7 days for both existing and new installations. Either limit
+can be null (unlimited), or an integer 0–1000. Both caps apply per installation;
+0 skips all publication notifications. Authenticated re-registration preserves
+these choices. GET/PUT `/api/push/subscriptions/:id/preferences` require the
+installation management credential; PUT also requires same origin.
+
+Claiming a publication atomically counts provider-accepted deliveries in the
+window plus processing reservations. A retry excludes its own reservation.
+Over-limit jobs are cancelled with `daily_limit` or `weekly_limit` skip reasons,
+never deferred/replayed. Tests neither consume nor obey these caps. Changes
+apply to new claims; an already sending notification may finish. Accepted
+provider requests are counted, since physical device display is not observable.
+Schema compatibility prevents an older release that ignores caps from opening
+the migrated database.

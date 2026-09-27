@@ -1,4 +1,4 @@
-import { pushSchema, pushInstallationIdsSchema } from '../push/schema';
+import { pushSchema, pushInstallationIdsSchema, pushLimitsSchema } from '../push/schema';
 import type Database from 'better-sqlite3';
 
 export interface Migration {
@@ -300,6 +300,7 @@ export const migrations: readonly Migration[] = [
   },
   { version: 14, name: 'web_push_delivery', sql: pushSchema },
   { version: 15, name: 'push_installation_uuids', sql: pushInstallationIdsSchema },
+  { version: 16, name: 'push_frequency_limits', sql: pushLimitsSchema },
 ];
 
 export function migrateDatabase(database: Database.Database): void {

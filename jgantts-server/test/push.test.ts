@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createECDH, randomBytes } from 'node:crypto';
+import { createECDH, createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,7 +13,7 @@ import { migrations, migrateDatabase } from '../src/db/migrations';
 import { PostRepository } from '../src/posts/post-repository';
 import { PostService } from '../src/posts/post-service';
 import { PushRepository } from '../src/push/repository';
-import { getPushConfig } from '../src/push/config';
+import { getPushConfig, isInstallationUuid } from '../src/push/config';
 import { notificationPayload, PushWorker } from '../src/push/worker';
 import { PushSendError, publicAddress } from '../src/push/sender';
 import { validateEndpoint, validateSubscription } from '../src/push/subscription';
@@ -30,7 +30,7 @@ function fixture(t: test.TestContext) {
   const db = openContentDatabase(':memory:'); t.after(() => db.close());
   const repository = new PushRepository(db); repository.setEnrollment(true);
   const posts = new PostRepository(db); const service = new PostService(posts);
-  const subscribe = (id: string) => repository.register(subscription(id), credential(), config().keyVersion).id;
+  const subscribe = (id: string) => repository.resolveId(repository.register(subscription(id), credential(), config().keyVersion).id)!;
   const draft = (id: string) => posts.create({ id, slug: id, title: 'Hello', bodyHtml: '<p>A new post.</p>', bodyMarkdown: 'A new post.' });
   return { db, repository, posts, service, subscribe, draft };
 }
@@ -176,8 +176,15 @@ test('HTTP requires origin and ownership; disabled enrollment still permits revo
   assert.equal((await fetch(origin + '/api/push/subscriptions', { method: 'POST', body, headers: { 'Content-Type': 'application/json' } })).status, 403);
   const response = await fetch(origin + '/api/push/subscriptions', { method: 'POST', body, headers });
   assert.equal(response.status, 201); const { id } = await response.json();
+  assert.ok(isInstallationUuid(id));
+  cfg.audience = [id];
   assert.equal((await fetch(origin + '/api/admin/push/status')).status, 401);
   assert.equal((await fetch(origin + '/api/admin/push/test', { method: 'POST', headers: { ...headers, Authorization: 'Bearer admin-test' }, body: JSON.stringify({ subscriptionId: id }) })).status, 202);
+  assert.equal((await fetch(origin + '/api/admin/push/test', { method: 'POST', headers: { ...headers, Authorization: 'Bearer admin-test' }, body: JSON.stringify({ subscriptionId: '184a1f93-09e2-430d-8016-1f0765693f00' }) })).status, 400);
+  cfg.audience = [repository.resolveId(id)!];
+  assert.equal((await fetch(origin + '/api/admin/push/test', { method: 'POST', headers: { ...headers, Authorization: 'Bearer admin-test' }, body: JSON.stringify({ subscriptionId: id }) })).status, 202);
+  assert.equal((await fetch(origin + `/api/push/subscriptions/${id}`, { method: 'DELETE', headers: { ...headers, 'X-Push-Credential': credential() } })).status, 404);
+  assert.equal((await fetch(origin + `/api/push/subscriptions/${id}`, { method: 'DELETE', headers: { ...headers, 'X-Push-Credential': token } })).status, 204);
   cfg.enabled = false;
   assert.equal((await fetch(origin + '/api/push/subscriptions', { method: 'POST', body, headers })).status, 503);
   assert.equal((await fetch(origin + '/api/push/subscriptions', { method: 'DELETE', headers: { ...headers, 'X-Push-Credential': token }, body: JSON.stringify({ endpoint: sub.endpoint }) })).status, 204);
@@ -277,7 +284,59 @@ test('authenticated browser key renewal updates encryption material without chan
   const job = repository.claim('*')!;
   assert.equal(job.p256dh, renewed.keys.p256dh);
   assert.equal(job.auth, renewed.keys.auth);
-  assert.equal(job.subscription_id, enrolled.id);
+  assert.equal(job.subscription_id, repository.resolveId(enrolled.id));
   assert.equal(db.prepare('SELECT created_at FROM push_subscriptions').pluck().get(), 100);
   assert.equal(db.prepare('SELECT last_seen_at FROM push_subscriptions').pluck().get(), 200);
+});
+
+
+test('installation UUID migration preserves credentials, queue ownership, and audience cutoffs', () => {
+  const db = new Database(':memory:');
+  try {
+    db.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, name TEXT, applied_at TEXT)');
+    for (const migration of migrations.filter(m => m.version <= 14)) {
+      db.exec(migration.sql);
+      db.prepare('INSERT INTO schema_migrations VALUES (?, ?, ?)').run(migration.version, migration.name, '');
+    }
+    const sub = subscription('existing'); const token = credential();
+    const insert = db.prepare(`INSERT INTO push_subscriptions
+      (endpoint_hash, endpoint, p256dh, auth, credential_hash, key_version, created_at, last_seen_at)
+      VALUES (?, ?, ?, ?, ?, 'v1', 1, 1)`);
+    insert.run(createHash('sha256').update(sub.endpoint).digest('hex'), sub.endpoint,
+      sub.keys.p256dh, sub.keys.auth, createHash('sha256').update(token).digest('hex'));
+    const repository = new PushRepository(db); repository.setEnrollment(true);
+    const posts = new PostRepository(db); const service = new PostService(posts);
+    posts.create({ id: 'before-migration', slug: 'before-migration', bodyMarkdown: '', bodyHtml: '' });
+    service.publish('before-migration'); repository.fanOut();
+    const queue = db.prepare('SELECT * FROM push_deliveries').all();
+    migrateDatabase(db);
+    assert.deepEqual(db.prepare('SELECT * FROM push_deliveries').all(), queue);
+    const enrolled = repository.register(sub, token, 'v1');
+    assert.ok(isInstallationUuid(enrolled.id));
+    assert.deepEqual(repository.register(sub, token, 'v1'), enrolled);
+    assert.equal(repository.resolveId(enrolled.id), 1);
+    assert.equal(repository.allows(enrolled.id, [1]), true);
+    assert.equal(repository.allows(enrolled.id, [enrolled.id]), true);
+    const other = repository.register(subscription('other'), credential(), 'v1');
+    assert.notEqual(other.id, enrolled.id);
+    assert.equal(repository.allows(other.id, [enrolled.id]), false);
+    assert.equal(repository.claim([other.id]), null);
+    assert.equal(repository.claim([enrolled.id])?.subscription_id, 1);
+    repository.revoke(enrolled.id, token);
+    assert.equal(db.prepare('SELECT active FROM push_subscriptions WHERE id = 1').pluck().get(), 0);
+    // A still-running preceding release omits the new column when enrolling.
+    insert.run('legacy-hash', 'https://web.push.apple.com/legacy', sub.keys.p256dh, sub.keys.auth, 'legacy-credential-hash');
+    const legacyId = db.prepare("SELECT installation_id FROM push_subscriptions WHERE endpoint_hash = 'legacy-hash'").pluck().get();
+    assert.ok(isInstallationUuid(legacyId));
+    migrateDatabase(db);
+    assert.equal(db.prepare("SELECT installation_id FROM push_subscriptions WHERE id = 1").pluck().get(), enrolled.id);
+  } finally { db.close(); }
+});
+
+test('audiences accept UUIDs and preserve numeric configuration during rollout', () => {
+  const id = '184a1f93-09e2-430d-8016-1f0765693f00';
+  assert.deepEqual(getPushConfig({ JGANTTS_PUSH_AUDIENCE: ` ${id.toUpperCase()},1 ` }, '').audience, [id, 1]);
+  for (const invalid of ['0', '-1', '1e2', 'not-a-uuid', id + ',']) {
+    assert.throws(() => getPushConfig({ JGANTTS_PUSH_AUDIENCE: invalid }, ''), /audience/);
+  }
 });

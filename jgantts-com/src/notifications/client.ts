@@ -1,5 +1,5 @@
 export type PushConfiguration = { enabled: boolean; publicKey: string; keyVersion: string; payloadVersion: number }
-export type Installation = { credential: string; endpoint: string; keyVersion: string; id?: number; disabling?: boolean }
+export type Installation = { credential: string; endpoint: string; keyVersion: string; id?: string | number; disabling?: boolean }
 const STORAGE = 'jgantts.push.installation.v1';
 let registration: Promise<ServiceWorkerRegistration> | undefined;
 export function standalone() {
@@ -60,7 +60,7 @@ export async function persistSubscription(subscription: PushSubscription, config
   record = { ...record, endpoint: subscription.endpoint };
   // Save before the request: retries authenticate even if the first response is lost.
   store(record);
-  const result = await request<{ id: number }>('/api/push/subscriptions', {
+  const result = await request<{ id: string }>('/api/push/subscriptions', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ subscription: subscription.toJSON(), credential: record.credential, keyVersion: config.keyVersion }),
   });

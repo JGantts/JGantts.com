@@ -68,3 +68,18 @@ BEGIN
   WHERE event_id = NEW.id AND state IN ('pending', 'processing');
 END;
 `;
+
+// Preserve integer queue ordering while giving installations an opaque public ID.
+const installationUuid = `lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) ||
+  '-4' || substr(lower(hex(randomblob(2))), 2) || '-' ||
+  substr('89ab', (random() & 3) + 1, 1) || substr(lower(hex(randomblob(2))), 2) ||
+  '-' || lower(hex(randomblob(6)))`;
+export const pushInstallationIdsSchema = `
+ALTER TABLE push_subscriptions ADD COLUMN installation_id TEXT NOT NULL DEFAULT '';
+UPDATE push_subscriptions SET installation_id = ${installationUuid};
+CREATE UNIQUE INDEX push_installation_id ON push_subscriptions(installation_id) WHERE installation_id != '';
+CREATE TRIGGER push_installation_id_insert AFTER INSERT ON push_subscriptions
+WHEN NEW.installation_id = '' BEGIN
+  UPDATE push_subscriptions SET installation_id = ${installationUuid} WHERE id = NEW.id;
+END;
+`;

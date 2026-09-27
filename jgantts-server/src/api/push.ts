@@ -1,5 +1,5 @@
 import express from 'express';
-import type { PushConfig } from '../push/config';
+import { isInstallationUuid, type PushConfig } from '../push/config';
 import type { PushRepository } from '../push/repository';
 import { pushError, validateCredential, validateEndpoint, validateSubscription } from '../push/subscription';
 
@@ -37,8 +37,9 @@ export function createPushRouter({ repository, config }: PushServices) {
     res.status(204).end();
   });
   router.delete('/subscriptions/:id', sameOrigin(config.siteOrigin), rateLimit(60), (req, res) => {
-    const id = Number(req.params.id);
-    if (!Number.isSafeInteger(id) || id < 1) throw pushError(400, 'Invalid installation ID.');
+    const raw = String(req.params.id);
+    const id = /^\d+$/.test(raw) ? Number(raw) : raw.toLowerCase();
+    if (typeof id === 'number' ? !Number.isSafeInteger(id) || id < 1 : !isInstallationUuid(id)) throw pushError(400, 'Invalid installation ID.');
     repository.revoke(id, validateCredential(req.get('X-Push-Credential')));
     res.status(204).end();
   });
@@ -49,9 +50,10 @@ export function createAdminPushRouter({ repository, config }: PushServices) {
   router.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   router.get('/status', (_req, res) => res.json({ ...repository.status(), enabled: config.enabled, sendEnabled: config.sendEnabled, audience: config.audience }));
   router.post('/test', sameOrigin(config.siteOrigin), rateLimit(5), (req, res) => {
-    const id = req.body?.subscriptionId;
+    const raw = req.body?.subscriptionId;
+    const id = typeof raw === 'string' ? raw.toLowerCase() : raw;
     if (!config.sendEnabled) throw pushError(409, 'Push sending is disabled.');
-    if (!Number.isSafeInteger(id) || id < 1 || (config.audience !== '*' && !config.audience.includes(id))) throw pushError(400, 'Select an allowed canary installation ID.');
+    if (!(isInstallationUuid(id) || (Number.isSafeInteger(id) && id > 0)) || !repository.allows(id, config.audience)) throw pushError(400, 'Select an allowed canary installation ID.');
     res.status(202).json({ eventId: repository.enqueueTest(id) });
   });
   return router;

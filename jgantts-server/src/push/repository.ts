@@ -1,4 +1,5 @@
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
+import type { PushAudience } from './config';
 import type { ContentDatabase } from '../db/database';
 import type { Subscription } from './subscription';
 import { pushError } from './subscription';
@@ -11,10 +12,20 @@ export interface PushDelivery {
 export class PushRepository {
   constructor(readonly db: ContentDatabase) {}
   setEnrollment(enabled: boolean) { this.db.prepare('UPDATE push_settings SET enabled = ? WHERE id = 1').run(Number(enabled)); }
+  resolveId(id: string | number): number | undefined {
+    return (this.db.prepare(typeof id === 'number'
+      ? 'SELECT id FROM push_subscriptions WHERE id = ?'
+      : 'SELECT id FROM push_subscriptions WHERE installation_id = ?')
+      .get(id) as { id: number } | undefined)?.id;
+  }
+  allows(id: string | number, audience: PushAudience): boolean {
+    const internalId = this.resolveId(id);
+    return internalId !== undefined && (audience === '*' || audience.some(candidate => this.resolveId(candidate) === internalId));
+  }
   register(subscription: Subscription, credential: string, version: string, now = Date.now()) {
     return this.db.transaction(() => {
       const endpointHash = hash(subscription.endpoint);
-      const existing = this.db.prepare('SELECT id, credential_hash, active, key_version, p256dh, auth FROM push_subscriptions WHERE endpoint_hash = ?').get(endpointHash) as { id: number; credential_hash: string; active: number; key_version: string; p256dh: string; auth: string } | undefined;
+      const existing = this.db.prepare('SELECT id, installation_id, credential_hash, active, key_version, p256dh, auth FROM push_subscriptions WHERE endpoint_hash = ?').get(endpointHash) as { id: number; installation_id: string; credential_hash: string; active: number; key_version: string; p256dh: string; auth: string } | undefined;
       if (existing) {
         if (!timingSafeEqual(Buffer.from(existing.credential_hash), Buffer.from(hash(credential)))) throw pushError(409, 'Reset the browser subscription to reconnect this installation.');
         if (existing.key_version !== version) throw pushError(409, 'Reset this installation to use the updated notification key.');
@@ -31,19 +42,22 @@ export class PushRepository {
             lease_until = NULL, available_at = ?, updated_at = ?
             WHERE subscription_id = ? AND state = 'processing'`).run(now, now, existing.id);
         }
-        return { id: existing.id };
+        return { id: existing.installation_id };
       }
-      const result = this.db.prepare(`INSERT INTO push_subscriptions
-        (endpoint_hash, endpoint, p256dh, auth, credential_hash, key_version, created_at, last_seen_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(endpointHash, subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth, hash(credential), version, now, now);
-      return { id: Number(result.lastInsertRowid) };
+      const id = randomUUID();
+      this.db.prepare(`INSERT INTO push_subscriptions
+        (installation_id, endpoint_hash, endpoint, p256dh, auth, credential_hash, key_version, created_at, last_seen_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, endpointHash, subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth, hash(credential), version, now, now);
+      return { id };
     })();
   }
   revokeEndpoint(endpoint: string, credential: string) {
     const row = this.db.prepare('SELECT id FROM push_subscriptions WHERE endpoint_hash = ?').get(hash(endpoint)) as { id: number } | undefined;
     if (row) this.revoke(row.id, credential);
   }
-  revoke(id: number, credential: string) {
+  revoke(installationId: string | number, credential: string) {
+    const id = this.resolveId(installationId);
+    if (id === undefined) throw pushError(404, 'Installation not found.');
     const row = this.db.prepare('SELECT credential_hash FROM push_subscriptions WHERE id = ?').get(id) as { credential_hash: string } | undefined;
     if (!row || !timingSafeEqual(Buffer.from(row.credential_hash), Buffer.from(hash(credential)))) throw pushError(404, 'Installation not found.');
     this.disable(id);
@@ -54,7 +68,9 @@ export class PushRepository {
       this.db.prepare("UPDATE push_deliveries SET state = 'cancelled', lease_token = NULL WHERE subscription_id = ? AND state IN ('pending', 'processing')").run(id);
     })();
   }
-  enqueueTest(id: number, now = Date.now()) {
+  enqueueTest(installationId: string | number, now = Date.now()) {
+    const id = this.resolveId(installationId);
+    if (id === undefined) throw pushError(404, 'Active canary installation not found.');
     if (!this.db.prepare('SELECT id FROM push_subscriptions WHERE id = ? AND active = 1').get(id)) throw pushError(404, 'Active canary installation not found.');
     const event = `test-${randomUUID()}`;
     this.db.transaction(() => {
@@ -88,7 +104,7 @@ export class PushRepository {
       return true;
     })();
   }
-  claim(audience: '*' | number[], now = Date.now()): PushDelivery | null {
+  claim(audience: PushAudience, now = Date.now()): PushDelivery | null {
     if (audience !== '*' && !audience.length) return null;
     return this.db.transaction(() => {
       const allowed = audience === '*' ? '' : `AND s.id IN (${audience.map(() => '?').join(',')})`;
@@ -97,7 +113,7 @@ export class PushRepository {
         WHERE s.active = 1 AND e.expires_at > ? AND e.state IN ('pending', 'expanded')
         AND (e.kind = 'test' OR EXISTS (SELECT 1 FROM posts WHERE id = e.post_id AND status = 'published'))
         AND ((d.state = 'pending' AND d.available_at <= ?) OR (d.state = 'processing' AND d.lease_until <= ?))
-        ${allowed} ORDER BY d.available_at, d.id LIMIT 1`).get(now, now, now, ...(audience === '*' ? [] : audience)) as { id: number } | undefined;
+        ${allowed} ORDER BY d.available_at, d.id LIMIT 1`).get(now, now, now, ...(audience === '*' ? [] : audience.map(id => this.resolveId(id) ?? -1))) as { id: number } | undefined;
       if (!row) return null;
       const token = randomUUID();
       this.db.prepare("UPDATE push_deliveries SET state = 'processing', attempts = attempts + 1, lease_token = ?, lease_until = ?, updated_at = ? WHERE id = ?").run(token, now + 60_000, now, row.id);

@@ -5,7 +5,7 @@ import { disable, getConfiguration, needsInstallation, NotificationRequestError,
 const state = ref('loading')
 const problem = ref('')
 const busy = ref(false)
-const installationId = ref<number>()
+const installationId = ref<string | number>()
 const config = ref<PushConfiguration>()
 let worker: ServiceWorkerRegistration | undefined
 let existing: PushSubscription | null = null
@@ -142,5 +142,6 @@ button { min-height: 44px; padding: .65rem 1rem; border: 1px solid currentColor;
 button:disabled { opacity: .6; cursor: wait; }
 a { color: inherit; text-underline-offset: .2em; }
 button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.installation-id { overflow-wrap: anywhere; }
 .fine-print, .installation-id { font-size: .85rem; color: var(--muted); }
 </style>

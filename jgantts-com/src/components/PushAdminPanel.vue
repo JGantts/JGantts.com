@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { adminRequest, jsonRequest } from '@/admin/api'
-type Status = { activeSubscriptions: number; enabled: boolean; sendEnabled: boolean; audience: '*' | number[]; oldestPendingAgeSeconds: number; deliveries: { state: string; count: number }[] }
+type Status = { activeSubscriptions: number; enabled: boolean; sendEnabled: boolean; audience: '*' | Array<string | number>; oldestPendingAgeSeconds: number; deliveries: { state: string; count: number }[] }
 const status = ref<Status>()
-const canaryId = ref<number>()
+const canaryId = ref('')
 const message = ref('')
 const busy = ref(false)
 async function refresh() {
@@ -32,7 +32,7 @@ async function sendTest() {
     </template>
     <button type="button" :disabled="busy" @click="refresh">Refresh status</button>
     <form @submit.prevent="sendTest">
-      <label>Canary installation ID <input v-model.number="canaryId" type="number" min="1" step="1" required /></label>
+      <label>Canary installation ID <input v-model.trim="canaryId" type="text" placeholder="Installation UUID" autocapitalize="none" spellcheck="false" required /></label>
       <p>Find the ID in notification settings on the opted-in device. This sends one fixed test message.</p>
       <button type="submit" :disabled="busy || !status?.sendEnabled">Send test to this installation</button>
     </form>
@@ -43,5 +43,5 @@ async function sendTest() {
 .push-admin { border: 1px solid var(--border); padding: 1rem; margin: 1rem 0; border-radius: .5rem; }
 summary, button { cursor: pointer; min-height: 44px; }
 form { margin-top: 1rem; }
-input { max-width: 8rem; margin-left: .5rem; min-height: 44px; }
+input { width: min(100%, 25rem); box-sizing: border-box; margin-left: .5rem; min-height: 44px; }
 </style>

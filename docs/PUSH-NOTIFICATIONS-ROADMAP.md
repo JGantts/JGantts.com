@@ -346,3 +346,13 @@ GitHub exposes only a production environment, and creating a draft PR with the
 current credentials was denied. The remote feature branch is available; no merge
 or production deployment has been performed. Hosted fixture rollback tests do
 not replace the pending schema-14 production-compatible rollback rehearsal.
+
+
+### Installation UUIDs — 2026-09-27
+
+Schema 15 adds random UUIDs for public installation identity, backfills existing
+subscriptions, and preserves integer queue relationships and audience cutoffs.
+Registration returns the UUID; authenticated browser reconciliation upgrades its
+cached numeric ID without changing consent or encryption keys. Test sends and
+revocation accept UUIDs, and existing numeric audience configuration remains
+compatible during rollout. See the [operations guide](architecture/operations/push.md#installation-identifiers).

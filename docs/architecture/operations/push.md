@@ -13,7 +13,7 @@ permissions. Restart the application after changes.
 | --- | --- |
 | `JGANTTS_PUSH_ENABLED` | `true` permits enrollment and first-publication events; otherwise those publications remain suppressed |
 | `JGANTTS_PUSH_SEND_ENABLED` | `true` permits worker dispatch; false is the send kill switch |
-| `JGANTTS_PUSH_AUDIENCE` | Empty sends to nobody; comma-separated installation IDs permit canaries; `*` permits all subscribers |
+| `JGANTTS_PUSH_AUDIENCE` | Empty sends to nobody; comma-separated installation UUIDs permit canaries; `*` permits all subscribers |
 | `JGANTTS_PUSH_VAPID_PUBLIC_KEY` | Current P-256 public key, base64url |
 | `JGANTTS_PUSH_VAPID_PRIVATE_KEY` | Corresponding private key; server secret, never a Vite variable |
 | `JGANTTS_PUSH_VAPID_SUBJECT` | Operator contact, normally `mailto:contact@jgantts.com` |
@@ -35,8 +35,8 @@ worker, manifest, and PNG icons; smoke tests inspect content types/cache headers
    false and audience empty. Validate `/sw.js`, `/manifest.webmanifest`, icons,
    `/install`, and `/notifications` on the production origin.
 2. Enable enrollment, retain an empty audience, and enroll the operator's test
-   installation using the ordinary settings flow. Record its installation ID.
-3. Set the audience to that ID, enable sending, and use the authenticated editor's
+   installation using the ordinary settings flow. Record its installation UUID.
+3. Set the audience to that UUID, enable sending, and use the authenticated editor's
    Push notifications panel to send a fixed test. No arbitrary public send API
    exists. Record actual OS appearance and post-click behavior separately from
    the server's `accepted` count.
@@ -66,6 +66,16 @@ behind a proxy the limit is shared by the proxy address. Keep the conservative
 limits for launch and configure a trusted proxy boundary or edge limit before
 increasing traffic. Do not blindly trust `X-Forwarded-For` from arbitrary clients.
 
+## Installation identifiers
+
+Schema 15 assigns a random UUID to each installation, including existing subscriptions.
+Readers see this UUID in notification settings, and the author uses it for test sends
+and `JGANTTS_PUSH_AUDIENCE`. Authenticated reconciliation replaces a browser's cached
+numeric ID without requesting permission again. Existing numeric audience entries
+remain valid during rollout; replace them with the displayed UUID when convenient.
+Integer database keys remain internal for queue foreign keys and publication cutoffs.
+The management credential, not knowledge of the UUID, authorizes revocation.
+
 ## Retention, recovery, and key rotation
 
 - Database backups include subscription secrets. Restrict and retain them under
@@ -93,9 +103,9 @@ Keep the manifest identity, launch/deep-link routes, icon URLs, and worker URL
 available to existing installations; deleting a deployed worker does not remove
 workers already on devices. Retain v1 payload handling for queued notifications.
 
-Migration 14 is additive, but pre-14 releases declare a maximum schema version
-of 13 and the deployment guard will reject them. Use a tested rollback artifact
-that declares/supports schema 14; do not bypass the guard or delete migration
+Migrations 14 and 15 are additive, but preceding releases declare lower maximum
+schema versions and the deployment guard will reject them after migration. Use a
+tested rollback artifact that declares/supports schema 15; do not bypass the guard or delete migration
 history. The publication triggers remain active even with an older binary, so
 set `push_settings.enabled = 0` in the stopped database if using a rollback
 binary without push configuration, and cancel its accumulated pending work

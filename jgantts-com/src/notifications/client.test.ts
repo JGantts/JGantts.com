@@ -21,7 +21,7 @@ describe('installation lifecycle', () => {
     expect(navigator.serviceWorker.register).toHaveBeenCalledWith('/sw.js', { scope: '/', updateViaCache: 'none' })
   })
   it('persists a management credential before sending and retries a lost response with the same credential', async () => {
-    const fetch = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(new Response(JSON.stringify({ id: 7 }), { status: 201 }))
+    const fetch = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(new Response(JSON.stringify({ id: '184a1f93-09e2-430d-8016-1f0765693f00' }), { status: 201 }))
     vi.stubGlobal('fetch', fetch)
     const client = await import('./client')
     await expect(client.subscribe(registration as unknown as ServiceWorkerRegistration, config)).rejects.toThrow('offline')
@@ -29,11 +29,11 @@ describe('installation lifecycle', () => {
     expect(first.endpoint).toBe(subscription.endpoint); expect(first.credential).toHaveLength(43); expect(first.id).toBeUndefined()
     await client.persistSubscription(subscription as unknown as PushSubscription, config)
     expect(client.storedInstallation()?.credential).toBe(first.credential)
-    expect(client.storedInstallation()?.id).toBe(7)
+    expect(client.storedInstallation()?.id).toBe('184a1f93-09e2-430d-8016-1f0765693f00')
     expect(JSON.parse(fetch.mock.calls[0][1].body).credential).toBe(JSON.parse(fetch.mock.calls[1][1].body).credential)
   })
   it('retains pending unsubscribe until server and browser both succeed, including while enrollment is unavailable', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ id: 7 }), { status: 201 })))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ id: '184a1f93-09e2-430d-8016-1f0765693f00' }), { status: 201 })))
     const client = await import('./client'); await client.subscribe(registration as unknown as ServiceWorkerRegistration, config)
     vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(new Response(null, { status: 204 })))
     await expect(client.disable(registration as unknown as ServiceWorkerRegistration)).rejects.toThrow('offline')
@@ -49,7 +49,7 @@ describe('installation lifecycle', () => {
 })
 
 it('reconciles revoked permission on a normal app visit without requesting permission', async () => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 7 }), { status: 201 })))
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: '184a1f93-09e2-430d-8016-1f0765693f00' }), { status: 201 })))
   const client = await import('./client')
   await client.subscribe(registration as unknown as ServiceWorkerRegistration, config)
   vi.stubGlobal('PushManager', function () {})
@@ -84,4 +84,16 @@ it('requires reset instead of relabeling an established enrollment after signing
   await expect(client.subscribe(registration as unknown as ServiceWorkerRegistration, { ...config, keyVersion: 'v2' })).rejects.toThrow('Reset this installation')
   expect(client.storedInstallation()).toEqual(enrolled)
   expect(registration.pushManager.subscribe).toHaveBeenCalledOnce()
+})
+
+
+it('replaces a cached numeric installation ID with the server UUID without losing consent', async () => {
+  const client = await import('./client')
+  const saved = { id: 1, credential: 'existing-credential', endpoint: subscription.endpoint, keyVersion: config.keyVersion }
+  localStorage.setItem('jgantts.push.installation.v1', JSON.stringify(saved))
+  const id = '184a1f93-09e2-430d-8016-1f0765693f00'
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ id }), { status: 201 })))
+  expect(await client.persistSubscription(subscription as unknown as PushSubscription, config)).toBe(id)
+  expect(client.storedInstallation()).toEqual({ ...saved, id })
+  expect(registration.pushManager.subscribe).not.toHaveBeenCalled()
 })

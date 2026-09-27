@@ -18,9 +18,9 @@ beforeEach(() => {
 it('only subscribes following an explicit click', async () => {
   const wrapper = mountSettings(); await flushPromises()
   expect(client.subscribe).not.toHaveBeenCalled(); expect(wrapper.text()).toContain('Notify me about new posts')
-  vi.mocked(client.subscribe).mockResolvedValue(12)
+  vi.mocked(client.subscribe).mockResolvedValue('184a1f93-09e2-430d-8016-1f0765693f00')
   await wrapper.get('button').trigger('click'); await flushPromises()
-  expect(client.subscribe).toHaveBeenCalledOnce(); expect(wrapper.text()).toContain('Notifications are on'); expect(wrapper.text()).toContain('Installation 12')
+  expect(client.subscribe).toHaveBeenCalledOnce(); expect(wrapper.text()).toContain('Notifications are on'); expect(wrapper.text()).toContain('Installation 184a1f93-09e2-430d-8016-1f0765693f00')
   wrapper.unmount()
 })
 it('guides an iOS browser to install without requesting permission', async () => {
@@ -35,7 +35,7 @@ it('reports registration failure and retries the saved browser subscription', as
   expect(wrapper.text()).toContain('Setup needs another try'); expect(wrapper.text()).not.toContain('Notifications are on')
   worker.pushManager.getSubscription.mockResolvedValue({ endpoint: 'endpoint' })
   vi.mocked(client.storedInstallation).mockReturnValue({ credential: 'credential', endpoint: 'endpoint', keyVersion: 'v1' })
-  vi.mocked(client.persistSubscription).mockResolvedValue(12)
+  vi.mocked(client.persistSubscription).mockResolvedValue('184a1f93-09e2-430d-8016-1f0765693f00')
   await wrapper.get('button').trigger('click'); await flushPromises()
   expect(wrapper.text()).toContain('Notifications are on'); wrapper.unmount()
 })

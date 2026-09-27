@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import PushAdminPanel from '@/components/PushAdminPanel.vue'
+import { computed, markRaw, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { AdminApiError, adminRequest, createAdminSession, deleteAdminSession, jsonRequest } from '@/admin/api'
 import { loadAdminPostDraft, saveAdminPostDraft, type AdminPostDraft } from '@/admin/draft-storage'
 import { authorPostBody, storedDate } from '@/admin/post-authoring'
@@ -76,8 +77,16 @@ type UploadQueueItem = {
   id: string
   previewUrl: string
   progress: number
-  status: 'cancelled' | 'failed' | 'queued' | 'uploading' | 'processing' | 'uploaded'
+  processingStage: MediaProcessingStage | ''
+  progressPoll: number | null
+  status: 'cancelled' | 'failed' | 'processing' | 'queued' | 'uploading' | 'uploaded'
   xhr: XMLHttpRequest | null
+}
+type MediaProcessingStage = 'inspecting' | 'converting' | 'generating' | 'verifying' | 'saving'
+type UploadProgressResponse = {
+  percent: number
+  stage: MediaProcessingStage
+  state: 'processing' | 'complete' | 'failed'
 }
 const uploadQueue = ref<UploadQueueItem[]>([])
 const uploadRunning = ref(false)
@@ -92,6 +101,7 @@ const mediaDialog = ref<HTMLDialogElement | null>(null)
 const editingMediaId = ref<string | null>(null)
 const orderSaving = ref(false)
 const draggedMediaId = ref<string | null>(null)
+const suppressPush = ref(false)
 const syndication = ref<Syndication | null>(null)
 const revisionHistory = ref<PublishedRevision[]>([])
 const revisionSyndications = ref<RevisionSyndication[]>([])
@@ -327,6 +337,7 @@ function message(value: unknown): string {
 function copyToForm(post: AdminPost) {
   if (selectedId.value && selectedId.value !== post.id) queueCurrentDraftForServer()
   if (selectedId.value !== post.id) clearUploadQueue()
+  if (selectedId.value !== post.id) suppressPush.value = false
   selectedId.value = post.id
   const fromServer = postDraft(post)
   const fromBrowser = loadAdminPostDraft(post.id)
@@ -836,7 +847,7 @@ async function publish() {
   try {
     const post = await adminRequest<AdminPost>(
       `/api/admin/posts/${saved.id}/publish`,
-      jsonRequest('POST'),
+      jsonRequest('POST', { suppressPush: suppressPush.value }),
     )
     replacePost(post)
     notice.value = 'Published on JGantts.com.'
@@ -958,7 +969,8 @@ function addFiles(files: File[]) {
     uploadQueue.value.push({
       altText: '', error: '', file,
       id: `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`,
-      previewUrl: URL.createObjectURL(file), progress: 0, status: 'queued', xhr: null,
+      previewUrl: URL.createObjectURL(file), processingStage: '', progress: 0,
+      progressPoll: null, status: 'queued', xhr: null,
     })
   }
 }
@@ -973,16 +985,57 @@ function dropFiles(event: DragEvent) {
   addFiles(Array.from(event.dataTransfer?.files ?? []).filter((file) => file.type.startsWith('image/')))
 }
 
+function processingStageLabel(stage: MediaProcessingStage | ''): string {
+  if (stage === 'inspecting') return 'Inspecting image'
+  if (stage === 'converting') return 'Converting HEIC/HEIF'
+  if (stage === 'generating') return 'Generating responsive images'
+  if (stage === 'verifying') return 'Verifying generated files'
+  if (stage === 'saving') return 'Saving photo'
+  return 'Preparing image'
+}
+
+function stopProgressPolling(item: UploadQueueItem) {
+  if (item.progressPoll !== null) window.clearInterval(item.progressPoll)
+  item.progressPoll = null
+}
+
+function startProgressPolling(item: UploadQueueItem, uploadId: string, xhr: XMLHttpRequest) {
+  stopProgressPolling(item)
+  let requestInFlight = false
+  const poll = async () => {
+    if (requestInFlight || item.xhr !== xhr || item.status !== 'processing') return
+    requestInFlight = true
+    try {
+      const response = await fetch(`/api/admin/media/uploads/${encodeURIComponent(uploadId)}/progress`, {
+        cache: 'no-store',
+      })
+      if (!response.ok || item.xhr !== xhr || item.status !== 'processing') return
+      const progress = await response.json() as UploadProgressResponse
+      if (!Number.isFinite(progress.percent)) return
+      item.progress = Math.max(0, Math.min(100, progress.percent))
+      item.processingStage = progress.stage
+    } catch {
+      // The upload request reports the actionable error; a missed progress poll is harmless.
+    } finally {
+      requestInFlight = false
+    }
+  }
+  void poll()
+  item.progressPoll = window.setInterval(() => { void poll() }, 350)
+}
+
 function clearUploadQueue() {
   const previous = uploadQueue.value
   uploadQueue.value = []
   previous.forEach((item) => {
+    stopProgressPolling(item)
     item.xhr?.abort()
     URL.revokeObjectURL(item.previewUrl)
   })
 }
 
 function removeUpload(item: UploadQueueItem) {
+  stopProgressPolling(item)
   item.xhr?.abort()
   URL.revokeObjectURL(item.previewUrl)
   uploadQueue.value = uploadQueue.value.filter(({ id }) => id !== item.id)
@@ -995,16 +1048,19 @@ function cancelUpload(item: UploadQueueItem) {
 
 function uploadOne(item: UploadQueueItem): Promise<PostMedia> {
   if (!selectedId.value) return Promise.reject(new Error('Create a draft before uploading.'))
+  const uploadId = crypto.randomUUID()
   const body = new FormData()
   body.set('postId', selectedId.value)
   body.set('altText', item.altText.trim())
+  body.set('uploadId', uploadId)
   body.set('file', item.file)
   item.status = 'uploading'
   item.error = ''
+  item.processingStage = ''
   item.progress = 0
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    item.xhr = xhr
+    item.xhr = markRaw(xhr)
     xhr.open('POST', '/api/admin/media')
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
@@ -1012,19 +1068,25 @@ function uploadOne(item: UploadQueueItem): Promise<PostMedia> {
       }
     }
     xhr.upload.onload = () => {
-      item.progress = 100
+      if (item.xhr !== xhr || item.status !== 'uploading') return
       item.status = 'processing'
+      item.progress = 0
+      item.processingStage = 'inspecting'
+      startProgressPolling(item, uploadId, xhr)
     }
     xhr.onabort = () => {
+      stopProgressPolling(item)
       item.status = 'cancelled'
       item.xhr = null
       reject(new Error('Upload cancelled.'))
     }
     xhr.onerror = () => {
+      stopProgressPolling(item)
       item.xhr = null
       reject(new Error('Network error while uploading.'))
     }
     xhr.onload = () => {
+      stopProgressPolling(item)
       item.xhr = null
       let response: unknown
       try { response = JSON.parse(xhr.responseText) } catch { response = null }
@@ -1068,7 +1130,10 @@ async function uploadQueued() {
 }
 
 async function retryUpload(item: UploadQueueItem) {
+  stopProgressPolling(item)
   item.status = 'queued'
+  item.processingStage = ''
+  item.progress = 0
   await uploadQueued()
 }
 
@@ -1155,6 +1220,7 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
+      <PushAdminPanel />
       <div class="admin-workspace">
         <aside class="post-list" aria-label="Posts">
           <div class="post-list-controls">
@@ -1305,10 +1371,13 @@ onBeforeUnmount(() => {
                 <div>
                   <strong>{{ item.file.name }}</strong>
                   <label>Alt text (optional) <input v-model="item.altText" maxlength="2000"></label>
-                  <progress v-if="item.status === 'uploading'" max="100" :value="item.progress">{{ item.progress }}%</progress>
-                  <progress v-else-if="item.status === 'processing'" aria-label="Processing photo"></progress>
+                  <progress v-if="item.status === 'uploading' || item.status === 'processing'" max="100" :value="item.progress">{{ item.progress }}%</progress>
                   <p v-if="item.error" class="message message--error">{{ item.error }}</p>
-                  <span class="upload-status" role="status">{{ item.status === 'processing' ? 'Processing photo… This can take a minute.' : item.status }}<template v-if="item.status === 'uploading'"> · {{ item.progress }}%</template></span>
+                  <span class="upload-status" role="status">
+                    <template v-if="item.status === 'uploading'">Uploading · {{ item.progress }}%</template>
+                    <template v-else-if="item.status === 'processing'">Processing · {{ item.progress }}% · {{ processingStageLabel(item.processingStage) }}</template>
+                    <template v-else>{{ item.status }}</template>
+                  </span>
                 </div>
                 <div class="upload-item-actions">
                   <button v-if="item.status === 'failed' || item.status === 'cancelled'" class="button-secondary" type="button" @click="retryUpload(item)">Retry</button>
@@ -1378,6 +1447,7 @@ onBeforeUnmount(() => {
             <label>Body (Markdown) <span class="optional-field">Optional</span> <textarea v-model="form.bodyMarkdown" class="markdown-editor" maxlength="100000"></textarea></label>
             <div class="editor-actions">
               <button :disabled="busy" type="submit">{{ busy ? 'Working…' : selectedId ? 'Save now' : 'Create draft' }}</button>
+              <label v-if="canPublish"><input v-model="suppressPush" type="checkbox" :disabled="busy" /> Publish without notifying subscribers</label>
               <button v-if="canPublish" class="button-secondary" :disabled="busy" type="button" @click="publish">Publish locally</button>
               <button v-if="selected?.status === 'published'" class="button-secondary" :disabled="busy" type="button" @click="unpublish">Unpublish</button>
               <button v-if="selected && selected.status !== 'archived'" class="button-quiet" :disabled="busy" type="button" @click="archive">Archive</button>

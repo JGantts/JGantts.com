@@ -1,3 +1,4 @@
+import { createPushRouter, createAdminPushRouter, type PushServices } from './push';
 import express from 'express';
 import type { BuildInfo } from '../build-info';
 import type { MastodonCommentsService } from '../comments/mastodon-comments-service';
@@ -15,6 +16,7 @@ import type { SocialPreviewService } from '../social-preview/social-preview-serv
 export type BuildInfoProvider = () => BuildInfo;
 
 export interface ApiServices {
+  push?: PushServices;
   health?: HealthService;
   mastodonComments?: MastodonCommentsService;
   media?: MediaService;
@@ -82,6 +84,11 @@ export function createApiRouter(
       secure: true,
     }).set('Cache-Control', 'no-store').status(204).end();
   });
+
+  if (services.push) {
+    router.use('/push', createPushRouter(services.push));
+    router.use('/admin/push', createAdminAuth(options.adminToken ?? ''), createAdminPushRouter(services.push));
+  }
 
   if (services.posts) {
     const postService = services.posts;

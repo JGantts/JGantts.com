@@ -1,0 +1,16 @@
+{
+  "id": "/",
+  "name": "JGantts.com",
+  "short_name": "JGantts",
+  "description": "Photographs and writing from Jacob Gantt.",
+  "start_url": "/photos",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4efe8",
+  "theme_color": "#f4efe8",
+  "icons": [
+    { "src": "/app-icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/app-icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/app-icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

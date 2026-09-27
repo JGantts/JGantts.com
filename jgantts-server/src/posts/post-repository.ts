@@ -62,10 +62,10 @@ export class PostRepository {
       this.database.prepare(`
         INSERT INTO posts (
           id, description, location, date, time, title, slug, body_markdown, body_html, excerpt, content_warning, status,
-          hero_media_id, created_at, published_at, updated_at
+          hero_media_id, created_at, published_at, updated_at, suppress_push
         ) VALUES (
           @id, @description, @location, @date, @time, @title, @slug, @bodyMarkdown, @bodyHtml, @excerpt, @contentWarning, @status,
-          @heroMediaId, @createdAt, @publishedAt, @updatedAt
+          @heroMediaId, @createdAt, @publishedAt, @updatedAt, @suppressPush
         )
       `).run({
         ...input,
@@ -81,6 +81,7 @@ export class PostRepository {
         createdAt,
         publishedAt,
         updatedAt: createdAt,
+        suppressPush: Number(status === 'published'),
       });
       this.insertRevision(input.id, 1, createdAt);
       return this.getById(input.id) as Post;
@@ -171,11 +172,11 @@ export class PostRepository {
     `).all() as PostRow[]).map(mapPost);
   }
 
-  update(id: string, changes: PostChanges, updatedAt = new Date().toISOString(), recordRevision = true): Post | null {
+  update(id: string, changes: PostChanges, updatedAt = new Date().toISOString(), recordRevision = true, suppressPush = false): Post | null {
     return inTransaction(this.database, () => {
       const current = this.getById(id);
       if (!current) return null;
-      const next = { ...current, ...changes, updatedAt };
+      const next = { ...current, ...changes, updatedAt, suppressPush: Number(suppressPush) };
 
       if (changes.slug && changes.slug !== current.slug) {
         const redirect = this.database.prepare(`
@@ -201,6 +202,7 @@ export class PostRepository {
           status = @status,
           hero_media_id = @heroMediaId,
           published_at = @publishedAt,
+          suppress_push = @suppressPush,
           updated_at = @updatedAt
         WHERE id = @id
       `).run(next);

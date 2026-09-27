@@ -27,6 +27,14 @@ jobs:
             jgantts-com/package-lock.json
             jgantts-server/package-lock.json
 
+      # setup-node installs into the hosted tool cache, while the production
+      # systemd unit deliberately executes the host's /usr/bin/node.
+      - name: Provide production Node path for systemd validation
+        run: |
+          if [ ! -e /usr/bin/node ]; then
+            sudo ln -s "$(command -v node)" /usr/bin/node
+          fi
+
       - name: Install and build website
         run: |
           npm ci

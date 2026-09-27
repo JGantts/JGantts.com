@@ -48,15 +48,19 @@ async function startUpload() {
 }
 
 describe('photo upload progress', () => {
-  it('shows processing until the server responds, including uploads without a computable size', async () => {
+  it('shows upload and server processing progress until the upload response arrives', async () => {
     const xhr = await startUpload()
     xhr.upload.onprogress({ lengthComputable: true, loaded: 999, total: 1000 })
     await flushPromises()
-    expect(wrapper.get('.upload-status').text()).toBe('uploading · 99%')
+    expect(wrapper.get('.upload-status').text()).toBe('Uploading · 99%')
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ percent: 42, stage: 'generating', state: 'processing' }),
+    } as Response)
     xhr.upload.onload()
     await flushPromises()
-    expect(wrapper.get('.upload-status').text()).toContain('Processing photo…')
-    expect(wrapper.get('.upload-item progress').attributes('value')).toBeUndefined()
+    expect(wrapper.get('.upload-status').text()).toBe('Processing · 42% · Generating responsive images')
+    expect(wrapper.get('.upload-item progress').attributes('value')).toBe('42')
     expect(wrapper.findAll('.upload-item button').every((button) => button.attributes('disabled') !== undefined)).toBe(true)
     expect(wrapper.text()).toContain('Processing photos…')
     xhr.status = 500
@@ -67,9 +71,13 @@ describe('photo upload progress', () => {
     expect(wrapper.text()).toContain('Processing failed.')
     await wrapper.findAll('button').find((button) => button.text() === 'Retry')!.trigger('click')
     const retry = MockXHR.current
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ percent: 1, stage: 'inspecting', state: 'processing' }),
+    } as Response)
     retry.upload.onload()
     await flushPromises()
-    expect(wrapper.get('.upload-status').text()).toContain('Processing photo…')
+    expect(wrapper.get('.upload-status').text()).toBe('Processing · 1% · Inspecting image')
     retry.responseText = JSON.stringify({ id: 'photo', urls: { thumbnail: '/media/photo/thumbnail' }, renditions: [], processingState: 'ready' })
     retry.onload()
     await flushPromises()

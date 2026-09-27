@@ -21,3 +21,11 @@ import router from './router'
 app.use(router)
 
 app.mount('#app')
+
+// Updating an installed worker never takes over or reloads an active editor.
+import { prepareWorker, reconcileInstallation } from './notifications/client'
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  void prepareWorker().then(() => {
+    if (window.location.pathname !== '/notifications') return reconcileInstallation()
+  }).catch(() => { /* Settings provides an explicit retry path. */ })
+}

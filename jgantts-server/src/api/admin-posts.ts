@@ -153,8 +153,11 @@ export function createAdminPostsRouter(
 
   router.post('/:id/publish', async (req, res, next) => {
     try {
+      if (req.body !== undefined && (!isRecord(req.body) || Object.keys(req.body).some(key => key !== 'suppressPush') || (req.body.suppressPush !== undefined && typeof req.body.suppressPush !== 'boolean'))) {
+        throw Object.assign(new Error('Publish accepts only a boolean suppressPush.'), { status: 400 });
+      }
       if (socialPreviews) await socialPreviews.generate(req.params.id);
-      const post = posts.publish(req.params.id);
+      const post = posts.publish(req.params.id, undefined, req.body?.suppressPush === true);
       if (!post) {
         res.status(404).json({ error: { code: 'not_found', message: 'Post not found.' } });
         return;

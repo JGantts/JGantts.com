@@ -87,6 +87,19 @@ async function testOrigin(origin) {
     assert.ok((await asset.arrayBuffer()).byteLength > 0, `${pathname} is empty`);
   }
 
+  for (const [pathname, type] of [['/sw.js', /javascript/], ['/manifest.webmanifest', /manifest\+json/]]) {
+    const response = await fetchFrom(origin, pathname);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type') ?? '', type);
+    assert.match(response.headers.get('cache-control') ?? '', /no-cache/);
+    assert.ok((await response.text()).length > 100);
+  }
+  for (const icon of ['icon-192', 'icon-512', 'maskable-512', 'apple-touch-icon']) {
+    const response = await fetchFrom(origin, `/app-icons/${icon}.png`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type') ?? '', /image\/png/);
+  }
+
   const holmes = await fetchFrom(origin, '/holmes?smoke_test=1');
   const holmesHtml = await holmes.text();
   assert.equal(holmes.status, 200);

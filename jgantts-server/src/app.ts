@@ -77,6 +77,16 @@ export function createApp(options: AppOptions = {}): express.Express {
     });
   }
 
+  for (const [route, type] of [['/sw.js', 'application/javascript'], ['/manifest.webmanifest', 'application/manifest+json']]) {
+    app.get(route, (_req, res, next) => {
+      res.type(type).set('Cache-Control', 'no-cache');
+      if (route === '/sw.js') res.set('Service-Worker-Allowed', '/');
+      res.sendFile(path.join(publicRoot, route.slice(1)), error => {
+        if (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') res.sendStatus(404); else next(error); }
+      });
+    });
+  }
+
   app.use('/assets', express.static(path.join(distRoot, 'assets'), {
     fallthrough: true,
     immutable: process.env.NODE_ENV === 'production',

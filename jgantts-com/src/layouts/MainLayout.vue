@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { standalone } from '@/notifications/client'
 import BuildInfo from '@/components/BuildInfo.vue'
 
 const route = useRoute()
+const isStandalone = standalone()
 const darkModePreference = window.matchMedia('(prefers-color-scheme: dark)')
 const isPhotosPage = computed(() => route.path.startsWith('/photos'))
 const isPostsPage = computed(() => route.path.startsWith('/posts'))
@@ -50,6 +52,12 @@ onBeforeUnmount(() => {
         <span v-else-if="isPostsPage" class="page-label">/posts</span>
         <span v-else-if="isAdminPage" class="page-label">/admin</span>
       </RouterLink>
+      <nav class="reader-nav" aria-label="Site">
+        <RouterLink to="/photos">Photos</RouterLink>
+        <RouterLink to="/posts">Posts</RouterLink>
+        <RouterLink to="/notifications">Notifications</RouterLink>
+        <RouterLink v-if="!isStandalone" to="/install">Add to Home Screen</RouterLink>
+      </nav>
     </header>
     <router-view />
     <footer class="my-footer">
@@ -157,6 +165,10 @@ body {
   outline: 0.08em solid var(--accent);
   outline-offset: 0.12em;
 }
+
+.reader-nav { display: flex; flex-wrap: wrap; justify-content: center; gap: .25rem 1rem; margin-top: 1rem; font-size: .85rem; line-height: 1.4; white-space: normal; }
+.reader-nav a { display: inline-flex; align-items: center; min-height: 44px; color: inherit; text-underline-offset: .2em; }
+.reader-nav a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
 .site-wordmark {
   line-height: 1;

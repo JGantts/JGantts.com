@@ -1,6 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import express from 'express';
 import multer from 'multer';
-import { PHOTO_PIPELINE_VERSION, type MediaService } from '../media/media-service';
+import {
+  PHOTO_PIPELINE_VERSION, type MediaProcessingStage, type MediaService,
+} from '../media/media-service';
 import { PostInputError } from '../posts/errors';
 
 const MAX_BATCH_BYTES = 250 * 1024 * 1024;
@@ -41,12 +44,55 @@ const batchUpload = multer({
 });
 
 const upload = multer({
-  limits: { fileSize: 100 * 1024 * 1024, files: 1, fields: 3 },
+  limits: { fileSize: 100 * 1024 * 1024, files: 1, fields: 4 },
   storage: multer.memoryStorage(),
 });
 
+type UploadProgress = {
+  percent: number;
+  stage: MediaProcessingStage;
+  state: 'processing' | 'complete' | 'failed';
+  updatedAt: number;
+};
+
+const UPLOAD_PROGRESS_TTL_MS = 15 * 60_000;
+const uploadIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export function createAdminMediaRouter(media: MediaService): express.Router {
   const router = express.Router();
+  const progressByUploadId = new Map<string, UploadProgress>();
+
+  const pruneProgress = () => {
+    const cutoff = Date.now() - UPLOAD_PROGRESS_TTL_MS;
+    for (const [uploadId, progress] of progressByUploadId) {
+      if (progress.updatedAt < cutoff) progressByUploadId.delete(uploadId);
+    }
+  };
+
+  const setProgress = (uploadId: string, progress: Omit<UploadProgress, 'updatedAt'>) => {
+    pruneProgress();
+    progressByUploadId.set(uploadId, { ...progress, updatedAt: Date.now() });
+  };
+
+  router.get('/uploads/:uploadId/progress', (req, res) => {
+    pruneProgress();
+    if (!uploadIdPattern.test(req.params.uploadId)) {
+      res.status(400).json({ error: { code: 'bad_request', message: 'A valid upload ID is required.' } });
+      return;
+    }
+    const progress = progressByUploadId.get(req.params.uploadId);
+    if (!progress) {
+      res.status(404).set('Cache-Control', 'no-store').json({
+        error: { code: 'not_found', message: 'Upload progress is not available yet.' },
+      });
+      return;
+    }
+    res.set('Cache-Control', 'no-store').json({
+      percent: progress.percent,
+      stage: progress.stage,
+      state: progress.state,
+    });
+  });
 
   router.post('/batch', (req, res, next) => {
     batchUpload.array('files', 10)(req, res, (error) => {
@@ -113,14 +159,34 @@ export function createAdminMediaRouter(media: MediaService): express.Router {
       const displayOrder = req.body.displayOrder === undefined
         ? undefined
         : Number(req.body.displayOrder);
+      const suppliedUploadId = req.body.uploadId;
+      if (suppliedUploadId !== undefined
+        && (typeof suppliedUploadId !== 'string' || !uploadIdPattern.test(suppliedUploadId))) {
+        next(new PostInputError('A valid uploadId is required.'));
+        return;
+      }
+      const uploadId = suppliedUploadId ?? randomUUID();
+      setProgress(uploadId, { percent: 0, stage: 'inspecting', state: 'processing' });
       void media.uploadImage({
         altText: req.body.altText ?? '',
         buffer: req.file?.buffer ?? Buffer.alloc(0),
         displayOrder,
+        onProgress: ({ percent, stage }) => {
+          setProgress(uploadId, { percent, stage, state: 'processing' });
+        },
         postId: req.body.postId,
       }).then((result) => {
+        setProgress(uploadId, { percent: 100, stage: 'saving', state: 'complete' });
         res.status(201).set('Location', result.urls.original).json(result);
-      }, next);
+      }, (error) => {
+        const current = progressByUploadId.get(uploadId);
+        setProgress(uploadId, {
+          percent: current?.percent ?? 0,
+          stage: current?.stage ?? 'inspecting',
+          state: 'failed',
+        });
+        next(error);
+      });
     });
   });
 

@@ -99,7 +99,7 @@ export function startServer(): Server {
     buildInfo,
     logger,
     services: {
-      push: { repository: pushRepository, config: pushConfig },
+      push: { repository: pushRepository, config: pushConfig, wake: () => pushWorker.wake() },
       health,
       mastodonComments,
       mastodonSyndication,

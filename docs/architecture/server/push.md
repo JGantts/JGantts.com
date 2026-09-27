@@ -28,7 +28,13 @@ the subscription ID and signing-key version. A key change invalidates processing
 leases so unsent work uses the new material; accepted deliveries are not replayed.
 Revocation removes endpoint/encryption secrets and cancels pending deliveries.
 
-The worker claims up to four jobs per tick with 60-second leases and at most six
+Publication and admin test requests wake the worker immediately after queue commit.
+A wake during an active send requests another pass without overlapping workers.
+The five-second poll remains for retries and restart recovery. Visible notifications
+request high Web Push urgency; provider acceptance logs include the event ID and
+elapsed milliseconds since queue creation to distinguish server and device delays.
+
+The worker claims up to four jobs per pass with 60-second leases and at most six
 attempts. Transient failures retry with jitter and `Retry-After`; 404/410 disables
 the endpoint. Provider acceptance is distinct from display or reader receipt.
 A crash after provider acceptance can duplicate delivery; stable notification

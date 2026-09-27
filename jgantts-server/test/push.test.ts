@@ -341,3 +341,40 @@ test('audiences accept UUIDs and reject numeric configuration', () => {
     assert.throws(() => getPushConfig({ JGANTTS_PUSH_AUDIENCE: invalid }, ''), /audience/);
   }
 });
+
+test('publishing over HTTP dispatches without a polling tick or test notification', async t => {
+  const { db, repository, service, subscribe, draft } = fixture(t);
+  subscribe('a'); draft('immediate');
+  const cfg = config(); const sent: string[] = [];
+  const worker = new PushWorker(repository, cfg, async (_subscription, payload) => { sent.push(JSON.parse(payload).eventId); });
+  const server = createApp({ adminToken: 'admin-test', services: {
+    posts: service, push: { repository, config: cfg, wake: () => worker.wake() },
+  } }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(async () => { await worker.stop(); await new Promise<void>(resolve => { server.close(() => resolve()); server.closeAllConnections(); }); });
+  const response = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api/admin/posts/immediate/publish`, {
+    method: 'POST', headers: { Authorization: 'Bearer admin-test', 'Content-Type': 'application/json' }, body: '{}',
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(sent, ['immediate']);
+  assert.equal(db.prepare('SELECT state FROM push_deliveries').pluck().get(), 'accepted');
+});
+
+test('publication arriving during a send wakes another pass without overlapping or losing work', async t => {
+  const { repository, service, subscribe, draft } = fixture(t);
+  subscribe('a'); draft('first'); service.publish('first');
+  let complete!: () => void; const sent: string[] = [];
+  const worker = new PushWorker(repository, config(), async (_subscription, payload) => {
+    sent.push(JSON.parse(payload).eventId);
+    if (sent.length === 1) await new Promise<void>(resolve => { complete = resolve; });
+  });
+  const running = worker.runOnce();
+  draft('second'); service.publish('second'); worker.wake(); worker.wake();
+  assert.deepEqual(sent, ['first']);
+  complete(); await running;
+  assert.deepEqual(sent, ['first', 'second']);
+  await worker.stop();
+  draft('stopped'); service.publish('stopped'); worker.wake();
+  await worker.runOnce();
+  assert.deepEqual(sent, ['first', 'second']);
+});

@@ -95,7 +95,7 @@ export function createApiRouter(
     router.use(
       '/admin/posts',
       createAdminAuth(options.adminToken ?? ''),
-      createAdminPostsRouter(services.posts, services.media, services.mastodonSyndication, services.socialPreviews),
+      createAdminPostsRouter(services.posts, services.media, services.mastodonSyndication, services.socialPreviews, services.push?.wake),
     );
 
     router.get('/posts', (req, res, next) => {

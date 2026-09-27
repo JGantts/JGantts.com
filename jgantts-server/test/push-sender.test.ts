@@ -23,6 +23,7 @@ test('transport encrypts a visible payload, pins validated DNS, and rejects redi
       assert.equal(error, null); assert.equal(address, '17.1.2.3'); assert.equal(family, 4);
     });
     assert.equal(options.headers['Content-Encoding'], 'aes128gcm');
+    assert.equal(options.headers.Urgency, 'high');
     assert.match(options.headers.Authorization, /^vapid /);
     const req = new EventEmitter() as EventEmitter & { end: (body: Buffer) => void; destroy: () => void };
     req.end = body => { assert.ok(Buffer.isBuffer(body)); assert.ok(body.length > 20); queueMicrotask(() => { callback({ statusCode: responseStatus, headers: { location: 'http://127.0.0.1/' }, resume() {} }); req.emit('close'); }); };

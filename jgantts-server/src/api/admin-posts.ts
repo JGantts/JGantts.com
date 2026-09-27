@@ -35,6 +35,7 @@ export function createAdminPostsRouter(
   media?: MediaService,
   mastodon?: MastodonSyndicationService,
   socialPreviews?: SocialPreviewService,
+  wakePush?: () => void,
 ): express.Router {
   const router = express.Router();
   const responsePost = (post: NonNullable<ReturnType<PostService['findById']>>) => {
@@ -162,6 +163,7 @@ export function createAdminPostsRouter(
         res.status(404).json({ error: { code: 'not_found', message: 'Post not found.' } });
         return;
       }
+      wakePush?.();
       res.json(responsePost(post));
     } catch (error) {
       next(error);

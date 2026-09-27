@@ -22,6 +22,7 @@ export class PushWorker {
   private timer: ReturnType<typeof setInterval> | null = null;
   private active: Promise<void> | null = null;
   private stopped = false;
+  private wakeRequested = false;
   constructor(private readonly repository: PushRepository, private readonly config: PushConfig, private readonly send: PushSender, private readonly logger: StructuredLogger = NOOP_LOGGER) {}
   start() {
     this.stopped = false;
@@ -31,9 +32,19 @@ export class PushWorker {
     void this.runOnce();
   }
   async stop() { this.stopped = true; if (this.timer) clearInterval(this.timer); this.timer = null; await this.active; }
+  wake(): void {
+    if (this.stopped) return;
+    this.wakeRequested = true;
+    void this.runOnce();
+  }
   runOnce(): Promise<void> {
     if (this.active) return this.active;
-    this.active = this.run().catch(() => this.logger.error('push_worker_failed', { message: 'Push queue operation failed.' })).finally(() => { this.active = null; });
+    this.active = (async () => {
+      do {
+        this.wakeRequested = false;
+        await this.run();
+      } while (this.wakeRequested && !this.stopped);
+    })().catch(() => this.logger.error('push_worker_failed', { message: 'Push queue operation failed.' })).finally(() => { this.active = null; });
     return this.active;
   }
   private async run() {
@@ -57,7 +68,7 @@ export class PushWorker {
         () => Boolean(this.repository.current(job.id, job.lease_token)));
       if (delivered === false) { this.repository.finish(job, 'cancelled', null); return; }
       this.repository.finish(job, 'accepted', 201);
-      this.logger.info('push_provider_accepted', { deliveryId: job.id });
+      this.logger.info('push_provider_accepted', { deliveryId: job.id, eventId: job.event_id, elapsedMs: Date.now() - job.event_created_at });
     } catch (error) {
       const status = error instanceof PushSendError ? error.status : null;
       if (status === 404 || status === 410) this.repository.disable(job.subscription_id);
@@ -66,7 +77,7 @@ export class PushWorker {
         Math.min(3600_000, 30_000 * 2 ** (job.attempts - 1)) * (0.75 + Math.random() * 0.5));
       const next = Date.now() + Math.ceil(Math.min(86400_000, delay));
       this.repository.finish(job, retryable && job.attempts < 6 && next < job.expires_at ? 'pending' : 'failed', status, next);
-      this.logger.warn('push_delivery_failed', { deliveryId: job.id, status, retryable });
+      this.logger.warn('push_delivery_failed', { deliveryId: job.id, eventId: job.event_id, status, retryable });
     }
   }
 }

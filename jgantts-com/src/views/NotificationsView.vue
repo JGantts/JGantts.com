@@ -5,6 +5,7 @@ import { disable, getConfiguration, needsInstallation, NotificationRequestError,
 const state = ref('loading')
 const problem = ref('')
 const busy = ref(false)
+const copyStatus = ref('')
 const installationId = ref<string>()
 const config = ref<PushConfiguration>()
 let worker: ServiceWorkerRegistration | undefined
@@ -69,6 +70,15 @@ async function turnOff() {
     problem.value = error instanceof Error ? error.message : 'Could not finish turning off notifications. Please retry.'
   } finally { busy.value = false }
 }
+async function copyInstallationId() {
+  if (!installationId.value) return
+  try {
+    await navigator.clipboard.writeText(installationId.value)
+    copyStatus.value = 'Installation ID copied.'
+  } catch {
+    copyStatus.value = 'Could not copy. Select and copy the ID above.'
+  }
+}
 function onVisible() { if (document.visibilityState === 'visible') void refresh() }
 onMounted(() => { void refresh(); document.addEventListener('visibilitychange', onVisible) })
 onBeforeUnmount(() => { disposed = true; document.removeEventListener('visibilitychange', onVisible) })
@@ -96,7 +106,6 @@ onBeforeUnmount(() => { disposed = true; document.removeEventListener('visibilit
         <h2>Notifications are on</h2>
         <p>You're subscribed on this installation. Other browsers and devices have separate settings.</p>
         <button type="button" :disabled="busy" @click="turnOff">Turn off notifications</button>
-        <p v-if="installationId" class="installation-id">Installation {{ installationId }}</p>
       </template>
       <template v-else-if="state === 'denied'">
         <h2>Permission is turned off</h2>
@@ -128,6 +137,12 @@ onBeforeUnmount(() => { disposed = true; document.removeEventListener('visibilit
     </div>
     <p class="fine-print">Notifications may arrive later when your device is offline or in Focus mode. Delivery isn't guaranteed.</p>
     <p><a href="/feed.xml">Follow the Atom feed</a> · <RouterLink to="/photos">Back to photos</RouterLink></p>
+    <details v-if="installationId" class="troubleshooting">
+      <summary>Troubleshooting</summary>
+      <p class="installation-id">Installation {{ installationId }}</p>
+      <button type="button" @click="copyInstallationId">Copy installation ID</button>
+      <p role="status">{{ copyStatus }}</p>
+    </details>
   </main>
 </template>
 
@@ -141,7 +156,9 @@ h2 { font-size: 1.2rem; line-height: 1.3; }
 button { min-height: 44px; padding: .65rem 1rem; border: 1px solid currentColor; border-radius: .5rem; background: transparent; color: inherit; font: inherit; cursor: pointer; margin: .25rem .5rem .25rem 0; }
 button:disabled { opacity: .6; cursor: wait; }
 a { color: inherit; text-underline-offset: .2em; }
-button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.troubleshooting { margin-top: 2rem; }
+summary { min-height: 44px; cursor: pointer; }
 .installation-id { overflow-wrap: anywhere; }
 .fine-print, .installation-id { font-size: .85rem; color: var(--muted); }
 </style>

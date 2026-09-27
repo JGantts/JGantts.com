@@ -38,7 +38,7 @@ export function createPushSender(config: PushConfig): PushSender {
     let details: ReturnType<typeof webpush.generateRequestDetails>;
     try {
       details = webpush.generateRequestDetails(subscription, payload, {
-        vapidDetails: { ...key, subject: config.subject }, TTL: Math.max(0, ttl - Math.ceil((Date.now() - startedAt) / 1000)), urgency: 'normal', contentEncoding: 'aes128gcm',
+        vapidDetails: { ...key, subject: config.subject }, TTL: Math.max(0, ttl - Math.ceil((Date.now() - startedAt) / 1000)), urgency: 'high', contentEncoding: 'aes128gcm',
       });
     } catch { throw new PushSendError(400); }
     if (!isCurrent()) return false;

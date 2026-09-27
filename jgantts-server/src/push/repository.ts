@@ -7,7 +7,7 @@ import { pushError } from './subscription';
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 export interface PushDelivery {
   id: number; event_id: string; subscription_id: number; attempts: number; lease_token: string;
-  payload_json: string; expires_at: number; endpoint: string; p256dh: string; auth: string; key_version: string;
+  event_created_at: number; payload_json: string; expires_at: number; endpoint: string; p256dh: string; auth: string; key_version: string;
 }
 export class PushRepository {
   constructor(readonly db: ContentDatabase) {}
@@ -119,7 +119,7 @@ export class PushRepository {
     })();
   }
   current(id: number, token: string, now = Date.now()): PushDelivery | null {
-    return this.db.prepare(`SELECT d.*, e.payload_json, e.expires_at, s.endpoint, s.p256dh, s.auth, s.key_version
+    return this.db.prepare(`SELECT d.*, e.created_at AS event_created_at, e.payload_json, e.expires_at, s.endpoint, s.p256dh, s.auth, s.key_version
       FROM push_deliveries d JOIN push_publication_events e ON e.id = d.event_id JOIN push_subscriptions s ON s.id = d.subscription_id
       WHERE d.id = ? AND d.lease_token = ? AND d.state = 'processing' AND s.active = 1 AND e.expires_at > ? AND d.lease_until > ?
       AND e.state IN ('pending', 'expanded')

@@ -3,7 +3,7 @@ import { isInstallationUuid, type PushConfig } from '../push/config';
 import type { PushRepository } from '../push/repository';
 import { pushError, validateCredential, validateEndpoint, validateSubscription } from '../push/subscription';
 
-export interface PushServices { repository: PushRepository; config: PushConfig }
+export interface PushServices { repository: PushRepository; config: PushConfig; wake?: () => void }
 function sameOrigin(origin: string): express.RequestHandler {
   return (req, _res, next) => {
     if (req.get('Origin') !== origin || req.get('Sec-Fetch-Site') === 'cross-site') { next(pushError(403, 'Use notification settings on this site.')); return; }
@@ -44,7 +44,7 @@ export function createPushRouter({ repository, config }: PushServices) {
   });
   return router;
 }
-export function createAdminPushRouter({ repository, config }: PushServices) {
+export function createAdminPushRouter({ repository, config, wake }: PushServices) {
   const router = express.Router();
   router.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   router.get('/status', (_req, res) => res.json({ ...repository.status(), enabled: config.enabled, sendEnabled: config.sendEnabled, audience: config.audience }));
@@ -53,7 +53,9 @@ export function createAdminPushRouter({ repository, config }: PushServices) {
     const id = typeof raw === 'string' ? raw.toLowerCase() : raw;
     if (!config.sendEnabled) throw pushError(409, 'Push sending is disabled.');
     if (!isInstallationUuid(id) || !repository.allows(id, config.audience)) throw pushError(400, 'Select an allowed canary installation ID.');
-    res.status(202).json({ eventId: repository.enqueueTest(id) });
+    const eventId = repository.enqueueTest(id);
+    wake?.();
+    res.status(202).json({ eventId });
   });
   return router;
 }

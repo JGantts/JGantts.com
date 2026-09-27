@@ -354,5 +354,4 @@ Schema 15 adds random UUIDs for public installation identity, backfills existing
 subscriptions, and preserves integer queue relationships and audience cutoffs.
 Registration returns the UUID; authenticated browser reconciliation upgrades its
 cached numeric ID without changing consent or encryption keys. Test sends and
-revocation accept UUIDs, and existing numeric audience configuration remains
-compatible during rollout. See the [operations guide](architecture/operations/push.md#installation-identifiers).
+revocation accept UUIDs, and audience configuration accepts UUIDs only. See the [operations guide](architecture/operations/push.md#installation-identifiers).

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { adminRequest, jsonRequest } from '@/admin/api'
-type Status = { activeSubscriptions: number; enabled: boolean; sendEnabled: boolean; audience: '*' | Array<string | number>; oldestPendingAgeSeconds: number; deliveries: { state: string; count: number }[] }
+type Status = { activeSubscriptions: number; enabled: boolean; sendEnabled: boolean; audience: '*' | string[]; oldestPendingAgeSeconds: number; deliveries: { state: string; count: number }[] }
 const status = ref<Status>()
 const canaryId = ref('')
 const message = ref('')

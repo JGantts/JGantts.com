@@ -5,7 +5,7 @@ import { disable, getConfiguration, needsInstallation, NotificationRequestError,
 const state = ref('loading')
 const problem = ref('')
 const busy = ref(false)
-const installationId = ref<string | number>()
+const installationId = ref<string>()
 const config = ref<PushConfiguration>()
 let worker: ServiceWorkerRegistration | undefined
 let existing: PushSubscription | null = null

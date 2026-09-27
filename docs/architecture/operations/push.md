@@ -71,8 +71,8 @@ increasing traffic. Do not blindly trust `X-Forwarded-For` from arbitrary client
 Schema 15 assigns a random UUID to each installation, including existing subscriptions.
 Readers see this UUID in notification settings, and the author uses it for test sends
 and `JGANTTS_PUSH_AUDIENCE`. Authenticated reconciliation replaces a browser's cached
-numeric ID without requesting permission again. Existing numeric audience entries
-remain valid during rollout; replace them with the displayed UUID when convenient.
+numeric ID without requesting permission again. Audience entries and installation
+API parameters must be UUIDs; replace numeric audience entries before deployment.
 Integer database keys remain internal for queue foreign keys and publication cutoffs.
 The management credential, not knowledge of the UUID, authorizes revocation.
 

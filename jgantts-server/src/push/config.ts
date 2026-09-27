@@ -1,8 +1,7 @@
 import { createECDH, createHash } from 'node:crypto';
 
 export const isInstallationUuid = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-// Numeric IDs remain accepted for existing server configuration during migration.
-export type PushAudience = '*' | Array<string | number>;
+export type PushAudience = '*' | string[];
 
 export interface VapidKey { publicKey: string; privateKey: string }
 export interface PushConfig {
@@ -46,7 +45,7 @@ export function getPushConfig(env: NodeJS.ProcessEnv, siteOrigin: string): PushC
     }
   }
   const rawAudience = env.JGANTTS_PUSH_AUDIENCE?.trim() ?? '';
-  const audience = rawAudience === '*' ? '*' : rawAudience ? rawAudience.split(',').map(value => /^\d+$/.test(value.trim()) ? Number(value) : value.trim().toLowerCase()) : [];
-  if (audience !== '*' && audience.some(id => typeof id === 'number' ? !Number.isSafeInteger(id) || id < 1 : !isInstallationUuid(id))) throw new Error('Invalid push audience IDs.');
+  const audience = rawAudience === '*' ? '*' : rawAudience ? rawAudience.split(',').map(value => value.trim().toLowerCase()) : [];
+  if (audience !== '*' && audience.some(id => !isInstallationUuid(id))) throw new Error('Invalid push audience IDs.');
   return { enabled, sendEnabled, publicKey, keyVersion: keyVersion(publicKey), subject, keys, audience, siteOrigin };
 }

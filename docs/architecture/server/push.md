@@ -49,4 +49,4 @@ See [push operations](../operations/push.md),
 [Home Screen app](../website/home-screen.md), and
 [roadmap / remaining release gates](../../PUSH-NOTIFICATIONS-ROADMAP.md).
 
-Installation IDs exposed to readers are UUIDs (migration 15); integer primary keys remain internal for queue relationships and audience cutoffs. Existing numeric audience settings remain accepted during migration.
+Installation IDs exposed to readers are UUIDs (migration 15); integer primary keys remain internal for queue relationships and audience cutoffs. Audience settings and installation API parameters accept UUIDs only.

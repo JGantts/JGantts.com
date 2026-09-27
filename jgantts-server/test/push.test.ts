@@ -30,7 +30,7 @@ function fixture(t: test.TestContext) {
   const db = openContentDatabase(':memory:'); t.after(() => db.close());
   const repository = new PushRepository(db); repository.setEnrollment(true);
   const posts = new PostRepository(db); const service = new PostService(posts);
-  const subscribe = (id: string) => repository.resolveId(repository.register(subscription(id), credential(), config().keyVersion).id)!;
+  const subscribe = (id: string) => repository.register(subscription(id), credential(), config().keyVersion).id;
   const draft = (id: string) => posts.create({ id, slug: id, title: 'Hello', bodyHtml: '<p>A new post.</p>', bodyMarkdown: 'A new post.' });
   return { db, repository, posts, service, subscribe, draft };
 }
@@ -79,11 +79,11 @@ test('bounded fan-out excludes later subscriptions and cancellation wins over a 
   const a = subscribe('a'); const b = subscribe('b'); draft('post'); service.publish('post'); subscribe('late');
   repository.fanOut(Date.now(), 1); repository.fanOut(Date.now(), 1); repository.fanOut(Date.now(), 1);
   assert.equal(db.prepare('SELECT count(*) FROM push_deliveries').pluck().get(), 2);
-  const job = repository.claim([a])!; assert.equal(job.subscription_id, a);
-  repository.disable(a); assert.equal(repository.current(job.id, job.lease_token), null);
+  const job = repository.claim([a])!; assert.equal(job.subscription_id, repository.resolveId(a));
+  repository.disable(repository.resolveId(a)!); assert.equal(repository.current(job.id, job.lease_token), null);
   repository.finish(job, 'accepted', 201);
   assert.equal(db.prepare('SELECT state FROM push_deliveries WHERE id = ?').pluck().get(job.id), 'cancelled');
-  assert.equal(repository.claim([b])?.subscription_id, b);
+  assert.equal(repository.claim([b])?.subscription_id, repository.resolveId(b));
 });
 
 test('leases recover after expiry without accepting stale completion and expiry cancels jobs', t => {
@@ -181,8 +181,10 @@ test('HTTP requires origin and ownership; disabled enrollment still permits revo
   assert.equal((await fetch(origin + '/api/admin/push/status')).status, 401);
   assert.equal((await fetch(origin + '/api/admin/push/test', { method: 'POST', headers: { ...headers, Authorization: 'Bearer admin-test' }, body: JSON.stringify({ subscriptionId: id }) })).status, 202);
   assert.equal((await fetch(origin + '/api/admin/push/test', { method: 'POST', headers: { ...headers, Authorization: 'Bearer admin-test' }, body: JSON.stringify({ subscriptionId: '184a1f93-09e2-430d-8016-1f0765693f00' }) })).status, 400);
-  cfg.audience = [repository.resolveId(id)!];
-  assert.equal((await fetch(origin + '/api/admin/push/test', { method: 'POST', headers: { ...headers, Authorization: 'Bearer admin-test' }, body: JSON.stringify({ subscriptionId: id }) })).status, 202);
+  for (const numericId of [1, '1']) {
+    assert.equal((await fetch(origin + '/api/admin/push/test', { method: 'POST', headers: { ...headers, Authorization: 'Bearer admin-test' }, body: JSON.stringify({ subscriptionId: numericId }) })).status, 400);
+  }
+  assert.equal((await fetch(origin + '/api/push/subscriptions/1', { method: 'DELETE', headers: { ...headers, 'X-Push-Credential': token } })).status, 400);
   assert.equal((await fetch(origin + `/api/push/subscriptions/${id}`, { method: 'DELETE', headers: { ...headers, 'X-Push-Credential': credential() } })).status, 404);
   assert.equal((await fetch(origin + `/api/push/subscriptions/${id}`, { method: 'DELETE', headers: { ...headers, 'X-Push-Credential': token } })).status, 204);
   cfg.enabled = false;
@@ -231,7 +233,7 @@ test('static install assets have the intended MIME/cache headers and missing wor
 test('revocation during sender preparation prevents a provider request from being treated as accepted', async t => {
   const { db, repository, service, subscribe, draft } = fixture(t); const id = subscribe('a'); draft('post'); service.publish('post');
   const worker = new PushWorker(repository, config(), async (_sub, _payload, _version, _ttl, isCurrent) => {
-    repository.disable(id); assert.equal(isCurrent?.(), false); return false;
+    repository.disable(repository.resolveId(id)!); assert.equal(isCurrent?.(), false); return false;
   });
   await worker.runOnce();
   assert.equal(db.prepare('SELECT state FROM push_deliveries').pluck().get(), 'cancelled');
@@ -315,7 +317,6 @@ test('installation UUID migration preserves credentials, queue ownership, and au
     assert.ok(isInstallationUuid(enrolled.id));
     assert.deepEqual(repository.register(sub, token, 'v1'), enrolled);
     assert.equal(repository.resolveId(enrolled.id), 1);
-    assert.equal(repository.allows(enrolled.id, [1]), true);
     assert.equal(repository.allows(enrolled.id, [enrolled.id]), true);
     const other = repository.register(subscription('other'), credential(), 'v1');
     assert.notEqual(other.id, enrolled.id);
@@ -333,10 +334,10 @@ test('installation UUID migration preserves credentials, queue ownership, and au
   } finally { db.close(); }
 });
 
-test('audiences accept UUIDs and preserve numeric configuration during rollout', () => {
+test('audiences accept UUIDs and reject numeric configuration', () => {
   const id = '184a1f93-09e2-430d-8016-1f0765693f00';
-  assert.deepEqual(getPushConfig({ JGANTTS_PUSH_AUDIENCE: ` ${id.toUpperCase()},1 ` }, '').audience, [id, 1]);
-  for (const invalid of ['0', '-1', '1e2', 'not-a-uuid', id + ',']) {
+  assert.deepEqual(getPushConfig({ JGANTTS_PUSH_AUDIENCE: ` ${id.toUpperCase()} ` }, '').audience, [id]);
+  for (const invalid of ['1', '0', '-1', '1e2', 'not-a-uuid', id + ',']) {
     assert.throws(() => getPushConfig({ JGANTTS_PUSH_AUDIENCE: invalid }, ''), /audience/);
   }
 });

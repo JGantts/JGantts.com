@@ -37,9 +37,8 @@ export function createPushRouter({ repository, config }: PushServices) {
     res.status(204).end();
   });
   router.delete('/subscriptions/:id', sameOrigin(config.siteOrigin), rateLimit(60), (req, res) => {
-    const raw = String(req.params.id);
-    const id = /^\d+$/.test(raw) ? Number(raw) : raw.toLowerCase();
-    if (typeof id === 'number' ? !Number.isSafeInteger(id) || id < 1 : !isInstallationUuid(id)) throw pushError(400, 'Invalid installation ID.');
+    const id = String(req.params.id).toLowerCase();
+    if (!isInstallationUuid(id)) throw pushError(400, 'Invalid installation ID.');
     repository.revoke(id, validateCredential(req.get('X-Push-Credential')));
     res.status(204).end();
   });
@@ -53,7 +52,7 @@ export function createAdminPushRouter({ repository, config }: PushServices) {
     const raw = req.body?.subscriptionId;
     const id = typeof raw === 'string' ? raw.toLowerCase() : raw;
     if (!config.sendEnabled) throw pushError(409, 'Push sending is disabled.');
-    if (!(isInstallationUuid(id) || (Number.isSafeInteger(id) && id > 0)) || !repository.allows(id, config.audience)) throw pushError(400, 'Select an allowed canary installation ID.');
+    if (!isInstallationUuid(id) || !repository.allows(id, config.audience)) throw pushError(400, 'Select an allowed canary installation ID.');
     res.status(202).json({ eventId: repository.enqueueTest(id) });
   });
   return router;

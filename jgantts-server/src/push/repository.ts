@@ -12,15 +12,13 @@ export interface PushDelivery {
 export class PushRepository {
   constructor(readonly db: ContentDatabase) {}
   setEnrollment(enabled: boolean) { this.db.prepare('UPDATE push_settings SET enabled = ? WHERE id = 1').run(Number(enabled)); }
-  resolveId(id: string | number): number | undefined {
-    return (this.db.prepare(typeof id === 'number'
-      ? 'SELECT id FROM push_subscriptions WHERE id = ?'
-      : 'SELECT id FROM push_subscriptions WHERE installation_id = ?')
+  resolveId(id: string): number | undefined {
+    return (this.db.prepare('SELECT id FROM push_subscriptions WHERE installation_id = ?')
       .get(id) as { id: number } | undefined)?.id;
   }
-  allows(id: string | number, audience: PushAudience): boolean {
+  allows(id: string, audience: PushAudience): boolean {
     const internalId = this.resolveId(id);
-    return internalId !== undefined && (audience === '*' || audience.some(candidate => this.resolveId(candidate) === internalId));
+    return internalId !== undefined && (audience === '*' || audience.includes(id));
   }
   register(subscription: Subscription, credential: string, version: string, now = Date.now()) {
     return this.db.transaction(() => {
@@ -52,10 +50,10 @@ export class PushRepository {
     })();
   }
   revokeEndpoint(endpoint: string, credential: string) {
-    const row = this.db.prepare('SELECT id FROM push_subscriptions WHERE endpoint_hash = ?').get(hash(endpoint)) as { id: number } | undefined;
-    if (row) this.revoke(row.id, credential);
+    const row = this.db.prepare('SELECT installation_id FROM push_subscriptions WHERE endpoint_hash = ?').get(hash(endpoint)) as { installation_id: string } | undefined;
+    if (row) this.revoke(row.installation_id, credential);
   }
-  revoke(installationId: string | number, credential: string) {
+  revoke(installationId: string, credential: string) {
     const id = this.resolveId(installationId);
     if (id === undefined) throw pushError(404, 'Installation not found.');
     const row = this.db.prepare('SELECT credential_hash FROM push_subscriptions WHERE id = ?').get(id) as { credential_hash: string } | undefined;
@@ -68,7 +66,7 @@ export class PushRepository {
       this.db.prepare("UPDATE push_deliveries SET state = 'cancelled', lease_token = NULL WHERE subscription_id = ? AND state IN ('pending', 'processing')").run(id);
     })();
   }
-  enqueueTest(installationId: string | number, now = Date.now()) {
+  enqueueTest(installationId: string, now = Date.now()) {
     const id = this.resolveId(installationId);
     if (id === undefined) throw pushError(404, 'Active canary installation not found.');
     if (!this.db.prepare('SELECT id FROM push_subscriptions WHERE id = ? AND active = 1').get(id)) throw pushError(404, 'Active canary installation not found.');

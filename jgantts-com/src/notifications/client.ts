@@ -1,5 +1,5 @@
 export type PushConfiguration = { enabled: boolean; publicKey: string; keyVersion: string; payloadVersion: number }
-export type Installation = { credential: string; endpoint: string; keyVersion: string; id?: string | number; disabling?: boolean }
+export type Installation = { credential: string; endpoint: string; keyVersion: string; id?: string; disabling?: boolean }
 const STORAGE = 'jgantts.push.installation.v1';
 let registration: Promise<ServiceWorkerRegistration> | undefined;
 export function standalone() {
@@ -30,7 +30,9 @@ export function storedInstallation(): Installation | null {
   if (!raw) return null;
   try {
     const value = JSON.parse(raw);
-    if (typeof value.credential === 'string' && typeof value.endpoint === 'string' && typeof value.keyVersion === 'string') return value;
+    if (typeof value.credential === 'string' && typeof value.endpoint === 'string' && typeof value.keyVersion === 'string') {
+      return { ...value, id: typeof value.id === 'string' ? value.id : undefined };
+    }
   } catch { /* Show a reset action for an orphaned browser subscription. */ }
   return null;
 }

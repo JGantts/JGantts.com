@@ -228,6 +228,7 @@ function calculatePhotoMasonryAtDensity(
   totalColumns: number,
   gap: number,
   featuredClusterKey?: string,
+  recoverTrappedClusters = false,
 ): PhotoMasonry | null {
   if (!cards.length || containerWidth <= 0 || totalColumns <= 0) {
     return { height: 0, clusters: [] }
@@ -282,8 +283,25 @@ function calculatePhotoMasonryAtDensity(
       }
     }
 
-    // Reject this density rather than create a cluster joined by less than one whole grid cell.
-    if (!Number.isFinite(bestY)) return null
+    if (!Number.isFinite(bestY)) {
+      // Prefer another density before moving a post out of a crowded skyline.
+      if (!recoverTrappedClusters) return null
+
+      // A small first photo can fit in a hole that traps its larger siblings.
+      // Move the whole post below the other photos, preserving its tile sizes
+      // and a full shared edge. These objects are also held in placedCards, so
+      // subsequent placements see the recovered positions, not the old holes.
+      const otherCards = placedCards.filter(placed => placed.clusterKey !== card.clusterKey)
+      bestColumn = 0
+      bestY = otherCards.length
+        ? Math.max(...otherCards.map(placed => placed.y + placed.height)) + gap
+        : 0
+      for (const placed of clusterCards) {
+        placed.x = 0
+        placed.y = bestY
+        bestY += placed.height + gap
+      }
+    }
 
     const x = bestColumn * (cellSize + gap)
     const width = pixelsForSpan(card.columnSpan, cellSize, gap)
@@ -396,5 +414,10 @@ export function calculatePhotoMasonry(
     }
   }
 
-  return best ?? { height: 0, clusters: [] }
+  // Every valid input must remain visible even when no greedy density can keep
+  // the post clusters connected. Recovery can always stack a trapped post in
+  // the unbounded vertical space below the other photos.
+  return best ?? calculatePhotoMasonryAtDensity(
+    cards, containerWidth, minimumColumns, gap, featuredClusterKey, true,
+  )!
 }

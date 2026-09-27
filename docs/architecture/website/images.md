@@ -8,7 +8,7 @@
 
 **Consumers:** [photo browsing](photos.md), its comments panel, and other carousel users.
 
-**Invariants:** preserve aspect ratios and focal points; choose renditions using display size, pixel ratio, and data-saving preference. Remote attachments without local manifests retain fallback URLs. Exposure history influences gallery ordering but unavailable browser storage must remain tolerable. Lightbox and grid contexts have different image needs.
+**Invariants:** preserve aspect ratios and focal points; choose renditions using display size, pixel ratio, and data-saving preference. Remote attachments without local manifests retain fallback URLs. Exposure history influences gallery ordering but unavailable browser storage must remain tolerable. If every grid density traps a post's remaining photos, move that post below the other photos with its cards connected; a placement failure must never discard the gallery. Lightbox and grid contexts have different image needs.
 
 **Source:** [masonry and responsive components/helpers](../../../jgantts-com/src/views/photos), [carousel](../../../jgantts-com/src/components/MediaCarousel.vue). Colocated tests cover layout and rendition behavior; [browser tests](../../../jgantts-com/tests/e2e) cover integration.
 

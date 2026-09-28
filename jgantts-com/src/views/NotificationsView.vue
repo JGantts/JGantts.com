@@ -94,7 +94,7 @@ onBeforeUnmount(() => { disposed = true; document.removeEventListener('visibilit
       <template v-else-if="state === 'install'">
         <h2>Add JGantts to your Home Screen</h2>
         <p>On iOS, enable notifications in the Home Screen app.</p>
-        <RouterLink to="/install">How to install</RouterLink>
+        <RouterLink to="/install">How to add the link</RouterLink>
       </template>
       <p v-else-if="state === 'unsupported'">This browser doesn’t support notifications. Use the feed below.</p>
       <template v-else-if="state === 'ready'">

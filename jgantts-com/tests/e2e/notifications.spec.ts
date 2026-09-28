@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 test('Home Screen guidance and persistent navigation work on narrow screens', async ({ page }) => {
   await page.goto('/install')
   await expect(page.getByRole('button', { name: 'Open share menu' })).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: 'JGantts, a tap away.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Add a Home Screen link' })).toBeVisible()
   await expect(page.getByText('Open as Web App', { exact: true })).toBeVisible()
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest')
   expect(await page.locator('.install-app img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth === 192)).toBe(true)
@@ -35,7 +35,7 @@ test('standalone app hides installation prompts and exposes notification setting
     }
   })
   await page.goto('/install')
-  await expect(page.getByText("You're already using the Home Screen app.")).toBeVisible()
+  await expect(page.getByText("You’re already opening JGantts from your Home Screen.")).toBeVisible()
   await expect(page.getByRole('navigation').getByRole('link', { name: 'Add to Home Screen' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Manage notifications' })).toBeVisible()
   await page.setViewportSize({ width: 844, height: 390 })
@@ -46,7 +46,7 @@ test('iPhone browser is guided to install and never starts subscription setup', 
   await page.addInitScript(() => Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 Version/26.0 Mobile Safari/604.1' }))
   await page.goto('/notifications')
   await expect(page.getByRole('heading', { name: 'Add JGantts to your Home Screen' })).toBeVisible()
-  await page.getByRole('link', { name: 'How to install' }).click()
+  await page.getByRole('link', { name: 'How to add the link' }).click()
   await expect(page).toHaveURL(/\/install$/)
   await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' })
   await page.screenshot({ path: '/tmp/jgantts-install-mobile.png', fullPage: true })

@@ -88,7 +88,6 @@ onBeforeUnmount(() => { disposed = true; document.removeEventListener('visibilit
 <template>
   <main class="notification-settings">
     <h1>Notifications</h1>
-    <p>New-post alerts for this browser or Home Screen app.</p>
     <div class="settings-card" aria-live="polite" :aria-busy="busy">
       <p v-if="state === 'loading'">Checking…</p>
       <template v-else-if="state === 'install'">
@@ -135,7 +134,6 @@ onBeforeUnmount(() => { disposed = true; document.removeEventListener('visibilit
       <p v-if="problem" role="alert">{{ problem }}</p>
     </div>
     <NotificationLimits v-if="state === 'subscribed' && installationId" :key="installationId" />
-    <p class="fine-print">Delivery may be delayed or missed.</p>
     <p><a href="/feed.xml">Follow the Atom feed</a> · <RouterLink to="/photos">Back to photos</RouterLink></p>
     <details v-if="installationId" class="troubleshooting">
       <summary>Troubleshooting</summary>
@@ -160,5 +158,5 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px soli
 .troubleshooting { margin-top: 2rem; }
 summary { min-height: 44px; cursor: pointer; }
 .installation-id { overflow-wrap: anywhere; }
-.fine-print, .installation-id { font-size: .85rem; color: var(--muted); }
+.installation-id { font-size: .85rem; color: var(--muted); }
 </style>

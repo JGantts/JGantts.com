@@ -18,7 +18,7 @@ beforeEach(() => {
 })
 it('only subscribes following an explicit click', async () => {
   const wrapper = mountSettings(); await flushPromises()
-  expect(client.subscribe).not.toHaveBeenCalled(); expect(wrapper.text()).toContain('Notify me about new posts')
+  expect(client.subscribe).not.toHaveBeenCalled(); expect(wrapper.text()).toContain('New-post alerts')
   vi.mocked(client.subscribe).mockResolvedValue('184a1f93-09e2-430d-8016-1f0765693f00')
   await wrapper.get('button').trigger('click'); await flushPromises()
   expect(client.subscribe).toHaveBeenCalledOnce(); expect(wrapper.text()).toContain('Notifications are on'); expect(wrapper.text()).toContain('Installation 184a1f93-09e2-430d-8016-1f0765693f00')
@@ -27,10 +27,10 @@ it('only subscribes following an explicit click', async () => {
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
   await wrapper.get('details button').trigger('click'); await flushPromises()
   expect(writeText).toHaveBeenCalledWith('184a1f93-09e2-430d-8016-1f0765693f00')
-  expect(wrapper.get('[role="status"]').text()).toBe('Installation ID copied.')
+  expect(wrapper.get('[role="status"]').text()).toBe('Copied.')
   writeText.mockRejectedValueOnce(new Error('unavailable'))
   await wrapper.get('details button').trigger('click'); await flushPromises()
-  expect(wrapper.get('[role="status"]').text()).toContain('Select and copy the ID above.')
+  expect(wrapper.get('[role="status"]').text()).toContain('Select the ID above.')
   wrapper.unmount()
 })
 it('guides an iOS browser to install without requesting permission', async () => {

@@ -75,9 +75,9 @@ async function copyInstallationId() {
   if (!installationId.value) return
   try {
     await navigator.clipboard.writeText(installationId.value)
-    copyStatus.value = 'Installation ID copied.'
+    copyStatus.value = 'Copied.'
   } catch {
-    copyStatus.value = 'Could not copy. Select and copy the ID above.'
+    copyStatus.value = 'Copy failed. Select the ID above.'
   }
 }
 function onVisible() { if (document.visibilityState === 'visible') void refresh() }
@@ -87,57 +87,55 @@ onBeforeUnmount(() => { disposed = true; document.removeEventListener('visibilit
 
 <template>
   <main class="notification-settings">
-    <p class="eyebrow">Stay in touch</p>
-    <h1>New posts, on your terms.</h1>
-    <p>Get a notification when a new photograph or story is published. No account needed. You can turn notifications off here at any time.</p>
+    <h1>Notifications</h1>
+    <p>New-post alerts for this browser or Home Screen app.</p>
     <div class="settings-card" aria-live="polite" :aria-busy="busy">
-      <p v-if="state === 'loading'">Checking notification settings…</p>
+      <p v-if="state === 'loading'">Checking…</p>
       <template v-else-if="state === 'install'">
         <h2>Add JGantts to your Home Screen</h2>
-        <p>On iPhone and iPad, open the installed app to enable notifications.</p>
-        <RouterLink to="/install">See installation steps</RouterLink>
+        <p>On iOS, enable notifications in the Home Screen app.</p>
+        <RouterLink to="/install">How to install</RouterLink>
       </template>
-      <p v-else-if="state === 'unsupported'">Notifications aren't available in this browser. You can still follow every post with the feed below.</p>
+      <p v-else-if="state === 'unsupported'">This browser doesn’t support notifications. Use the feed below.</p>
       <template v-else-if="state === 'ready'">
-        <h2>Notify me about new posts</h2>
-        <p>Your browser will ask for permission after you choose Enable.</p>
+        <h2>New-post alerts</h2>
+        <p>Enable, then allow notifications when prompted.</p>
         <button type="button" :disabled="busy" @click="enable">Enable notifications</button>
       </template>
       <template v-else-if="state === 'subscribed'">
         <h2>Notifications are on</h2>
-        <p>You're subscribed on this installation. Other browsers and devices have separate settings.</p>
         <button type="button" :disabled="busy" @click="turnOff">Turn off notifications</button>
       </template>
       <template v-else-if="state === 'denied'">
         <h2>Permission is turned off</h2>
-        <p>To allow notifications, change this site's notification permission in your browser or device Settings, then return here.</p>
+        <p>Allow notifications in browser or device settings, then return here.</p>
         <button type="button" :disabled="busy" @click="turnOff">Remove this subscription</button>
       </template>
       <template v-else-if="state === 'reset'">
         <h2>Reconnect this installation</h2>
-        <p>Your saved subscription needs to be reset. Remove it, then choose Enable again to reconnect.</p>
+        <p>Reset, then enable notifications again.</p>
         <button type="button" :disabled="busy" @click="turnOff">Reset subscription</button>
       </template>
       <template v-else-if="state === 'disable-pending'">
         <h2>Turning off isn't finished</h2>
-        <p>Connect to the internet and retry so both this browser and the server stop the subscription.</p>
+        <p>Reconnect to the internet and retry.</p>
         <button type="button" :disabled="busy" @click="turnOff">Retry turning off</button>
       </template>
       <template v-else-if="state === 'off'">
         <h2>Notifications are off</h2>
         <button type="button" :disabled="busy" @click="refresh">Set up again</button>
       </template>
-      <p v-else-if="state === 'unavailable'">New notification subscriptions are temporarily unavailable. Please check back later.</p>
+      <p v-else-if="state === 'unavailable'">New subscriptions are temporarily unavailable.</p>
       <template v-else-if="state === 'error'">
         <h2>Setup needs another try</h2>
-        <p>We couldn't confirm your subscription. Your browser permission may already be saved.</p>
+        <p>Subscription unconfirmed. Retry to finish setup.</p>
         <button type="button" :disabled="busy" @click="refresh">Retry setup</button>
         <button v-if="worker" type="button" :disabled="busy" @click="turnOff">Turn off instead</button>
       </template>
       <p v-if="problem" role="alert">{{ problem }}</p>
     </div>
     <NotificationLimits v-if="state === 'subscribed' && installationId" :key="installationId" />
-    <p class="fine-print">Notifications may arrive later when your device is offline or in Focus mode. Delivery isn't guaranteed.</p>
+    <p class="fine-print">Delivery may be delayed or missed.</p>
     <p><a href="/feed.xml">Follow the Atom feed</a> · <RouterLink to="/photos">Back to photos</RouterLink></p>
     <details v-if="installationId" class="troubleshooting">
       <summary>Troubleshooting</summary>

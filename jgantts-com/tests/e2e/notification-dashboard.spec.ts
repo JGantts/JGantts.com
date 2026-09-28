@@ -51,11 +51,11 @@ test('dashboard handles an empty paused queue, refresh failure, and session expi
   await page.route('**/api/admin/push/dashboard', route => route.fulfill(state === 'ok' ? { json: { ...dashboard, sendEnabled: false, audience: [], events: [], recentDeliveries: [], installations: [] } } : { status: state === 'expired' ? 401 : 503, json: { error: { message: state === 'expired' ? 'Session expired' : 'Temporarily unavailable' } } }))
   await page.goto('/admin/notifications')
   await expect(page.getByText('No notification events yet.')).toBeVisible()
-  await expect(page.getByText('Delivery is paused by server configuration.', { exact: false })).toBeVisible()
+  await expect(page.getByText('Sending paused by server settings.', { exact: false })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Send test notification' })).toBeDisabled()
   state = 'error'
   await page.getByRole('button', { name: 'Refresh now' }).click()
-  await expect(page.getByText('Showing the last successful snapshot.')).toBeVisible()
+  await expect(page.getByText('Showing saved results.')).toBeVisible()
   state = 'expired'
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
   await expect(page.getByLabel('Admin token')).toBeVisible()

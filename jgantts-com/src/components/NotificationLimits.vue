@@ -19,7 +19,7 @@ async function save() {
   busy.value = true; error.value = ''; notice.value = ''
   try {
     await notificationLimits({ maxPerDay: day.value === '' ? null : Number(day.value), maxPerWeek: week.value === '' ? null : Number(week.value) })
-    notice.value = 'Notification limits saved for this installation.'
+    notice.value = 'Limits saved.'
   } catch (cause) { error.value = cause instanceof Error ? cause.message : 'Could not save limits.' }
   finally { busy.value = false }
 }
@@ -27,15 +27,15 @@ onMounted(load)
 </script>
 <template>
   <section class="limits" aria-labelledby="limits-heading">
-    <h2 id="limits-heading">How often to notify you</h2>
-    <p>Set a maximum for this installation. Leave a field blank for unlimited; use 0 to stop new-post notifications.</p>
+    <h2 id="limits-heading">Frequency</h2>
+    <p>Blank = unlimited. 0 = off.</p>
     <p v-if="!loaded && busy">Loading limits…</p>
     <form v-if="loaded" @submit.prevent="save">
-      <label for="daily-limit">Maximum per day</label>
+      <label for="daily-limit">Max per day</label>
       <input id="daily-limit" v-model="day" type="number" min="0" max="1000" step="1" inputmode="numeric" placeholder="Unlimited" :disabled="busy">
-      <label for="weekly-limit">Maximum per week</label>
+      <label for="weekly-limit">Max per week</label>
       <input id="weekly-limit" v-model="week" type="number" min="0" max="1000" step="1" inputmode="numeric" placeholder="Unlimited" :disabled="busy">
-      <p class="explanation">Both limits apply, counting the last 24 hours and 7 days. Extra notifications are skipped, not held for later. Test notifications are excluded. Notifications already sending may still arrive.</p>
+      <p class="explanation">Both limits apply over the last 24 hours / 7 days. Extras are skipped; tests don’t count. Alerts already sending may arrive.</p>
       <button :disabled="busy" type="submit">{{ busy ? 'Saving…' : 'Save limits' }}</button>
     </form>
     <p v-if="error" role="alert">{{ error }}</p>

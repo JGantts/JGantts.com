@@ -69,18 +69,18 @@ onBeforeUnmount(() => { disposed = true; clearInterval(timer) })
 <template>
   <main class="notification-admin">
     <header>
-      <div><p class="eyebrow">Site administration</p><h1>Notifications</h1><p>Follow a post from publication to push provider acceptance.</p></div>
+      <div><p class="eyebrow">Site administration</p><h1>Notifications</h1><p>Queue and delivery status.</p></div>
       <nav aria-label="Admin"><RouterLink to="/admin/posts">Post editor</RouterLink><button v-if="data" :disabled="busy || refreshing" @click="logout">Log out</button></nav>
     </header>
     <p v-if="error" role="alert" class="alert">{{ error }} <button v-if="!needsLogin" :disabled="refreshing" @click="refresh">Retry</button></p>
     <section v-if="needsLogin" class="card login">
-      <h2>Sign in to notifications</h2><p>Use your admin token. Your session is shared with the post editor.</p>
+      <h2>Sign in to notifications</h2><p>Use your post-editor sign-in.</p>
       <form @submit.prevent="login"><label for="admin-token">Admin token</label><input id="admin-token" v-model="token" type="password" autocomplete="off" required><button :disabled="busy || refreshing || !token.trim()">Sign in</button></form>
     </section>
     <p v-else-if="!data && !error" role="status">Loading notification dashboard…</p>
     <template v-if="data">
       <div class="controls"><button :disabled="refreshing || busy" @click="refresh">{{ refreshing ? 'Refreshing…' : 'Refresh now' }}</button><label><input v-model="autoRefresh" type="checkbox"> Refresh every 5 seconds</label><span class="muted">Updated {{ date(data.capturedAt) }}</span></div>
-      <p v-if="error" class="muted">Showing the last successful snapshot.</p>
+      <p v-if="error" class="muted">Showing saved results.</p>
       <div class="metrics">
         <section class="card"><span>Active installations</span><strong>{{ data.activeSubscriptions }}</strong></section>
         <section class="card"><span>Preparing deliveries</span><strong>{{ data.pendingEvents }}</strong></section>
@@ -90,18 +90,18 @@ onBeforeUnmount(() => { disposed = true; clearInterval(timer) })
       <section class="card">
         <h2>Delivery controls</h2>
         <p>Enrollment <b>{{ data.enabled ? 'on' : 'off' }}</b> · Sending <b>{{ data.sendEnabled ? 'on' : 'off' }}</b> · Audience <b>{{ data.audience === '*' ? 'all subscribers' : data.audience.length ? `${data.audience.length} selected installations` : 'nobody' }}</b></p>
-        <p v-if="!data.sendEnabled || data.audience !== '*' && !data.audience.length" class="alert">Delivery is paused by server configuration. Queued notifications may expire before sending resumes.</p>
-        <p v-if="!data.enabled">New subscriptions and publication notifications are disabled. Publications made while enrollment is off are not sent later.</p>
-        <p>Oldest waiting event: {{ data.oldestPendingAgeSeconds }} seconds. Provider acceptance means the push service received it; it does not confirm that the phone displayed it.</p>
+        <p v-if="!data.sendEnabled || data.audience !== '*' && !data.audience.length" class="alert">Sending paused by server settings. Queued alerts may expire.</p>
+        <p v-if="!data.enabled">Enrollment off. New posts won’t notify subscribers or be sent later.</p>
+        <p>Oldest waiting event: {{ data.oldestPendingAgeSeconds }} seconds. Provider acceptance doesn’t confirm on-device display.</p>
         <details v-if="data.audience !== '*' && data.audience.length"><summary>Allowed installation IDs</summary><ul><li v-for="id in data.audience" :key="id"><code>{{ id }}</code></li></ul></details>
       </section>
       <section class="card">
-        <h2>Test one installation</h2><p>Match the ID under Troubleshooting in that device’s notification settings. Only active installations in the configured audience are selectable.</p>
+        <h2>Test one installation</h2><p>Find the device’s ID in Notifications → Troubleshooting. Only eligible installations are listed.</p>
         <form class="test-form" @submit.prevent="sendTest"><label for="installation">Installation</label><select id="installation" v-model="installationId"><option value="">Choose an installation</option><option v-for="item in eligible" :key="item.id" :value="item.id">{{ item.id }}</option></select><button :disabled="busy || refreshing || !canSend">Send test notification</button></form>
-        <p v-if="!eligible.length" class="muted">No eligible installations in the latest 100 registrations.</p><p role="status" class="notice">{{ notice }}</p>
+        <p v-if="!eligible.length" class="muted">No eligible installations listed.</p><p role="status" class="notice">{{ notice }}</p>
       </section>
       <section class="card">
-        <h2>Recent publication events</h2><p class="muted">Latest 50 events, including tests and suppressed publications. Editing or republishing a post does not send it again. Scroll the table to see every column.</p>
+        <h2>Recent publication events</h2><p class="muted">Latest 50 events. Edits and republications don’t resend. Scroll for more.</p>
         <p v-if="!data.events.length">No notification events yet.</p>
         <div v-else class="table-scroll" tabindex="0" role="region" aria-label="Recent events"><table><thead><tr><th>Post / event</th><th>Queued</th><th>Queue state</th><th>Provider accepted</th><th>Waiting</th><th>Failed / cancelled</th></tr></thead><tbody>
           <tr v-for="event in data.events" :key="event.id"><td><b>{{ event.kind === 'test' ? 'Test notification' : event.title || 'Untitled post' }}</b><code>{{ event.id }}</code></td><td>{{ date(event.createdAt) }}</td><td>{{ event.state === 'expanded' ? 'Recipients queued' : event.state === 'pending' ? 'Preparing deliveries' : event.state }}<small v-if="event.state === 'expanded' && !event.total">No retained deliveries</small></td><td>{{ event.accepted }} / {{ event.total }}</td><td>{{ event.waiting }}</td><td>{{ event.failed }} / {{ event.cancelled }}</td></tr>
@@ -109,13 +109,13 @@ onBeforeUnmount(() => { disposed = true; clearInterval(timer) })
       </section>
       <section class="card">
         <h2>Recent deliveries</h2><div class="controls"><label>Type <select v-model="kind" aria-label="Type"><option value="all">All</option><option value="publication">Posts</option><option value="test">Tests</option></select></label><label>Status <select v-model="deliveryState" aria-label="Status"><option value="all">All</option><option value="accepted">Provider accepted</option><option value="pending">Pending</option><option value="processing">Sending</option><option value="failed">Failed</option><option value="cancelled">Cancelled</option></select></label></div>
-        <p class="muted">Filters apply to the latest 100 updated deliveries. Timing runs from event creation to provider acceptance. Scroll the table to see every column.</p>
+        <p class="muted">Latest 100 deliveries. Timing: queued → provider accepted. Scroll for more.</p>
         <p v-if="!deliveries.length">No deliveries match these filters.</p>
         <div v-else class="table-scroll" tabindex="0" role="region" aria-label="Recent deliveries"><table><thead><tr><th>Post / installation</th><th>Status</th><th>Attempts</th><th>Provider response</th><th>Accepted after</th><th>Last activity / retry</th></tr></thead><tbody>
           <tr v-for="row in deliveries" :key="row.id"><td><b>{{ row.kind === 'test' ? 'Test notification' : row.title || 'Untitled post' }}</b><code>{{ row.installationId }}</code><small>Event {{ row.eventId }}</small></td><td>{{ row.skipReason ? (row.skipReason === 'daily_limit' ? 'Skipped: daily limit' : 'Skipped: weekly limit') : row.state === 'accepted' ? 'Provider accepted' : row.state === 'processing' ? 'Sending' : row.state }}</td><td>{{ row.attempts }}</td><td>{{ row.lastStatus ?? (row.attempts && row.state !== 'processing' ? 'No HTTP response' : '—') }}</td><td>{{ row.acceptedAfterMs === null ? '—' : duration(row.acceptedAfterMs) }}</td><td>{{ date(row.updatedAt) }}<small v-if="row.state === 'pending' && row.attempts">Retry after {{ date(row.availableAt) }}</small></td></tr>
         </tbody></table></div>
       </section>
-      <section class="card"><h2>Installations</h2><p class="muted">Latest 100 registrations, active first. Device names are not collected.</p><p v-if="!data.installations.length">No installations registered yet.</p><ul class="installations"><li v-for="item in data.installations" :key="item.id"><code>{{ item.id }}</code><span>{{ item.active ? 'Active' : 'Revoked' }} · {{ item.allowed ? 'In audience' : 'Outside audience' }}</span><small>Limits: {{ item.maxPerDay ?? 'Unlimited' }} per day · {{ item.maxPerWeek ?? 'Unlimited' }} per week</small><small>Last seen {{ date(item.lastSeenAt) }}</small></li></ul></section>
+      <section class="card"><h2>Installations</h2><p class="muted">Latest 100 installations, active first.</p><p v-if="!data.installations.length">No installations registered yet.</p><ul class="installations"><li v-for="item in data.installations" :key="item.id"><code>{{ item.id }}</code><span>{{ item.active ? 'Active' : 'Revoked' }} · {{ item.allowed ? 'In audience' : 'Outside audience' }}</span><small>Limits: {{ item.maxPerDay ?? 'Unlimited' }} per day · {{ item.maxPerWeek ?? 'Unlimited' }} per week</small><small>Last seen {{ date(item.lastSeenAt) }}</small></li></ul></section>
     </template>
   </main>
 </template>

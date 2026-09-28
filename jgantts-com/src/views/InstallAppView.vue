@@ -2,6 +2,20 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { standalone } from '@/notifications/client'
 const installed = ref(standalone())
+const canShare = typeof navigator.share === 'function'
+const sharing = ref(false)
+const shareError = ref('')
+async function openShareMenu() {
+  if (!canShare || sharing.value) return
+  sharing.value = true
+  shareError.value = ''
+  try {
+    // Keep this call directly in the click handler to retain user activation.
+    await navigator.share({ title: 'JGantts', url: new URL('/photos', window.location.origin).href })
+  } catch (error) {
+    if (!(error && typeof error === 'object' && 'name' in error && error.name === 'AbortError')) shareError.value = 'Use Safari’s Share button instead.'
+  } finally { sharing.value = false }
+}
 function update() { installed.value = standalone() }
 onMounted(() => window.addEventListener('pageshow', update))
 onBeforeUnmount(() => window.removeEventListener('pageshow', update))
@@ -16,6 +30,9 @@ onBeforeUnmount(() => window.removeEventListener('pageshow', update))
     </template>
     <template v-else>
       <p>Keep photographs and stories on your iPhone or iPad Home Screen. The app is free, and notifications are optional.</p>
+      <button v-if="canShare" type="button" :disabled="sharing" @click="openShareMenu">Open share menu</button>
+      <p v-if="canShare" class="detail">No “Add to Home Screen”? Use Safari’s own Share button.</p>
+      <p v-if="shareError" role="alert">{{ shareError }}</p>
       <ol>
         <li>Open JGantts.com in Safari. Tap <strong>Share</strong> (the square with an upward arrow). Depending on your version, Share may be in the menu.</li>
         <li>Choose <strong>Add to Home Screen</strong>. If you see <strong>Open as Web App</strong>, leave it on.</li>
@@ -37,7 +54,9 @@ strong { font-weight: 650; }
 ol { padding-left: 1.4rem; list-style: decimal; }
 li { padding-left: .5rem; margin: 1rem 0; }
 a { color: inherit; text-underline-offset: .2em; }
-a:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+button { min-height: 44px; padding: .65rem 1rem; border: 1px solid currentColor; border-radius: .5rem; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+button:disabled { opacity: .6; cursor: wait; }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
 .done { display: inline-block; min-height: 44px; margin-top: 1rem; }
 .detail { color: var(--muted); font-size: .9rem; }
 </style>

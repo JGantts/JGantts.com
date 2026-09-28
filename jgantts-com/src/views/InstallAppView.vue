@@ -2,20 +2,6 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { standalone } from '@/notifications/client'
 const installed = ref(standalone())
-const canShare = typeof navigator.share === 'function'
-const sharing = ref(false)
-const shareError = ref('')
-async function openShareMenu() {
-  if (!canShare || sharing.value) return
-  sharing.value = true
-  shareError.value = ''
-  try {
-    // Keep this call directly in the click handler to retain user activation.
-    await navigator.share({ title: 'JGantts', url: new URL('/photos', window.location.origin).href })
-  } catch (error) {
-    if (!(error && typeof error === 'object' && 'name' in error && error.name === 'AbortError')) shareError.value = 'Use Safari’s Share button instead.'
-  } finally { sharing.value = false }
-}
 function update() { installed.value = standalone() }
 onMounted(() => window.addEventListener('pageshow', update))
 onBeforeUnmount(() => window.removeEventListener('pageshow', update))
@@ -29,19 +15,16 @@ onBeforeUnmount(() => window.removeEventListener('pageshow', update))
       <p><RouterLink to="/notifications">Manage notifications</RouterLink></p>
     </template>
     <template v-else>
-      <p>Keep photographs and stories on your iPhone or iPad Home Screen. The app is free, and notifications are optional.</p>
-      <button v-if="canShare" type="button" :disabled="sharing" @click="openShareMenu">Open share menu</button>
-      <p v-if="canShare" class="detail">No “Add to Home Screen”? Use Safari’s own Share button.</p>
-      <p v-if="shareError" role="alert">{{ shareError }}</p>
+      <p>Install using Safari’s own Share menu.</p>
       <ol>
-        <li>Open JGantts.com in Safari. Tap <strong>Share</strong> (the square with an upward arrow). Depending on your version, Share may be in the menu.</li>
-        <li>Choose <strong>Add to Home Screen</strong>. If you see <strong>Open as Web App</strong>, leave it on.</li>
-        <li>Tap <strong>Add</strong>, then open the <strong>JGantts</strong> icon on your Home Screen.</li>
+        <li>Open this page in <strong>Safari</strong>. Open Safari’s menu, then tap <strong>Share</strong> (square with an up arrow). Older versions have a Share button in the toolbar.</li>
+        <li>Choose <strong>Add to Home Screen</strong>. Keep <strong>Open as Web App</strong> on if shown.</li>
+        <li>Tap <strong>Add</strong>, then open <strong>JGantts</strong> from your Home Screen.</li>
       </ol>
-      <p>Inside the app, choose <strong>Notifications</strong> to opt in to new posts. Installation doesn't grant notification permission.</p>
-      <p>If Add to Home Screen isn't available, open this page directly in Safari. On other devices, use your browser's install option if available.</p>
+      <p>Enable optional alerts under <strong>Notifications</strong> in the app.</p>
+      <p>Missing <strong>Add to Home Screen</strong>? Open this page directly in Safari.</p>
     </template>
-    <p class="detail">An internet connection is needed to load photographs and stories. Your browser and Home Screen app may keep separate settings and sign-ins.</p>
+    <p class="detail">Internet required. Browser and app settings may be separate.</p>
     <RouterLink class="done" to="/photos">Done — back to photos</RouterLink>
   </main>
 </template>
@@ -54,9 +37,7 @@ strong { font-weight: 650; }
 ol { padding-left: 1.4rem; list-style: decimal; }
 li { padding-left: .5rem; margin: 1rem 0; }
 a { color: inherit; text-underline-offset: .2em; }
-button { min-height: 44px; padding: .65rem 1rem; border: 1px solid currentColor; border-radius: .5rem; background: transparent; color: inherit; font: inherit; cursor: pointer; }
-button:disabled { opacity: .6; cursor: wait; }
-a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+a:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
 .done { display: inline-block; min-height: 44px; margin-top: 1rem; }
 .detail { color: var(--muted); font-size: .9rem; }
 </style>

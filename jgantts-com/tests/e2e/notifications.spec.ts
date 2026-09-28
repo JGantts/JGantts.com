@@ -12,6 +12,7 @@ test.beforeEach(async ({ page }) => {
 
 test('Home Screen guidance and persistent navigation work on narrow screens', async ({ page }) => {
   await page.goto('/install')
+  await expect(page.getByRole('button', { name: 'Open share menu' })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'JGantts, a tap away.' })).toBeVisible()
   await expect(page.getByText('Open as Web App', { exact: true })).toBeVisible()
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest')

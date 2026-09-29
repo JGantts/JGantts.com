@@ -4,8 +4,8 @@
 notification setup without reader accounts.
 
 **Entry points:** `/install` explains Add to Home Screen; `/notifications` manages
-consent. Main-layout navigation links photos, posts, notifications, and installation
-help. Standalone mode hides redundant installation prompts.
+consent. The main-layout header links to notification settings with “Subscribe to
+updates.” Notification settings guide readers to installation help when needed.
 
 **Dependencies:** `/manifest.webmanifest`, explicitly linked Apple touch icon,
 192/512 PNG icons and a maskable icon, the shared `/sw.js`, and the push API.

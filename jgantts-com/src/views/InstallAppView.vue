@@ -33,7 +33,7 @@ onBeforeUnmount(() => window.removeEventListener('pageshow', update))
         </li>
         <li>
           <strong class="step-title">Open JGantts from your Home Screen</strong>
-          <span>Tap the new JGantts icon. For alerts, choose <strong>Notifications</strong> there.</span>
+          <span>Tap the new JGantts icon. For alerts, choose <strong>Subscribe to updates</strong> there.</span>
         </li>
       </ol>
     </template>

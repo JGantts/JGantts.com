@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { standalone } from '@/notifications/client'
 import BuildInfo from '@/components/BuildInfo.vue'
 
 const route = useRoute()
-const isStandalone = standalone()
 const darkModePreference = window.matchMedia('(prefers-color-scheme: dark)')
 const isPhotosPage = computed(() => route.path.startsWith('/photos'))
 const isPostsPage = computed(() => route.path.startsWith('/posts'))
@@ -53,10 +51,7 @@ onBeforeUnmount(() => {
         <span v-else-if="isAdminPage" class="page-label">/admin</span>
       </RouterLink>
       <nav class="reader-nav" aria-label="Site">
-        <RouterLink to="/photos">Photos</RouterLink>
-        <RouterLink to="/posts">Posts</RouterLink>
-        <RouterLink to="/notifications">Notifications</RouterLink>
-        <RouterLink v-if="!isStandalone" to="/install">Add to Home Screen</RouterLink>
+        <RouterLink to="/notifications">Subscribe to updates</RouterLink>
       </nav>
     </header>
     <router-view />

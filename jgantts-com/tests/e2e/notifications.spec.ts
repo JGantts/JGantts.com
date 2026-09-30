@@ -46,7 +46,7 @@ test('iPhone browser is guided to install and never starts subscription setup', 
   await page.addInitScript(() => Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 Version/26.0 Mobile Safari/604.1' }))
   await page.goto('/notifications')
   await expect(page.getByRole('heading', { name: 'Add JGantts to your Home Screen' })).toBeVisible()
-  await page.getByRole('link', { name: 'How to add the link' }).click()
+  await page.getByRole('link', { name: 'How to add Home Screen app' }).click()
   await expect(page).toHaveURL(/\/install$/)
   await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' })
   await page.screenshot({ path: '/tmp/jgantts-install-mobile.png', fullPage: true })

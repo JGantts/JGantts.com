@@ -97,9 +97,15 @@ jobs:
 
       - name: Build map
         run: |
-          python3 -m venv ./venv
+          set -euo pipefail
           source ./venv/bin/activate
           python3 make_all_tiles.py
+          # Production output is relative to the repository root, not python/.
+          if [ ! -d ../maps-rendered ] || [ -z "$(find ../maps-rendered -type f -print -quit)" ]; then
+            echo "ERROR: Map build produced no files in maps-rendered/" >&2
+            exit 1
+          fi
+          echo "Map build completed successfully"
         working-directory: ./python/
 
       - name: Deploy Map
@@ -109,10 +115,12 @@ jobs:
           username: ${{ secrets.LINODE_USER }}
           password: ${{ secrets.LINODE_PASSWORD }}
           port: 22
-          source: './maps-rendered/'
+          source: 'maps-rendered/'
           target: '/home/jgantts-com/node-js/jgantts-com/PUBLIC/assets/maps/'
-          strip_components: 2
-          rm: true
+          strip_components: 1
+          # Site releases link to this directory; preserve it during updates.
+          rm: false
+          overwrite: true
 
   build-site-release:
     needs: changes

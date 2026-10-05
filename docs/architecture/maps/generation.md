@@ -8,6 +8,8 @@
 
 **Consumers:** [browser map](browser.md) and the workflow's separate `deploy-maps` job.
 
+**Deployment:** the workflow checks `../maps-rendered` from the Python working directory, then transfers `maps-rendered/` from the repository root with one archive path component stripped. SCP overwrites files without removing the remote maps directory referenced by site releases. Files absent from a later build remain on the server; obsolete asset cleanup is separate. The deployment account needs write access to the existing map files and directories.
+
 **Invariants:** production output goes to `maps-rendered`; dev output goes to `jgantts-com/PUBLIC/assets/maps`. Hashes include raster/layer parameters. Staging survives through asset copying, including unchanged builds, and is cleaned on success or failure. Parent-region paths, bounds, zooms, and dark variants must agree with browser code. Generated outputs are not authoritative source rasters. The main script copies region JSON alongside compiled assets.
 
 **Source:** [build driver](../../../python/make_all_tiles.py), [tiler](../../../python/tile_pm.py), [paths](../../../python/path_constants.py), [supporting tools](../../../python), [source assets](../../../maps-sources), [deployment workflow](../../../.github/workflows/deploy.yml).

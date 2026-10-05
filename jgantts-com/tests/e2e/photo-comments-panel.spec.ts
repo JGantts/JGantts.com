@@ -115,6 +115,44 @@ test('desktop share button opens the share menu', async ({ page }) => {
   await expect(shareMenu.getByRole('img', { name: 'QR code for this photo post' })).toBeVisible()
 })
 
+for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
+  test(`closed comments dock keeps sharing usable at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport)
+    await page.goto('/photos/photo-1')
+
+    const dock = page.locator('.comments-dock')
+    await dock.getByRole('button', { name: 'Share this photo post' }).click()
+    const menu = dock.locator('.photo-share-popover')
+    await expect(menu).toBeInViewport({ ratio: 1 })
+    await expect(page.locator('#photo-comments-panel[role="dialog"]')).toBeHidden()
+
+    await dock.getByRole('button', { name: 'Share as QR code' }).click()
+    await expect(menu).toBeInViewport({ ratio: 1 })
+    await dock.getByRole('button', { name: 'Enlarge QR code to fill the window' }).click()
+    await expect(page.getByRole('dialog', { name: 'Scan to view this photo' })).toBeVisible()
+  })
+}
+
+for (const mode of ['dock', 'sheet', 'desktop']) {
+  test(`Facebook sharing opens the selected photo from the ${mode}`, async ({ page, context }) => {
+    if (mode === 'desktop') await page.setViewportSize({ width: 1280, height: 800 })
+    await context.route('https://www.facebook.com/**', (route) => route.fulfill({ body: 'Facebook share destination' }))
+    await page.goto('/photos/photo-1')
+    if (mode === 'sheet') await page.locator('.comments-dock-trigger').click()
+
+    const container = page.locator(mode === 'dock' ? '.comments-dock' : '#photo-comments-panel')
+    await container.getByRole('button', { name: 'Share this photo post' }).click()
+    const popupPromise = page.waitForEvent('popup')
+    await container.getByRole('link', { name: 'Share on Facebook' }).click()
+    const popup = await popupPromise
+    await popup.waitForURL('https://www.facebook.com/**')
+    const destination = new URL(popup.url())
+    expect(destination.pathname).toBe('/sharer/sharer.php')
+    expect(destination.searchParams.get('u')).toBe(new URL('/photos/photo-1', page.url()).href)
+    await popup.close()
+  })
+}
+
 test('mobile share menu opens and enlarges the QR code', async ({ page }) => {
   await page.goto('/photos/photo-1')
   await page.locator('.comments-dock-trigger').click()

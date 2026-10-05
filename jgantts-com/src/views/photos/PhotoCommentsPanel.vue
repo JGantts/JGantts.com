@@ -184,7 +184,7 @@ function handleOpenAutoFocus(event: Event) {
 function beginDockSwipe(event: PointerEvent) {
   if (!isPortraitSheet.value || !event.isPrimary || event.button !== 0) return
   const target = event.target
-  if (target instanceof Element && target.closest('.comments-dock-clear')) return
+  if (target instanceof Element && target.closest('.comments-dock-clear, .photo-share-menu')) return
   dockPointerId = event.pointerId
   dockStartX = event.clientX
   dockStartY = event.clientY
@@ -288,6 +288,7 @@ onBeforeUnmount(() => {
       <div
         v-show="isSheet && !open"
         class="comments-dock comments-panel-header"
+        :class="{ 'is-sharing': shareMenuOpen }"
         @click="handleDockClick"
         @pointerdown="beginDockSwipe"
         @pointermove="moveDockSwipe"
@@ -1094,6 +1095,18 @@ button.photo-share-button {
     touch-action: pan-x;
     user-select: none;
     will-change: transform;
+  }
+
+  .comments-dock.is-sharing {
+    touch-action: pan-y;
+  }
+
+  .comments-dock .photo-share-popover {
+    bottom: calc(100% + 0.45rem);
+    max-height: calc(100dvh - 100% - 1rem);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    top: auto;
   }
 
   .comments-dock-handle {

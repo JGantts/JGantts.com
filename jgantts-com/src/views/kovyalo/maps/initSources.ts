@@ -2,7 +2,8 @@ import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
-import type {  } from '../common/Settings';
+import { useSettings } from '../common/Settings';
+import { townFonts, townLabel } from './townLabels';
 import type { RegionConfig, RegionLayerConfig, ZoomConfig, TownPlusRegion, Zoom, Zooms, BoundsTuple, ImageCoordinates } from './types/maps'
 import { hashGuiPath } from './common/hashes';
 
@@ -54,6 +55,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
                 if (d.kind === 'towns') acc.push(...d.points.map(town => { 
                   return {
                     name: town.name,
+                    latin: town.latin?.trim().normalize('NFC'),
                     coordinates: town.coordinates,
                     population: town.population,
                     regionId: curr.id,
@@ -73,7 +75,8 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
           features: allTowns.map(t => ({
             type: 'Feature',
             properties: {
-              name: t.name,
+              name: t.name.trim().normalize('NFC'),
+              latin: t.latin ?? '',
               population: t.population,
             },
             geometry: {
@@ -275,7 +278,8 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
   
           layout: {
             // label
-            'text-field': ['get', 'name'],
+            'text-field': townLabel(useSettings().labelMode),
+            'text-font': townFonts,
             'text-size': 18,
   
             // allow smart placement

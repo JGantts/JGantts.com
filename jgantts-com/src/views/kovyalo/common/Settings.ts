@@ -1,4 +1,5 @@
 import { reactive, watch } from "vue";
+import type { LabelMode } from '../maps/townLabels';
 
 export type DarkMode = "light" | "dark" | "auto";
 
@@ -8,6 +9,7 @@ export type AppSettings = {
   pitch: number;
   bearing: number;
   darkMode: DarkMode;
+  labelMode: LabelMode;
 };
 
 const STORAGE_KEY = "app-settings";
@@ -18,6 +20,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   pitch: 0,
   bearing: 0,
   darkMode: "auto",
+  labelMode: "both",
 };
 
 function load(): AppSettings {
@@ -30,6 +33,7 @@ function load(): AppSettings {
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
+      labelMode: ['both', 'native', 'latin'].includes(parsed.labelMode) ? parsed.labelMode : 'both',
     };
   } catch {
     return { ...DEFAULT_SETTINGS };

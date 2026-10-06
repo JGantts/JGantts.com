@@ -1,5 +1,7 @@
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import '@fontsource/noto-sans/400.css'
+import '@fontsource/noto-sans-kr/400.css'
 import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
 import type {  } from '../common/Settings';
@@ -7,6 +9,7 @@ import { reactive, watch } from 'vue';
 import { effectiveDarkMode } from '../common/DarkMode';
 import type { GuiNode, GuiLeaf, GuiParent, GuiChild, GuiTreeIdentifiable } from '../HUD/GuiView/types/gui';
 import { initMapSourcesAndLayers } from './initSources';
+import { townFonts, townLabel } from './townLabels';
 import type { RegionConfig, BoundsTuple, ImageCoordinates, JgMap, WorldConfig } from './types/maps'
 import { hashGuiPath, hashTitleIntoId } from './common/hashes';
 
@@ -123,6 +126,18 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
 
     if (!mapEl) return null
 
+    // Load the needed Unicode subsets before MapLibre rasterizes/caches glyphs.
+    const labelCharacters = [...new Set(regions.flatMap(region =>
+      (region.dataSources ?? []).flatMap(source => source.points.flatMap(town =>
+        [...`${town.name}${town.latin ?? ''}`.normalize('NFC')]
+      ))
+    ))].join('') || 'Kovyálo'
+    try {
+      await Promise.all(townFonts.map(font => document.fonts.load(`400 18px "${font}"`, labelCharacters)))
+    } catch (error) {
+      console.warn('Map label fonts could not load; using browser fallbacks.', error)
+    }
+
     let mapTemp = new maplibregl.Map({
       container: mapEl,
       style: { version: 8, sources: {}, layers: [
@@ -189,11 +204,19 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
           { immediate: true }
         )
     });
+    const stopLabelWatch = watch(() => settings.labelMode, mode => {
+      if (mapTemp.getLayer('towns-layer')) {
+        mapTemp.setLayoutProperty('towns-layer', 'text-field', townLabel(mode))
+      }
+    })
     return {
         mlMap: mapTemp,
         guiTree: guiRoot,
         savePosition: () => scheduleSave(mapTemp),
-        unmount: () => mapTemp.remove()
+        unmount: () => {
+          stopLabelWatch()
+          mapTemp.remove()
+        }
     }
 }
 

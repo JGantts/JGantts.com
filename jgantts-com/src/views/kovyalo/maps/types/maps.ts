@@ -38,7 +38,7 @@ export type RegionConfig = {
   layers: (RegionLayerConfig&{id: string})[]
   dataSources?: {
     kind: DataSourceKind
-    points: { name: string; coordinates: [number, number], population: number }[]
+    points: Town[]
   }[]
 }
 
@@ -56,6 +56,7 @@ export type ImageCoordinates = [
 
 export type Town = {
   name: string
+  latin?: string
   coordinates: [number, number]
   population: number
 }

@@ -8,6 +8,8 @@
 
 **Consumers:** Kovyálo page/layout and map HUD components.
 
+**Town labels:** points use `name` for native spelling and optional `latin` for romanization. Labels default to both on two lines, with Latin at 80% size; absent, blank, or identical romanizations do not add a second line. The HUD selector switches between both, native, and Latin, persisting the choice with map settings. Either single-script mode falls back to the available spelling. Bundled Noto Sans and Noto Sans KR cover Latin and CJK text; the needed font subsets load before MapLibre generates glyphs.
+
 **Invariants:** browser layer paths must match Python's parent-region path construction and dark suffixes. Region bounds use latitude/longitude tuples and need conversion for MapLibre coordinates. Layer visibility combines GUI selection and theme metadata. Region IDs, parent IDs, zoom ranges, and UI paths form a cross-language contract. Declaring a terrain source does not mean terrain rendering is enabled; that setup is currently commented out.
 
 **Source:** [map view, HUD, settings, and map modules](../../../jgantts-com/src/views/kovyalo), [layout](../../../jgantts-com/src/layouts/KovyaloLayout.vue), [region source](../../../maps-sources/geo-data/regions.json).

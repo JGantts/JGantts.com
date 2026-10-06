@@ -167,6 +167,7 @@
           "kind": "towns",
           "points": [
             { "name": "Roçyáboe", "coordinates": [-32.95, 9.76], "population": 2500 },
+         
             { "name": "Kémbua", "coordinates": [-34.39, 11.85], "population": 5200 },
             { "name": "Sáelo", "coordinates": [-34.05, 13.51], "population": 100 },
             { "name": "뚜괘 日그北", "latin": "dookwa loegak ha'da", "coordinates": [-33.52, 11.25], "population": 800 },
@@ -180,7 +181,7 @@
             { "name": "Zíety", "coordinates": [-34.708, 11.774], "population": 318},
             { "name": "Yiepá", "coordinates": [-34.753, 11.928], "population": 402},
             { "name": "Róepya", "coordinates": [-33.065, 10.152], "population": 950},
-            { "name": "Adáua", "coordinates": [-33.25, 10.409], "population": 1300},
+            { "name": "餉", "latin": "adaua", "coordinates": [-33.25, 10.409], "population": 1300},
             { "name": "Béloe", "coordinates": [-34.9, 11.63], "population": 130},
             { "name": "Pápo", "coordinates": [-34.444, 11.3128], "population": 200},
             { "name": "Cháe", "coordinates": [-35.86, 11.11], "population": 150},

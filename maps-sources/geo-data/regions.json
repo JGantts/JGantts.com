@@ -181,7 +181,7 @@
             { "name": "Zíety", "coordinates": [-34.708, 11.774], "population": 318},
             { "name": "Yiepá", "coordinates": [-34.753, 11.928], "population": 402},
             { "name": "Róepya", "coordinates": [-33.065, 10.152], "population": 950},
-            { "name": "餉", "latin": "adaua", "coordinates": [-33.25, 10.409], "population": 1300},
+            { "name": "{餉|아똬}", "latin": "adua", "coordinates": [-33.25, 10.409], "population": 1300},
             { "name": "Béloe", "coordinates": [-34.9, 11.63], "population": 130},
             { "name": "Pápo", "coordinates": [-34.444, 11.3128], "population": 200},
             { "name": "Cháe", "coordinates": [-35.86, 11.11], "population": 150},

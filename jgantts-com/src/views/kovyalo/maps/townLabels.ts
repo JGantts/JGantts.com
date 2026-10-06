@@ -2,7 +2,7 @@ import type { ExpressionSpecification } from 'maplibre-gl'
 
 export type LabelMode = 'both' | 'native' | 'latin'
 
-export const townFonts = ['Noto Sans', 'Noto Sans KR']
+export const townFonts = ['Noto Serif', 'Noto Serif KR']
 
 export function townLabel(mode: LabelMode): ExpressionSpecification {
   const nativeName: ExpressionSpecification = [

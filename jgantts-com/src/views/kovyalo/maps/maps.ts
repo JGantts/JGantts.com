@@ -1,7 +1,7 @@
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import '@fontsource/noto-sans/400.css'
-import '@fontsource/noto-sans-kr/400.css'
+import '@fontsource/noto-serif/400.css'
+import '@fontsource/noto-serif-kr/400.css'
 import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
 import type {  } from '../common/Settings';

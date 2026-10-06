@@ -42,30 +42,16 @@ jobs:
               - 'scripts/**'
               - '.github/workflows/deploy.yml'
 
-  deploy-maps:
-    needs:
-      - changes
-      - deploy-site
+  build-maps:
+    needs: changes
     if: |
-      always() &&
-      (needs.deploy-site.result == 'success' || needs.deploy-site.result == 'skipped') &&
-      (needs.changes.outputs.maps_python == 'true' ||
-       needs.changes.outputs.maps_sources == 'true')
+      needs.changes.outputs.maps_python == 'true' ||
+      needs.changes.outputs.maps_sources == 'true'
     runs-on: self-hosted
-    environment: production
+    outputs:
+      artifact_id: ${{ steps.upload-maps.outputs.artifact-id }}
 
     steps:
-      - name: Verify production SSH configuration
-        env:
-          LINODE_IP: ${{ secrets.LINODE_IP }}
-          LINODE_USER: ${{ secrets.LINODE_USER }}
-          LINODE_PASSWORD: ${{ secrets.LINODE_PASSWORD }}
-        run: |
-          set -euo pipefail
-          for name in LINODE_IP LINODE_USER LINODE_PASSWORD; do
-            test -n "${!name}" || { echo "Missing production environment secret: $name" >&2; exit 78; }
-          done
-
       - name: Checkout Code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
@@ -107,6 +93,49 @@ jobs:
           fi
           echo "Map build completed successfully"
         working-directory: ./python/
+
+      - name: Save generated maps
+        id: upload-maps
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: jgantts-maps-${{ github.run_id }}-${{ github.run_attempt }}
+          path: maps-rendered/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+  deploy-maps:
+    needs:
+      - build-maps
+      - deploy-site
+    if: |
+      always() &&
+      needs.build-maps.result == 'success' &&
+      (needs.deploy-site.result == 'success' || needs.deploy-site.result == 'skipped')
+    runs-on: self-hosted
+    environment: production
+
+    steps:
+      - name: Verify production SSH configuration
+        env:
+          LINODE_IP: ${{ secrets.LINODE_IP }}
+          LINODE_USER: ${{ secrets.LINODE_USER }}
+          LINODE_PASSWORD: ${{ secrets.LINODE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in LINODE_IP LINODE_USER LINODE_PASSWORD; do
+            test -n "${!name}" || { echo "Missing production environment secret: $name" >&2; exit 78; }
+          done
+
+      - name: Checkout clean workspace
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Download generated maps
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          artifact-ids: ${{ needs.build-maps.outputs.artifact_id }}
+          path: maps-rendered/
+          merge-multiple: true
 
       - name: Deploy Map
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0

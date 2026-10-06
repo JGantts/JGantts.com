@@ -6,7 +6,9 @@
 
 **Dependencies:** `maps-sources/geo-data/regions.json`, raster inputs, Python requirements, GDAL tools, and PMTiles CLI.
 
-**Consumers:** [browser map](browser.md) and the workflow's separate `deploy-maps` job.
+**Consumers:** [browser map](browser.md) and the workflow's `build-maps` and `deploy-maps` jobs.
+
+**Retrying uploads:** `build-maps` saves the generated tree as a GitHub artifact retained for 30 days and passes its artifact ID to `deploy-maps`. Deployment downloads that exact artifact into a clean checkout before SCP. Re-run the failed deployment job to reuse a successful build without invoking Python/GDAL again. A full workflow rerun builds and saves a new artifact. This applies to runs started with the split workflow; older runs do not gain a saved artifact retroactively.
 
 **Deployment:** the workflow checks `../maps-rendered` from the Python working directory, then transfers `maps-rendered/` from the repository root with one archive path component stripped. SCP overwrites files without removing the remote maps directory referenced by site releases. Files absent from a later build remain on the server; obsolete asset cleanup is separate. The deployment account needs write access to the existing map files and directories.
 

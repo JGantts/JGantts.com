@@ -15,18 +15,29 @@ describe('town labels', () => {
     const label = render('both', bilingual) as Formatted
     expect(label.toString()).toBe("과 日윽北\nkwai lougak ha'da")
     expect(label.sections[1].scale).toBe(0.8)
+    expect(label.sections[0].fontStack).toBe('Noto Serif,Noto Serif KR')
+    expect(label.sections[1].fontStack).toBe('Noto Sans')
   })
 
   it('selects either spelling independently', () => {
-    expect(render('native', bilingual)).toBe(bilingual.name)
-    expect(render('latin', bilingual)).toBe(bilingual.latin)
+    expect(render('native', bilingual).toString()).toBe(bilingual.name)
+    expect(render('latin', bilingual).toString()).toBe(bilingual.latin)
+  })
+
+  it('uses the font of the available spelling in single-language modes', () => {
+    expect(render('native', bilingual).sections[0].fontStack).toBe('Noto Serif,Noto Serif KR')
+    expect(render('latin', bilingual).sections[0].fontStack).toBe('Noto Sans')
+    expect(render('latin', { name: '과' }).sections[0].fontStack).toBe('Noto Serif,Noto Serif KR')
+    for (const mode of ['both', 'native', 'latin'] as LabelMode[]) {
+      expect(render(mode, { name: '', latin: 'Çabuoe' }).sections[0].fontStack).toBe('Noto Sans')
+    }
   })
 
   it('shows a Latin-only entry once at full size', () => {
     const properties = { name: '', latin: 'Çabuoe' }
     expect(render('both', properties).toString()).toBe('Çabuoe')
-    expect(render('native', properties)).toBe('Çabuoe')
-    expect(render('latin', properties)).toBe('Çabuoe')
+    expect(render('native', properties).toString()).toBe('Çabuoe')
+    expect(render('latin', properties).toString()).toBe('Çabuoe')
   })
 
   it.each([
@@ -35,6 +46,6 @@ describe('town labels', () => {
     { name: 'Çabuóe', latin: 'Çabuóe' },
   ])('keeps one native line without a distinct romanization: %j', properties => {
     expect(render('both', properties).toString()).toBe('Çabuóe')
-    expect(render('latin', properties)).toBe('Çabuóe')
+    expect(render('latin', properties).toString()).toBe('Çabuóe')
   })
 })

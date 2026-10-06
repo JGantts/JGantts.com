@@ -1,6 +1,7 @@
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import '@fontsource/noto-serif/400.css'
+import '@fontsource/noto-sans/400.css'
 import '@fontsource/noto-serif-kr/400.css'
 import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
@@ -9,7 +10,7 @@ import { reactive, watch } from 'vue';
 import { effectiveDarkMode } from '../common/DarkMode';
 import type { GuiNode, GuiLeaf, GuiParent, GuiChild, GuiTreeIdentifiable } from '../HUD/GuiView/types/gui';
 import { initMapSourcesAndLayers } from './initSources';
-import { townFonts, townLabel } from './townLabels';
+import { townFonts, latinFonts, townLabel } from './townLabels';
 import type { RegionConfig, BoundsTuple, ImageCoordinates, JgMap, WorldConfig } from './types/maps'
 import { hashGuiPath, hashTitleIntoId } from './common/hashes';
 
@@ -133,7 +134,7 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
       ))
     ))].join('') || 'Kovyálo'
     try {
-      await Promise.all(townFonts.map(font => document.fonts.load(`400 18px "${font}"`, labelCharacters)))
+      await Promise.all([...townFonts, ...latinFonts].map(font => document.fonts.load(`400 18px "${font}"`, labelCharacters)))
     } catch (error) {
       console.warn('Map label fonts could not load; using browser fallbacks.', error)
     }

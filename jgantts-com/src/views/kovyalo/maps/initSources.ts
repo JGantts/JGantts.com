@@ -3,7 +3,7 @@ import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
-import { townFonts, townLabel, townLabelImage, townTextSize } from './townLabels';
+import { townFonts, townLabel, townLabelImage, townTextSize, townLabelPlacement } from './townLabels';
 import { townNameProperties } from './rubyLabels';
 import type { RegionConfig, RegionLayerConfig, ZoomConfig, TownPlusRegion, Zoom, Zooms, BoundsTuple, ImageCoordinates } from './types/maps'
 import { hashGuiPath } from './common/hashes';
@@ -285,19 +285,8 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
             'text-max-width': 1000,
             'text-letter-spacing': 0,
   
-            // allow smart placement
-            'text-variable-anchor': [
-              'top-left',
-              'top-right',
-              'bottom-left',
-              'bottom-right',
-              'left',
-              'right',
-              'bottom',
-              'top'
-            ],
-            'text-radial-offset': 0.25,
-  
+            ...townLabelPlacement,
+
             // Anchor the visible label by its native-only content rectangle.
             'icon-image': townLabelImage(useSettings().labelMode),
             'icon-text-fit': 'both',

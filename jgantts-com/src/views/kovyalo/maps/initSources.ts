@@ -3,7 +3,7 @@ import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
-import { townFonts, townLabel, townTextSize } from './townLabels';
+import { townFonts, townLabel, townLabelImage, townTextSize } from './townLabels';
 import { townNameProperties } from './rubyLabels';
 import type { RegionConfig, RegionLayerConfig, ZoomConfig, TownPlusRegion, Zoom, Zooms, BoundsTuple, ImageCoordinates } from './types/maps'
 import { hashGuiPath } from './common/hashes';
@@ -77,7 +77,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
           features: allTowns.map(t => ({
             type: 'Feature',
             properties: {
-              ...townNameProperties(map, t.name, t.hangul),
+              ...townNameProperties(map, t.name, t.hangul, t.latin),
               latin: t.latin ?? '',
               population: t.population,
             },
@@ -257,22 +257,20 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
           }
         })*/
   
-        const size = 32
-        const canvas = document.createElement('canvas')
-        canvas.width = size
-        canvas.height = size
-        const ctx = canvas.getContext('2d')!
-  
-        ctx.fillStyle = '#ffffff'
-        ctx.strokeStyle = '#000000'
-        ctx.lineWidth = 2
-  
-        ctx.beginPath()
-        ctx.arc(size/2, size/2, size/4, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.stroke()
-        map.addImage('town-dot', ctx.getImageData(0, 0, size, size))
-  
+        map.addLayer({
+          id: 'town-dots',
+          type: 'circle',
+          source: 'towns',
+          paint: {
+            'circle-color': '#fff',
+            'circle-stroke-color': '#000',
+            'circle-radius': ['interpolate', ['linear'], ['get', 'population'],
+              1, 0.8, 100, 2, 1000, 4, 10000, 6, 100000, 8],
+            'circle-stroke-width': ['interpolate', ['linear'], ['get', 'population'],
+              1, 0.1, 100, 0.25, 1000, 0.5, 10000, 0.75, 100000, 1],
+          },
+        })
+
         map.addLayer({
           id: 'towns-layer',
           type: 'symbol',
@@ -283,6 +281,9 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
             'text-field': townLabel(useSettings().labelMode),
             'text-font': townFonts,
             'text-size': townTextSize,
+            'text-line-height': 1,
+            'text-max-width': 1000,
+            'text-letter-spacing': 0,
   
             // allow smart placement
             'text-variable-anchor': [
@@ -297,28 +298,21 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
             ],
             'text-radial-offset': 0.25,
   
-            // dot (icon)
-            'icon-image': 'town-dot', // you must add this image
-            'icon-anchor': 'center',
-  
-            // scale dot by population (replaces circle-radius)
-            'icon-size': [
-              'interpolate', ['linear'], ['get', 'population'],
-              1, 0.1,
-              100, 0.25,
-              1000, 0.5,
-              10000, 0.75,
-              100000, 1.0,
-            ],
-  
+            // Anchor the visible label by its native-only content rectangle.
+            'icon-image': townLabelImage(useSettings().labelMode),
+            'icon-text-fit': 'both',
+            'icon-padding': 0,
+            // Secondary text must not select a different anchor or hide a neighbor.
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
+
             // priority (higher = wins collisions)
             'symbol-sort-key': ['*', ['literal', -1], ['get', 'population']],
           },
   
           paint: {
-            'text-color': '#fff',
-            'text-halo-color': '#000',
-            'text-halo-width': 2,
+            // Text supplies placement geometry; the fitted image draws the label.
+            'text-opacity': 0,
           },
         })
   

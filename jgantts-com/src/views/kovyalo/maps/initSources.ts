@@ -3,7 +3,8 @@ import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
-import { townFonts, townLabel } from './townLabels';
+import { townFonts, townLabel, townTextSize } from './townLabels';
+import { townNameProperties } from './rubyLabels';
 import type { RegionConfig, RegionLayerConfig, ZoomConfig, TownPlusRegion, Zoom, Zooms, BoundsTuple, ImageCoordinates } from './types/maps'
 import { hashGuiPath } from './common/hashes';
 
@@ -75,7 +76,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
           features: allTowns.map(t => ({
             type: 'Feature',
             properties: {
-              name: t.name.trim().normalize('NFC'),
+              ...townNameProperties(map, t.name),
               latin: t.latin ?? '',
               population: t.population,
             },
@@ -280,7 +281,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
             // label
             'text-field': townLabel(useSettings().labelMode),
             'text-font': townFonts,
-            'text-size': 18,
+            'text-size': townTextSize,
   
             // allow smart placement
             'text-variable-anchor': [

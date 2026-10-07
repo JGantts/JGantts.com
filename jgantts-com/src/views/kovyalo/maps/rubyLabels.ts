@@ -1,5 +1,5 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
-import { townFonts, latinFonts, townTextSize } from './townLabels'
+import { townFonts, latinFonts, townTextSize, labelModes, type LabelMode } from './townLabels'
 
 type NamePart = { text: string; reading?: string }
 
@@ -159,25 +159,46 @@ export function renderTownLabel(parts: NamePart[], latin = '', latinOnly = false
   return { image: ctx.getImageData(0, 0, canvas.width, canvas.height), pixelRatio, content }
 }
 
-export function townNameProperties(map: MapLibreMap, value: string, hangul?: string, latinValue = '') {
-  const parts = parseTownName(value, hangul)
-  const name = parts.map(part => part.text).join('')
+type TownLabelPlan = { parts: NamePart[]; translation: string; latinOnly: boolean }
+
+export function resolveTownLabels(value: string, hangulValue = '', latinValue = ''): Record<LabelMode, TownLabelPlan> {
+  const plain = parseTownName(value)
+  const name = plain.map(part => part.text).join('')
+  const hangul = hangulValue.trim().normalize('NFC')
   const latin = latinValue.trim().normalize('NFC')
-  const register = (base: NamePart[], translation = '', latinOnly = false) => {
-    if (!base.length) return ''
-    const id = `town-label:${JSON.stringify([base, translation, latinOnly])}`
-    if (!map.hasImage(id)) {
-      const { image, pixelRatio, content } = renderTownLabel(base, translation, latinOnly)
-      map.addImage(id, image, { pixelRatio, content })
-    }
-    return id
-  }
-  const nativeParts = name ? parts : latin ? [{ text: latin }] : []
-  const nativeImage = register(nativeParts, '', !name)
+  const isHangul = /\p{Script=Hangul}/u.test(name)
+  const annotated = parseTownName(value, hangul)
+  const native = { parts: /[\p{Script=Hangul}\p{Script=Han}]/u.test(name) ? annotated : plain, translation: '', latinOnly: false }
   return {
-    name,
-    nativeImage,
-    bothImage: name && latin && latin !== name ? register(parts, latin) : nativeImage,
-    latinImage: latin ? register([{ text: latin }], '', true) : nativeImage,
+    native,
+    both: name ? { ...native, translation: latin }
+      : { parts: latin ? [{ text: latin }] : [], translation: '', latinOnly: true },
+    nativeHangul: { ...native, parts: annotated },
+    latin: latin ? { parts: [{ text: latin }], translation: '', latinOnly: true } : native,
+    hangul: isHangul ? native
+      : { parts: hangul ? [{ text: hangul }] : [], translation: '', latinOnly: false },
   }
+}
+
+export function townNameProperties(map: MapLibreMap, value: string, hangul?: string, latinValue = '') {
+  const plans = resolveTownLabels(value, hangul, latinValue)
+  const properties: Record<string, string | boolean> = {
+    name: plans.native.parts.map(part => part.text).join(''),
+  }
+  for (const mode of labelModes) {
+    const { parts, translation, latinOnly } = plans[mode]
+    const text = parts.map(part => part.text).join('')
+    let id = ''
+    if (text) {
+      id = `town-label:${JSON.stringify([parts, translation, latinOnly])}`
+      if (!map.hasImage(id)) {
+        const { image, pixelRatio, content } = renderTownLabel(parts, translation, latinOnly)
+        map.addImage(id, image, { pixelRatio, content })
+      }
+    }
+    properties[`${mode}Text`] = text
+    properties[`${mode}Latin`] = latinOnly
+    properties[`${mode}Image`] = id
+  }
+  return properties
 }

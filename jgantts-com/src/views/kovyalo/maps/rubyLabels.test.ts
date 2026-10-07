@@ -1,8 +1,46 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Map as MapLibreMap } from 'maplibre-gl'
-import { parseTownName, renderTownLabel, townNameProperties } from './rubyLabels'
+import { parseTownName, renderTownLabel, resolveTownLabels, townNameProperties } from './rubyLabels'
 
 describe('ruby town names', () => {
+  it('applies all five modes to a non-Hangul native name', () => {
+    const labels = resolveTownLabels('餉', '아똬', 'adua')
+    expect(labels.native.parts).toEqual([{ text: '餉', reading: '아똬' }])
+    expect(labels.both.parts).toEqual([{ text: '餉', reading: '아똬' }])
+    expect(labels.both.translation).toBe('adua')
+    expect(labels.nativeHangul.parts).toEqual([{ text: '餉', reading: '아똬' }])
+    expect(labels.hangul.parts).toEqual([{ text: '아똬' }])
+    expect(labels.latin.parts).toEqual([{ text: 'adua' }])
+    expect(labels.latin.latinOnly).toBe(true)
+  })
+
+  it('adds Native ruby for Han-only names without changing Hangul-only mode', () => {
+    const labels = resolveTownLabels('倨忒', ':싸뾔', 'Çabuoe')
+    expect(labels.native.parts).toEqual([{ text: '倨忒', reading: ':싸뾔' }])
+    expect(labels.hangul.parts).toEqual([{ text: ':싸뾔' }])
+    expect(resolveTownLabels('Latin name', '읽기').native.parts).toEqual([{ text: 'Latin name' }])
+  })
+
+  it('retains divergent ruby for mixed Hangul names in native and Hangul modes', () => {
+    const labels = resolveTownLabels('뚜괘 日그北', '뚜괘 조까그캎따', 'latin')
+    for (const mode of ['native', 'both', 'nativeHangul', 'hangul'] as const) {
+      expect(labels[mode].parts).toEqual([
+        { text: '뚜괘 ' }, { text: '日', reading: '조까' },
+        { text: '그' }, { text: '北', reading: '캎따' },
+      ])
+    }
+    expect(labels.hangul.translation).toBe('')
+  })
+
+  it('handles missing, identical, and normalized spellings according to the mode rules', () => {
+    const missing = resolveTownLabels('餉', '', ' ')
+    expect(missing.latin).toEqual(missing.native)
+    expect(missing.nativeHangul).toEqual(missing.native)
+    expect(missing.hangul.parts).toEqual([])
+    expect(resolveTownLabels('아똬', ' 아똬 ').hangul.parts).toEqual([{ text: '아똬' }])
+    expect(resolveTownLabels('same', '', 'same').both.translation).toBe('same')
+  })
+
   it('keeps native content dimensions and drawing position independent of annotations', () => {
     const draws: { text: string; x: number; y: number; font: string }[] = []
     const ctx = {
@@ -79,10 +117,10 @@ describe('ruby town names', () => {
     const first = townNameProperties(map, '餉', '아똬')
     const second = townNameProperties(map, '餉', '다른')
     expect(first.name).toBe('餉')
-    expect(first.nativeImage).toBeTruthy()
-    expect(second.nativeImage).not.toBe(first.nativeImage)
+    expect(first.nativeHangulImage).toBeTruthy()
+    expect(second.nativeHangulImage).not.toBe(first.nativeHangulImage)
     expect(townNameProperties(map, ' 餉 ', ' 아똬 ')).toEqual(first)
-    expect(townNameProperties(map, '餉', ' ').nativeImage).not.toBe(first.nativeImage)
+    expect(townNameProperties(map, '餉', ' ').nativeHangulImage).not.toBe(first.nativeHangulImage)
   })
 
   it('keeps native images independent of the Latin spelling', () => {

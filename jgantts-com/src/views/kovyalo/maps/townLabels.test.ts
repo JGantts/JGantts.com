@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { createExpression } from '@maplibre/maplibre-gl-style-spec'
-import { townLabel, townLabelImage, type LabelMode } from './townLabels'
+import { townLabel, townLabelImage, labelModes, type LabelMode } from './townLabels'
 
-function render(mode: LabelMode, properties: { name: string; latin?: string }) {
+import type { Map as MapLibreMap } from 'maplibre-gl'
+import { townNameProperties } from './rubyLabels'
+
+function render(mode: LabelMode, town: { name: string; latin?: string; hangul?: string }) {
+  const properties = townNameProperties({ hasImage: () => true } as unknown as MapLibreMap, town.name, town.hangul, town.latin)
   const expression = createExpression(townLabel(mode))
   if (expression.result === 'error') throw new Error(JSON.stringify(expression.value))
   return expression.value.evaluate({ zoom: 6 }, { type: 'Point', properties })
@@ -12,7 +16,7 @@ describe('town label anchors', () => {
   const bilingual = { name: '뚜괘 日그北', latin: "dookwa loegak ha'da" }
 
   it('uses exactly the native spelling for both native and bilingual placement', () => {
-    for (const mode of ['both', 'native'] as LabelMode[]) {
+    for (const mode of ['both', 'native', 'nativeHangul'] as LabelMode[]) {
       const anchor = render(mode, bilingual)
       expect(anchor.toString()).toBe(bilingual.name)
       expect(anchor.sections).toHaveLength(1)
@@ -27,18 +31,21 @@ describe('town label anchors', () => {
     expect(anchor.sections[0].fontStack).toBe('Noto Sans')
   })
 
-  it('falls back to the available spelling and its font', () => {
-    for (const mode of ['both', 'native', 'latin'] as LabelMode[]) {
-      expect(render(mode, { name: '', latin: 'Çabuoe' }).toString()).toBe('Çabuoe')
-      expect(render(mode, { name: '', latin: 'Çabuoe' }).sections[0].fontStack).toBe('Noto Sans')
-      expect(render(mode, { name: '餉', latin: '' }).toString()).toBe('餉')
-      expect(render(mode, { name: '餉' }).sections[0].fontStack).toBe('Noto Serif,Noto Serif KR')
-    }
+  it('uses the Latin fallback and leaves missing standalone names empty', () => {
+    expect(render('latin', { name: '餉' }).toString()).toBe('餉')
+    expect(render('latin', { name: '餉' }).sections[0].fontStack).toBe('Noto Serif,Noto Serif KR')
+    expect(render('both', { name: '', latin: 'Çabuoe' }).toString()).toBe('Çabuoe')
+    expect(render('native', { name: '', latin: 'Çabuoe' }).toString()).toBe('')
+    expect(render('hangul', { name: '餉' }).toString()).toBe('')
+  })
+
+  it('anchors Hangul mode to the mixed name or standalone Hangul field', () => {
+    expect(render('hangul', { ...bilingual, hangul: '뚜괘 조까그캎따' }).toString()).toBe(bilingual.name)
+    expect(render('hangul', { name: '餉', hangul: '아똬' }).toString()).toBe('아똬')
+    expect(render('nativeHangul', { name: '餉', hangul: '아똬' }).toString()).toBe('餉')
   })
 
   it('selects the visible image for each display mode', () => {
-    expect(townLabelImage('both')).toEqual(['get', 'bothImage'])
-    expect(townLabelImage('native')).toEqual(['get', 'nativeImage'])
-    expect(townLabelImage('latin')).toEqual(['get', 'latinImage'])
+    for (const mode of labelModes) expect(townLabelImage(mode)).toEqual(['get', `${mode}Image`])
   })
 })

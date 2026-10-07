@@ -10,7 +10,9 @@ const settings = useSettings()
     <select v-model="settings.labelMode">
       <option value="both">Native + Latin</option>
       <option value="native">Native</option>
+      <option value="nativeHangul">Native + Hangul</option>
       <option value="latin">Latin</option>
+      <option value="hangul">Hangul</option>
     </select>
   </label>
 </template>

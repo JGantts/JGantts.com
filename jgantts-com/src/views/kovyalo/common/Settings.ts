@@ -1,5 +1,5 @@
 import { reactive, watch } from "vue";
-import type { LabelMode } from '../maps/townLabels';
+import { labelModes, type LabelMode } from '../maps/townLabels';
 
 export type DarkMode = "light" | "dark" | "auto";
 
@@ -33,7 +33,7 @@ function load(): AppSettings {
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
-      labelMode: ['both', 'native', 'latin'].includes(parsed.labelMode) ? parsed.labelMode : 'both',
+      labelMode: labelModes.includes(parsed.labelMode) ? parsed.labelMode : 'both',
     };
   } catch {
     return { ...DEFAULT_SETTINGS };

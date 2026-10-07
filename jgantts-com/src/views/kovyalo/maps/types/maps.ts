@@ -57,6 +57,7 @@ export type ImageCoordinates = [
 export type Town = {
   name: string
   latin?: string
+  hangul?: string
   coordinates: [number, number]
   population: number
 }

@@ -56,6 +56,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
                 if (d.kind === 'towns') acc.push(...d.points.map(town => { 
                   return {
                     name: town.name,
+                    hangul: town.hangul,
                     latin: town.latin?.trim().normalize('NFC'),
                     coordinates: town.coordinates,
                     population: town.population,
@@ -76,7 +77,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
           features: allTowns.map(t => ({
             type: 'Feature',
             properties: {
-              ...townNameProperties(map, t.name),
+              ...townNameProperties(map, t.name, t.hangul),
               latin: t.latin ?? '',
               population: t.population,
             },

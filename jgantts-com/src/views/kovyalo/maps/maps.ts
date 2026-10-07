@@ -130,7 +130,7 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
     // Load the needed Unicode subsets before MapLibre rasterizes/caches glyphs.
     const labelCharacters = [...new Set(regions.flatMap(region =>
       (region.dataSources ?? []).flatMap(source => source.points.flatMap(town =>
-        [...`${town.name}${town.latin ?? ''}`.normalize('NFC')]
+        [...`${town.name}${town.hangul ?? ''}${town.latin ?? ''}`.normalize('NFC')]
       ))
     ))].join('') || 'Kovyálo'
     try {

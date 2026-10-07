@@ -75,13 +75,13 @@ export function parseTownName(value: string, hangul?: string): NamePart[] {
   return parts
 }
 
-export function renderTownLabel(parts: NamePart[], latin = '', latinOnly = false) {
+export function renderTownLabel(parts: NamePart[], translation = '', latinOnly = false, translationLatin = true) {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')!
   ctx.textAlign = 'center'
   const pixelRatio = Math.max(2, window.devicePixelRatio || 1)
   const readingSize = townTextSize * 0.55
-  const latinSize = townTextSize * 0.8
+  const translationSize = townTextSize * 0.8
   const font = (size: number, isLatin = false) =>
     `${isLatin ? 300 : 400} ${size}px ${(isLatin ? latinFonts : townFonts).map(name => `"${name}"`).join(', ')}, ${isLatin ? 'sans-serif' : 'serif'}`
   const measure = (text: string, size: number, isLatin = false) => {
@@ -101,8 +101,8 @@ export function renderTownLabel(parts: NamePart[], latin = '', latinOnly = false
   const baseline = (nativeHeight - ascent - descent) / 2 + ascent
   const rubyDescent = Math.max(0, ...runs.map(run => run.ruby.actualBoundingBoxDescent))
   const rubyBaseline = baseline - ascent - 3 - rubyDescent
-  const latinMetrics = measure(latin, latinSize, true)
-  const latinBaseline = baseline + descent + 5 + latinMetrics.actualBoundingBoxAscent
+  const translationMetrics = measure(translation, translationSize, translationLatin)
+  const translationBaseline = baseline + descent + 5 + translationMetrics.actualBoundingBoxAscent
   let left = 0
   let right = nativeWidth
   let top = 0
@@ -119,10 +119,10 @@ export function renderTownLabel(parts: NamePart[], latin = '', latinOnly = false
     }
     advance += run.base.width
   }
-  if (latin) {
-    left = Math.min(left, (nativeWidth - latinMetrics.width) / 2)
-    right = Math.max(right, (nativeWidth + latinMetrics.width) / 2)
-    bottom = Math.max(bottom, latinBaseline + latinMetrics.actualBoundingBoxDescent)
+  if (translation) {
+    left = Math.min(left, (nativeWidth - translationMetrics.width) / 2)
+    right = Math.max(right, (nativeWidth + translationMetrics.width) / 2)
+    bottom = Math.max(bottom, translationBaseline + translationMetrics.actualBoundingBoxDescent)
   }
   const padding = 3
   // Keep base glyphs on the same pixel grid across native/bilingual images.
@@ -149,7 +149,7 @@ export function renderTownLabel(parts: NamePart[], latin = '', latinOnly = false
     if (run.reading) draw(run.reading, readingSize, center, rubyBaseline, 1)
     advance += run.base.width
   }
-  if (latin) draw(latin, latinSize, nativeWidth / 2, latinBaseline, 2, true)
+  if (translation) draw(translation, translationSize, nativeWidth / 2, translationBaseline, 2, translationLatin)
   // MapLibre fits only this native rectangle to the anchoring text. Everything
   // outside it (ruby, Latin, halo) follows without moving the native line.
   const content: [number, number, number, number] = [
@@ -159,7 +159,7 @@ export function renderTownLabel(parts: NamePart[], latin = '', latinOnly = false
   return { image: ctx.getImageData(0, 0, canvas.width, canvas.height), pixelRatio, content }
 }
 
-type TownLabelPlan = { parts: NamePart[]; translation: string; latinOnly: boolean }
+type TownLabelPlan = { parts: NamePart[]; translation: string; latinOnly: boolean; translationLatin?: boolean }
 
 export function resolveTownLabels(value: string, hangulValue = '', latinValue = ''): Record<LabelMode, TownLabelPlan> {
   const plain = parseTownName(value)
@@ -167,13 +167,16 @@ export function resolveTownLabels(value: string, hangulValue = '', latinValue = 
   const hangul = hangulValue.trim().normalize('NFC')
   const latin = latinValue.trim().normalize('NFC')
   const isHangul = /\p{Script=Hangul}/u.test(name)
+  const isLatinName = /\p{Script=Latin}/u.test(name) && !/[\p{Script=Hangul}\p{Script=Han}]/u.test(name)
   const annotated = parseTownName(value, hangul)
   const native = { parts: /[\p{Script=Hangul}\p{Script=Han}]/u.test(name) ? annotated : plain, translation: '', latinOnly: false }
   return {
     native,
     both: name ? { ...native, translation: latin }
       : { parts: latin ? [{ text: latin }] : [], translation: '', latinOnly: true },
-    nativeHangul: { ...native, parts: annotated },
+    nativeHangul: isLatinName
+      ? { ...native, translation: hangul, translationLatin: false }
+      : { ...native, parts: annotated },
     latin: latin ? { parts: [{ text: latin }], translation: '', latinOnly: true } : native,
     hangul: isHangul ? native
       : { parts: hangul ? [{ text: hangul }] : [], translation: '', latinOnly: false },
@@ -186,13 +189,13 @@ export function townNameProperties(map: MapLibreMap, value: string, hangul?: str
     name: plans.native.parts.map(part => part.text).join(''),
   }
   for (const mode of labelModes) {
-    const { parts, translation, latinOnly } = plans[mode]
+    const { parts, translation, latinOnly, translationLatin = true } = plans[mode]
     const text = parts.map(part => part.text).join('')
     let id = ''
     if (text) {
-      id = `town-label:${JSON.stringify([parts, translation, latinOnly])}`
+      id = `town-label:${JSON.stringify([parts, translation, latinOnly, translationLatin])}`
       if (!map.hasImage(id)) {
-        const { image, pixelRatio, content } = renderTownLabel(parts, translation, latinOnly)
+        const { image, pixelRatio, content } = renderTownLabel(parts, translation, latinOnly, translationLatin)
         map.addImage(id, image, { pixelRatio, content })
       }
     }

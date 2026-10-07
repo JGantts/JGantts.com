@@ -3,6 +3,17 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import { parseTownName, renderTownLabel, resolveTownLabels, townNameProperties } from './rubyLabels'
 
 describe('ruby town names', () => {
+  it('places Hangul beneath Latin-script names as a translation, not ruby', () => {
+    const labels = resolveTownLabels('Çabuóe', '싸뾔', 'Cabuo')
+    expect(labels.nativeHangul.parts).toEqual([{ text: 'Çabuóe' }])
+    expect(labels.nativeHangul.translation).toBe('싸뾔')
+    expect(labels.nativeHangul.translationLatin).toBe(false)
+    expect(labels.native.translation).toBe('')
+    expect(labels.both.translation).toBe('Cabuo')
+    expect(labels.hangul.parts).toEqual([{ text: '싸뾔' }])
+    expect(resolveTownLabels('Çabuóe').nativeHangul.translation).toBe('')
+  })
+
   it('applies all five modes to a non-Hangul native name', () => {
     const labels = resolveTownLabels('餉', '아똬', 'adua')
     expect(labels.native.parts).toEqual([{ text: '餉', reading: '아똬' }])
@@ -70,6 +81,13 @@ describe('ruby town names', () => {
         draw.y - samples[i].content[1] / samples[i].pixelRatio,
       ])).toEqual([[9, expect.closeTo(14.4)], [9, expect.closeTo(14.4)], [9, expect.closeTo(14.4)]])
       expect(draws.at(-1)?.font).toContain('300 14.4px')
+      draws.length = 0
+      const translated = renderTownLabel([{ text: 'Çabuóe' }], '싸뾔', false, false)
+      expect(draws).toHaveLength(2)
+      expect(draws[1].y).toBeGreaterThan(draws[0].y)
+      expect(draws[1].x).toBe(draws[0].x)
+      expect(draws[1].font).toContain('400 14.4px "Noto Serif", "Noto Serif KR"')
+      expect((translated.content[3] - translated.content[1]) / translated.pixelRatio).toBe(18)
     } finally {
       spy.mockRestore()
     }

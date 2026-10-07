@@ -270,13 +270,15 @@ def build_all_tiles(args, temp_dir):
         *,
         key,
         build_hash,
+        output_file,
         build_fn
     ):
         new_hashes[key] = build_hash
 
         old_hash = old_hashes.get(key)
 
-        if old_hash != build_hash:
+        final_file = Path(final_output_dir) / output_file.relative_to(temp_dir)
+        if old_hash != build_hash or not final_file.is_file():
             print(f"[DIRTY] {key}")
             build_queue.append(build_fn)
         else:
@@ -369,6 +371,7 @@ def build_all_tiles(args, temp_dir):
             enqueue_if_needed(
                 key=str(relative_file),
                 build_hash=build_hash,
+                output_file=output_file,
                 build_fn=lambda
                     i=input_file,
                     o=output_file,
@@ -405,6 +408,7 @@ def build_all_tiles(args, temp_dir):
                 enqueue_if_needed(
                     key=str(relative_file + "-dark"),
                     build_hash=build_hash_dark,
+                    output_file=output_file_dark,
                     build_fn=lambda
                         i=input_file_dark,
                         o=output_file_dark,
@@ -472,6 +476,7 @@ def build_all_tiles(args, temp_dir):
                 enqueue_if_needed(
                     key=str(layer_path),
                     build_hash=build_hash,
+                    output_file=output_file,
                     build_fn=lambda
                         i=input_file,
                         o=output_file,
@@ -503,6 +508,7 @@ def build_all_tiles(args, temp_dir):
                     enqueue_if_needed(
                         key=str(layer_path + "-dark"),
                         build_hash=build_hash_dark,
+                        output_file=output_file_dark,
                         build_fn=lambda
                             i=input_file_dark,
                             o=output_file_dark,

@@ -3,6 +3,7 @@ import contextlib
 import io
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -62,14 +63,50 @@ class IncrementalBuildTest(unittest.TestCase):
         self.assertEqual(self.build.call_count, 1)
         asset = self.output / "world/base.pmtiles"
         modified = asset.stat().st_mtime_ns
+        hashes = (self.output / tiles.HASH_FILE).read_bytes()
+        # Emulate a clean CI checkout followed by restoration of the map cache.
+        cache = self.root / "cache"
+        shutil.copytree(self.output, cache)
+        shutil.rmtree(self.output)
+        shutil.copytree(cache, self.output)
         self.config["world"]["label"] = "Updated metadata only"
+        self.config["world"]["dataSources"] = [{"kind": "towns", "points": [{
+            "name": "餉", "hangul": "아똬", "latin": "adua",
+            "coordinates": [10, 20], "population": 1300,
+        }]}]
+        self.config["world"]["zoom"] = {
+            "data": {"min": 0, "max": 1}, "display": {"min": 2, "max": 10},
+        }
         self.regions.write_text(json.dumps(self.config))
         tiles.main()
         self.assertEqual(self.build.call_count, 1)
         self.assertEqual(asset.read_bytes(), b"source raster")
         self.assertEqual(asset.stat().st_mtime_ns, modified)
+        self.assertEqual((self.output / tiles.HASH_FILE).read_bytes(), hashes)
         self.assertEqual((self.output / "geo-data/regions.json").read_text(), self.regions.read_text())
         self.assertTrue(all(not directory.exists() for directory in self.staging))
+
+    def test_changed_render_parameters_only_rebuild_the_affected_layer(self):
+        (self.source / "world/overlay.png").write_bytes(b"overlay raster")
+        self.config["world"]["layers"] = [{"id": "overlay", "type": "tiled"}]
+        self.regions.write_text(json.dumps(self.config))
+        tiles.main()
+        self.build.reset_mock()
+        self.config["world"]["base"]["bounds"] = [[60, -100], [-60, 100]]
+        self.config["world"]["base"]["zoom"] = {"min": 0, "max": 2}
+        self.regions.write_text(json.dumps(self.config))
+        tiles.main()
+        self.build.assert_called_once()
+        self.assertEqual(self.build.call_args.args[0].name, "base.png")
+        self.assertEqual(self.build.call_args.args[2:], ((-100, -60, 100, 60), 0, 2))
+
+    def test_missing_output_is_rebuilt_even_when_its_hash_matches(self):
+        tiles.main()
+        (self.output / "world/base.pmtiles").unlink()
+        self.build.reset_mock()
+        tiles.main()
+        self.build.assert_called_once()
+        self.assertEqual((self.output / "world/base.pmtiles").read_bytes(), b"source raster")
 
     def test_failed_build_cleans_staging_and_leaves_existing_release_intact(self):
         tiles.main()

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createExpression } from '@maplibre/maplibre-gl-style-spec'
-import { townLabel, townLabelImage, labelModes, type LabelMode } from './townLabels'
+import { townLabel, townLabelImage, townLabelSize, labelModes, type LabelMode } from './townLabels'
 
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { townNameProperties } from './rubyLabels'
@@ -13,6 +13,15 @@ function render(mode: LabelMode, town: { name: string; latin?: string; hangul?: 
 }
 
 describe('town label anchors', () => {
+  it.each([
+    [390, 844, 18], [844, 390, 18], [767, 900, 18],
+    [768, 500, 20], [1199, 900, 20], [1200, 699, 20],
+    [1200, 700, 22], [1599, 1000, 22], [1600, 899, 22],
+    [1600, 900, 24], [2560, 1440, 24], [1920, 400, 18],
+  ])('sizes labels for a %i × %i map to %i pixels', (width, height, size) => {
+    expect(townLabelSize(width, height)).toBe(size)
+  })
+
   const bilingual = { name: '뚜괘 日그北', latin: "dookwa loegak ha'da" }
 
   it('uses exactly the native spelling for both native and bilingual placement', () => {

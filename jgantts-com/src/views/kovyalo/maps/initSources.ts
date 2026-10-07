@@ -3,7 +3,7 @@ import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
-import { townFonts, townLabel, townLabelImage, townTextSize, townLabelPlacement } from './townLabels';
+import { townFonts, townLabel, townLabelImage, townTextSize, townLabelPlacement, resizeTownLabels } from './townLabels';
 import { townNameProperties } from './rubyLabels';
 import type { RegionConfig, RegionLayerConfig, ZoomConfig, TownPlusRegion, Zoom, Zooms, BoundsTuple, ImageCoordinates } from './types/maps'
 import { hashGuiPath } from './common/hashes';
@@ -304,6 +304,11 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
             'text-opacity': 0,
           },
         })
+
+        const resizeLabels = () => resizeTownLabels(map)
+        resizeLabels()
+        map.on('resize', resizeLabels)
+        map.once('remove', () => map.off('resize', resizeLabels))
   
       //   requestSync()
       } catch (error) {

@@ -47,5 +47,23 @@ test('close town labels remain visible north-up and after rotation', async ({ pa
       }), { message: `All three labels at zoom ${zoom}, bearing ${bearing}` }).toEqual(['Gavuá', 'Pite', 'Çhíety'])
     }
   }
+
+  // Resize the live map both up and down; labels and fitted images must keep
+  // their shared native anchor and the crowded cluster must remain readable.
+  for (const [width, height, size] of [[390, 844, 18], [900, 600, 20], [1280, 800, 22], [1920, 1080, 24], [844, 390, 18]]) {
+    await page.setViewportSize({ width, height })
+    await page.evaluate(({ width, height }) => {
+      const map = (window as any).townTestMap
+      Object.assign(map.getContainer().style, { width: `${width}px`, height: `${height}px` })
+      map.resize()
+    }, { width, height })
+    await expect.poll(() => page.evaluate(() =>
+      (window as any).townTestMap.getLayoutProperty('towns-layer', 'text-size')
+    )).toBe(size)
+    await expect.poll(() => page.evaluate(() => {
+      const features = (window as any).townTestMap.queryRenderedFeatures({ layers: ['towns-layer'] })
+      return [...new Set(features.map((feature: any) => feature.properties.name))].sort()
+    })).toEqual(['Gavuá', 'Pite', 'Çhíety'])
+  }
   await page.evaluate(() => (window as any).townTestMap.remove())
 })

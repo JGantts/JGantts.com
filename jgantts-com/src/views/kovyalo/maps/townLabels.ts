@@ -5,6 +5,7 @@ export type LabelMode = typeof labelModes[number]
 
 export const townFonts = ['Noto Serif', 'Noto Serif KR']
 export const latinFonts = ['Noto Sans']
+export const annotationFonts = [...latinFonts, 'Noto Sans KR']
 export const townTextSize = 18
 
 // Only the primary spelling participates in text shaping and anchor placement.

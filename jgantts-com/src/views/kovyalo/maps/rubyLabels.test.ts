@@ -7,7 +7,6 @@ describe('ruby town names', () => {
     const labels = resolveTownLabels('Çabuóe', '싸뾔', 'Cabuo')
     expect(labels.nativeHangul.parts).toEqual([{ text: 'Çabuóe' }])
     expect(labels.nativeHangul.translation).toBe('싸뾔')
-    expect(labels.nativeHangul.translationLatin).toBe(false)
     expect(labels.native.translation).toBe('')
     expect(labels.both.translation).toBe('Cabuo')
     expect(labels.hangul.parts).toEqual([{ text: '싸뾔' }])
@@ -81,12 +80,14 @@ describe('ruby town names', () => {
         draw.y - samples[i].content[1] / samples[i].pixelRatio,
       ])).toEqual([[9, expect.closeTo(14.4)], [9, expect.closeTo(14.4)], [9, expect.closeTo(14.4)]])
       expect(draws.at(-1)?.font).toContain('300 14.4px')
+      expect(draws.find(draw => draw.text === '아똬')?.font).toContain('300 9.9px "Noto Sans", "Noto Sans KR"')
+      expect(nativeDraws[0].font).toContain('400 18px "Noto Serif", "Noto Serif KR"')
       draws.length = 0
-      const translated = renderTownLabel([{ text: 'Çabuóe' }], '싸뾔', false, false)
+      const translated = renderTownLabel([{ text: 'Çabuóe' }], '싸뾔', false)
       expect(draws).toHaveLength(2)
       expect(draws[1].y).toBeGreaterThan(draws[0].y)
       expect(draws[1].x).toBe(draws[0].x)
-      expect(draws[1].font).toContain('400 14.4px "Noto Serif", "Noto Serif KR"')
+      expect(draws[1].font).toContain('300 14.4px "Noto Sans", "Noto Sans KR"')
       expect((translated.content[3] - translated.content[1]) / translated.pixelRatio).toBe(18)
     } finally {
       spy.mockRestore()

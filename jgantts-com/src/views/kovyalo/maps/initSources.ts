@@ -290,7 +290,9 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
             // Anchor the visible label by its native-only content rectangle.
             'icon-image': townLabelImage(useSettings().labelMode),
             'icon-text-fit': 'both',
-            'icon-padding': 0,
+            // Leave breathing room around names; larger towns keep priority
+            // while smaller towns become visible as the map is zoomed in.
+            'icon-padding': 24,
             // The fitted image includes translations and ruby outside the native
             // anchor. Check its bounds when trying anchors and reserve that space.
             'icon-allow-overlap': false,

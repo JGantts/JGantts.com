@@ -36,7 +36,8 @@ test('close town labels remain visible north-up and after rotation', async ({ pa
     sourceUrl: '/src/views/kovyalo/maps/initSources.ts',
   })
 
-  for (const zoom of [8, 9, 10]) {
+  // Crowded labels now reserve more space; zoom in before requiring all three.
+  for (const zoom of [11, 12, 11]) {
     for (const bearing of [0, 45, 90, 0]) {
       await page.evaluate(({ zoom, bearing }) => {
         ;(window as any).townTestMap.jumpTo({ zoom, bearing })

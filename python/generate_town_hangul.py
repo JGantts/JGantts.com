@@ -12,9 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 CONSONANTS = {
     'm': 'ㅁ', 'n': 'ㄴ', 'ng': 'ㅇ',
     'p': 'ㅂ', 'b': 'ㅃ', 't': 'ㄷ', 'd': 'ㄸ',
-    'tc': 'ㅈ', 'dc': 'ㅉ', 'k': 'ㄱ', 'g': 'ㄲ', 'tt': 'ㅍ',
+    'tc': 'ㅈ', 'dc': 'ㅉ', 'k': 'ㄱ', 'g': 'ㄲ', 'tt': 'ㅋ',
     'f': 'ㅍ', 'q': 'ㅌ', 's': 'ㅅ', 'c': 'ㅆ',
-    'h': 'ㅋ', 'r': 'ㄹ', 'l': 'ㅊ',
+    'h': 'ㅎ', 'r': 'ㄹ', 'l': 'ㅊ',
 }
 VOWELS = {
     'em': 'ㅡ',  # This spelling includes the ㅁ coda; e alone is invalid.

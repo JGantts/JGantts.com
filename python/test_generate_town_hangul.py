@@ -56,7 +56,7 @@ class RomanizationTests(unittest.TestCase):
     def test_consonant_chart(self):
         self.assertEqual(
             latin_to_hangul('ma na nga pa ba ta da tca dca ka ga tta fa qa sa ca ha ra la'),
-            '마 나 아 바 빠 다 따 자 짜 가 까 파 파 타 사 싸 카 라 차',
+            '마 나 아 바 빠 다 따 자 짜 가 까 카 파 타 사 싸 하 라 차',
         )
 
     def test_vowel_and_glide_chart(self):
@@ -95,7 +95,7 @@ class RomanizationTests(unittest.TestCase):
 
     def test_precomposed_and_decomposed_accents_match(self):
         latin = "dúkwa lóega'k háttda"
-        expected = '뚜\u0301과 초\u0301까그 캎\u0301따'
+        expected = '뚜\u0301과 초\u0301까그 핰\u0301따'
         self.assertEqual(latin_to_hangul(latin), expected)
         self.assertEqual(latin_to_hangul(unicodedata.normalize('NFD', latin)), expected)
 

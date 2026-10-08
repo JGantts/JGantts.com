@@ -144,6 +144,10 @@ def deployment_regions(regions, towns):
     result = copy.deepcopy(regions)
     for (_, _, _, point), row in zip(iter_towns(result), towns, strict=True):
         point['title']['hangul'] = row['town']['title']['hangul']
+    for region in [result.get('world', {}), *result.get('regions', [])]:
+        title = region.get('title')
+        if isinstance(title, dict) and title.get('latin'):
+            title['hangul'] = latin_to_hangul(title['latin'])
     return result
 
 

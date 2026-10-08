@@ -71,7 +71,7 @@ class IncrementalBuildTest(unittest.TestCase):
         shutil.copytree(cache, self.output)
         self.config["world"]["label"] = "Updated metadata only"
         self.config["world"]["dataSources"] = [{"kind": "towns", "points": [{
-            "title": {"native": "餉", "hangul": "아똬", "latin": "adua"},
+            "title": {"native": "餉", "latin": "adua"},
             "coordinates": [10, 20], "population": 1300,
         }]}]
         self.config["world"]["zoom"] = {
@@ -83,7 +83,9 @@ class IncrementalBuildTest(unittest.TestCase):
         self.assertEqual(asset.read_bytes(), b"source raster")
         self.assertEqual(asset.stat().st_mtime_ns, modified)
         self.assertEqual((self.output / tiles.HASH_FILE).read_bytes(), hashes)
-        self.assertEqual((self.output / "geo-data/regions.json").read_text(), self.regions.read_text())
+        compiled = json.loads((self.output / "geo-data/regions.json").read_text())
+        self.assertEqual(compiled['world']['dataSources'][0]['points'][0]['title']['hangul'], '아뚜아')
+        self.assertNotIn('hangul', json.loads(self.regions.read_text())['world']['dataSources'][0]['points'][0]['title'])
         self.assertTrue(all(not directory.exists() for directory in self.staging))
 
     def test_changed_render_parameters_only_rebuild_the_affected_layer(self):

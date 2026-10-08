@@ -42,6 +42,15 @@ class RomanizationTests(unittest.TestCase):
             self.assertIn('Cannot deploy invalid town readings', result.stderr)
             self.assertEqual(json.loads((root / 'regions.json').read_text()), deployed)
 
+    def test_region_titles_are_compiled_without_modifying_source(self):
+        source = {'world': {'title': 'World'}, 'regions': [
+            {'id': 'ziemund', 'title': {'native': 'Ziemúnd', 'latin': 'siemund'}},
+        ]}
+        original = copy.deepcopy(source)
+        compiled = deployment_regions(source, generate_towns(source))
+        self.assertEqual(compiled['regions'][0]['title']['hangul'], '세문뜨')
+        self.assertEqual(source, original)
+
     def test_deployment_rejects_missing_latin(self):
         source = {'id': 'region', 'dataSources': [{'kind': 'towns', 'points': [{'title': {'native': 'x'}}]}]}
         with self.assertRaisesRegex(ValueError, 'Missing latin field'):

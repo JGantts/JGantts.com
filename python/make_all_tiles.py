@@ -23,6 +23,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from generate_town_hangul import generate_towns, deployment_regions
 from pathlib import Path
 
 TILER = Path("./tile_pm.py").resolve()
@@ -301,6 +302,9 @@ def build_all_tiles(args, temp_dir):
     world_file = json.loads(
         regions_json_in.read_text(encoding="utf-8")
     )
+
+    # Validate readings before touching existing generated assets.
+    compiled_regions = deployment_regions(world_file, generate_towns(world_file)) if args.dev else world_file
 
     world = world_file["world"]
     regions = world_file["regions"]
@@ -610,10 +614,11 @@ def build_all_tiles(args, temp_dir):
         exist_ok=True
     )
 
-    regions_json_out.write_text(
-        regions_json_in.read_text(encoding="utf-8"),
-        encoding="utf-8"
-    )
+    metadata = (json.dumps(compiled_regions, ensure_ascii=False, indent=2) + "\n"
+                if args.dev else regions_json_in.read_text(encoding="utf-8"))
+    temporary_metadata = regions_json_out.with_suffix('.json.tmp')
+    temporary_metadata.write_text(metadata, encoding="utf-8")
+    temporary_metadata.replace(regions_json_out)
 
     print("\nDONE")
 

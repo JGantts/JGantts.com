@@ -64,10 +64,10 @@ export default defineConfig(({ command }) => {
       svgLoader(),
 
       {
-        name: "map-region-source",
+        name: "compiled-map-regions",
         configureServer(server) {
-          const regionsPath = fileURLToPath(new URL("../maps-sources/geo-data/regions.json", import.meta.url));
-          // Serve current metadata without running the offline raster pipeline.
+          const regionsPath = fileURLToPath(new URL("./PUBLIC/assets/maps/geo-data/regions.json", import.meta.url));
+          // Serve generated readings, never the uncompiled source metadata.
           server.middlewares.use(async (req, res, next) => {
             if (req.url?.split('?')[0] !== '/assets/maps/geo-data/regions.json'
               || !['GET', 'HEAD'].includes(req.method ?? '')) return next();
@@ -80,12 +80,7 @@ export default defineConfig(({ command }) => {
               next(error);
             }
           });
-          server.watcher.add(regionsPath);
-          server.watcher.on('all', (event, file) => {
-            if (file === regionsPath && ['add', 'change'].includes(event)) {
-              server.ws.send({ type: 'full-reload', path: '*' });
-            }
-          });
+
         },
       },
 

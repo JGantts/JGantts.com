@@ -14,7 +14,7 @@ describe('ruby town names', () => {
   })
 
   it('applies all five modes to a non-Hangul native name', () => {
-    const labels = resolveTownLabels('餉', '아똬', 'adua')
+    const labels = resolveTownLabels('{餉|아똬}', '아똬', 'adua')
     expect(labels.native.parts).toEqual([{ text: '餉', reading: '아똬' }])
     expect(labels.both.parts).toEqual([{ text: '餉', reading: '아똬' }])
     expect(labels.both.translation).toBe('adua')
@@ -24,19 +24,20 @@ describe('ruby town names', () => {
     expect(labels.latin.latinOnly).toBe(true)
   })
 
-  it('adds Native ruby for Han-only names without changing Hangul-only mode', () => {
+  it('does not infer ruby from the separate Hangul field', () => {
     const labels = resolveTownLabels('倨忒', ':싸뾔', 'Çabuoe')
-    expect(labels.native.parts).toEqual([{ text: '倨忒', reading: ':싸뾔' }])
+    expect(labels.native.parts).toEqual([{ text: '倨忒' }])
+    expect(labels.nativeHangul.parts).toEqual([{ text: '倨忒' }])
     expect(labels.hangul.parts).toEqual([{ text: ':싸뾔' }])
     expect(resolveTownLabels('Latin name', '읽기').native.parts).toEqual([{ text: 'Latin name' }])
   })
 
   it('retains divergent ruby for mixed Hangul names in native and Hangul modes', () => {
-    const labels = resolveTownLabels('뚜괘 日그北', '뚜괘 조까그캎따', 'latin')
+    const labels = resolveTownLabels('뚜괘 {日|초́까}그{北|핰́따}', 'different generated reading', 'latin')
     for (const mode of ['native', 'both', 'nativeHangul', 'hangul'] as const) {
       expect(labels[mode].parts).toEqual([
-        { text: '뚜괘 ' }, { text: '日', reading: '조까' },
-        { text: '그' }, { text: '北', reading: '캎따' },
+        { text: '뚜괘 ' }, { text: '日', reading: '초́까' },
+        { text: '그' }, { text: '北', reading: '핰́따' },
       ])
     }
     expect(labels.hangul.translation).toBe('')
@@ -94,52 +95,14 @@ describe('ruby town names', () => {
     }
   })
 
-  it('adds ruby only over differing spans from the hangul field', () => {
-    expect(parseTownName('餉', '아똬')).toEqual([{ text: '餉', reading: '아똬' }])
-    expect(parseTownName('뚜괘 日그北', '뚜괘 조까그캎따')).toEqual([
-      { text: '뚜괘 ' }, { text: '日', reading: '조까' },
-      { text: '그' }, { text: '北', reading: '캎따' },
-    ])
-    expect(parseTownName(' 餉 ', ' 아똬 ')).toEqual([{ text: '餉', reading: '아똬' }])
-  })
-
-  it('ignores blank readings and readings without a native name', () => {
-    expect(parseTownName('餉', '  ')).toEqual([{ text: '餉' }])
-    expect(parseTownName('', '아똬')).toEqual([])
-  })
-
-  it('leaves identical names plain after Unicode normalization', () => {
-    expect(parseTownName('아똬', '아똬')).toEqual([{ text: '아똬' }])
-  })
-
-  it('preserves shared suffixes and adjacent divergent characters', () => {
-    expect(parseTownName('日北 마을', '조까캎따 마을')).toEqual([
-      { text: '日北', reading: '조까캎따' }, { text: ' 마을' },
-    ])
-    expect(parseTownName('𠮷 마을', '길 마을')).toEqual([
-      { text: '𠮷', reading: '길' }, { text: ' 마을' },
-    ])
-  })
-
-  it('keeps insertions attached and preserves base-only characters', () => {
-    expect(parseTownName('가나', '다가나')).toEqual([{ text: '가', reading: '다가' }, { text: '나' }])
-    expect(parseTownName('가나', '가나다')).toEqual([{ text: '가' }, { text: '나', reading: '나다' }])
-    expect(parseTownName('가나다', '가다')).toEqual([{ text: '가나다' }])
-  })
-
-  it('prefers the separate reading over legacy markup', () => {
-    expect(parseTownName('{餉|old}', '아똬')).toEqual([{ text: '餉', reading: '아똬' }])
-  })
-
-  it('includes the reading in image identity and keeps the plain native name', () => {
-    const map = { hasImage: vi.fn(() => true), addImage: vi.fn() } as unknown as MapLibreMap
-    const first = townNameProperties(map, '餉', '아똬')
-    const second = townNameProperties(map, '餉', '다른')
+  it('uses name markup for image identity and excludes markup from native text', () => {
+    const map = { hasImage: vi.fn(() => true) } as unknown as MapLibreMap
+    const first = townNameProperties(map, '{餉|아똬}', 'generated')
+    const second = townNameProperties(map, '{餉|다른}', 'generated')
     expect(first.name).toBe('餉')
-    expect(first.nativeHangulImage).toBeTruthy()
-    expect(second.nativeHangulImage).not.toBe(first.nativeHangulImage)
-    expect(townNameProperties(map, ' 餉 ', ' 아똬 ')).toEqual(first)
-    expect(townNameProperties(map, '餉', ' ').nativeHangulImage).not.toBe(first.nativeHangulImage)
+    expect(second.nativeImage).not.toBe(first.nativeImage)
+    expect(townNameProperties(map, '{餉|아똬}', 'changed').nativeImage).toBe(first.nativeImage)
+    expect(townNameProperties(map, '餉', '아똬').nativeImage).not.toBe(first.nativeImage)
   })
 
   it('keeps native images independent of the Latin spelling', () => {

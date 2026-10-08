@@ -45,8 +45,13 @@ export function renderTownLabel(parts: NamePart[], translation = '', latinOnly =
   const baseline = (nativeHeight - ascent - descent) / 2 + ascent
   const rubyDescent = Math.max(0, ...runs.map(run => run.ruby.actualBoundingBoxDescent))
   const rubyBaseline = baseline - ascent - 3 - rubyDescent
-  const translationMetrics = measure(translation, translationSize, true)
-  const translationBaseline = baseline + descent + 5 + translationMetrics.actualBoundingBoxAscent
+  let translationBottom = baseline + descent
+  const translationLines = translation.split('\n').filter(Boolean).map(text => {
+    const metrics = measure(text, translationSize, true)
+    const y = translationBottom + 5 + metrics.actualBoundingBoxAscent
+    translationBottom = y + metrics.actualBoundingBoxDescent
+    return { text, metrics, y }
+  })
   let left = 0
   let right = nativeWidth
   let top = 0
@@ -63,10 +68,10 @@ export function renderTownLabel(parts: NamePart[], translation = '', latinOnly =
     }
     advance += run.base.width
   }
-  if (translation) {
-    left = Math.min(left, (nativeWidth - translationMetrics.width) / 2)
-    right = Math.max(right, (nativeWidth + translationMetrics.width) / 2)
-    bottom = Math.max(bottom, translationBaseline + translationMetrics.actualBoundingBoxDescent)
+  for (const { metrics, y } of translationLines) {
+    left = Math.min(left, (nativeWidth - metrics.width) / 2)
+    right = Math.max(right, (nativeWidth + metrics.width) / 2)
+    bottom = Math.max(bottom, y + metrics.actualBoundingBoxDescent)
   }
   const padding = 3
   // Keep base glyphs on the same pixel grid across native/bilingual images.
@@ -93,7 +98,7 @@ export function renderTownLabel(parts: NamePart[], translation = '', latinOnly =
     if (run.reading) draw(run.reading, readingSize, center, rubyBaseline, 1, true)
     advance += run.base.width
   }
-  if (translation) draw(translation, translationSize, nativeWidth / 2, translationBaseline, 2, true)
+  for (const { text, y } of translationLines) draw(text, translationSize, nativeWidth / 2, y, 2, true)
   // MapLibre fits only this native rectangle to the anchoring text. Everything
   // outside it (ruby, Latin, halo) follows without moving the native line.
   const content: [number, number, number, number] = [
@@ -115,6 +120,8 @@ export function resolveTownLabels(value: string, hangulValue = '', latinValue = 
   const native = { parts: plain, translation: '', latinOnly: false }
   return {
     native,
+    all: name ? { ...native, translation: [latin, hangul].filter(Boolean).join('\n') }
+      : { parts: latin || hangul ? [{ text: latin || hangul }] : [], translation: latin ? hangul : '', latinOnly: !!latin },
     both: name ? { ...native, translation: latin }
       : { parts: latin ? [{ text: latin }] : [], translation: '', latinOnly: true },
     nativeHangul: isLatinName

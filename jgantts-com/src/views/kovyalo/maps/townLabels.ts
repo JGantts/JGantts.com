@@ -1,6 +1,6 @@
 import type { ExpressionSpecification, Map as MapLibreMap, SymbolLayerSpecification } from 'maplibre-gl'
 
-export const labelModes = ['both', 'native', 'nativeHangul', 'latin', 'hangul'] as const
+export const labelModes = ['both', 'native', 'nativeHangul', 'all', 'latin', 'hangul'] as const
 export type LabelMode = typeof labelModes[number]
 
 export const townFonts = ['Noto Serif', 'Noto Serif KR']

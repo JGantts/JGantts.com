@@ -11,6 +11,7 @@ const settings = useSettings()
       <option value="both">Native + Latin</option>
       <option value="native">Native</option>
       <option value="nativeHangul">Native + Hangul</option>
+      <option value="all">Native + Latin + Hangul</option>
       <option value="latin">Latin</option>
       <option value="hangul">Hangul</option>
     </select>

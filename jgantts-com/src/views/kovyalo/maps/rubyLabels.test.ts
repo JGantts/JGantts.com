@@ -3,6 +3,15 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import { parseTownName, renderTownLabel, resolveTownLabels, townNameProperties } from './rubyLabels'
 
 describe('ruby town names', () => {
+  it('stacks Latin and Hangul beneath the native title, retaining ruby and skipping missing lines', () => {
+    const label = resolveTownLabels('{餉|아똬}', '아똬', 'adua').all
+    expect(label.parts).toEqual([{ text: '餉', reading: '아똬' }])
+    expect(label.translation).toBe('adua\n아똬')
+    expect(resolveTownLabels('餉', '', 'adua').all.translation).toBe('adua')
+    expect(resolveTownLabels('餉', '아똬', '').all.translation).toBe('아똬')
+    expect(resolveTownLabels('', '아똬', 'adua').all.parts).toEqual([{ text: 'adua' }])
+  })
+
   it('places Hangul beneath Latin-script names as a translation, not ruby', () => {
     const labels = resolveTownLabels('Çabuóe', '싸뾔', 'Cabuo')
     expect(labels.nativeHangul.parts).toEqual([{ text: 'Çabuóe' }])
@@ -13,7 +22,7 @@ describe('ruby town names', () => {
     expect(resolveTownLabels('Çabuóe').nativeHangul.translation).toBe('')
   })
 
-  it('applies all five modes to a non-Hangul native name', () => {
+  it('applies the original modes to a non-Hangul native name', () => {
     const labels = resolveTownLabels('{餉|아똬}', '아똬', 'adua')
     expect(labels.native.parts).toEqual([{ text: '餉', reading: '아똬' }])
     expect(labels.both.parts).toEqual([{ text: '餉', reading: '아똬' }])
@@ -90,6 +99,12 @@ describe('ruby town names', () => {
       expect(draws[1].x).toBe(draws[0].x)
       expect(draws[1].font).toContain('300 14.4px "Noto Sans", "Noto Sans KR"')
       expect((translated.content[3] - translated.content[1]) / translated.pixelRatio).toBe(18)
+      draws.length = 0
+      const triple = renderTownLabel([{ text: '餉' }], 'adua\n아똬')
+      expect(draws.map(draw => draw.text)).toEqual(['餉', 'adua', '아똬'])
+      expect(draws[2].y).toBeGreaterThan(draws[1].y)
+      expect(draws[1].y).toBeGreaterThan(draws[0].y)
+      expect((triple.content[3] - triple.content[1]) / triple.pixelRatio).toBe(18)
     } finally {
       spy.mockRestore()
     }

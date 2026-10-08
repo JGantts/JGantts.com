@@ -17,7 +17,7 @@ it('uses region titles, positions and display zoom ranges, excluding the world',
   expect(map.addSource.mock.calls[0][1].data).toMatchObject({
     geometry: { coordinates: [-35, 13] }, properties: { native: 'siemúnd', latin: 'siemund' },
   })
-  expect(map.addLayer.mock.calls[0][0]).toMatchObject({ minzoom: 6, maxzoom: 10, layout: { 'icon-image': ['get', 'bothImage'] } })
+  expect(map.addLayer.mock.calls[0][0]).toMatchObject({ minzoom: 4, maxzoom: 10, layout: { 'icon-image': ['get', 'bothImage'] } })
 })
 
 it('centers a region without a custom position and supports plain titles', () => {

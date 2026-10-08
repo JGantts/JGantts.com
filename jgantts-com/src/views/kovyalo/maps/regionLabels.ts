@@ -24,10 +24,11 @@ export function addRegionLabels(map: MapLibreMap, regions: RegionConfig[], mode:
     })
     map.addLayer({
       id, type: 'symbol', source: id,
-      minzoom: zoom.min, maxzoom: zoom.max,
+      minzoom: Math.max(0, zoom.min - 2), maxzoom: zoom.max,
       layout: {
         'text-field': townLabel(mode), 'text-font': townFonts,
-        'text-size': 24, 'text-line-height': 1, 'text-max-width': 1000,
+        'text-size': ['interpolate', ['linear'], ['zoom'], Math.max(0, zoom.min - 2), 32, Math.max(0, zoom.min - 2) + 2, 24],
+        'text-line-height': 1, 'text-max-width': 1000,
         'icon-image': townLabelImage(mode), 'icon-text-fit': 'both',
         'icon-padding': 12, 'icon-allow-overlap': false,
       },

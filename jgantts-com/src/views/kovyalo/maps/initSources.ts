@@ -6,6 +6,7 @@ import { useSettings } from '../common/Settings';
 import { townFonts, townLabel, townLabelImage, townTextSize, townLabelPlacement, resizeTownLabels } from './townLabels';
 import { townNameProperties } from './rubyLabels';
 import { addRegionLabels } from './regionLabels';
+import { syncOverviewTownDots } from './townDots';
 import type { RegionConfig, RegionLayerConfig, ZoomConfig, TownPlusRegion, Zoom, Zooms, BoundsTuple, ImageCoordinates } from './types/maps'
 import { hashGuiPath } from './common/hashes';
 
@@ -67,18 +68,33 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
             ]
           }, [])
   
+      // Rank within each region so overview maps retain at most two towns.
+      const townLabelMinZoom = new Map<TownPlusRegion, number>()
+      const regionMinZoom = new Map<string, number>()
+      for (const region of regions) {
+        const zoom = 'display' in region.zoom ? region.zoom.display : region.zoom
+        regionMinZoom.set(region.id, zoom.min)
+        const towns = allTowns.filter(town => town.regionId === region.id)
+          .sort((a, b) => b.population - a.population)
+        towns.forEach((town, rank) => townLabelMinZoom.set(town,
+          rank < 2 ? Math.max(0, zoom.min - 1) : zoom.min))
+      }
+
       try {
         const protocol = new Protocol()
         maplibregl.addProtocol('pmtiles', protocol.tile)
   
         const data: FeatureCollection = {
           type: 'FeatureCollection',
-          features: allTowns.map(t => ({
+          features: allTowns.map((t, id) => ({
+            id,
             type: 'Feature',
             properties: {
               ...townNameProperties(map, t.title.native, t.title.hangul, t.title.latin),
               latin: t.title.latin ?? '',
               population: t.population,
+              labelMinZoom: townLabelMinZoom.get(t),
+              regionMinZoom: regionMinZoom.get(t.regionId),
             },
             geometry: {
               type: 'Point',
@@ -256,12 +272,11 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
           }
         })*/
   
-        addRegionLabels(map, regions, useSettings().labelMode)
-
         map.addLayer({
           id: 'town-dots',
           type: 'circle',
           source: 'towns',
+          filter: ['>=', ['zoom'], ['get', 'regionMinZoom']],
           paint: {
             'circle-color': '#fff',
             'circle-stroke-color': '#000',
@@ -276,6 +291,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
           id: 'towns-layer',
           type: 'symbol',
           source: 'towns',
+          filter: ['>=', ['zoom'], ['get', 'labelMinZoom']],
   
           layout: {
             // label
@@ -308,6 +324,11 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
             'text-opacity': 0,
           },
         })
+
+        // Later symbol layers win collisions, keeping region names prominent.
+        addRegionLabels(map, regions, useSettings().labelMode)
+
+        syncOverviewTownDots(map)
 
         const resizeLabels = () => resizeTownLabels(map)
         resizeLabels()

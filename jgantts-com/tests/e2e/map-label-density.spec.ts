@@ -46,5 +46,23 @@ test('phone map shows roughly half as many labels with breathing room', async ({
   expect(original).toBeGreaterThan(0)
   expect(spaced / original).toBeGreaterThanOrEqual(0.4)
   expect(spaced / original).toBeLessThanOrEqual(0.65)
+  await page.evaluate(() => (window as any).townTestMap.jumpTo({ zoom: 5 }))
+  await expect.poll(() => page.evaluate(() => {
+    const features = (window as any).townTestMap.queryRenderedFeatures({ layers: ['towns-layer'] })
+    const names = [...new Set(features.map((f: any) => f.properties.name))]
+    return names.length >= 1 && names.length <= 2 && names.every(name => ['Kémbua', 'Rócyabó'].includes(name as string))
+  })).toBe(true)
+  const visibleNames = (layer: string) => page.evaluate(layer =>
+    [...new Set((window as any).townTestMap.queryRenderedFeatures({ layers: [layer] }).map((f: any) => f.properties.name))].sort(), layer)
+  await expect.poll(async () => ({ dots: await visibleNames('town-dots'), labels: await visibleNames('towns-layer') }))
+    .toEqual({ dots: await visibleNames('towns-layer'), labels: await visibleNames('towns-layer') })
+  await page.evaluate(() => (window as any).townTestMap.jumpTo({ zoom: 4 }))
+  await expect.poll(countLabels).toBe(0)
+  await expect.poll(() => visibleNames('town-dots')).toEqual([])
+  await expect.poll(() => page.evaluate(() =>
+    (window as any).townTestMap.queryRenderedFeatures({ layers: ['region-label-ziemund'] }).length
+  )).toBeGreaterThan(0)
+  await page.evaluate(() => (window as any).townTestMap.jumpTo({ zoom: 6.3 }))
+  await expect.poll(async () => (await visibleNames('town-dots')).length).toBeGreaterThan(2)
   await page.evaluate(() => (window as any).townTestMap.remove())
 })

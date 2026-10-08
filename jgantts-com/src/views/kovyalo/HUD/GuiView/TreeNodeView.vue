@@ -197,6 +197,13 @@ const toggleWhatever = () => {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+  min-width: 0;
+}
+
+@media (max-width: 640px), (max-height: 500px) {
+  .tree-row { min-height: 44px; box-sizing: border-box; }
+  .label { overflow-wrap: anywhere; min-width: 0; font-size: 16px; }
+  .expand { flex-shrink: 0; width: 32px; height: 32px; }
 }
 
 /* ========================= */

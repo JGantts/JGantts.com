@@ -239,6 +239,10 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 #map-gui-holder {
@@ -246,7 +250,8 @@ onMounted(async () => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  position: relative
+  position: relative;
+  min-width: 0;
 }
 
 .fantasy-map-root {

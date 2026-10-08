@@ -52,6 +52,8 @@ button {
   cursor: pointer;
 
   font-family: system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.3;
   font-weight: 600;
   letter-spacing: 0.3px;
 

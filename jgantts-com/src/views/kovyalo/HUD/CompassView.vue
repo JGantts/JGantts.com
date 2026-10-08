@@ -10,7 +10,7 @@ defineExpose({
     updateCompass,
 });
 
-let needle = ref<HTMLElement|null>(null);
+const rose = ref<HTMLElement|null>(null);
 
 let lastBearing: number = 0;
 let visualAngle: number = 0;
@@ -39,14 +39,14 @@ function shortestDelta(from: number, to: number) {
 
 function updateCompass() {
   if(!props.map?.mlMap) return
-  if(!needle.value) return
+  if(!rose.value) return
   const bearing = props.map.mlMap.getBearing();
 
   // smooth across ±180 instead of snapping
   const delta = shortestDelta(lastBearing, bearing);
   visualAngle -= delta;
 
-  needle.value.style.transform = `rotate(${visualAngle}deg)`;
+  rose.value.style.transform = `rotate(${visualAngle}deg)`;
 
   lastBearing = bearing;
 }
@@ -56,18 +56,18 @@ function resetNorth() {
   let _map = props.map?.mlMap
   if(!_map) return
   let bearing = _map.getBearing();
-  if (bearing < BEARING_MIN || bearing > (360-BEARING_MIN)) {
+  if (Math.abs(bearing) < BEARING_MIN) {
     _map.resetNorthPitch();
   } else {
-    console.log(bearing)
     _map.resetNorth();
   }
 }
 </script>
 
 <template>
-<div ref="compass" id="compass" @click="resetNorth">
-  <!-- STATIC DIAL (NEVER ROTATES) -->
+<button id="compass" type="button" aria-label="Reset map north; tap again to level tilt" title="Reset north; tap again to level tilt" @click="resetNorth">
+  <div ref="rose" class="compass-rose" aria-hidden="true">
+  <!-- Dial and needle rotate together so every direction stays accurate. -->
   <div class="dial">
     <svg viewBox="0 0 100 100">
       <circle
@@ -77,7 +77,7 @@ function resetNorth() {
         fill="none"
         stroke="var(--compass-tick)"
         stroke-width="5"
-        stroke-dasharray="calc(2*3.1415*48 * 1/128) calc(2*3.1415*48 * 7/128)"
+        stroke-dasharray="2.356 16.493"
         transform="rotate(-1.40625 50 50)"
       />
     </svg>
@@ -90,13 +90,14 @@ function resetNorth() {
     <div class="center-dot"></div>
   </div>
 
-  <!-- ROTATING NEEDLE ONLY -->
-  <div ref="needle" class="needle">
+  <!-- North/south needle -->
+  <div class="needle">
     <div class="needle-north"></div>
     <div class="needle-south"></div>
   </div>
 
-</div>
+  </div>
+</button>
 </template>
 
 <style>
@@ -152,7 +153,9 @@ function resetNorth() {
 
 /* ROOT */
 #compass {
-  clip-path: circle(50% at 50% 50%);
+  padding: 0;
+  border: 0;
+  background: transparent;
   pointer-events: all;
   cursor: pointer;
 
@@ -162,8 +165,13 @@ function resetNorth() {
   flex: 0 0 auto;
   border-radius: 50%;
   user-select: none;
-  filter: drop-shadow(var(--compass-shadow));
+  box-shadow: var(--compass-shadow);
 }
+
+#compass:focus-visible { outline: 3px solid var(--compass-ring); outline-offset: 3px; }
+#compass .compass-rose { position: absolute; inset: 0; border-radius: 50%; }
+#compass svg { display: block; width: 100%; height: 100%; }
+
 
 /* =========================
    STATIC DIAL
@@ -265,5 +273,11 @@ function resetNorth() {
   border-left: var(--compass-needle-width) solid transparent;
   border-right: var(--compass-needle-width) solid transparent;
   border-top: 40px solid var(--compass-text);
+}
+@media (max-width: 640px), (max-height: 500px) {
+  #compass { width: 64px; height: 64px; --compass-needle-width: 4px; --compass-letters-font-size: 10px; }
+  #compass .needle { inset: 13px; }
+  #compass .needle-north { border-bottom-width: 20px; }
+  #compass .needle-south { border-top-width: 20px; }
 }
 </style>

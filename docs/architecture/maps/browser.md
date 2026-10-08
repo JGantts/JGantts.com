@@ -8,6 +8,8 @@
 
 **Consumers:** Kovyálo page/layout and map HUD components.
 
+**Small-screen controls:** at widths up to 640 px or heights up to 500 px, Layers and Settings collapse into buttons with one scrollable panel open at a time. A 64 px compass stays visible; the map uses the dynamic viewport height and HUD padding respects device safe areas. The compass dial and needle rotate together. Clicking or keyboard-activating it resets north; activating it again near north also levels the pitch.
+
 **Full screen:** the HUD offers a full-screen toggle when the browser supports the Fullscreen API. It expands the map and its HUD together, resizes MapLibre on entry/exit, and tracks browser exits such as Escape.
 
 **Initial view and layer memory:** first visits open at Ziemúnd (center `[-34.3927, 11.8405]`, zoom 6) with Political → National → Ziemúnd and Physical → Terrain → Rivers enabled. Enabled layer paths are saved alongside the camera and preferences in local storage (`app-settings`). Refreshes and later visits restore that selection, including an empty selection. Older saved settings without a layer selection receive the two defaults while retaining their saved camera. Layer changes do not create browser-history entries.

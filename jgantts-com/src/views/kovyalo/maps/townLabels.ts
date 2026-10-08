@@ -46,10 +46,11 @@ export function townLabelImage(mode: LabelMode): ExpressionSpecification {
   return ['get', `${mode}Image`]
 }
 
-// Try nearby positions first, then wider rings for tight groups of towns.
+// Only try positions beside the dot; hide crowded names instead of detaching
+// them from their town by searching wider rings.
 // Offsets are in ems and still apply only to the primary/native label box.
 export const townLabelPlacement: SymbolLayerSpecification['layout'] = {
-  'text-variable-anchor-offset': [0.25, 1.25, 2.25].flatMap(distance => {
+  'text-variable-anchor-offset': [0.25].flatMap(distance => {
     const diagonal = distance / Math.SQRT2
     return [
       'top-left', [diagonal, diagonal],

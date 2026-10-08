@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 
-test('close town labels remain visible north-up and after rotation', async ({ page }) => {
+test('crowded labels hide nearby and reappear on zoom, including after rotation', async ({ page }) => {
   await page.route('**/map-label-test', route => route.fulfill({
     contentType: 'text/html',
     body: '<div id="map" style="width:900px;height:600px"></div>',
@@ -36,8 +36,16 @@ test('close town labels remain visible north-up and after rotation', async ({ pa
     sourceUrl: '/src/views/kovyalo/maps/initSources.ts',
   })
 
-  // Crowded labels now reserve more space; zoom in before requiring all three.
-  for (const zoom of [11, 12, 11]) {
+  // At this scale the third name cannot fit beside its dot. It must hide
+  // instead of using a distant anchor to squeeze into another gap.
+  await page.evaluate(() => (window as any).townTestMap.jumpTo({ zoom: 11 }))
+  await expect.poll(() => page.evaluate(() => {
+    const features = (window as any).townTestMap.queryRenderedFeatures({ layers: ['towns-layer'] })
+    return new Set(features.map((feature: any) => feature.properties.name)).size
+  })).toBe(2)
+
+  // Zooming in provides room for all three names at their close anchors.
+  for (const zoom of [12]) {
     for (const bearing of [0, 45, 90, 0]) {
       await page.evaluate(({ zoom, bearing }) => {
         ;(window as any).townTestMap.jumpTo({ zoom, bearing })

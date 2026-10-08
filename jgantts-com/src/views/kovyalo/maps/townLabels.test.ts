@@ -42,7 +42,7 @@ describe('town label anchors', () => {
 
   it('anchors Latin-only mode by the Latin spelling', () => {
     const anchor = render('latin', bilingual)
-    expect(anchor.toString()).toBe(bilingual.latin)
+    expect(anchor.toString()).toBe('dookwa loegak hada')
     expect(anchor.sections[0].fontStack).toBe('Noto Sans')
   })
 

@@ -114,7 +114,8 @@ export function resolveTownLabels(value: string, hangulValue = '', latinValue = 
   const plain = parseTownName(value)
   const name = plain.map(part => part.text).join('')
   const hangul = hangulValue.trim().normalize('NFC')
-  const latin = latinValue.trim().normalize('NFC')
+  // Apostrophes mark pronunciation boundaries in source data, not display text.
+  const latin = latinValue.replaceAll("'", '').trim().normalize('NFC')
   const isHangul = /\p{Script=Hangul}/u.test(name)
   const isLatinName = /\p{Script=Latin}/u.test(name) && !/[\p{Script=Hangul}\p{Script=Han}]/u.test(name)
   const native = { parts: plain, translation: '', latinOnly: false }

@@ -25,8 +25,8 @@ export function resizeTownLabels(map: MapLibreMap) {
   }
 }
 
-// Only the primary spelling participates in text shaping and anchor placement.
-// The visible image's content rectangle maps precisely onto this text box.
+// The primary spelling defines text shaping and the anchor. The visible image's
+// content rectangle maps onto this box; its outer bounds also participate in collisions.
 export function townLabel(mode: LabelMode): ExpressionSpecification {
   return [
     'format', ['get', `${mode}Text`],

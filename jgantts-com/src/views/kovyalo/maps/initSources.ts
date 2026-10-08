@@ -291,9 +291,10 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
             'icon-image': townLabelImage(useSettings().labelMode),
             'icon-text-fit': 'both',
             'icon-padding': 0,
-            // Secondary text must not select a different anchor or hide a neighbor.
-            'icon-allow-overlap': true,
-            'icon-ignore-placement': true,
+            // The fitted image includes translations and ruby outside the native
+            // anchor. Check its bounds when trying anchors and reserve that space.
+            'icon-allow-overlap': false,
+            'icon-ignore-placement': false,
 
             // priority (higher = wins collisions)
             'symbol-sort-key': ['*', ['literal', -1], ['get', 'population']],

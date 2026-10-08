@@ -117,7 +117,9 @@ export function resolveTownLabels(value: string, hangulValue = '', latinValue = 
   // Apostrophes mark pronunciation boundaries in source data, not display text.
   const latin = latinValue.replaceAll("'", '').trim().normalize('NFC')
   const isHangul = /\p{Script=Hangul}/u.test(name)
-  const fallbackRuby = !!name && !!hangul && !plain.some(part => part.reading)
+  const isCjk = /[\p{Script=Hangul}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(name)
+  const isLatinName = /\p{Script=Latin}/u.test(name) && !isCjk
+  const fallbackRuby = isCjk && !!hangul && !plain.some(part => part.reading)
   const native = { parts: fallbackRuby ? [{ text: name, reading: hangul }] : plain, translation: '', latinOnly: false }
   return {
     native,
@@ -125,7 +127,7 @@ export function resolveTownLabels(value: string, hangulValue = '', latinValue = 
       : { parts: latin || hangul ? [{ text: latin || hangul }] : [], translation: latin ? hangul : '', latinOnly: !!latin },
     both: name ? { ...native, translation: latin }
       : { parts: latin ? [{ text: latin }] : [], translation: '', latinOnly: true },
-    nativeHangul: native,
+    nativeHangul: isLatinName ? { ...native, translation: hangul } : native,
     latin: latin ? { parts: [{ text: latin }], translation: '', latinOnly: true } : native,
     hangul: isHangul ? native
       : { parts: hangul ? [{ text: hangul }] : [], translation: '', latinOnly: false },

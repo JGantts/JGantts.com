@@ -12,12 +12,14 @@ describe('ruby town names', () => {
     expect(resolveTownLabels('', '아똬', 'adua').all.parts).toEqual([{ text: 'adua' }])
   })
 
-  it('uses the full Hangul reading as ruby when no explicit ruby exists', () => {
+  it('keeps Hangul below Latin-script native names instead of adding fallback ruby', () => {
     const labels = resolveTownLabels('Çabuóe', '싸뾔', 'Cabuo')
-    expect(labels.nativeHangul.parts).toEqual([{ text: 'Çabuóe', reading: '싸뾔' }])
-    expect(labels.nativeHangul.translation).toBe('')
+    expect(labels.nativeHangul.parts).toEqual([{ text: 'Çabuóe' }])
+    expect(labels.nativeHangul.translation).toBe('싸뾔')
     expect(labels.native.translation).toBe('')
     expect(labels.both.translation).toBe('Cabuo')
+    expect(labels.all.parts).toEqual([{ text: 'Çabuóe' }])
+    expect(labels.all.translation).toBe('Cabuo\n싸뾔')
     expect(labels.hangul.parts).toEqual([{ text: '싸뾔' }])
     expect(resolveTownLabels('Çabuóe').nativeHangul.translation).toBe('')
   })
@@ -38,7 +40,7 @@ describe('ruby town names', () => {
     expect(labels.native.parts).toEqual([{ text: '倨忒', reading: ':싸뾔' }])
     expect(labels.nativeHangul.parts).toEqual([{ text: '倨忒', reading: ':싸뾔' }])
     expect(labels.hangul.parts).toEqual([{ text: ':싸뾔' }])
-    expect(resolveTownLabels('Latin name', '읽기').native.parts).toEqual([{ text: 'Latin name', reading: '읽기' }])
+    expect(resolveTownLabels('Latin name', '읽기').native.parts).toEqual([{ text: 'Latin name' }])
   })
 
   it('retains divergent ruby for mixed Hangul names in native and Hangul modes', () => {

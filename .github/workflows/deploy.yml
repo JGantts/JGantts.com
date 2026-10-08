@@ -32,6 +32,7 @@ jobs:
           filters: |
             maps_python:
               - 'python/**'
+              - '.github/workflows/deploy.yml'
             maps_sources:
               - 'maps-sources/**'
             website:
@@ -114,6 +115,12 @@ jobs:
         with:
           path: maps-rendered/
           key: maps-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('python/**/*.py', 'python/requirements.txt') }}-${{ hashFiles('maps-rendered/build_hashes.json') }}
+
+      - name: Generate town readings for deployment
+        run: |
+          python3 python/generate_town_hangul.py \
+            --output maps-rendered/geo-data/towns-hangul.generated.json \
+            --regions-output maps-rendered/geo-data/regions.json
 
       - name: Save generated maps
         id: upload-maps

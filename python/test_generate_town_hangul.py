@@ -1,11 +1,52 @@
 import copy
 import unittest
 import unicodedata
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
 
-from generate_town_hangul import generate_towns, latin_to_hangul
+from generate_town_hangul import deployment_regions, generate_towns, latin_to_hangul
 
 
 class RomanizationTests(unittest.TestCase):
+    def test_deployment_outputs_feed_map_without_changing_source(self):
+        source = {'world': {'id': 'world'}, 'regions': [{'id': 'example', 'dataSources': [
+            {'kind': 'towns', 'points': [
+                {'name': '日그', 'latin': "lóega'k", 'hangul': 'old',
+                 'coordinates': [1, 2], 'population': 8},
+            ]},
+        ]}]}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_path = root / 'source.json'
+            source_path.write_text(json.dumps(source))
+            original = source_path.read_bytes()
+            command = [sys.executable, str(Path(__file__).with_name('generate_town_hangul.py')),
+                       '--source', str(source_path), '--output', str(root / 'towns.json'),
+                       '--regions-output', str(root / 'regions.json')]
+            result = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            deployed = json.loads((root / 'regions.json').read_text())
+            source['regions'][0]['dataSources'][0]['points'][0]['hangul'] = '초\u0301까그'
+            self.assertEqual(deployed, source)
+            self.assertEqual(source_path.read_bytes(), original)
+            rows = json.loads((root / 'towns.json').read_text())
+            self.assertEqual(rows[0]['town'], deployed['regions'][0]['dataSources'][0]['points'][0])
+            # Invalid source must fail before overwriting the last good artifact.
+            source['regions'][0]['dataSources'][0]['points'][0]['latin'] = 'invalid!'
+            source_path.write_text(json.dumps(source))
+            result = subprocess.run(command, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('Cannot deploy invalid town readings', result.stderr)
+            self.assertEqual(json.loads((root / 'regions.json').read_text()), deployed)
+
+    def test_deployment_rejects_missing_latin(self):
+        source = {'id': 'region', 'dataSources': [{'kind': 'towns', 'points': [{'name': 'x'}]}]}
+        with self.assertRaisesRegex(ValueError, 'Missing latin field'):
+            deployment_regions(source, generate_towns(source))
+
     def test_confirmed_example_and_explicit_boundary(self):
         self.assertEqual(latin_to_hangul("loega'k"), '초까그')
         self.assertEqual(latin_to_hangul('loegak'), '초깍')

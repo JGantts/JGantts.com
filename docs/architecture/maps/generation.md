@@ -6,6 +6,8 @@
 
 **Dependencies:** `maps-sources/geo-data/regions.json`, raster inputs, Python requirements, GDAL tools, and PMTiles CLI.
 
+**Local metadata edits:** Vite serves `/assets/maps/geo-data/regions.json` directly from `maps-sources/geo-data/regions.json`, without caching, and reloads the page when that source changes. Local name/reading edits do not require regenerating rasters. Production still receives the copied JSON from the map build.
+
 **Consumers:** [browser map](browser.md) and the workflow's `build-maps` and `deploy-maps` jobs.
 
 **Incremental CI builds:** `build-maps` restores `maps-rendered/` together with `build_hashes.json` from the last compatible GitHub Actions cache after checkout. Cache compatibility includes runner OS/architecture and Python source/dependency hashes; the saved cache key uses the generated render manifest. Metadata-only changes (town names, Hangul/Latin readings, populations, coordinates, UI labels, display zooms) preserve compiled assets and do not save a duplicate cache. The builder always copies the current `regions.json` into the deployment artifact. Raster, bounds, data zoom, or layer-type changes rebuild the affected outputs; missing outputs rebuild even when their saved hashes match. A cold, expired, or incompatible cache requires a full build. Keep both generated images and their manifest when restoring local builds as well.

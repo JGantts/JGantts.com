@@ -1,4 +1,5 @@
 import { fileURLToPath, URL } from "node:url";
+import { readFile } from "node:fs/promises";
 import { defineConfig, type ServerOptions } from "vite";
 import vue from "@vitejs/plugin-vue";
 import svgLoader from "vite-svg-loader";
@@ -61,21 +62,26 @@ export default defineConfig(({ command }) => {
       svgLoader(),
 
       {
-        name: "watch-and-hmr",
+        name: "map-region-source",
         configureServer(server) {
-          const dir = "./PUBLIC/assets/kovyalo/";
-
-          server.watcher.add(dir);
-
-          server.watcher.on("change", (file) => {
-            if (file.includes("my-special-dir")) {
-              console.log("[hmr] changed:", file);
-
-              server.ws.send({
-                type: "custom",
-                event: "my-dir-update",
-                data: { file },
-              });
+          const regionsPath = fileURLToPath(new URL("../maps-sources/geo-data/regions.json", import.meta.url));
+          // Serve current metadata without running the offline raster pipeline.
+          server.middlewares.use(async (req, res, next) => {
+            if (req.url?.split('?')[0] !== '/assets/maps/geo-data/regions.json'
+              || !['GET', 'HEAD'].includes(req.method ?? '')) return next();
+            try {
+              const json = await readFile(regionsPath);
+              res.setHeader('Content-Type', 'application/json; charset=utf-8');
+              res.setHeader('Cache-Control', 'no-store');
+              res.end(req.method === 'HEAD' ? undefined : json);
+            } catch (error) {
+              next(error);
+            }
+          });
+          server.watcher.add(regionsPath);
+          server.watcher.on('all', (event, file) => {
+            if (file === regionsPath && ['add', 'change'].includes(event)) {
+              server.ws.send({ type: 'full-reload', path: '*' });
             }
           });
         },

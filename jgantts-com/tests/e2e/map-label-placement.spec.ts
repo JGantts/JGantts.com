@@ -26,9 +26,9 @@ test('crowded labels hide nearby and reappear on zoom, including after rotation'
     await initMapSourcesAndLayers(map, [{
       id: 'world', zoom: { min: 0, max: 10 }, layers: [],
       dataSources: [{ kind: 'towns', points: [
-        { name: 'Gavuá', coordinates: [-34.237, 11.561], population: 300 },
-        { name: 'Pite', coordinates: [-34.26, 11.560], population: 300 },
-        { name: 'Çhíety', coordinates: [-34.248, 11.544], population: 300 },
+        { title: { native: 'Gavuá' }, coordinates: [-34.237, 11.561], population: 300 },
+        { title: { native: 'Pite' }, coordinates: [-34.26, 11.560], population: 300 },
+        { title: { native: 'Çhíety' }, coordinates: [-34.248, 11.544], population: 300 },
       ] }],
     }])
   }, {

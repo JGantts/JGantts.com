@@ -112,8 +112,11 @@
   },
   "regions": [
     {
-      "id": "vayaly",
-      "title": "Vayály",
+      "id": "fayaly",
+      "title": {
+        "native": "Fayály",
+        "latin": "fajáli"
+      },
       "bounds": [
         [-25.75, -11.64],
         [-49.5, 38]
@@ -127,14 +130,21 @@
         {
           "kind": "towns",
           "points": [
-            { "name": "Pavóe", "latin": "pafóe", "coordinates": [-5.45, -30.3], "population": 1500}
+            { "title": {
+                "native": "Pavóe",
+                "latin": "pafóe"
+              },
+              "coordinates": [-5.45, -30.3], "population": 1500}
           ]
         }
       ]
     },
     {
       "id": "kovyalo",
-      "title": "Kovyálo",
+      "title": {
+        "native": "Kovyálo",
+        "latin": "koefjáloe"
+      },
       "bounds": [
         [14.596875, -49.32],
         [-3.645, -22.68]
@@ -148,7 +158,11 @@
     },
     {
       "id": "ziemund",
-      "title": "Ziemúnd",
+      "labelCoordinates": [-35.7, 12.65],
+      "title": {
+        "native": "Ziemúnd",
+        "latin": "siemund"
+      },
       "bounds": [
         [14.54625, -36.6552],
         [9.084375, -32.5872]
@@ -166,52 +180,121 @@
         {
           "kind": "towns",
           "points": [
-            { "name": "Rócyabó",
-              "latin": "róecjabóe", "coordinates": [-32.95, 9.76], "population": 2500 },
-            { "name": "Kémbua",
-              "latin": "kémbwa", "coordinates": [-34.39, 11.85], "population": 5200 },
-            { "name": "Saelo",
-              "latin": "sáeloe", "coordinates": [-34.05, 13.51], "population": 100 },
-            { "name": "뚜괘 {日|초́까}그{北|핰́따}",
-              "latin": "dúkwa lóega'k háttda", "coordinates": [-33.52, 11.25], "population": 800 },
-            { "name": "倨忒",
-              "latin": "cabuóe", "coordinates": [-34.18, 12.21], "population": 200 },
-            { "name": "Uomby",
-              "latin": "wóembi", "coordinates": [-33.47, 12.27], "population": 200 },
-            { "name": "Ual",
-              "latin": "wál", "coordinates": [-34.73, 11.48], "population": 180 },
-            { "name": "Sabóe",
-              "latin": "sabóe", "coordinates": [-33.87, 12.947], "population": 800},
-            { "name": "Karáe",
-              "latin": "karáe", "coordinates": [-33.873, 12.887], "population": 1300},
-            { "name": "櫻源",
-              "latin": "cáesoe", "coordinates": [-35.357, 11.216], "population": 78},
-            { "name": "Tása",
-              "latin": "tása", "coordinates": [-34.847, 11.841], "population": 432},
-            { "name": "Síety",
-              "latin": "síeti", "coordinates": [-34.708, 11.774], "population": 318},
-            { "name": "Yiepá",
-              "latin": "jiepá", "coordinates": [-34.753, 11.928], "population": 402},
-            { "name": "Roepya",
-              "latin": "róepja", "coordinates": [-33.065, 10.152], "population": 950},
-            { "name": "餉",
-              "latin": "adua", "coordinates": [-33.25, 10.409], "population": 1300},
-            { "name": "Baloe",
-              "latin": "báloe", "coordinates": [-34.9, 11.63], "population": 130},
-            { "name": "Pápo",
-              "latin": "pápoe", "coordinates": [-34.444, 11.3128], "population": 200},
-            { "name": "敔⽍",
-              "latin": "tcáe", "coordinates": [-35.86, 11.11], "population": 150},
-            { "name": "Díe",
-              "latin": "díe", "coordinates": [-35.2, 11.4], "population": 80},
-            { "name": "Fálo",
-              "latin": "fáloe", "coordinates": [-34.6, 11.813], "population": 200},
-            { "name": "Gavuá",
-              "latin": "gafwá", "coordinates": [-34.237, 11.561], "population": 300},
-            { "name": "Pite",
-              "latin": "píet", "coordinates": [-34.26, 11.560], "population": 300},
-            { "name": "Tcíety",
-              "latin": "tcíeti", "coordinates": [-34.248, 11.544], "population": 300}
+            { "title": {
+                "native": "Rócyabó",
+                "latin": "róecjabóe"
+              },
+              "coordinates": [-32.95, 9.76], "population": 2500 },
+            { "title": {
+                "native": "Kémbua",
+                "latin": "kémbwa"
+              },
+              "coordinates": [-34.39, 11.85], "population": 5200},
+            { "title": {
+                "native": "Saelo",
+                "latin": "sáeloe"
+              },
+              "coordinates": [-34.05, 13.51], "population": 100},
+            { "title": {
+                "native": "뚜괘 {日|초́까}그{北|핰́따}",
+                "latin": "dúkwa lóega'k háttda"
+              },
+              "coordinates": [-33.52, 11.25], "population": 800},
+            { "title": {
+                "native": "倨忒",
+                "latin": "cabuóe"
+              },
+              "coordinates": [-34.18, 12.21], "population": 200},
+            { "title": {
+                "native": "Uomby",
+                "latin": "wóembi"
+              },
+              "coordinates": [-33.47, 12.27], "population": 200},
+            { "title": {
+                "native": "Ual",
+                "latin": "wál"
+              },
+              "coordinates": [-34.73, 11.48], "population": 180},
+            { "title": {
+                "native": "Sabóe",
+                "latin": "sabóe"
+              },
+              "coordinates": [-33.87, 12.947], "population": 800},
+            { "title": {
+                "native": "Karáe",
+                "latin": "karáe"
+              },
+              "coordinates": [-33.873, 12.887], "population": 1300},
+            { "title": {
+                "native": "櫻源",
+                "latin": "cáesoe"
+              },
+              "coordinates": [-35.357, 11.216], "population": 78},
+            { "title": {
+                "native": "Táza",
+                "latin": "tása"
+              },
+              "coordinates": [-34.847, 11.841], "population": 432},
+            { "title": {
+                "native": "Síety",
+                "latin": "síeti"
+              },
+              "coordinates": [-34.708, 11.774], "population": 318},
+            { "title": {
+                "native": "Yiepá",
+                "latin": "jiepá"
+              },
+              "coordinates": [-34.753, 11.928], "population": 402},
+            { "title": {
+                "native": "Roepya",
+                "latin": "róepja"
+              },
+              "coordinates": [-33.065, 10.152], "population": 950},
+            { "title": {
+                "native": "餉",
+                "latin": "adua"
+              },
+              "coordinates": [-33.25, 10.409], "population": 1300},
+            { "title": {
+                "native": "Baloe",
+                "latin": "báloe"
+              },
+              "coordinates": [-34.9, 11.63], "population": 130},
+            { "title": {
+                "native": "Pápo",
+                "latin": "pápoe"
+              },
+              "coordinates": [-34.444, 11.3128], "population": 200},
+            { "title": {
+                "native": "敔⽍",
+                "latin": "tcáe"
+              },
+              "coordinates": [-35.86, 11.11], "population": 150},
+            { "title": {
+                "native": "Díe",
+                "latin": "díe"
+              },
+              "coordinates": [-35.2, 11.4], "population": 80},
+            { "title": {
+                "native": "Fálo",
+                "latin": "fáloe"
+              },
+              "coordinates": [-34.6, 11.813], "population": 200},
+            { "title": {
+                "native": "Gavuá",
+                "latin": "gafwá"
+              },
+              "coordinates": [-34.237, 11.561], "population": 300},
+            { "title": {
+                "native": "Pite",
+                "latin": "píet"
+              },
+              "coordinates": [-34.26, 11.56], "population": 300},
+            { "title": {
+                "native": "Tcíety",
+                "latin": "tcíeti"
+              },
+              "coordinates": [-34.248, 11.544], "population": 300}
           ]
         }
       ]

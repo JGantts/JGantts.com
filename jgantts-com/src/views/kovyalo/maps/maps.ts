@@ -15,6 +15,8 @@ import { townFonts, annotationFonts, townLabel, townLabelImage } from './townLab
 import type { RegionConfig, BoundsTuple, ImageCoordinates, JgMap, WorldConfig } from './types/maps'
 import { hashGuiPath, hashTitleIntoId } from './common/hashes';
 
+import { regionLabelId, regionTitle } from './regionLabels';
+
 const settings = useSettings()
 
 let regions: RegionConfig[] 
@@ -130,11 +132,10 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
     if (!mapEl) return null
 
     // Load the needed Unicode subsets before MapLibre rasterizes/caches glyphs.
-    const labelCharacters = [...new Set(regions.flatMap(region =>
-      (region.dataSources ?? []).flatMap(source => source.points.flatMap(town =>
-        [...`${town.name}${town.hangul ?? ''}${town.latin ?? ''}`.normalize('NFC')]
-      ))
-    ))].join('') || 'Kovyálo'
+    const labelCharacters = [...new Set(regions.flatMap(region => {
+      const titles = [regionTitle(region), ...(region.dataSources ?? []).flatMap(source => source.points.map(town => town.title))]
+      return titles.flatMap(title => [...`${title?.native ?? ''}${title?.hangul ?? ''}${title?.latin ?? ''}`.normalize('NFC')])
+    }))].join('') || 'Kovyálo'
     try {
       await Promise.all([
         ...townFonts.map(font => document.fonts.load(`400 18px "${font}"`, labelCharacters)),
@@ -213,9 +214,10 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
         )
     });
     const stopLabelWatch = watch(() => settings.labelMode, mode => {
-      if (mapTemp.getLayer('towns-layer')) {
-        mapTemp.setLayoutProperty('towns-layer', 'text-field', townLabel(mode))
-        mapTemp.setLayoutProperty('towns-layer', 'icon-image', townLabelImage(mode))
+      for (const id of ['towns-layer', ...regions.map(region => regionLabelId(region.id))]) {
+        if (!mapTemp.getLayer(id)) continue
+        mapTemp.setLayoutProperty(id, 'text-field', townLabel(mode))
+        mapTemp.setLayoutProperty(id, 'icon-image', townLabelImage(mode))
       }
     })
     return {

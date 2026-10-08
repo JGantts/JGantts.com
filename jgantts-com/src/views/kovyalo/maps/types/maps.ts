@@ -29,7 +29,8 @@ export type ZoomConfig = Zoom|Zooms
 
 export type RegionConfig = {
   id: string
-  title: string
+  title: string | Town['title']
+  labelCoordinates?: [number, number]
   bounds: BoundsTuple
   zoom: ZoomConfig
   parentId?: string | null
@@ -55,9 +56,11 @@ export type ImageCoordinates = [
 ]
 
 export type Town = {
-  name: string
-  latin?: string
-  hangul?: string
+  title: {
+    native: string
+    latin?: string
+    hangul?: string
+  }
   coordinates: [number, number]
   population: number
 }

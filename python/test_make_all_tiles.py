@@ -71,7 +71,7 @@ class IncrementalBuildTest(unittest.TestCase):
         shutil.copytree(cache, self.output)
         self.config["world"]["label"] = "Updated metadata only"
         self.config["world"]["dataSources"] = [{"kind": "towns", "points": [{
-            "name": "餉", "hangul": "아똬", "latin": "adua",
+            "title": {"native": "餉", "hangul": "아똬", "latin": "adua"},
             "coordinates": [10, 20], "population": 1300,
         }]}]
         self.config["world"]["zoom"] = {

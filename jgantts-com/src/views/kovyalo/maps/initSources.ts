@@ -5,6 +5,7 @@ import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
 import { townFonts, townLabel, townLabelImage, townTextSize, townLabelPlacement, resizeTownLabels } from './townLabels';
 import { townNameProperties } from './rubyLabels';
+import { addRegionLabels } from './regionLabels';
 import type { RegionConfig, RegionLayerConfig, ZoomConfig, TownPlusRegion, Zoom, Zooms, BoundsTuple, ImageCoordinates } from './types/maps'
 import { hashGuiPath } from './common/hashes';
 
@@ -55,9 +56,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
               ...((curr.dataSources ?? []).reduce<TownPlusRegion[]>((acc, d) => {
                 if (d.kind === 'towns') acc.push(...d.points.map(town => { 
                   return {
-                    name: town.name,
-                    hangul: town.hangul,
-                    latin: town.latin?.trim().normalize('NFC'),
+                    title: town.title,
                     coordinates: town.coordinates,
                     population: town.population,
                     regionId: curr.id,
@@ -77,8 +76,8 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
           features: allTowns.map(t => ({
             type: 'Feature',
             properties: {
-              ...townNameProperties(map, t.name, t.hangul, t.latin),
-              latin: t.latin ?? '',
+              ...townNameProperties(map, t.title.native, t.title.hangul, t.title.latin),
+              latin: t.title.latin ?? '',
               population: t.population,
             },
             geometry: {
@@ -257,6 +256,8 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
           }
         })*/
   
+        addRegionLabels(map, regions, useSettings().labelMode)
+
         map.addLayer({
           id: 'town-dots',
           type: 'circle',

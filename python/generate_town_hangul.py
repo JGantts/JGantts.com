@@ -115,14 +115,14 @@ def generate_towns(regions):
     """Keep all town fields except untrusted Hangul; include region provenance."""
     towns = []
     for region_id, source_index, point_index, point in iter_towns(regions):
-        data = {**point, 'hangul': None}
+        data = {**point, 'title': {**point['title'], 'hangul': None}}
         issue = None
-        latin = point.get('latin')
+        latin = point['title'].get('latin')
         if not isinstance(latin, str) or not latin.strip():
             issue = 'Missing latin field'
         else:
             try:
-                data['hangul'] = latin_to_hangul(latin)
+                data['title']['hangul'] = latin_to_hangul(latin)
             except ValueError as error:
                 issue = str(error)
         towns.append({
@@ -137,13 +137,13 @@ def generate_towns(regions):
 
 def deployment_regions(regions, towns):
     """Populate the map's existing Hangul fields in a deployment-only copy."""
-    issues = [f"{row['regionId']}/{row['town'].get('name')}: {row['issue']}"
+    issues = [f"{row['regionId']}/{row['town']['title'].get('native')}: {row['issue']}"
               for row in towns if row['issue']]
     if issues:
         raise ValueError('Cannot deploy invalid town readings:\n' + '\n'.join(issues))
     result = copy.deepcopy(regions)
     for (_, _, _, point), row in zip(iter_towns(result), towns, strict=True):
-        point['hangul'] = row['town']['hangul']
+        point['title']['hangul'] = row['town']['title']['hangul']
     return result
 
 

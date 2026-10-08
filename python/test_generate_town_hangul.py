@@ -14,7 +14,7 @@ class RomanizationTests(unittest.TestCase):
     def test_deployment_outputs_feed_map_without_changing_source(self):
         source = {'world': {'id': 'world'}, 'regions': [{'id': 'example', 'dataSources': [
             {'kind': 'towns', 'points': [
-                {'name': '日그', 'latin': "lóega'k", 'hangul': 'old',
+                {'title': {'native': '日그', 'latin': "lóega'k", 'hangul': 'old'},
                  'coordinates': [1, 2], 'population': 8},
             ]},
         ]}]}
@@ -29,13 +29,13 @@ class RomanizationTests(unittest.TestCase):
             result = subprocess.run(command, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             deployed = json.loads((root / 'regions.json').read_text())
-            source['regions'][0]['dataSources'][0]['points'][0]['hangul'] = '초\u0301까그'
+            source['regions'][0]['dataSources'][0]['points'][0]['title']['hangul'] = '초\u0301까그'
             self.assertEqual(deployed, source)
             self.assertEqual(source_path.read_bytes(), original)
             rows = json.loads((root / 'towns.json').read_text())
             self.assertEqual(rows[0]['town'], deployed['regions'][0]['dataSources'][0]['points'][0])
             # Invalid source must fail before overwriting the last good artifact.
-            source['regions'][0]['dataSources'][0]['points'][0]['latin'] = 'invalid!'
+            source['regions'][0]['dataSources'][0]['points'][0]['title']['latin'] = 'invalid!'
             source_path.write_text(json.dumps(source))
             result = subprocess.run(command, capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
@@ -43,7 +43,7 @@ class RomanizationTests(unittest.TestCase):
             self.assertEqual(json.loads((root / 'regions.json').read_text()), deployed)
 
     def test_deployment_rejects_missing_latin(self):
-        source = {'id': 'region', 'dataSources': [{'kind': 'towns', 'points': [{'name': 'x'}]}]}
+        source = {'id': 'region', 'dataSources': [{'kind': 'towns', 'points': [{'title': {'native': 'x'}}]}]}
         with self.assertRaisesRegex(ValueError, 'Missing latin field'):
             deployment_regions(source, generate_towns(source))
 
@@ -101,20 +101,20 @@ class RomanizationTests(unittest.TestCase):
 
     def test_town_data_is_preserved_without_reusing_old_readings(self):
         source = {'regions': [{'id': 'example', 'dataSources': [{'kind': 'towns', 'points': [
-            {'name': '日그', 'latin': "loega'k", 'hangul': 'wrong', 'population': 8},
-            {'name': 'No Latin', 'hangul': 'wrong'},
-            {'name': 'Old spelling', 'latin': 'zo', 'hangul': 'wrong'},
+            {'title': {'native': '日그', 'latin': "loega'k", 'hangul': 'wrong'}, 'population': 8},
+            {'title': {'native': 'No Latin', 'hangul': 'wrong'}},
+            {'title': {'native': 'Old spelling', 'latin': 'zo', 'hangul': 'wrong'}},
         ]}]}]}
         original = copy.deepcopy(source)
         result = generate_towns(source)
         self.assertEqual(source, original)
         self.assertEqual(len(result), 3)
-        self.assertEqual(result[0]['town']['hangul'], '초까그')
+        self.assertEqual(result[0]['town']['title']['hangul'], '초까그')
         self.assertEqual(result[0]['town']['population'], 8)
         self.assertEqual(result[0]['regionId'], 'example')
         self.assertIsNone(result[0]['issue'])
         for entry in result[1:]:
-            self.assertIsNone(entry['town']['hangul'])
+            self.assertIsNone(entry['town']['title']['hangul'])
             self.assertTrue(entry['issue'])
 
 

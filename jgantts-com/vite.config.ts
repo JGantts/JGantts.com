@@ -1,6 +1,7 @@
 import { fileURLToPath, URL } from "node:url";
 import { readFile } from "node:fs/promises";
 import { defineConfig, type ServerOptions } from "vite";
+import { localMapBuild } from "./dev/mapBuild";
 import vue from "@vitejs/plugin-vue";
 import svgLoader from "vite-svg-loader";
 import { visualizer } from "rollup-plugin-visualizer";
@@ -59,6 +60,7 @@ export default defineConfig(({ command }) => {
 
     plugins: [
       vue(),
+      localMapBuild(),
       svgLoader(),
 
       {

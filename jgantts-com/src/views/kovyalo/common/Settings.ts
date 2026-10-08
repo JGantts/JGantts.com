@@ -1,5 +1,6 @@
 import { reactive, watch } from "vue";
 import { labelModes, type LabelMode } from '../maps/townLabels';
+import { hashGuiPath } from '../maps/common/hashes';
 
 export type DarkMode = "light" | "dark" | "auto";
 
@@ -10,6 +11,7 @@ export type AppSettings = {
   bearing: number;
   darkMode: DarkMode;
   labelMode: LabelMode;
+  enabledLayers: string[];
 };
 
 const STORAGE_KEY = "app-settings";
@@ -21,6 +23,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   bearing: 0,
   darkMode: "auto",
   labelMode: "both",
+  enabledLayers: [
+    hashGuiPath(['Political', 'National', 'Ziemúnd']),
+    hashGuiPath(['Physical', 'Terrain', 'Rivers']),
+  ],
 };
 
 function load(): AppSettings {
@@ -34,6 +40,9 @@ function load(): AppSettings {
       ...DEFAULT_SETTINGS,
       ...parsed,
       labelMode: labelModes.includes(parsed.labelMode) ? parsed.labelMode : 'both',
+      enabledLayers: Array.isArray(parsed.enabledLayers) && parsed.enabledLayers.every((layer: unknown) => typeof layer === 'string')
+        ? parsed.enabledLayers
+        : [...DEFAULT_SETTINGS.enabledLayers],
     };
   } catch {
     return { ...DEFAULT_SETTINGS };

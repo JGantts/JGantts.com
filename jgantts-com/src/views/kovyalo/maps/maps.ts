@@ -76,6 +76,7 @@ const guiRoot = reactive<GuiNode>({
 let guiHashes: Record<string, boolean> = {}
 
 function initLayerGuiSettings(regions: RegionConfig[]) {
+  guiRoot.children = {}
   for (const region of regions) {
     for (const layer of [{ ...region.base, id: "base"}, { ...region.background, id: "background"}, ...(region.layers ?? [])]) {
       if (!layer || !layer.uiPath || layer.uiPath.length === 0) continue
@@ -104,7 +105,7 @@ function initLayerGuiSettings(regions: RegionConfig[]) {
       if (!("uiPathHash" in current)) {
         const leaf = current as GuiLeaf
         leaf.uiPathHash = hashGuiPath(layer.uiPath)
-        leaf.enabled = false
+        leaf.enabled = settings.enabledLayers.includes(leaf.uiPathHash)
       }
     }
   }
@@ -172,7 +173,7 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
       mapTemp!.getCanvas().style.cursor = 'crosshair'
     }
 
-    watch(() => guiRoot, () => {
+    const stopLayerWatch = watch(() => guiRoot, () => {
       let hashesTemp: Record<string, boolean> = {}
     
       let doIt = (node: GuiNode|(GuiNode&GuiLeaf)) => {
@@ -188,6 +189,7 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
       doIt(guiRoot)
     
       guiHashes = hashesTemp
+      settings.enabledLayers = Object.keys(hashesTemp).filter(hash => hashesTemp[hash])
     
       applyTheme(mapTemp)
     }, { deep: true, immediate: true })
@@ -197,9 +199,10 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
       //map!.setProjection({ type: 'mercator' })
     })
 
+    let stopThemeWatch: (() => void) | undefined
     mapTemp.on('load', async () => {
         await initMapSourcesAndLayers(mapTemp, regions)
-        watch(
+        stopThemeWatch = watch(
           effectiveDarkMode,
           (newVal, oldVal) => {
             if (newVal !== oldVal) {
@@ -220,6 +223,8 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
         guiTree: guiRoot,
         savePosition: () => scheduleSave(mapTemp),
         unmount: () => {
+          stopLayerWatch()
+          stopThemeWatch?.()
           stopLabelWatch()
           mapTemp.remove()
         }

@@ -11,6 +11,7 @@ let hudView = ref<InstanceType<typeof HudView> | null>(null)
 const jgMap: Ref<JgMap|null> = ref(null)
 
 const mapEl = ref<HTMLElement | null>(null)
+const mapGuiHolder = ref<HTMLElement | null>(null)
 
 const cursorCoords = ref<{ x: number; y: number } | null>(null)
 const zoomCurrent = ref(0)
@@ -224,8 +225,8 @@ onMounted(async () => {
         Bearing: {{ bearingCurrent.toFixed(2) }}
       </div>
     </div>
-    <div id="map-gui-holder">
-      <HudView v-if="jgMap" ref="hudView" :map="jgMap"/>
+    <div id="map-gui-holder" ref="mapGuiHolder">
+      <HudView v-if="jgMap" ref="hudView" :map="jgMap" :fullscreen-target="mapGuiHolder" />
       <div class="fantasy-map-root">
         <div ref="mapEl" class="fantasy-map" />
       </div>
@@ -252,6 +253,11 @@ onMounted(async () => {
   flex: 1;
   min-height: 0;
   background-color: black;
+}
+
+#map-gui-holder:fullscreen {
+  width: 100%;
+  height: 100%;
 }
 
 .fantasy-map {

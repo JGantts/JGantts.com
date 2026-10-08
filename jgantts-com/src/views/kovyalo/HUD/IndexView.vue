@@ -2,12 +2,14 @@
 import type { JgMap } from '../maps/maps';
 import DarkModeButton from './DarkModeButton.vue';
 import LabelModeSelect from './LabelModeSelect.vue';
+import FullscreenButton from './FullscreenButton.vue';
 import GuiView from './GuiView/GuiView.vue';
 import CompassView from './CompassView.vue';
 import { ref } from 'vue';
 
 const props = defineProps<{
   map: JgMap
+  fullscreenTarget: HTMLElement | null
 }>()
 
 defineExpose({
@@ -25,6 +27,7 @@ function updateHud() {
     <div id="hud-holder">
         <GuiView class="gui-view" :map="map" />
         <div id="right-col">
+            <FullscreenButton :target="fullscreenTarget" @resize="map.mlMap.resize()" />
             <DarkModeButton class="dark-mode-button" />
             <LabelModeSelect />
             <CompassView ref="compass" class="compass-view" :map="map" />

@@ -8,6 +8,8 @@
 
 **Consumers:** Kovyálo page/layout and map HUD components.
 
+**Full screen:** the HUD offers a full-screen toggle when the browser supports the Fullscreen API. It expands the map and its HUD together, resizes MapLibre on entry/exit, and tracks browser exits such as Escape.
+
 **Initial view and layer memory:** first visits open at Ziemúnd (center `[-34.3927, 11.8405]`, zoom 6) with Political → National → Ziemúnd and Physical → Terrain → Rivers enabled. Enabled layer paths are saved alongside the camera and preferences in local storage (`app-settings`). Refreshes and later visits restore that selection, including an empty selection. Older saved settings without a layer selection receive the two defaults while retaining their saved camera. Layer changes do not create browser-history entries.
 
 **Region labels:** named regions render their `title.native` and optional `title.latin`/`title.hangul` through the same language selector and ruby renderer as towns. Region names grow from 24 px to 32 px when zooming out and remain visible two zoom levels below the region’s display minimum. They win label collisions. Town names show normally within their region’s zoom range; only the two largest towns by population remain for one zoom level below its minimum, then all town names hide. Below the region minimum, town dots follow the labels actually placed after collision checks; unnamed towns have no dots. At detailed zooms all town dots return. Region labels center on their bounds unless `labelCoordinates: [longitude, latitude]` is supplied. The World container is not labeled. Names are separate map symbols rather than lettering baked into raster artwork.

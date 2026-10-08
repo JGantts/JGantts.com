@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createExpression } from '@maplibre/maplibre-gl-style-spec'
-import { townLabel, townLabelImage, townLabelSize, labelModes, type LabelMode } from './townLabels'
+import { townLabel, townLabelImage, townLabelSize, townLabelPixelRatio, townTextSize, maxTownTextSize, labelModes, type LabelMode } from './townLabels'
 
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { townNameProperties } from './rubyLabels'
@@ -13,6 +13,12 @@ function render(mode: LabelMode, town: { name: string; latin?: string; hangul?: 
 }
 
 describe('town label anchors', () => {
+  it.each([1, 1.25, 1.5, 2, 2.5, 3, 4])('keeps smooth sampling and enough image detail at display ratio %s', ratio => {
+    const imageRatio = townLabelPixelRatio(ratio)
+    expect(imageRatio).toBeGreaterThan(ratio)
+    expect(imageRatio * townTextSize).toBeGreaterThanOrEqual(ratio * maxTownTextSize)
+  })
+
   it.each([
     [390, 844, 18], [844, 390, 18], [767, 900, 18],
     [768, 500, 20], [1199, 900, 20], [1200, 699, 20],

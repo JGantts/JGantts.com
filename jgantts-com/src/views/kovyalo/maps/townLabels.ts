@@ -7,9 +7,17 @@ export const townFonts = ['Noto Serif', 'Noto Serif KR']
 export const latinFonts = ['Noto Sans']
 export const annotationFonts = [...latinFonts, 'Noto Sans KR']
 export const townTextSize = 18
+export const maxTownTextSize = 24
+
+export function townLabelPixelRatio(displayPixelRatio: number): number {
+  // Cover the largest responsive size and keep the atlas ratio above the map's
+  // ratio. MapLibre then retains linear filtering after zooming stops instead
+  // of switching these fitted text images to nearest-neighbor sampling.
+  return Math.max(2, Math.ceil(displayPixelRatio * maxTownTextSize / townTextSize))
+}
 
 export function townLabelSize(width: number, height: number): number {
-  if (width >= 1600 && height >= 900) return 24
+  if (width >= 1600 && height >= 900) return maxTownTextSize
   if (width >= 1200 && height >= 700) return 22
   if (width >= 768 && height >= 500) return 20
   return townTextSize

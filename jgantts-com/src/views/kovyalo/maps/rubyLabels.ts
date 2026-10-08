@@ -1,5 +1,5 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
-import { townFonts, annotationFonts, townTextSize, labelModes, type LabelMode } from './townLabels'
+import { townFonts, annotationFonts, townTextSize, townLabelPixelRatio, labelModes, type LabelMode } from './townLabels'
 
 type NamePart = { text: string; reading?: string }
 
@@ -23,7 +23,7 @@ export function renderTownLabel(parts: NamePart[], translation = '', latinOnly =
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')!
   ctx.textAlign = 'center'
-  const pixelRatio = Math.max(2, window.devicePixelRatio || 1)
+  const pixelRatio = townLabelPixelRatio(window.devicePixelRatio || 1)
   const readingSize = townTextSize * 0.55
   const translationSize = townTextSize * 0.8
   const font = (size: number, isSans = false) =>

@@ -6,6 +6,23 @@ export type LabelMode = typeof labelModes[number]
 export const townFonts = ['JGantts Hangul Serif', 'Noto Serif', 'Noto Serif KR']
 export const latinFonts = ['Noto Sans']
 export const annotationFonts = ['JGantts Hangul Sans', ...latinFonts, 'Noto Sans KR']
+// FontFaceSet.load loads matching faces in every listed family, including
+// fallbacks. Split by script so Hangul never preloads the old KR subsets.
+export async function loadTownLabelFonts(characters: string) {
+  const hangul = /\p{Script=Hangul}/u
+  const cjk = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Bopomofo}\u3000-\u303f\uff00-\uffef]/u
+  const chars = [...characters.normalize('NFC')]
+  const groups = [
+    [chars.filter(char => hangul.test(char)).join(''), 'JGantts Hangul Serif', 'JGantts Hangul Sans'],
+    [chars.filter(char => cjk.test(char) && !hangul.test(char)).join(''), 'Noto Serif KR', 'Noto Sans KR'],
+    [chars.filter(char => !hangul.test(char) && !cjk.test(char)).join(''), 'Noto Serif', 'Noto Sans'],
+  ]
+  await Promise.all(groups.flatMap(([text, serif, sans]) => text ? [
+    document.fonts.load(`400 18px "${serif}"`, text),
+    document.fonts.load(`300 18px "${sans}"`, text),
+  ] : []))
+}
+
 export const townTextSize = 18
 export const maxTownTextSize = 24
 

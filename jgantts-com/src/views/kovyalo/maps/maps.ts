@@ -12,7 +12,7 @@ import { reactive, watch } from 'vue';
 import { effectiveDarkMode } from '../common/DarkMode';
 import type { GuiNode, GuiLeaf, GuiParent, GuiChild, GuiTreeIdentifiable } from '../HUD/GuiView/types/gui';
 import { initMapSourcesAndLayers } from './initSources';
-import { townFonts, annotationFonts, townLabel, townLabelImage } from './townLabels';
+import { loadTownLabelFonts, townLabel, townLabelImage } from './townLabels';
 import type { RegionConfig, BoundsTuple, ImageCoordinates, JgMap, WorldConfig } from './types/maps'
 import { hashGuiPath, hashTitleIntoId } from './common/hashes';
 
@@ -138,10 +138,7 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
       return titles.flatMap(title => [...`${title?.native ?? ''}${title?.hangul ?? ''}${title?.latin ?? ''}`.normalize('NFC')])
     }))].join('') || 'Kovyálo'
     try {
-      await Promise.all([
-        ...townFonts.map(font => document.fonts.load(`400 18px "${font}"`, labelCharacters)),
-        ...annotationFonts.map(font => document.fonts.load(`300 18px "${font}"`, labelCharacters)),
-      ])
+      await loadTownLabelFonts(labelCharacters)
     } catch (error) {
       console.warn('Map label fonts could not load; using browser fallbacks.', error)
     }

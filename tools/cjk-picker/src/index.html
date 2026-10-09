@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Character Cabinet — CJK font picker</title>
+<style>/* STYLES */</style>
+</head>
+<body>
+<main>
+<header><span class="eyebrow">A LITTLE TOOL FOR TYPOGRAPHIC DISCOVERY</span><span class="edition">CJK / 01</span></header>
+<section class="intro"><div><h1>Character cabinet<span>.</span></h1><p>A font full of possibilities. Pull out a few.</p></div><div class="stamp" aria-hidden="true">字</div></section>
+<section class="controls" aria-label="Picker settings">
+  <div class="font-control"><label class="field-label" for="font-file">01 / YOUR FONT</label><label class="font-drop" id="drop-zone" for="font-file"><span id="font-name">Choose a font file</span><span class="font-hint">.ttf or .otf · drop here or browse ↗</span><input id="font-file" type="file" accept=".ttf,.otf"></label><button id="reset" class="text-button" hidden>Use system font</button></div>
+  <div class="options"><label class="field-label" for="count">02 / HOW MANY</label><select id="count"><option value="1">1 character</option><option value="6" selected>6 characters</option><option value="12">12 characters</option><option value="24">24 characters</option></select><label class="check"><input id="defined" type="checkbox" checked> Only with meanings</label></div>
+  <div class="shuffle-control"><button id="shuffle" class="primary">Shuffle characters <span aria-hidden="true">↗</span></button><span class="shortcut">or press <kbd>Space</kbd></span></div>
+</section>
+<div id="error" role="alert" hidden></div>
+<div class="results-heading"><p id="pool-info" role="status" aria-live="polite"></p><button id="copy-all" class="text-button">Copy all characters</button></div>
+<section id="cards" aria-label="Random characters"></section>
+<p id="empty" hidden>No characters match. Turn off “Only with meanings” or choose another font.</p>
+<footer><p>Han ideographs shared across Chinese, Japanese &amp; Korean. Load a font to pick only characters it contains; the system preview may use fallback fonts.</p><p>English glosses: <a href="https://www.unicode.org/reports/tr38/#kDefinition" target="_blank" rel="noreferrer">Unicode Unihan 17.0</a>. Brief meanings, not full language-specific definitions. <button id="license-button" class="text-button">Data license</button></p></footer>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+<dialog id="license-dialog"><h2>Unicode data license</h2><pre id="license-text"></pre><button id="close-license" class="primary">Close</button></dialog>
+<script id="definitions" type="application/json">/* DEFINITIONS */</script>
+<script id="license" type="application/json">/* LICENSE */</script>
+<script>/* FONT_READER */
+/* APP */</script>
+</body>
+</html>

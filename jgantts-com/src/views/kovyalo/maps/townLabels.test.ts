@@ -35,7 +35,7 @@ describe('town label anchors', () => {
       const anchor = render(mode, bilingual)
       expect(anchor.toString()).toBe(bilingual.name)
       expect(anchor.sections).toHaveLength(1)
-      expect(anchor.sections[0].fontStack).toBe('Noto Serif,Noto Serif KR')
+      expect(anchor.sections[0].fontStack).toBe('JGantts Hangul Serif,Noto Serif,Noto Serif KR')
       expect(render(mode, { ...bilingual, latin: 'a much longer Latin line' })).toEqual(anchor)
     }
   })
@@ -48,7 +48,7 @@ describe('town label anchors', () => {
 
   it('uses the Latin fallback and leaves missing standalone names empty', () => {
     expect(render('latin', { name: '餉' }).toString()).toBe('餉')
-    expect(render('latin', { name: '餉' }).sections[0].fontStack).toBe('Noto Serif,Noto Serif KR')
+    expect(render('latin', { name: '餉' }).sections[0].fontStack).toBe('JGantts Hangul Serif,Noto Serif,Noto Serif KR')
     expect(render('both', { name: '', latin: 'Çabuoe' }).toString()).toBe('Çabuoe')
     expect(render('native', { name: '', latin: 'Çabuoe' }).toString()).toBe('')
     expect(render('hangul', { name: '餉' }).toString()).toBe('')

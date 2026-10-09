@@ -3,9 +3,9 @@ import type { ExpressionSpecification, Map as MapLibreMap, SymbolLayerSpecificat
 export const labelModes = ['both', 'native', 'nativeHangul', 'all', 'latin', 'hangul'] as const
 export type LabelMode = typeof labelModes[number]
 
-export const townFonts = ['Noto Serif', 'Noto Serif KR']
+export const townFonts = ['JGantts Hangul Serif', 'Noto Serif', 'Noto Serif KR']
 export const latinFonts = ['Noto Sans']
-export const annotationFonts = [...latinFonts, 'Noto Sans KR']
+export const annotationFonts = ['JGantts Hangul Sans', ...latinFonts, 'Noto Sans KR']
 export const townTextSize = 18
 export const maxTownTextSize = 24
 

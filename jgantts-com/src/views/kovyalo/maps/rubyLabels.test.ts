@@ -92,14 +92,14 @@ describe('ruby town names', () => {
         draw.y - samples[i].content[1] / samples[i].pixelRatio,
       ])).toEqual([[9, expect.closeTo(14.4)], [9, expect.closeTo(14.4)], [9, expect.closeTo(14.4)]])
       expect(draws.at(-1)?.font).toContain('300 14.4px')
-      expect(draws.find(draw => draw.text === '아똬')?.font).toContain('300 9.9px "Noto Sans", "Noto Sans KR"')
-      expect(nativeDraws[0].font).toContain('400 18px "Noto Serif", "Noto Serif KR"')
+      expect(draws.find(draw => draw.text === '아똬')?.font).toContain('300 9.9px "JGantts Hangul Sans", "Noto Sans", "Noto Sans KR"')
+      expect(nativeDraws[0].font).toContain('400 18px "JGantts Hangul Serif", "Noto Serif", "Noto Serif KR"')
       draws.length = 0
       const translated = renderTownLabel([{ text: 'Çabuóe' }], '싸뾔', false)
       expect(draws).toHaveLength(2)
       expect(draws[1].y).toBeGreaterThan(draws[0].y)
       expect(draws[1].x).toBe(draws[0].x)
-      expect(draws[1].font).toContain('300 14.4px "Noto Sans", "Noto Sans KR"')
+      expect(draws[1].font).toContain('300 14.4px "JGantts Hangul Sans", "Noto Sans", "Noto Sans KR"')
       expect((translated.content[3] - translated.content[1]) / translated.pixelRatio).toBe(18)
       draws.length = 0
       const triple = renderTownLabel([{ text: '餉' }], 'adua\n아똬')

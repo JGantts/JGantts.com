@@ -4,6 +4,7 @@ import '@fontsource/noto-serif/400.css'
 import '@fontsource/noto-sans/300.css'
 import '@fontsource/noto-sans-kr/300.css'
 import '@fontsource/noto-serif-kr/400.css'
+import '@/assets/fonts/hangul.css'
 import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
 import type {  } from '../common/Settings';

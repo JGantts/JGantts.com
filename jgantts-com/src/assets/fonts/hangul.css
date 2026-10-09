@@ -1,0 +1,18 @@
+/* Keep each Hangul syllable and its acute in the same patched font. */
+@font-face {
+  font-family: 'JGantts Hangul Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('./JGanttsHangulSerif-Regular.woff2') format('woff2');
+  unicode-range: U+0301, U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7AF, U+D7B0-D7FF;
+}
+
+@font-face {
+  font-family: 'JGantts Hangul Sans';
+  font-style: normal;
+  font-weight: 300;
+  font-display: block;
+  src: url('./JGanttsHangulSans-Light.woff2') format('woff2');
+  unicode-range: U+0301, U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7AF, U+D7B0-D7FF;
+}

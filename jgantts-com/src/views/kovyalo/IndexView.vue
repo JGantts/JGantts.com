@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, type Ref } from 'vue'
+import { onMounted, onBeforeUnmount, ref, shallowRef } from 'vue'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { initMap, type JgMap } from './maps/maps';
 import HudView from './HUD/IndexView.vue';
@@ -8,7 +8,22 @@ const props = defineProps<{ dev?: boolean }>()
 
 let hudView = ref<InstanceType<typeof HudView> | null>(null)
 
-const jgMap: Ref<JgMap|null> = ref(null)
+const jgMap = shallowRef<JgMap | null>(null)
+const mapError = ref('')
+const startup = new AbortController()
+let disposed = false
+let animationFrame = 0
+const reloadPage = () => window.location.reload()
+
+onBeforeUnmount(() => {
+  disposed = true
+  startup.abort()
+  cancelAnimationFrame(animationFrame)
+  window.removeEventListener('keydown', onKeyDown)
+  window.removeEventListener('keyup', onKeyUp)
+  jgMap.value?.unmount()
+  jgMap.value = null
+})
 
 const mapEl = ref<HTMLElement | null>(null)
 const mapGuiHolder = ref<HTMLElement | null>(null)
@@ -21,20 +36,26 @@ const bearingCurrent = ref(0)
 onMounted(async () => {
   if (!mapEl.value) return
 
-  onBeforeUnmount(() => {
-    if (jgMap.value) {
-      jgMap.value.unmount()
-      jgMap.value = null
-    }
-  })
-
-  jgMap.value = await initMap(mapEl.value)
-
-  if (!jgMap) return
+  try {
+    const result = await initMap(mapEl.value, !!props.dev, startup.signal)
+    if (disposed) { result?.unmount(); return }
+    jgMap.value = result
+  } catch (error) {
+    if (disposed) return
+    console.error('Map startup failed:', error)
+    mapError.value = /WebGL|webgl|context loss/.test(String(error))
+      ? 'The browser could not start the map graphics. Reload this page to try again.'
+      : 'The map could not load. Reload this page to try again.'
+    return
+  }
 
   let mapTemp = jgMap.value?.mlMap
 
   if (!mapTemp) return
+  mapTemp.on('webglcontextlost', () => {
+    mapError.value = 'The map graphics were interrupted. Waiting for the browser to restore them, or reload this page.'
+  })
+  mapTemp.on('webglcontextrestored', () => { mapError.value = '' })
 
   //mapTemp.setPadding({ left: 300 })
 
@@ -92,19 +113,19 @@ onMounted(async () => {
   const tiltSpeed = 90; // deg/sec
   const zoomSpeed = 1; // zoom levels/sec
 
-  window.addEventListener("keydown", (e) => {
-    keys[e.key.toLowerCase()] = true;
-  });
-
-  window.addEventListener("keyup", (e) => {
-    keys[e.key.toLowerCase()] = false;
-  });
+  const onKeyDown = (e: KeyboardEvent) => { keys[e.key.toLowerCase()] = true }
+  const onKeyUp = (e: KeyboardEvent) => { keys[e.key.toLowerCase()] = false }
+  onMounted(() => {
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    animationFrame = requestAnimationFrame(animationLoop)
+  })
 
   let last = performance.now();
 
   let animationLoopBusy = false;
   async function animationLoop() {
-    if (animationLoopBusy) return;
+    if (disposed || animationLoopBusy) return;
 
     animationLoopBusy = true;
     let now = performance.now();
@@ -113,7 +134,7 @@ onMounted(async () => {
     } finally {
       last = now;
       animationLoopBusy = false;
-      requestAnimationFrame(animationLoop);
+      if (!disposed) animationFrame = requestAnimationFrame(animationLoop);
     }
   }
 
@@ -128,7 +149,7 @@ onMounted(async () => {
 
   async function interfaceLoop(now: number) {
     let _map = jgMap.value?.mlMap
-    if (!_map) return
+    if (!_map || mapError.value) return
 
     const dt = (now - last) / 1000;
     last = now;
@@ -201,7 +222,6 @@ onMounted(async () => {
 
   //window.addEventListener("keydown", e => loop);
 
-  requestAnimationFrame(animationLoop);
 </script>
 
 <template>
@@ -227,6 +247,10 @@ onMounted(async () => {
     </div>
     <div id="map-gui-holder" ref="mapGuiHolder">
       <HudView v-if="jgMap" ref="hudView" :map="jgMap" :fullscreen-target="mapGuiHolder" />
+      <div v-if="mapError" class="map-error" role="alert">
+        <p>{{ mapError }}</p>
+        <button type="button" @click="reloadPage">Reload page</button>
+      </div>
       <div class="fantasy-map-root">
         <div ref="mapEl" class="fantasy-map" />
       </div>
@@ -235,6 +259,17 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.map-error {
+  position: absolute;
+  z-index: 10;
+  inset: 1rem 1rem auto;
+  padding: 1rem;
+  background: #222;
+  color: #fff;
+  border-radius: 0.5rem;
+}
+.map-error button { cursor: pointer; padding: 0.5rem 1rem; }
+
 #main {
   display: flex;
   flex-direction: column;

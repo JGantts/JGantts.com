@@ -11,8 +11,8 @@ export function riverWidth(maximumArea: number): ExpressionSpecification {
 }
 
 export async function addRiverLines(map: MapLibreMap, id: string, url: string,
-  minzoom: number, maxzoom: number, metadata: object, beforeId: string) {
-  const response = await fetch(url)
+  minzoom: number, maxzoom: number, metadata: object, beforeId: string, signal?: AbortSignal) {
+  const response = await fetch(url, { signal })
   if (!response.ok) throw new Error(`River network ${url}: ${response.status}`)
   const data = await response.json() as RiverData
   const maximum = data.hydrology.maximumDisplayAreaKm2
@@ -20,6 +20,7 @@ export async function addRiverLines(map: MapLibreMap, id: string, url: string,
   const width = riverWidth(maximum)
   const overviewDetail: ExpressionSpecification = ['interpolate', ['linear'], ['get', 'displayAreaKm2'],
     0, style.minorWidthScale, maximum * style.majorAreaFraction, 1]
+  signal?.throwIfAborted()
   map.addSource(id, { type: 'geojson', data, tolerance: 0 })
   map.addLayer({ id, type: 'line', source: id, minzoom, maxzoom, metadata,
     layout: { visibility: 'none', 'line-cap': 'round', 'line-join': 'round' },

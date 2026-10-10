@@ -40,10 +40,11 @@ const boundaries = new WeakMap<MapLibreMap, Boundary[]>()
 const placements = new WeakMap<MapLibreMap, () => void>()
 
 export async function loadBoundaryRaster(map: MapLibreMap, id: string, url: string,
-  bounds: BoundsTuple, minzoom: number, maxzoom: number, metadata: object, edgeOnly = false) {
-  const response = await fetch(url)
+  bounds: BoundsTuple, minzoom: number, maxzoom: number, metadata: object, edgeOnly = false, signal?: AbortSignal) {
+  const response = await fetch(url, { signal })
   if (!response.ok) throw new Error(`Boundary raster ${url}: ${response.status}`)
   const bitmap = await createImageBitmap(await response.blob())
+  if (signal?.aborted) { bitmap.close(); signal.throwIfAborted() }
   const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height))
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(bitmap.width * scale)

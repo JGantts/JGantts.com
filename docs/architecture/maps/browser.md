@@ -8,6 +8,8 @@
 
 **Consumers:** Kovyálo page/layout and map HUD components.
 
+**Startup and graphics recovery:** the view catches map startup failures and offers an explicit page reload when graphics are unavailable; it does not repeatedly create contexts. Pending configuration requests and post-font startup are canceled on unmount. Removing a map cancels pending vector/raster helpers and prevents late theme watchers from being installed. Keyboard listeners, animation frames, and pending camera saves are cleaned up. MapLibre instances stay outside Vue’s deep reactivity. Context-loss/restoration events show and clear the recovery message.
+
 **Small-screen controls:** at widths up to 640 px or heights up to 500 px, Layers and Settings collapse into buttons with one scrollable panel open at a time. A 64 px compass stays visible; the map uses the dynamic viewport height and HUD padding respects device safe areas. The compass dial and needle rotate together. Clicking or keyboard-activating it resets north; activating it again near north also levels the pitch.
 
 **Full screen:** the HUD offers a full-screen toggle when the browser supports the Fullscreen API. It expands the map and its HUD together, resizes MapLibre on entry/exit, and tracks browser exits such as Escape.

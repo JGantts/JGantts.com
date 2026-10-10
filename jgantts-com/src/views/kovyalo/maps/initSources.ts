@@ -34,7 +34,7 @@ function boundsToImageCoordinates(bounds: BoundsTuple): ImageCoordinates {
   ]
 }
 
-async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]) {
+async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[], signal?: AbortSignal) {
     const boundaryLayers: (() => Promise<void>)[] = []
     console.log('Map loaded, initializing sources and layers.')
   
@@ -179,8 +179,9 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
                 boundaryLayers.push(async () => {
                   try {
                     await addRiverLines(map, layerId, `/assets/maps/${getLayerPath(region, id)}-flow.geojson`,
-                      zoomsFinal.display.min, zoomsFinal.display.max, metadata, positionId)
+                      zoomsFinal.display.min, zoomsFinal.display.max, metadata, positionId, signal)
                   } catch (error) {
+                    if (signal?.aborted) return
                     console.warn('River network unavailable; using original river artwork:', error)
                     map.addSource(sourceId, { type: 'image', url: imageUrl,
                       coordinates: boundsToImageCoordinates(region.bounds) })
@@ -195,8 +196,9 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
                 boundaryLayers.push(async () => {
                   try {
                     await addPoliticalBoundaries(map, layerId,
-                      `/assets/maps/${getLayerPath(region, id)}-classes.geojson`, zoomsFinal.display.min, zoomsFinal.display.max, metadata)
+                      `/assets/maps/${getLayerPath(region, id)}-classes.geojson`, zoomsFinal.display.min, zoomsFinal.display.max, metadata, signal)
                   } catch (error) {
+                    if (signal?.aborted) return
                     // The site and map assets deploy separately. Keep the original
                     // artwork visible if a classified asset has not arrived yet.
                     console.warn('Classified boundaries unavailable; using original border artwork:', error)
@@ -207,7 +209,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
                       paint: rasterPaint(id, layer), layout: { visibility: 'none' }, metadata,
                     }, 'town-dots')
                     await loadBoundaryRaster(map, layerId, imageUrl, region.bounds,
-                      zoomsFinal.display.min, zoomsFinal.display.max, metadata)
+                      zoomsFinal.display.min, zoomsFinal.display.max, metadata, false, signal)
                   }
                 })
               } else if (layer.type === 'tiled') {
@@ -254,7 +256,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
                 })
                 if (id === 'borders' || (id === 'states' && !region.layers.some(item => item.boundaryGuide === id)) || layer.styleRole === 'national-border' || layer.styleRole === 'administrative-border') {
                   boundaryLayers.push(() => loadBoundaryRaster(map, layerId, imageUrl, region.bounds,
-                    zoomsFinal.display.min, zoomsFinal.display.max, metadata, id === 'states'))
+                    zoomsFinal.display.min, zoomsFinal.display.max, metadata, id === 'states', signal))
                 }
               } else {
                 throw `No layer type specified for region and layer: ${region.id} - ${layerId}`
@@ -376,7 +378,9 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
         // Later symbol layers win collisions, keeping region names prominent.
         addRegionLabels(map, regions, useSettings().labelMode)
 
-        await Promise.all(boundaryLayers.map(add => add().catch(error => console.warn('Could not reserve border label clearance:', error))))
+        await Promise.all(boundaryLayers.map(add => add().catch(error => { if (!signal?.aborted) console.warn('Could not reserve border label clearance:', error) })))
+
+        if (signal?.aborted) return
 
         addTownMarkerObstacles(map)
 
@@ -390,7 +394,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
   
       //   requestSync()
       } catch (error) {
-        console.error('Failed to initialize map sources:', error)
+        if (!signal?.aborted) console.error('Failed to initialize map sources:', error)
       }
   }
 

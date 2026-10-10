@@ -4,10 +4,11 @@ import { cartography } from './cartography'
 import { registerBoundaryLines } from './boundaryPlacement'
 
 export async function addPoliticalBoundaries(map: MapLibreMap, id: string, url: string,
-  minzoom: number, maxzoom: number, metadata: object) {
-  const response = await fetch(url)
+  minzoom: number, maxzoom: number, metadata: object, signal?: AbortSignal) {
+  const response = await fetch(url, { signal })
   if (!response.ok) throw new Error(`Classified boundaries ${url}: ${response.status}`)
   const data = await response.json() as FeatureCollection<LineString>
+  signal?.throwIfAborted()
   map.addSource(id, { type: 'geojson', data })
   for (const kind of ['county', 'provincial', 'national'] as const) {
     const style = cartography.borders.classes[kind]

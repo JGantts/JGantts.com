@@ -21,7 +21,6 @@ import { refreshBoundaryPlacement } from './boundaryPlacement';
 
 const settings = useSettings()
 
-let regions: RegionConfig[] 
 
 let saveTimeout: number | null = null
 
@@ -116,9 +115,9 @@ function initLayerGuiSettings(regions: RegionConfig[]) {
   }
 }
 
-async function loadConfigFile() {
+async function loadConfigFile(signal?: AbortSignal) {
   return JSON.parse(
-    await (await fetch('/assets/maps/geo-data/regions.json')).text()
+    await (await fetch('/assets/maps/geo-data/regions.json', { signal })).text()
 ) as WorldConfig
 }
 
@@ -126,9 +125,11 @@ function processConfigFile(worldConfig: WorldConfig) {
   return [worldConfig.world, ...worldConfig.regions]
 }
 
-async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise<JgMap | null> {
+async function initMap(mapEl: HTMLElement | null, dev: boolean = false, signal?: AbortSignal): Promise<JgMap | null> {
 
-    regions = processConfigFile(await loadConfigFile())
+    if (!mapEl || signal?.aborted) return null
+    const regions = processConfigFile(await loadConfigFile(signal))
+    if (signal?.aborted) return null
 
     initLayerGuiSettings(regions)
 
@@ -145,7 +146,11 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
       console.warn('Map label fonts could not load; using browser fallbacks.', error)
     }
 
-    let mapTemp = new maplibregl.Map({
+    if (signal?.aborted) return null
+
+    let mapTemp: MapLibreMap
+    try {
+    mapTemp = new maplibregl.Map({
       container: mapEl,
       style: { version: 8, sources: {}, layers: [
           {
@@ -167,6 +172,14 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
       pitch: settings.pitch,
       bearing: settings.bearing,
     })
+
+    } catch (error) {
+      mapEl.replaceChildren()
+      throw error
+    }
+    let removed = false
+    const lifetime = new AbortController()
+    mapTemp.once('remove', () => { removed = true; lifetime.abort() })
 
     //test
 
@@ -202,7 +215,8 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
 
     let stopThemeWatch: (() => void) | undefined
     mapTemp.on('load', async () => {
-        await initMapSourcesAndLayers(mapTemp, regions)
+        await initMapSourcesAndLayers(mapTemp, regions, lifetime.signal)
+        if (removed) return
         stopThemeWatch = watch(
           effectiveDarkMode,
           (newVal, oldVal) => {
@@ -227,6 +241,10 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
         guiTree: guiRoot,
         savePosition: () => scheduleSave(mapTemp),
         unmount: () => {
+          if (removed) return
+          removed = true
+          lifetime.abort()
+          if (saveTimeout) { window.clearTimeout(saveTimeout); saveTimeout = null }
           stopLayerWatch()
           stopThemeWatch?.()
           stopLabelWatch()

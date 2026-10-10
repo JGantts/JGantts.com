@@ -31,7 +31,7 @@ test('real map styles preserve layer order and black backgrounds across themes a
       return map.queryRenderedFeatures(point, { layers: ['towns-layer'] }).length > 0
     }).length
     return {
-      order: ['region-ziemund-states', 'region-ziemund-rivers', 'region-ziemund-borders-casing', 'region-ziemund-borders'].map(id => ids.indexOf(id)),
+      order: ['region-ziemund-states', 'region-ziemund-states-dark', 'region-ziemund-rivers', 'region-ziemund-borders-casing', 'region-ziemund-borders', 'region-ziemund-unexplored-mask'].map(id => ids.indexOf(id)),
       backgroundPaint: map.getPaintProperty('region-ziemund-background', 'raster-brightness-min'),
       shadows: map.getPaintProperty('region-ziemund-states', 'raster-brightness-min'),
       labels: map.queryRenderedFeatures({ layers: ['towns-layer'] }).length,

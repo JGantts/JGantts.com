@@ -11,6 +11,7 @@ export type JgMap = {
 export type BoundsTuple = [[number, number], [number, number]]
 
 export type RegionLayerConfig = {
+  maskOf?: string
   riverGuide?: string
   boundaryGuide?: string
   provinceCount?: number

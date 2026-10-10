@@ -366,6 +366,17 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
 
         if (signal?.aborted) return
 
+        // Cover all artwork outside the known terrain, including boundaries
+        // loaded asynchronously, while keeping settlement markers and names above.
+        for (const region of regions) {
+          for (const layer of region.layers ?? []) {
+            if (!layer.maskOf) continue
+            for (const suffix of layer.hasDark ? ['', '-dark'] : ['']) {
+              map.moveLayer(`region-${region.id}-${layer.id}${suffix}`, 'town-dots')
+            }
+          }
+        }
+
         addTownMarkerObstacles(map)
 
         syncOverviewTownDots(map)

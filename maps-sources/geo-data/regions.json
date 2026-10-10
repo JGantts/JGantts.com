@@ -174,6 +174,7 @@
       "background": { "type": "single", "hasDark": false },
       "layers": [
         { "id": "states", "type": "single", "exclusiveGroup": "nation", "uiPath": ["Political", "National", "Ziemúnd"], "hasDark": true },
+        { "id": "unexplored-mask", "type": "single", "maskOf": "base", "styleRole": "background" },
         { "id": "rivers", "type": "single", "riverGuide": "rivers-network.json", "uiPath": ["Physical", "Terrain", "Rivers"], "hasDark": false },
         { "id": "borders", "type": "single", "boundaryGuide": "states", "provinceCount": 4, "exclusiveGroup": "nation", "uiPath": ["Political", "National", "Ziemúnd"] }
       ],

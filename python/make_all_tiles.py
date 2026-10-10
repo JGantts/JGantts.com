@@ -144,6 +144,21 @@ def make_build_hash(
 # geo helpers
 # ---------------------------------------------------
 
+def unexplored_mask(source):
+    from PIL import Image, ImageOps
+    with Image.open(source) as image:
+        mask = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        mask.putalpha(ImageOps.invert(image.convert('RGBA').getchannel('A')))
+        return mask
+
+
+def warp_mask(source, output, bounds):
+    with tempfile.TemporaryDirectory() as directory:
+        mask_path = Path(directory) / 'mask.png'
+        unexplored_mask(source).save(mask_path)
+        warp(str(mask_path), str(output), bounds)
+
+
 def warp(src, out_png, bounds):
     west, south, east, north = bounds
 
@@ -464,6 +479,10 @@ def build_all_tiles(args, temp_dir):
                     layer_path
                 ).with_suffix(".png")
 
+                if layer.get("maskOf"):
+                    input_file = normalize_in_file_path(get_layer_path(
+                        regions, region, layer["maskOf"])).with_suffix(".png")
+
                 output_file = temp_out_file_path(
                     layer_path
                 ).with_suffix(".png")
@@ -486,7 +505,7 @@ def build_all_tiles(args, temp_dir):
                 build_hash = make_build_hash(
                     input_file=input_file,
                     bounds=bounds,
-                    layer_type="single",
+                    layer_type="inverse-alpha-mask" if layer.get("maskOf") else "single",
                     dark=False
                 )
 
@@ -497,8 +516,9 @@ def build_all_tiles(args, temp_dir):
                     build_fn=lambda
                         i=input_file,
                         o=output_file,
-                        b=bounds:
-                            warp(
+                        b=bounds,
+                        render=warp_mask if layer.get("maskOf") else warp:
+                            render(
                                 str(i),
                                 str(o),
                                 b

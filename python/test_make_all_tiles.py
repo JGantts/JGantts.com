@@ -12,6 +12,28 @@ import make_all_tiles as tiles
 
 
 class IncrementalBuildTest(unittest.TestCase):
+    def test_unexplored_mask_covers_only_transparent_terrain_and_rebuilds(self):
+        from PIL import Image
+        source = self.source / 'world/base.png'
+        image = Image.new('RGBA', (3, 1))
+        image.putdata([(10, 50, 90, 255), (0, 0, 0, 0), (10, 50, 90, 128)])
+        image.save(source)
+        self.config['world']['layers'] = [{'id': 'mask', 'type': 'single', 'maskOf': 'base'}]
+        self.regions.write_text(json.dumps(self.config))
+        def copy_mask(source, output, bounds):
+            Path(output).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, output)
+        with patch.object(tiles, 'warp', side_effect=copy_mask) as warp:
+            tiles.main()
+            with Image.open(self.output / 'world/mask.png') as mask:
+                self.assertEqual([mask.getpixel((x, 0)) for x in range(3)], [(0, 0, 0, 0), (0, 0, 0, 255), (0, 0, 0, 127)])
+            tiles.main()
+            self.assertEqual(warp.call_count, 1)
+            image.putpixel((0, 0), (10, 50, 90, 0))
+            image.save(source)
+            tiles.main()
+            self.assertEqual(warp.call_count, 2)
+
     def test_terrain_build_caches_tiles_and_repairs_missing_outputs(self):
         from PIL import Image
         from tile_dem import generate_tiles

@@ -39,3 +39,5 @@ The [converter](../../../python/generate_town_hangul.py) uses the custom romaniz
 [Maps map](index.md)
 
 **3D elevation:** A region’s `terrain` configuration names its source height map, maximum tile zoom, and browser exaggeration. The incremental builder runs `tile_dem.py` to generate Mapbox RGB tiles under that region’s `height-tiles/` directory. Ziemúnd uses `height-eroded.png`, the existing 750–1500 m normalized elevation range, and tile zooms 0–8. Hashes include the source, bounds, tile zoom, and generator; any missing expected tile rebuilds the set. Local and production builds copy the tiles with the other map assets.
+
+**Unexplored-area mask:** Single-image layers with `maskOf` derive black pixels from the inverse alpha of the named source raster, then use the normal Mercator warp. Ziemúnd’s `unexplored-mask` uses `base.png`. Its build hash tracks the terrain source and bounds; source artwork is unchanged.

@@ -12,6 +12,29 @@ import make_all_tiles as tiles
 
 
 class IncrementalBuildTest(unittest.TestCase):
+    def test_terrain_build_caches_tiles_and_repairs_missing_outputs(self):
+        from PIL import Image
+        from tile_dem import generate_tiles
+        Image.new('L', (4, 4), 128).save(self.source / 'world/height.png')
+        self.config['world'].update({
+            'bounds': [[14, -36], [9, -32]],
+            'terrain': {'heightmap': 'height.png', 'maxzoom': 1, 'exaggeration': 10},
+        })
+        self.regions.write_text(json.dumps(self.config))
+        with patch('tile_dem.generate_tiles', wraps=generate_tiles) as generate:
+            tiles.main()
+            tile = self.output / 'world/height-tiles/0/0/0.png'
+            self.assertTrue(tile.is_file())
+            tiles.main()
+            self.assertEqual(generate.call_count, 1)
+            tile.unlink()
+            tiles.main()
+            self.assertEqual(generate.call_count, 2)
+            self.assertTrue(tile.is_file())
+            Image.new('L', (4, 4), 200).save(self.source / 'world/height.png')
+            tiles.main()
+            self.assertEqual(generate.call_count, 3)
+
     def setUp(self):
         self.contexts = contextlib.ExitStack()
         self.addCleanup(self.contexts.close)

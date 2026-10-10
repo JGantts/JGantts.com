@@ -296,37 +296,21 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
         // =========================
         // SOURCES (ONCE)
         // =========================
-        map.addSource('terrain', {
-          type: 'raster-dem',
-          tiles: [
-            '/assets/maps/height-tiles/{z}/{x}/{y}.png'
-          ],
-          tileSize: 256,
-          encoding: 'mapbox' // important
-        })
-  
-        // =========================
-        // LAYERS (ORDER = PRIORITY)
-        // =========================
-        /*map.setTerrain({
-          source: 'terrain',
-          exaggeration: 100.0 // tweak this
-        })
-  
-        map.addLayer({
-          id: 'hillshade',
-          type: 'hillshade',
-          source: 'terrain',
-          paint: {
-                'hillshade-method': 'standard',
-                'hillshade-illumination-direction': 315,
-                'hillshade-shadow-color': '#000000',
-                'hillshade-highlight-color': '#FFFFFF',
-                'hillshade-accent-color': '#000000',
-                'hillshade-exaggeration': 1.0
-          }
-        })*/
-  
+        const terrainRegion = regions.find(region => region.terrain)
+        if (terrainRegion?.terrain) {
+          const [[north, west], [south, east]] = normalizeBounds(terrainRegion.bounds)
+          map.addSource('terrain', {
+            type: 'raster-dem',
+            tiles: [`/assets/maps/${getLayerPath(terrainRegion, 'height-tiles')}/{z}/{x}/{y}.png`],
+            tileSize: 256,
+            encoding: 'mapbox',
+            minzoom: 0,
+            maxzoom: terrainRegion.terrain.maxzoom,
+            bounds: [west, south, east, north],
+          })
+          map.setTerrain({ source: 'terrain', exaggeration: terrainRegion.terrain.exaggeration })
+        }
+
         map.addLayer({
           id: 'town-dots',
           type: 'circle',

@@ -579,6 +579,27 @@ def build_all_tiles(args, temp_dir):
 
         print(f"\n=== REGION {region_id} ===")
 
+        terrain = region.get("terrain")
+        if terrain:
+            from tile_dem import generate_tiles, terrain_tiles
+            relative_dir = Path(get_layer_path(regions, region, "height-tiles"))
+            source = normalize_in_file_path(get_layer_path(regions, region, terrain["heightmap"]))
+            bounds = get_bounds_from_raw(region["bounds"])
+            maxzoom = terrain["maxzoom"]
+            build_hash = stable_json_hash({
+                "source": sha256_file(source), "bounds": bounds, "maxzoom": maxzoom,
+                "generator": sha256_file(Path(__file__).with_name("tile_dem.py")),
+            })
+            key = str(relative_dir)
+            new_hashes[key] = build_hash
+            missing = any(not (Path(final_output_dir) / relative_dir / str(t.z) / str(t.x) / f"{t.y}.png").is_file()
+                          for t in terrain_tiles(bounds, maxzoom))
+            if old_hashes.get(key) != build_hash or missing:
+                print(f"[DIRTY] {key}")
+                build_queue.append(lambda: generate_tiles(source, temp_dir / relative_dir, bounds, maxzoom))
+            else:
+                print(f"[SKIP ] {key}")
+
         convert_region_layer = make_convert_region_layer(
             regions,
             region

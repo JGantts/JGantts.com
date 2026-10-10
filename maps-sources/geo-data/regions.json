@@ -158,6 +158,7 @@
     },
     {
       "id": "ziemund",
+      "terrain": { "heightmap": "height-eroded.png", "maxzoom": 8, "exaggeration": 10 },
       "labelCoordinates": [-35.7, 12.65],
       "title": {
         "native": "Ziemúnd",

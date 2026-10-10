@@ -1,4 +1,3 @@
 -r requirements-cartography.txt
-mercantile
 rio-mbtiles
 mbutil

@@ -37,3 +37,5 @@ The [converter](../../../python/generate_town_hangul.py) uses the custom romaniz
 **Source:** [build driver](../../../python/make_all_tiles.py), [tiler](../../../python/tile_pm.py), [paths](../../../python/path_constants.py), [supporting tools](../../../python), [source assets](../../../maps-sources), [deployment workflow](../../../.github/workflows/deploy.yml).
 
 [Maps map](index.md)
+
+**3D elevation:** A region’s `terrain` configuration names its source height map, maximum tile zoom, and browser exaggeration. The incremental builder runs `tile_dem.py` to generate Mapbox RGB tiles under that region’s `height-tiles/` directory. Ziemúnd uses `height-eroded.png`, the existing 750–1500 m normalized elevation range, and tile zooms 0–8. Hashes include the source, bounds, tile zoom, and generator; any missing expected tile rebuilds the set. Local and production builds copy the tiles with the other map assets.

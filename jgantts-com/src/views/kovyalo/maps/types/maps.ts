@@ -32,6 +32,7 @@ export type Zooms = {data: Zoom, display: Zoom}
 export type ZoomConfig = Zoom|Zooms
 
 export type RegionConfig = {
+  terrain?: { heightmap: string; maxzoom: number; exaggeration: number }
   id: string
   title: string | Town['title']
   labelCoordinates?: [number, number]

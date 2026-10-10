@@ -12,6 +12,10 @@ MAX_ZOOM = 8
 
 TILE_SIZE = 256
 
+def terrain_tiles(bounds, maxzoom=MAX_ZOOM):
+    for zoom in range(maxzoom + 1):
+        yield from mercantile.tiles(*bounds, zoom)
+
 def mercator_to_lat(my):
     return np.degrees(np.arctan(np.sinh(my / 6378137.0)))
 
@@ -137,15 +141,13 @@ def main():
 
     args = p.parse_args()
 
-    INPUT = args.input # "../jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height-eroded.png"
-    OUT = args.output # "../jgantts-com/PUBLIC/assets/kovyalo/map/kovyalo/ziemund/height-tiles"
+    generate_tiles(args.input, args.output, args.bounds)
 
-    BBOX = {
-        "west": args.bounds[0],
-        "south": args.bounds[1],
-        "east": args.bounds[2],
-        "north": args.bounds[3]
-    }
+
+def generate_tiles(source, output, bounds, maxzoom=MAX_ZOOM):
+    INPUT = source
+    OUT = output
+    BBOX = dict(zip(("west", "south", "east", "north"), bounds))
 
     # --------------------
     # LOAD HEIGHTMAP
@@ -182,20 +184,9 @@ def main():
     # --------------------
     # GENERATE
     # --------------------
-    for z in range(MAX_ZOOM + 1):
-        print(f"Generating zoom {z}...")
-
-        tiles = mercantile.tiles(
-            BBOX["west"],
-            BBOX["south"],
-            BBOX["east"],
-            BBOX["north"],
-            z
-        )
-
-        for t in tiles:
-            img = render_tile(height, w, h, BBOX, t.z, t.x, t.y)
-            write_tile(OUT, img, t.z, t.x, t.y)
+    for t in terrain_tiles(bounds, maxzoom):
+        img = render_tile(height, w, h, BBOX, t.z, t.x, t.y)
+        write_tile(OUT, img, t.z, t.x, t.y)
 
     print("Done.")
 

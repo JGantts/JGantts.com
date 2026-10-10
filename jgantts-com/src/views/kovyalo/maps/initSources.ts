@@ -3,18 +3,12 @@ import type { FeatureCollection } from 'geojson'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
 import { useSettings } from '../common/Settings';
-import { townFonts, townLabel, townLabelImage, townLabelOffsets, townTextSize, townLabelPlacement, resizeTownLabels } from './townLabels';
+import { townFonts, townLabel, townLabelImage, townTextSize, townLabelPlacement, resizeTownLabels } from './townLabels';
 import { townNameProperties } from './rubyLabels';
 import { addRegionLabels } from './regionLabels';
 import { syncOverviewTownDots } from './townDots';
 import type { RegionConfig, RegionLayerConfig, ZoomConfig, TownPlusRegion, Zoom, Zooms, BoundsTuple, ImageCoordinates } from './types/maps'
 import { hashGuiPath } from './common/hashes';
-import { cartography } from './cartography';
-import { rasterPaint } from './rasterStyle';
-import { settlementRadius, markerPaint, addTownMarkerObstacles } from './settlements';
-import { loadBoundaryRaster, installBoundaryPlacement } from './boundaryPlacement';
-import { addPoliticalBoundaries } from './politicalBoundaries';
-import { addRiverLines } from './riverLines';
 
 function normalizeBounds(bounds: BoundsTuple): BoundsTuple {
   const [[y1, x1], [y2, x2]] = bounds
@@ -34,8 +28,7 @@ function boundsToImageCoordinates(bounds: BoundsTuple): ImageCoordinates {
   ]
 }
 
-async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[], signal?: AbortSignal) {
-    const boundaryLayers: (() => Promise<void>)[] = []
+async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]) {
     console.log('Map loaded, initializing sources and layers.')
   
     let getLayerPath = (region: RegionConfig, layer_id: string) => {
@@ -67,7 +60,6 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
                     title: town.title,
                     coordinates: town.coordinates,
                     population: town.population,
-                    settlementClass: town.settlementClass,
                     regionId: curr.id,
                   };
                 }))
@@ -85,9 +77,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
         const towns = allTowns.filter(town => town.regionId === region.id)
           .sort((a, b) => b.population - a.population)
         towns.forEach((town, rank) => townLabelMinZoom.set(town,
-          rank < 2 ? Math.max(0, zoom.min - 1) : zoom.min +
-            (town.population < cartography.settlements.townPopulation && !['capital', 'city', 'town'].includes(town.settlementClass ?? '')
-              ? cartography.settlements.minorLabelZoomDelay : 0)))
+          rank < 2 ? Math.max(0, zoom.min - 1) : zoom.min))
       }
 
       try {
@@ -103,8 +93,6 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
               ...townNameProperties(map, t.title.native, t.title.hangul, t.title.latin),
               latin: t.title.latin ?? '',
               population: t.population,
-              markerRadius: settlementRadius(t),
-              markerPriority: t.settlementClass === 'capital' ? 1e12 + t.population : t.population,
               labelMinZoom: townLabelMinZoom.get(t),
               regionMinZoom: regionMinZoom.get(t.regionId),
             },
@@ -154,8 +142,6 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
                 
               const sourceId = `region-src-${region.id}-${id}${darkSuffix}`
               const layerId = `region-${region.id}-${id}${darkSuffix}`
-
-              const imageUrl = `/assets/maps/${getLayerPath(region, id)}${darkSuffix}.png`
   
               const metadata: any = {}
   
@@ -171,48 +157,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
                 metadata.uiPathHash = hashGuiPath(layer.uiPath)
               }
   
-              if (layer.riverGuide) {
-                // Reserve the configured stacking position while the vector
-                // asset loads; river/border fetch completion order must not matter.
-                const positionId = `${layerId}-position`
-                map.addLayer({ id: positionId, type: 'background', paint: { 'background-opacity': 0 } })
-                boundaryLayers.push(async () => {
-                  try {
-                    await addRiverLines(map, layerId, `/assets/maps/${getLayerPath(region, id)}-flow.geojson`,
-                      zoomsFinal.display.min, zoomsFinal.display.max, metadata, positionId, signal)
-                  } catch (error) {
-                    if (signal?.aborted) return
-                    console.warn('River network unavailable; using original river artwork:', error)
-                    map.addSource(sourceId, { type: 'image', url: imageUrl,
-                      coordinates: boundsToImageCoordinates(region.bounds) })
-                    map.addLayer({ id: layerId, type: 'raster', source: sourceId,
-                      minzoom: zoomsFinal.display.min, maxzoom: zoomsFinal.display.max,
-                      paint: rasterPaint(id, layer), layout: { visibility: 'none' }, metadata,
-                    }, positionId)
-                  }
-                  map.removeLayer(positionId)
-                })
-              } else if (layer.boundaryGuide) {
-                boundaryLayers.push(async () => {
-                  try {
-                    await addPoliticalBoundaries(map, layerId,
-                      `/assets/maps/${getLayerPath(region, id)}-classes.geojson`, zoomsFinal.display.min, zoomsFinal.display.max, metadata, signal)
-                  } catch (error) {
-                    if (signal?.aborted) return
-                    // The site and map assets deploy separately. Keep the original
-                    // artwork visible if a classified asset has not arrived yet.
-                    console.warn('Classified boundaries unavailable; using original border artwork:', error)
-                    map.addSource(sourceId, { type: 'image', url: imageUrl,
-                      coordinates: boundsToImageCoordinates(region.bounds) })
-                    map.addLayer({ id: layerId, type: 'raster', source: sourceId,
-                      minzoom: zoomsFinal.display.min, maxzoom: zoomsFinal.display.max,
-                      paint: rasterPaint(id, layer), layout: { visibility: 'none' }, metadata,
-                    }, 'town-dots')
-                    await loadBoundaryRaster(map, layerId, imageUrl, region.bounds,
-                      zoomsFinal.display.min, zoomsFinal.display.max, metadata, false, signal)
-                  }
-                })
-              } else if (layer.type === 'tiled') {
+              if (layer.type === 'tiled') {
                 const source = `pmtiles:///assets/maps/${getLayerPath(region, id)}${darkSuffix}.pmtiles`
   
                 map.addSource(sourceId, {
@@ -229,7 +174,9 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
                   source: sourceId,
                   minzoom: zoomsFinal.display.min,
                   maxzoom: zoomsFinal.display.max,
-                  paint: rasterPaint(id, layer),
+                  paint: {
+                    'raster-opacity': 1,
+                  },
                   layout: {
                     visibility: 'none'
                   },
@@ -238,7 +185,7 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
               } else if (layer.type === 'single') {
                 map.addSource(sourceId, {
                   type: 'image',
-                  url: imageUrl,
+                  url: `/assets/maps/${getLayerPath(region, id)}${darkSuffix}.png`,
                   coordinates: boundsToImageCoordinates(region.bounds),
                 })
   
@@ -248,16 +195,14 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
                   source: sourceId,
                   minzoom: zoomsFinal.display.min,
                   maxzoom: zoomsFinal.display.max,
-                  paint: rasterPaint(id, layer),
+                  paint: {
+                    'raster-opacity': 1,
+                  },
                   layout: {
                     visibility: 'none'
                   },
                   metadata
                 })
-                if (id === 'borders' || (id === 'states' && !region.layers.some(item => item.boundaryGuide === id)) || layer.styleRole === 'national-border' || layer.styleRole === 'administrative-border') {
-                  boundaryLayers.push(() => loadBoundaryRaster(map, layerId, imageUrl, region.bounds,
-                    zoomsFinal.display.min, zoomsFinal.display.max, metadata, id === 'states', signal))
-                }
               } else {
                 throw `No layer type specified for region and layer: ${region.id} - ${layerId}`
               }
@@ -296,28 +241,50 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
         // =========================
         // SOURCES (ONCE)
         // =========================
-        const terrainRegion = regions.find(region => region.terrain)
-        if (terrainRegion?.terrain) {
-          const [[north, west], [south, east]] = normalizeBounds(terrainRegion.bounds)
-          map.addSource('terrain', {
-            type: 'raster-dem',
-            tiles: [`/assets/maps/${getLayerPath(terrainRegion, 'height-tiles')}/{z}/{x}/{y}.png`],
-            tileSize: 256,
-            encoding: 'mapbox',
-            minzoom: 0,
-            maxzoom: terrainRegion.terrain.maxzoom,
-            bounds: [west, south, east, north],
-          })
-          map.setTerrain({ source: 'terrain', exaggeration: terrainRegion.terrain.exaggeration })
-        }
-
+        map.addSource('terrain', {
+          type: 'raster-dem',
+          tiles: [
+            '/assets/maps/height-tiles/{z}/{x}/{y}.png'
+          ],
+          tileSize: 256,
+          encoding: 'mapbox' // important
+        })
+  
+        // =========================
+        // LAYERS (ORDER = PRIORITY)
+        // =========================
+        /*map.setTerrain({
+          source: 'terrain',
+          exaggeration: 100.0 // tweak this
+        })
+  
+        map.addLayer({
+          id: 'hillshade',
+          type: 'hillshade',
+          source: 'terrain',
+          paint: {
+                'hillshade-method': 'standard',
+                'hillshade-illumination-direction': 315,
+                'hillshade-shadow-color': '#000000',
+                'hillshade-highlight-color': '#FFFFFF',
+                'hillshade-accent-color': '#000000',
+                'hillshade-exaggeration': 1.0
+          }
+        })*/
+  
         map.addLayer({
           id: 'town-dots',
           type: 'circle',
           source: 'towns',
           filter: ['>=', ['zoom'], ['get', 'regionMinZoom']],
-          layout: { 'circle-sort-key': ['get', 'markerPriority'] },
-          paint: markerPaint,
+          paint: {
+            'circle-color': '#fff',
+            'circle-stroke-color': '#000',
+            'circle-radius': ['interpolate', ['linear'], ['get', 'population'],
+              1, 0.8, 100, 2, 1000, 4, 10000, 6, 100000, 8],
+            'circle-stroke-width': ['interpolate', ['linear'], ['get', 'population'],
+              1, 0.1, 100, 0.25, 1000, 0.5, 10000, 0.75, 100000, 1],
+          },
         })
 
         map.addLayer({
@@ -336,21 +303,20 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
             'text-letter-spacing': 0,
   
             ...townLabelPlacement,
-            'text-variable-anchor-offset': townLabelOffsets(useSettings().labelMode, map),
 
             // Anchor the visible label by its native-only content rectangle.
             'icon-image': townLabelImage(useSettings().labelMode),
             'icon-text-fit': 'both',
             // Leave breathing room around names; larger towns keep priority
             // while smaller towns become visible as the map is zoomed in.
-            'icon-padding': cartography.labels.collisionPadding,
+            'icon-padding': 24,
             // The fitted image includes translations and ruby outside the native
             // anchor. Check its bounds when trying anchors and reserve that space.
             'icon-allow-overlap': false,
             'icon-ignore-placement': false,
 
             // priority (higher = wins collisions)
-            'symbol-sort-key': ['*', ['literal', -1], ['get', 'markerPriority']],
+            'symbol-sort-key': ['*', ['literal', -1], ['get', 'population']],
           },
   
           paint: {
@@ -362,34 +328,16 @@ async function initMapSourcesAndLayers(map: MapLibreMap, regions: RegionConfig[]
         // Later symbol layers win collisions, keeping region names prominent.
         addRegionLabels(map, regions, useSettings().labelMode)
 
-        await Promise.all(boundaryLayers.map(add => add().catch(error => { if (!signal?.aborted) console.warn('Could not reserve border label clearance:', error) })))
-
-        if (signal?.aborted) return
-
-        // Cover all artwork outside the known terrain, including boundaries
-        // loaded asynchronously, while keeping settlement markers and names above.
-        for (const region of regions) {
-          for (const layer of region.layers ?? []) {
-            if (!layer.maskOf) continue
-            for (const suffix of layer.hasDark ? ['', '-dark'] : ['']) {
-              map.moveLayer(`region-${region.id}-${layer.id}${suffix}`, 'town-dots')
-            }
-          }
-        }
-
-        addTownMarkerObstacles(map)
-
         syncOverviewTownDots(map)
 
         const resizeLabels = () => resizeTownLabels(map)
         resizeLabels()
         map.on('resize', resizeLabels)
         map.once('remove', () => map.off('resize', resizeLabels))
-        installBoundaryPlacement(map, data, () => useSettings().labelMode)
   
       //   requestSync()
       } catch (error) {
-        if (!signal?.aborted) console.error('Failed to initialize map sources:', error)
+        console.error('Failed to initialize map sources:', error)
       }
   }
 

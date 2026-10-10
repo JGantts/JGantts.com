@@ -58,10 +58,7 @@ jobs:
         run: npm run smoke:local
         working-directory: ./jgantts-server
 
-      - name: Install map rendering test dependencies
-        run: python3 -m pip install -r python/requirements-cartography.txt
-
-      - name: Test map rendering and incremental orchestration
+      - name: Test incremental map orchestration
         run: python3 -m unittest discover -s python -p 'test_*.py'
 
       - name: Test deployment tooling

@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 
-test('phone map progressively reveals smaller settlements while preserving overview labels', async ({ page }) => {
+test('phone map shows roughly half as many labels with breathing room', async ({ page }) => {
   await page.route('**/map-label-test', route => route.fulfill({
     contentType: 'text/html',
     body: '<div id="map" style="width:390px;height:844px"></div>',
@@ -36,16 +36,21 @@ test('phone map progressively reveals smaller settlements while preserving overv
     return new Set(map.queryRenderedFeatures({ layers: ['towns-layer'] }).map((f: any) => f.properties.name)).size
   })
   await page.evaluate(() => new Promise(resolve => (window as any).townTestMap.once('idle', resolve)))
-  const overview = await countLabels()
-  expect(overview).toBeGreaterThan(0)
-  expect(overview).toBeLessThanOrEqual(7)
-  await page.evaluate(() => (window as any).townTestMap.jumpTo({ zoom: 7.3 }))
-  await expect.poll(countLabels).toBeGreaterThan(overview)
+  const spaced = await countLabels()
+  await page.evaluate(() => {
+    const map = (window as any).townTestMap
+    map.setLayoutProperty('towns-layer', 'icon-padding', 0)
+    return new Promise(resolve => map.once('idle', resolve))
+  })
+  const original = await countLabels()
+  expect(original).toBeGreaterThan(0)
+  expect(spaced / original).toBeGreaterThanOrEqual(0.4)
+  expect(spaced / original).toBeLessThanOrEqual(0.65)
   await page.evaluate(() => (window as any).townTestMap.jumpTo({ zoom: 5 }))
   await expect.poll(() => page.evaluate(() => {
     const features = (window as any).townTestMap.queryRenderedFeatures({ layers: ['towns-layer'] })
     const names = [...new Set(features.map((f: any) => f.properties.name))]
-    return names.length >= 1 && names.length <= 2 && names.every(name => ['洲湍', 'Rócyabó'].includes(name as string))
+    return names.length >= 1 && names.length <= 2 && names.every(name => ['Kémbua', 'Rócyabó'].includes(name as string))
   })).toBe(true)
   const visibleNames = (layer: string) => page.evaluate(layer =>
     [...new Set((window as any).townTestMap.queryRenderedFeatures({ layers: [layer] }).map((f: any) => f.properties.name))].sort(), layer)

@@ -144,21 +144,6 @@ def make_build_hash(
 # geo helpers
 # ---------------------------------------------------
 
-def unexplored_mask(source):
-    from PIL import Image, ImageOps
-    with Image.open(source) as image:
-        mask = Image.new('RGBA', image.size, (0, 0, 0, 0))
-        mask.putalpha(ImageOps.invert(image.convert('RGBA').getchannel('A')))
-        return mask
-
-
-def warp_mask(source, output, bounds):
-    with tempfile.TemporaryDirectory() as directory:
-        mask_path = Path(directory) / 'mask.png'
-        unexplored_mask(source).save(mask_path)
-        warp(str(mask_path), str(output), bounds)
-
-
 def warp(src, out_png, bounds):
     west, south, east, north = bounds
 
@@ -218,19 +203,6 @@ def build(input_file, output_file, bounds, minzoom, maxzoom):
         "--minzoom", str(minzoom),
         "--maxzoom", str(maxzoom),
     ])
-
-
-def build_boundaries(guide, borders, output, bounds, province_count):
-    # Keep heavy image dependencies out of orchestration-only tests.
-    from classify_boundaries import generate_boundaries
-    counts = generate_boundaries(guide, borders, output, bounds, province_count)
-    print(f"[BOUNDARIES] {output}: {counts}")
-
-
-def build_river_network(rivers, terrain, elevation, guide, output, bounds):
-    from river_network import generate_rivers
-    audit = generate_rivers(rivers, terrain, elevation, guide, output, bounds)
-    print(f"[RIVERS] {output}: {audit['features']} lines, {len(audit['repairs'])} reviewed gap repairs")
 
 # ---------------------------------------------------
 # region helpers
@@ -479,10 +451,6 @@ def build_all_tiles(args, temp_dir):
                     layer_path
                 ).with_suffix(".png")
 
-                if layer.get("maskOf"):
-                    input_file = normalize_in_file_path(get_layer_path(
-                        regions, region, layer["maskOf"])).with_suffix(".png")
-
                 output_file = temp_out_file_path(
                     layer_path
                 ).with_suffix(".png")
@@ -505,7 +473,7 @@ def build_all_tiles(args, temp_dir):
                 build_hash = make_build_hash(
                     input_file=input_file,
                     bounds=bounds,
-                    layer_type="inverse-alpha-mask" if layer.get("maskOf") else "single",
+                    layer_type="single",
                     dark=False
                 )
 
@@ -516,44 +484,13 @@ def build_all_tiles(args, temp_dir):
                     build_fn=lambda
                         i=input_file,
                         o=output_file,
-                        b=bounds,
-                        render=warp_mask if layer.get("maskOf") else warp:
-                            render(
+                        b=bounds:
+                            warp(
                                 str(i),
                                 str(o),
                                 b
                             )
                 )
-
-                if layer.get("riverGuide"):
-                    terrain = input_file.with_name("base.png")
-                    elevation = input_file.with_name("height.png")
-                    guide = input_file.with_name(layer["riverGuide"])
-                    river_output = temp_out_file_path(layer_path + "-flow.geojson")
-                    river_hash = make_build_hash(
-                        input_file=input_file, bounds=bounds, layer_type="river-network",
-                        extra={"terrain": sha256_file(terrain), "elevation": sha256_file(elevation),
-                               "guide": sha256_file(guide), "compiler": sha256_file(Path(__file__).with_name("river_network.py"))})
-                    enqueue_if_needed(
-                        key=layer_path + "-flow", build_hash=river_hash, output_file=river_output,
-                        build_fn=lambda r=input_file, t=terrain, e=elevation, g=guide, o=river_output, b=bounds:
-                            build_river_network(r, t, e, g, o, b))
-
-                if layer.get("boundaryGuide"):
-                    guide = normalize_in_file_path(get_layer_path(
-                        regions, region, layer["boundaryGuide"])).with_suffix(".png")
-                    classified_output = temp_out_file_path(layer_path + "-classes.geojson")
-                    province_count = layer.get("provinceCount", 4)
-                    compiler = Path(__file__).with_name("classify_boundaries.py")
-                    classified_hash = make_build_hash(
-                        input_file=input_file, bounds=bounds, layer_type="classified-boundaries",
-                        extra={"guide": sha256_file(guide), "province_count": province_count,
-                               "compiler": sha256_file(compiler)})
-                    enqueue_if_needed(
-                        key=layer_path + "-classes", build_hash=classified_hash,
-                        output_file=classified_output,
-                        build_fn=lambda g=guide, i=input_file, o=classified_output, b=bounds, c=province_count:
-                            build_boundaries(g, i, o, b, c))
 
                 if layer.get("hasDark"):
 
@@ -598,27 +535,6 @@ def build_all_tiles(args, temp_dir):
         region_id = region["id"]
 
         print(f"\n=== REGION {region_id} ===")
-
-        terrain = region.get("terrain")
-        if terrain:
-            from tile_dem import generate_tiles, terrain_tiles
-            relative_dir = Path(get_layer_path(regions, region, "height-tiles"))
-            source = normalize_in_file_path(get_layer_path(regions, region, terrain["heightmap"]))
-            bounds = get_bounds_from_raw(region["bounds"])
-            maxzoom = terrain["maxzoom"]
-            build_hash = stable_json_hash({
-                "source": sha256_file(source), "bounds": bounds, "maxzoom": maxzoom,
-                "generator": sha256_file(Path(__file__).with_name("tile_dem.py")),
-            })
-            key = str(relative_dir)
-            new_hashes[key] = build_hash
-            missing = any(not (Path(final_output_dir) / relative_dir / str(t.z) / str(t.x) / f"{t.y}.png").is_file()
-                          for t in terrain_tiles(bounds, maxzoom))
-            if old_hashes.get(key) != build_hash or missing:
-                print(f"[DIRTY] {key}")
-                build_queue.append(lambda: generate_tiles(source, temp_dir / relative_dir, bounds, maxzoom))
-            else:
-                print(f"[SKIP ] {key}")
 
         convert_region_layer = make_convert_region_layer(
             regions,

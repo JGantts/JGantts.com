@@ -2,7 +2,6 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { RegionConfig } from './types/maps'
 import { townNameProperties } from './rubyLabels'
 import { townFonts, townLabel, townLabelImage, type LabelMode } from './townLabels'
-import { cartography } from './cartography'
 
 export const regionLabelId = (id: string) => `region-label-${id}`
 export const regionTitle = (region: RegionConfig) =>
@@ -31,7 +30,7 @@ export function addRegionLabels(map: MapLibreMap, regions: RegionConfig[], mode:
         'text-size': ['interpolate', ['linear'], ['zoom'], Math.max(0, zoom.min - 2), 32, Math.max(0, zoom.min - 2) + 2, 24],
         'text-line-height': 1, 'text-max-width': 1000,
         'icon-image': townLabelImage(mode), 'icon-text-fit': 'both',
-        'icon-padding': cartography.labels.regionCollisionPadding, 'icon-allow-overlap': false,
+        'icon-padding': 12, 'icon-allow-overlap': false,
       },
       paint: { 'text-opacity': 0 },
     })

@@ -1,7 +1,7 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 
-// Overview dots follow placed names. Detailed dots follow marker footprints;
-// these reserve space for labels and suppress only markers too close to separate.
+// Circle layers do not participate in symbol collisions. Follow the labels
+// actually placed by MapLibre, not just the towns eligible at this zoom.
 export function syncOverviewTownDots(map: MapLibreMap) {
   let previous = ''
   const sync = () => {
@@ -11,23 +11,14 @@ export function syncOverviewTownDots(map: MapLibreMap) {
       .filter(feature => feature.properties.regionMinZoom > zoom)
       .map(feature => feature.id)
       .filter((id): id is number => typeof id === 'number'))].sort((a, b) => a - b)
-    const markerIds = [...new Set(map.queryRenderedFeatures({ layers: ['town-marker-obstacles'] })
-      .map(feature => feature.id).filter((id): id is number => typeof id === 'number'))].sort((a, b) => a - b)
-    const key = JSON.stringify([ids, markerIds])
+    const key = JSON.stringify(ids)
     if (key === previous) return
     previous = key
     map.setFilter('town-dots', ['any',
-      ['in', ['id'], ['literal', markerIds]],
+      ['>=', ['zoom'], ['get', 'regionMinZoom']],
       ['in', ['id'], ['literal', ids]],
     ])
-    map.setFilter('towns-layer', ['all',
-      ['>=', ['zoom'], ['get', 'labelMinZoom']],
-      ['any', ['<', ['zoom'], ['get', 'regionMinZoom']], ['in', ['id'], ['literal', markerIds]]],
-    ])
   }
-  // Symbol placement and worker tile data can belong to different frames while
-  // zooming or changing label images. Query only a settled placement, then let
-  // the changed filters produce the next frame before querying again.
-  map.on('idle', sync)
-  map.once('remove', () => map.off('idle', sync))
+  map.on('render', sync)
+  map.once('remove', () => map.off('render', sync))
 }

@@ -158,7 +158,6 @@
     },
     {
       "id": "ziemund",
-      "terrain": { "heightmap": "height-eroded.png", "maxzoom": 8, "exaggeration": 10 },
       "labelCoordinates": [-35.7, 12.65],
       "title": {
         "native": "Ziemúnd",
@@ -168,15 +167,14 @@
         [14.54625, -36.6552],
         [9.084375, -32.5872]
       ],
-      "zoom": { "data": { "min": 6, "max": 10 }, "display": { "min": 6, "max": 11 } },
+      "zoom": { "min": 6, "max": 10 },
       "parentId": "kovyalo",
       "base": { "type": "tiled", "hasDark": false },
       "background": { "type": "single", "hasDark": false },
       "layers": [
         { "id": "states", "type": "single", "exclusiveGroup": "nation", "uiPath": ["Political", "National", "Ziemúnd"], "hasDark": true },
-        { "id": "unexplored-mask", "type": "single", "maskOf": "base", "styleRole": "background" },
-        { "id": "rivers", "type": "single", "riverGuide": "rivers-network.json", "uiPath": ["Physical", "Terrain", "Rivers"], "hasDark": false },
-        { "id": "borders", "type": "single", "boundaryGuide": "states", "provinceCount": 4, "exclusiveGroup": "nation", "uiPath": ["Political", "National", "Ziemúnd"] }
+        { "id": "rivers", "type": "single", "uiPath": ["Physical", "Terrain", "Rivers"], "hasDark": false },
+        { "id": "borders", "type": "single", "exclusiveGroup": "nation", "uiPath": ["Political", "National", "Ziemúnd"] }
       ],
       "dataSources": [
         {

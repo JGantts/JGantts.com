@@ -12,15 +12,15 @@ import { reactive, watch } from 'vue';
 import { effectiveDarkMode } from '../common/DarkMode';
 import type { GuiNode, GuiLeaf, GuiParent, GuiChild, GuiTreeIdentifiable } from '../HUD/GuiView/types/gui';
 import { initMapSourcesAndLayers } from './initSources';
-import { loadTownLabelFonts, townLabel, townLabelImage, townLabelOffsets } from './townLabels';
+import { loadTownLabelFonts, townLabel, townLabelImage } from './townLabels';
 import type { RegionConfig, BoundsTuple, ImageCoordinates, JgMap, WorldConfig } from './types/maps'
 import { hashGuiPath, hashTitleIntoId } from './common/hashes';
 
 import { regionLabelId, regionTitle } from './regionLabels';
-import { refreshBoundaryPlacement } from './boundaryPlacement';
 
 const settings = useSettings()
 
+let regions: RegionConfig[] 
 
 let saveTimeout: number | null = null
 
@@ -67,7 +67,6 @@ function applyTheme(map: MapLibreMap) {
       visible ? 'visible' : 'none'
     )
   }
-  refreshBoundaryPlacement(map)
 }
 
 const guiRoot = reactive<GuiNode>({
@@ -115,9 +114,9 @@ function initLayerGuiSettings(regions: RegionConfig[]) {
   }
 }
 
-async function loadConfigFile(signal?: AbortSignal) {
+async function loadConfigFile() {
   return JSON.parse(
-    await (await fetch('/assets/maps/geo-data/regions.json', { signal })).text()
+    await (await fetch('/assets/maps/geo-data/regions.json')).text()
 ) as WorldConfig
 }
 
@@ -125,11 +124,9 @@ function processConfigFile(worldConfig: WorldConfig) {
   return [worldConfig.world, ...worldConfig.regions]
 }
 
-async function initMap(mapEl: HTMLElement | null, dev: boolean = false, signal?: AbortSignal): Promise<JgMap | null> {
+async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise<JgMap | null> {
 
-    if (!mapEl || signal?.aborted) return null
-    const regions = processConfigFile(await loadConfigFile(signal))
-    if (signal?.aborted) return null
+    regions = processConfigFile(await loadConfigFile())
 
     initLayerGuiSettings(regions)
 
@@ -146,11 +143,7 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false, signal?:
       console.warn('Map label fonts could not load; using browser fallbacks.', error)
     }
 
-    if (signal?.aborted) return null
-
-    let mapTemp: MapLibreMap
-    try {
-    mapTemp = new maplibregl.Map({
+    let mapTemp = new maplibregl.Map({
       container: mapEl,
       style: { version: 8, sources: {}, layers: [
           {
@@ -172,14 +165,6 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false, signal?:
       pitch: settings.pitch,
       bearing: settings.bearing,
     })
-
-    } catch (error) {
-      mapEl.replaceChildren()
-      throw error
-    }
-    let removed = false
-    const lifetime = new AbortController()
-    mapTemp.once('remove', () => { removed = true; lifetime.abort() })
 
     //test
 
@@ -215,8 +200,7 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false, signal?:
 
     let stopThemeWatch: (() => void) | undefined
     mapTemp.on('load', async () => {
-        await initMapSourcesAndLayers(mapTemp, regions, lifetime.signal)
-        if (removed) return
+        await initMapSourcesAndLayers(mapTemp, regions)
         stopThemeWatch = watch(
           effectiveDarkMode,
           (newVal, oldVal) => {
@@ -232,19 +216,13 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false, signal?:
         if (!mapTemp.getLayer(id)) continue
         mapTemp.setLayoutProperty(id, 'text-field', townLabel(mode))
         mapTemp.setLayoutProperty(id, 'icon-image', townLabelImage(mode))
-        if (id === 'towns-layer') mapTemp.setLayoutProperty(id, 'text-variable-anchor-offset', townLabelOffsets(mode, mapTemp))
       }
-      refreshBoundaryPlacement(mapTemp)
     })
     return {
         mlMap: mapTemp,
         guiTree: guiRoot,
         savePosition: () => scheduleSave(mapTemp),
         unmount: () => {
-          if (removed) return
-          removed = true
-          lifetime.abort()
-          if (saveTimeout) { window.clearTimeout(saveTimeout); saveTimeout = null }
           stopLayerWatch()
           stopThemeWatch?.()
           stopLabelWatch()

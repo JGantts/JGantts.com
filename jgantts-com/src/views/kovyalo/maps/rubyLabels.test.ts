@@ -64,10 +64,9 @@ describe('ruby town names', () => {
   })
 
   it('keeps native content dimensions and drawing position independent of annotations', () => {
-    const draws: { text: string; x: number; y: number; font: string; lineWidth: number }[] = []
+    const draws: { text: string; x: number; y: number; font: string }[] = []
     const ctx = {
       font: '',
-      lineWidth: 0,
       measureText(text: string) {
         const size = Number(this.font.match(/([\d.]+)px/)![1])
         return { width: text.length * size, actualBoundingBoxLeft: text.length * size / 2,
@@ -75,7 +74,7 @@ describe('ruby town names', () => {
           actualBoundingBoxAscent: text ? size * 0.8 : 0, actualBoundingBoxDescent: text ? size * 0.2 : 0 }
       },
       scale() {}, strokeText() {},
-      fillText(text: string, x: number, y: number) { draws.push({ text, x, y, font: this.font, lineWidth: this.lineWidth }) },
+      fillText(text: string, x: number, y: number) { draws.push({ text, x, y, font: this.font }) },
       getImageData() { return {} as ImageData },
     }
     const spy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D)
@@ -108,15 +107,6 @@ describe('ruby town names', () => {
       expect(draws[2].y).toBeGreaterThan(draws[1].y)
       expect(draws[1].y).toBeGreaterThan(draws[0].y)
       expect((triple.content[3] - triple.content[1]) / triple.pixelRatio).toBe(18)
-      const sizes = draws.map(draw => Number(draw.font.match(/([\d.]+)px/)![1]))
-      expect(sizes).toEqual([18, 14.4, 11.16])
-      for (const [index, draw] of draws.entries()) {
-        expect(draw.lineWidth / sizes[index]).toBeCloseTo(0.11)
-        expect(draw.lineWidth).toBeLessThan(2)
-      }
-      draws.length = 0
-      renderTownLabel([{ text: 'Çabuóe' }], '싸뾔', false, true)
-      expect(draws[1].font).toContain('300 11.16px')
     } finally {
       spy.mockRestore()
     }

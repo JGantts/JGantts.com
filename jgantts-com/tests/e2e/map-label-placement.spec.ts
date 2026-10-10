@@ -36,13 +36,13 @@ test('crowded labels hide nearby and reappear on zoom, including after rotation'
     sourceUrl: '/src/views/kovyalo/maps/initSources.ts',
   })
 
-  // At this scale the marker footprints collide. Lower-priority names must hide
+  // At this scale the third name cannot fit beside its dot. It must hide
   // instead of using a distant anchor to squeeze into another gap.
-  await page.evaluate(() => (window as any).townTestMap.jumpTo({ zoom: 8 }))
+  await page.evaluate(() => (window as any).townTestMap.jumpTo({ zoom: 11 }))
   await expect.poll(() => page.evaluate(() => {
     const features = (window as any).townTestMap.queryRenderedFeatures({ layers: ['towns-layer'] })
     return new Set(features.map((feature: any) => feature.properties.name)).size
-  })).toBe(1)
+  })).toBe(2)
 
   // Zooming in provides room for all three names at their close anchors.
   for (const zoom of [12]) {

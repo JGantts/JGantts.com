@@ -11,11 +11,6 @@ export type JgMap = {
 export type BoundsTuple = [[number, number], [number, number]]
 
 export type RegionLayerConfig = {
-  maskOf?: string
-  riverGuide?: string
-  boundaryGuide?: string
-  provinceCount?: number
-  styleRole?: 'terrain' | 'political' | 'rivers' | 'national-border' | 'administrative-border' | 'background'
   type: "tiled" | "single"
   zoom: ZoomConfig|null
   zoomDisplay: ZoomConfig|null
@@ -33,7 +28,6 @@ export type Zooms = {data: Zoom, display: Zoom}
 export type ZoomConfig = Zoom|Zooms
 
 export type RegionConfig = {
-  terrain?: { heightmap: string; maxzoom: number; exaggeration: number }
   id: string
   title: string | Town['title']
   labelCoordinates?: [number, number]
@@ -62,7 +56,6 @@ export type ImageCoordinates = [
 ]
 
 export type Town = {
-  settlementClass?: 'capital' | 'city' | 'town' | 'village'
   title: {
     native: string
     latin?: string

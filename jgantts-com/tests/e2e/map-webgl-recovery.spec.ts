@@ -7,7 +7,7 @@ test('a blocked graphics context offers reload and recovers without unhandled er
   await page.addInitScript(() => {
     if (sessionStorage.getItem('allow-map-webgl') === 'yes') return
     const original = HTMLCanvasElement.prototype.getContext
-    HTMLCanvasElement.prototype.getContext = function (type: string, ...args: any[]) {
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...args: any[]) {
       if (type === 'webgl' || type === 'webgl2') {
         const event = new Event('webglcontextcreationerror')
         Object.assign(event, { statusMessage: 'Web page caused context loss and was blocked' })

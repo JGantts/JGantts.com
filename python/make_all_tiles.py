@@ -204,6 +204,19 @@ def build(input_file, output_file, bounds, minzoom, maxzoom):
         "--maxzoom", str(maxzoom),
     ])
 
+
+def build_boundaries(guide, borders, output, bounds, province_count):
+    # Keep heavy image dependencies out of orchestration-only tests.
+    from classify_boundaries import generate_boundaries
+    counts = generate_boundaries(guide, borders, output, bounds, province_count)
+    print(f"[BOUNDARIES] {output}: {counts}")
+
+
+def build_river_network(rivers, terrain, elevation, guide, output, bounds):
+    from river_network import generate_rivers
+    audit = generate_rivers(rivers, terrain, elevation, guide, output, bounds)
+    print(f"[RIVERS] {output}: {audit['features']} lines, {len(audit['repairs'])} reviewed gap repairs")
+
 # ---------------------------------------------------
 # region helpers
 # ---------------------------------------------------
@@ -491,6 +504,36 @@ def build_all_tiles(args, temp_dir):
                                 b
                             )
                 )
+
+                if layer.get("riverGuide"):
+                    terrain = input_file.with_name("base.png")
+                    elevation = input_file.with_name("height.png")
+                    guide = input_file.with_name(layer["riverGuide"])
+                    river_output = temp_out_file_path(layer_path + "-flow.geojson")
+                    river_hash = make_build_hash(
+                        input_file=input_file, bounds=bounds, layer_type="river-network",
+                        extra={"terrain": sha256_file(terrain), "elevation": sha256_file(elevation),
+                               "guide": sha256_file(guide), "compiler": sha256_file(Path(__file__).with_name("river_network.py"))})
+                    enqueue_if_needed(
+                        key=layer_path + "-flow", build_hash=river_hash, output_file=river_output,
+                        build_fn=lambda r=input_file, t=terrain, e=elevation, g=guide, o=river_output, b=bounds:
+                            build_river_network(r, t, e, g, o, b))
+
+                if layer.get("boundaryGuide"):
+                    guide = normalize_in_file_path(get_layer_path(
+                        regions, region, layer["boundaryGuide"])).with_suffix(".png")
+                    classified_output = temp_out_file_path(layer_path + "-classes.geojson")
+                    province_count = layer.get("provinceCount", 4)
+                    compiler = Path(__file__).with_name("classify_boundaries.py")
+                    classified_hash = make_build_hash(
+                        input_file=input_file, bounds=bounds, layer_type="classified-boundaries",
+                        extra={"guide": sha256_file(guide), "province_count": province_count,
+                               "compiler": sha256_file(compiler)})
+                    enqueue_if_needed(
+                        key=layer_path + "-classes", build_hash=classified_hash,
+                        output_file=classified_output,
+                        build_fn=lambda g=guide, i=input_file, o=classified_output, b=bounds, c=province_count:
+                            build_boundaries(g, i, o, b, c))
 
                 if layer.get("hasDark"):
 

@@ -1,7 +1,4 @@
-numpy
-pillow
-scipy
+-r requirements-cartography.txt
 mercantile
 rio-mbtiles
-rasterio
 mbutil

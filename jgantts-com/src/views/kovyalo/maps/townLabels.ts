@@ -1,4 +1,5 @@
 import type { ExpressionSpecification, Map as MapLibreMap, SymbolLayerSpecification } from 'maplibre-gl'
+import { cartography } from './cartography'
 
 export const labelModes = ['both', 'native', 'nativeHangul', 'all', 'latin', 'hangul'] as const
 export type LabelMode = typeof labelModes[number]
@@ -63,21 +64,45 @@ export function townLabelImage(mode: LabelMode): ExpressionSpecification {
   return ['get', `${mode}Image`]
 }
 
+const offsetTables = new WeakMap<MapLibreMap, Map<string, LabelOffsets>>()
+
+export function rememberLabelOffsets(map: MapLibreMap, imageId: string, offsets: LabelOffsets) {
+  let table = offsetTables.get(map)
+  if (!table) offsetTables.set(map, table = new Map())
+  table.set(imageId, offsets)
+}
+
+export function townLabelOffsets(mode: LabelMode, map?: MapLibreMap): ExpressionSpecification {
+  const entries = map ? [...(offsetTables.get(map)?.entries() ?? [])] : []
+  // GeoJSON array-valued properties become strings in vector tiles. Keep the
+  // arrays as style literals and select them by the stable label-image ID.
+  if (!entries.length) return ['literal', labelOffsets()]
+  return ['match', ['get', `${mode}Image`],
+    ...entries.flatMap(([id, offsets]) => [id, ['literal', offsets]]),
+    ['literal', labelOffsets()]] as unknown as ExpressionSpecification
+}
+
+export type LabelOffsets = (string | [number, number])[]
+
+// Offset the entire image, including readings that extend beyond the native box.
+// Eight close candidates keep each name visibly associated with its settlement.
+export function labelOffsets(overhang = { left: 0, right: 0, top: 0, bottom: 0 }): LabelOffsets {
+  const gap = cartography.labels.markerGapEm
+  const left = gap + overhang.left
+  const right = -gap - overhang.right
+  const top = gap + overhang.top
+  const bottom = -gap - overhang.bottom
+  return [
+    'left', [left, 0], 'right', [right, 0],
+    'top-left', [left, top], 'top-right', [right, top],
+    'bottom-left', [left, bottom], 'bottom-right', [right, bottom],
+    'top', [0, top], 'bottom', [0, bottom],
+  ]
+}
+
 // Only try positions beside the dot; hide crowded names instead of detaching
 // them from their town by searching wider rings.
 // Offsets are in ems and still apply only to the primary/native label box.
 export const townLabelPlacement: SymbolLayerSpecification['layout'] = {
-  'text-variable-anchor-offset': [0.25].flatMap(distance => {
-    const diagonal = distance / Math.SQRT2
-    return [
-      'top-left', [diagonal, diagonal],
-      'top-right', [-diagonal, diagonal],
-      'bottom-left', [diagonal, -diagonal],
-      'bottom-right', [-diagonal, -diagonal],
-      'left', [distance, 0],
-      'right', [-distance, 0],
-      'bottom', [0, -distance],
-      'top', [0, distance],
-    ]
-  }) as (string | [number, number])[],
+  'text-variable-anchor-offset': townLabelOffsets('both'),
 }

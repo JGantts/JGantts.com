@@ -12,11 +12,12 @@ import { reactive, watch } from 'vue';
 import { effectiveDarkMode } from '../common/DarkMode';
 import type { GuiNode, GuiLeaf, GuiParent, GuiChild, GuiTreeIdentifiable } from '../HUD/GuiView/types/gui';
 import { initMapSourcesAndLayers } from './initSources';
-import { loadTownLabelFonts, townLabel, townLabelImage } from './townLabels';
+import { loadTownLabelFonts, townLabel, townLabelImage, townLabelOffsets } from './townLabels';
 import type { RegionConfig, BoundsTuple, ImageCoordinates, JgMap, WorldConfig } from './types/maps'
 import { hashGuiPath, hashTitleIntoId } from './common/hashes';
 
 import { regionLabelId, regionTitle } from './regionLabels';
+import { refreshBoundaryPlacement } from './boundaryPlacement';
 
 const settings = useSettings()
 
@@ -67,6 +68,7 @@ function applyTheme(map: MapLibreMap) {
       visible ? 'visible' : 'none'
     )
   }
+  refreshBoundaryPlacement(map)
 }
 
 const guiRoot = reactive<GuiNode>({
@@ -216,7 +218,9 @@ async function initMap(mapEl: HTMLElement | null, dev: boolean = false): Promise
         if (!mapTemp.getLayer(id)) continue
         mapTemp.setLayoutProperty(id, 'text-field', townLabel(mode))
         mapTemp.setLayoutProperty(id, 'icon-image', townLabelImage(mode))
+        if (id === 'towns-layer') mapTemp.setLayoutProperty(id, 'text-variable-anchor-offset', townLabelOffsets(mode, mapTemp))
       }
+      refreshBoundaryPlacement(mapTemp)
     })
     return {
         mlMap: mapTemp,

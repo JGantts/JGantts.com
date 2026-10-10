@@ -11,6 +11,10 @@ export type JgMap = {
 export type BoundsTuple = [[number, number], [number, number]]
 
 export type RegionLayerConfig = {
+  riverGuide?: string
+  boundaryGuide?: string
+  provinceCount?: number
+  styleRole?: 'terrain' | 'political' | 'rivers' | 'national-border' | 'administrative-border' | 'background'
   type: "tiled" | "single"
   zoom: ZoomConfig|null
   zoomDisplay: ZoomConfig|null
@@ -56,6 +60,7 @@ export type ImageCoordinates = [
 ]
 
 export type Town = {
+  settlementClass?: 'capital' | 'city' | 'town' | 'village'
   title: {
     native: string
     latin?: string

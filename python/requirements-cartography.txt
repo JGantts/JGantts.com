@@ -1,0 +1,6 @@
+numpy
+pillow
+scipy
+rasterio
+shapely>=1.7
+scikit-image>=0.20
